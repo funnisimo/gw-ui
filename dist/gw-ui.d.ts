@@ -1,4 +1,5 @@
 import * as GWU from 'gw-utils';
+import * as GWM from 'gw-map';
 
 interface UIType {
     buffer: GWU.canvas.Buffer;
@@ -19,8 +20,8 @@ declare class UI implements UIType {
     layers: GWU.canvas.Buffer[];
     freeBuffers: GWU.canvas.Buffer[];
     inDialog: boolean;
-    overlay: GWU.canvas.Buffer | null;
     constructor(opts?: Partial<UIOptions>);
+    render(): void;
     startDialog(): GWU.canvas.Buffer;
     resetDialogBuffer(dest: GWU.canvas.Buffer): void;
     finishDialog(): void;
@@ -51,4 +52,39 @@ declare class Messages {
     showArchive(): Promise<void>;
 }
 
-export { MessageOptions, Messages, UI, UIOptions, UIType };
+declare type ViewFilterFn = (mixer: GWU.sprite.Mixer, x: number, y: number, map: GWM.map.Map) => void;
+interface ViewportOptions {
+    snap?: boolean;
+    follow?: boolean;
+    ui: UIType;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    filter?: ViewFilterFn;
+    lockX?: boolean;
+    lockY?: boolean;
+    lock?: boolean;
+}
+declare class Viewport {
+    ui: UIType;
+    follow: boolean;
+    snap: boolean;
+    bounds: GWU.xy.Bounds;
+    filter: ViewFilterFn | null;
+    offsetX: number;
+    offsetY: number;
+    lockX: boolean;
+    lockY: boolean;
+    constructor(opts: ViewportOptions);
+    toMapX(x: number): number;
+    toMapY(y: number): number;
+    toInnerX(x: number): number;
+    toInnerY(y: number): number;
+    contains(x: number, y: number): boolean;
+    halfWidth(): number;
+    halfHeight(): number;
+    draw(map: GWM.map.Map, playerX?: number, playerY?: number): boolean;
+}
+
+export { MessageOptions, Messages, UI, UIOptions, UIType, ViewFilterFn, Viewport, ViewportOptions };

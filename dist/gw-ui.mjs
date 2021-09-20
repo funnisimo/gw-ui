@@ -5,35 +5,37 @@ class UI {
         this.layers = [];
         this.freeBuffers = [];
         this.inDialog = false;
-        this.overlay = null;
         if (!opts.canvas)
             throw new Error('Need a canvas.');
         this.canvas = opts.canvas;
         this.buffer = opts.canvas.buffer;
         this.loop = opts.loop || GWU.loop;
     }
+    render() {
+        this.buffer.render();
+    }
     startDialog() {
         this.inDialog = true;
-        const base = this.overlay || this.buffer;
+        const base = this.buffer || this.canvas.buffer;
         this.layers.push(base);
-        this.overlay =
+        this.buffer =
             this.freeBuffers.pop() || new GWU.canvas.Buffer(this.canvas);
         // UI_OVERLAY._data.forEach( (c) => c.opacity = 0 );
-        this.overlay.copy(base);
-        return this.overlay;
+        this.buffer.copy(base);
+        return this.buffer;
     }
     resetDialogBuffer(dest) {
-        const base = this.layers[this.layers.length - 1] || this.buffer;
+        const base = this.layers[this.layers.length - 1] || this.canvas.buffer;
         dest.copy(base);
     }
     finishDialog() {
         if (!this.inDialog)
             return;
-        if (this.overlay) {
-            this.freeBuffers.push(this.overlay);
+        if (this.buffer !== this.canvas.buffer) {
+            this.freeBuffers.push(this.buffer);
         }
-        this.overlay = this.layers.pop() || this.buffer;
-        this.overlay.render();
+        this.buffer = this.layers.pop() || this.canvas.buffer;
+        this.buffer.render();
         this.inDialog = this.layers.length > 0;
     }
 }
@@ -157,4 +159,116 @@ class Messages {
     }
 }
 
-export { Messages, UI };
+class Viewport {
+    constructor(opts) {
+        this.follow = false;
+        this.snap = false;
+        this.filter = null;
+        this.offsetX = 0;
+        this.offsetY = 0;
+        this.lockX = false;
+        this.lockY = false;
+        this.ui = opts.ui;
+        this.follow = opts.follow || false;
+        this.snap = opts.snap || false;
+        this.bounds = new GWU.xy.Bounds(opts.x, opts.y, opts.width, opts.height);
+        this.filter = opts.filter || null;
+        if (opts.lock) {
+            this.lockX = true;
+            this.lockY = true;
+        }
+        else {
+            if (opts.lockX) {
+                this.lockX = true;
+            }
+            if (opts.lockY) {
+                this.lockY = true;
+            }
+        }
+    }
+    toMapX(x) {
+        return x + this.offsetX;
+    }
+    toMapY(y) {
+        return y + this.offsetY;
+    }
+    toInnerX(x) {
+        return x - this.bounds.x;
+    }
+    toInnerY(y) {
+        return y - this.bounds.y;
+    }
+    contains(x, y) {
+        return this.bounds.contains(x, y);
+    }
+    halfWidth() {
+        return Math.floor(this.bounds.width / 2);
+    }
+    halfHeight() {
+        return Math.floor(this.bounds.height / 2);
+    }
+    draw(map, playerX, playerY) {
+        if (!map)
+            return false;
+        // if (!map.hasMapFlag(GWM.flags.Map.MAP_CHANGED)) return false;
+        if (this.follow && playerX !== undefined && playerY !== undefined) {
+            this.offsetX = playerX - this.halfWidth();
+            this.offsetY = playerY - this.halfHeight();
+        }
+        else if (this.snap &&
+            playerX !== undefined &&
+            playerY !== undefined) {
+            const left = this.offsetX;
+            const right = this.offsetX + this.bounds.width;
+            const top = this.offsetY;
+            const bottom = this.offsetY + this.bounds.height;
+            const edgeX = Math.floor(this.bounds.width / 5);
+            const edgeY = Math.floor(this.bounds.height / 5);
+            const thirdW = Math.floor(this.bounds.width / 3);
+            if (left + edgeX >= playerX) {
+                this.offsetX = Math.max(0, playerX + thirdW - this.bounds.width);
+            }
+            else if (right - edgeX <= playerX) {
+                this.offsetX = Math.min(playerX - thirdW, map.width - this.bounds.width);
+            }
+            const thirdH = Math.floor(this.bounds.height / 3);
+            if (top + edgeY >= playerY) {
+                this.offsetY = Math.max(0, playerY + thirdH - this.bounds.height);
+            }
+            else if (bottom - edgeY <= playerY) {
+                this.offsetY = Math.min(playerY - thirdH, map.height - this.bounds.height);
+            }
+        }
+        else if (playerX !== undefined && playerY !== undefined) {
+            this.offsetX = playerX;
+            this.offsetY = playerY;
+        }
+        if (this.lockX) {
+            this.offsetX = GWU.clamp(this.offsetX, 0, map.width - this.bounds.width);
+        }
+        if (this.lockY) {
+            this.offsetY = GWU.clamp(this.offsetY, 0, map.height - this.bounds.height);
+        }
+        const mixer = new GWU.sprite.Mixer();
+        for (let x = 0; x < this.bounds.width; ++x) {
+            for (let y = 0; y < this.bounds.height; ++y) {
+                const mapX = x + this.offsetX;
+                const mapY = y + this.offsetY;
+                if (map.hasXY(mapX, mapY)) {
+                    map.getAppearanceAt(mapX, mapY, mixer);
+                }
+                else {
+                    mixer.blackOut();
+                }
+                if (this.filter) {
+                    this.filter(mixer, mapX, mapY, map);
+                }
+                this.ui.buffer.drawSprite(x + this.bounds.x, y + this.bounds.y, mixer);
+            }
+        }
+        // map.clearMapFlag(GWM.flags.Map.MAP_CHANGED);
+        return true;
+    }
+}
+
+export { Messages, UI, Viewport };

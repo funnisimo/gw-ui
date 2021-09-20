@@ -15,7 +15,6 @@ export class UI implements UIType {
     freeBuffers: GWU.canvas.Buffer[] = [];
 
     inDialog = false;
-    overlay: GWU.canvas.Buffer | null = null;
 
     constructor(opts: Partial<UIOptions> = {}) {
         if (!opts.canvas) throw new Error('Need a canvas.');
@@ -24,30 +23,34 @@ export class UI implements UIType {
         this.loop = opts.loop || GWU.loop;
     }
 
+    render() {
+        this.buffer.render();
+    }
+
     startDialog(): GWU.canvas.Buffer {
         this.inDialog = true;
-        const base = this.overlay || this.buffer;
+        const base = this.buffer || this.canvas.buffer;
         this.layers.push(base);
-        this.overlay =
+        this.buffer =
             this.freeBuffers.pop() || new GWU.canvas.Buffer(this.canvas);
         // UI_OVERLAY._data.forEach( (c) => c.opacity = 0 );
-        this.overlay.copy(base);
-        return this.overlay;
+        this.buffer.copy(base);
+        return this.buffer;
     }
 
     resetDialogBuffer(dest: GWU.canvas.Buffer): void {
-        const base = this.layers[this.layers.length - 1] || this.buffer;
+        const base = this.layers[this.layers.length - 1] || this.canvas.buffer;
         dest.copy(base);
     }
 
     finishDialog(): void {
         if (!this.inDialog) return;
 
-        if (this.overlay) {
-            this.freeBuffers.push(this.overlay);
+        if (this.buffer !== this.canvas.buffer) {
+            this.freeBuffers.push(this.buffer);
         }
-        this.overlay = this.layers.pop() || this.buffer;
-        this.overlay.render();
+        this.buffer = this.layers.pop() || this.canvas.buffer;
+        this.buffer.render();
 
         this.inDialog = this.layers.length > 0;
     }

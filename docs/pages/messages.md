@@ -41,7 +41,7 @@ LOOP.run({
     },
     draw() {
         messages.draw();
-        canvas.render();
+        ui.render();
     },
 });
 ```
@@ -73,7 +73,7 @@ LOOP.run({
     },
     draw() {
         messages.draw();
-        canvas.render();
+        ui.render();
     },
 });
 ```

@@ -75,7 +75,7 @@ export class Flavor {
     }
 
     getFlavorText(map: GWM.map.Map, x: number, y: number): string {
-        const cell = map.cell(x, y);
+        const cell = map.cellInfo(x, y, true);
         let buf;
 
         // let magicItem;
@@ -89,103 +89,42 @@ export class Flavor {
         let object = '';
         // let adjective;
 
+        const isAnyKindOfVisible = map.fov.isAnyKindOfVisible(x, y);
+        const isDirectlyVisible =
+            map.fov.isDirectlyVisible(x, y) ||
+            (!map.fov.isEnabled && isAnyKindOfVisible);
+        const isRemembered = map.fov.isRevealed(x, y);
+        const isMapped = map.fov.isMagicMapped(x, y);
+
+        let intro: string;
+        if (isDirectlyVisible) {
+            intro = 'you see';
+        } else if (isAnyKindOfVisible) {
+            intro = 'you sense';
+        } else if (isRemembered) {
+            intro = 'you remember';
+        } else if (isMapped) {
+            intro = 'you expect to see';
+        } else {
+            return '';
+        }
+
         const actor = cell.actor || null;
-        const player = actor?.isPlayer() ? actor : null;
+        // const player = actor?.isPlayer() ? actor : null;
         const theItem = cell.item;
 
         const standsInTile = cell.hasTileFlag(GWM.flags.Tile.T_STAND_IN_TILE);
 
-        if (player && x == player.x && y == player.y) {
-            if (player.hasStatus('levitating')) {
-                buf = GWU.text.apply('you are hovering above §flavor§.', {
-                    actor: player,
-                    flavor: cell.getFlavor(),
-                });
-            } else {
-                // if (theItem) {
-                // 	buf = ITEM.getFlavor(theItem);
-                // }
-                // else {
-                buf = GWU.text.apply('you see yourself.', { actor });
-                // }
-            }
-            return buf;
-        }
-        //
-        // // detecting magical items
-        // magicItem = null;
-        // if (theItem && !playerCanSeeOrSense(x, y)
-        // 	&& GW.item.isDetected(theItem))
-        // {
-        // 	magicItem = theItem;
-        // } else if (monst && !playerCanSeeOrSense(x, y)
-        // 		   && monst.carriedItem
-        // 		   && GW.item.isDetected(monst.carriedItem))
-        // {
-        // 	magicItem = monst.carriedItem;
-        // }
-        // if (magicItem) {
-        // 	return GW.item.detectedText(magicItem);
-        // }
-        //
-        // // telepathy
-        // if (monst
-        //       && !(cell.flags & VISIBLE) 					 // && !GW.player.canSeeMonster(monst)
-        // 			&& (cell.flags & TELEPATHIC_VISIBLE)) // GW.actor.telepathicallyRevealed(monst))
-        // {
-        // 	return GW.actor.telepathyText(monst);
-        // }
-        //
-        // if (monst && !playerCanSeeOrSense(x, y)) {
-        //       // Monster is not visible.
-        // 	monst = null;
-        // }
-
-        if (!map.fov.isAnyKindOfVisible(x, y)) {
-            buf = '';
-            if (map.fov.isRevealed(x, y)) {
-                // memory
-                const cellInfo = map.cellInfo(x, y, true);
-                if (cellInfo.item) {
-                    // if (player.status.hallucinating && !GW.GAME.playbackOmniscience) {
-                    //     object = GW.item.describeHallucinatedItem();
-                    // } else {
-                    object = cellInfo.item.getName({
-                        color: false,
-                        article: true,
-                    });
-                    // object = GW.item.describeItemBasedOnParameters(cell.rememberedItemCategory, cell.rememberedItemKind, cell.rememberedItemQuantity);
-                    // }
-                } else if (cellInfo.actor) {
-                    object = cellInfo.actor.getName({
-                        color: false,
-                        article: true,
-                    });
-                } else {
-                    object = cellInfo.tile.getFlavor();
-                }
-                buf = GWU.text.apply('you remember seeing §object§ here.', {
-                    actor,
-                    object,
-                });
-            } else if (map.fov.isMagicMapped(x, y)) {
-                // magic mapped
-                const cellInfo = map.cellInfo(x, y, true);
-                buf = GWU.text.apply('you expect §text§ to be here.', {
-                    actor,
-                    text: cellInfo.tile.getFlavor(),
-                });
-            }
-            return buf;
-        }
-
         let needObjectArticle = false;
         if (actor) {
-            object =
-                actor.getName({ color: false, article: true }) + ' standing';
+            object = actor.getFlavor({
+                color: false,
+                article: true,
+                action: true,
+            });
             needObjectArticle = true;
         } else if (theItem) {
-            object = theItem.getName({ color: false, article: true });
+            object = theItem.getFlavor({ color: false, article: true });
             needObjectArticle = true;
         }
 
@@ -225,9 +164,8 @@ export class Flavor {
         }
         let ground = groundTile.getFlavor({ article: true });
 
-        buf = GWU.text.apply('you §action§ §text§.', {
-            actor,
-            action: map.isVisible(x, y) ? 'see' : 'sense',
+        buf = GWU.text.apply('§intro§ §text§.', {
+            intro,
             text: object + surface + liquid + ground,
         });
 

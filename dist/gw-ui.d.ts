@@ -108,7 +108,7 @@ declare class Flavor {
     bg: GWU.color.Color;
     promptFg: GWU.color.Color;
     constructor(opts: FlavorOptions);
-    setFlavorText(text: string): void;
+    showText(text: string): void;
     clear(): void;
     showPrompt(text: string): void;
     draw(force?: boolean): boolean;

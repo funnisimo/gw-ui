@@ -313,7 +313,7 @@
             this.bg = GWU__namespace.color.from((_b = opts.bg) !== null && _b !== void 0 ? _b : 'black');
             this.promptFg = GWU__namespace.color.from((_c = opts.promptFg) !== null && _c !== void 0 ? _c : 'flavorPrompt');
         }
-        setFlavorText(text) {
+        showText(text) {
             this.text = GWU__namespace.text.capitalize(text);
             this.needsUpdate = true;
             this.isPrompt = false;

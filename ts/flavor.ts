@@ -34,7 +34,7 @@ export class Flavor {
         this.promptFg = GWU.color.from(opts.promptFg ?? 'flavorPrompt');
     }
 
-    setFlavorText(text: string) {
+    showText(text: string) {
         this.text = GWU.text.capitalize(text);
         this.needsUpdate = true;
         this.isPrompt = false;

@@ -31,7 +31,7 @@ LOOP.run({
         const mapX = viewport.toMapX(e.x);
         const mapY = viewport.toMapY(e.y);
         const text = flavor.getFlavorText(map, mapX, mapY);
-        flavor.setFlavorText(text);
+        flavor.showText(text);
         ui.render();
     },
 });

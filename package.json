@@ -36,8 +36,6 @@
     },
     "homepage": "https://github.com/funnisimo/gw-ui#readme",
     "devDependencies": {
-        "@babel/types": "^7.12.11",
-        "@jest/types": "^27.0",
         "@rollup/plugin-node-resolve": "^13.0.4",
         "@types/jest": "^27.0.2",
         "gw-map": "^0.5",

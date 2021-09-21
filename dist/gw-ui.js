@@ -298,16 +298,20 @@
         }
     }
 
-    const flavorTextColor = GWU__namespace.color.install('flavorText', 50, 40, 90);
-    const flavorPromptColor = GWU__namespace.color.install('flavorPrompt', 100, 90, 20);
+    GWU__namespace.color.install('flavorText', 50, 40, 90);
+    GWU__namespace.color.install('flavorPrompt', 100, 90, 20);
     class Flavor {
         constructor(opts) {
+            var _a, _b, _c;
             this.text = '';
             this.needsUpdate = false;
             this.isPrompt = false;
             this.overflow = false;
             this.ui = opts.ui;
             this.bounds = new GWU__namespace.xy.Bounds(opts.x, opts.y, opts.width, 1);
+            this.fg = GWU__namespace.color.from((_a = opts.fg) !== null && _a !== void 0 ? _a : 'flavorText');
+            this.bg = GWU__namespace.color.from((_b = opts.bg) !== null && _b !== void 0 ? _b : 'black');
+            this.promptFg = GWU__namespace.color.from((_c = opts.promptFg) !== null && _c !== void 0 ? _c : 'flavorPrompt');
         }
         setFlavorText(text) {
             this.text = GWU__namespace.text.capitalize(text);
@@ -331,8 +335,8 @@
             if (!force && !this.needsUpdate)
                 return false;
             const buffer = this.ui.buffer;
-            const color = this.isPrompt ? flavorPromptColor : flavorTextColor;
-            const nextY = buffer.wrapText(this.bounds.x, this.bounds.y, this.bounds.width, this.text, color, GWU__namespace.colors.black);
+            const color = this.isPrompt ? this.fg : this.promptFg;
+            const nextY = buffer.wrapText(this.bounds.x, this.bounds.y, this.bounds.width, this.text, color, this.bg);
             this.overflow = nextY !== this.bounds.y + 1;
             this.ui.render();
             this.needsUpdate = false;

@@ -2,14 +2,17 @@ import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 import { UIType } from './types';
 
-const flavorTextColor = GWU.color.install('flavorText', 50, 40, 90);
-const flavorPromptColor = GWU.color.install('flavorPrompt', 100, 90, 20);
+GWU.color.install('flavorText', 50, 40, 90);
+GWU.color.install('flavorPrompt', 100, 90, 20);
 
 export interface FlavorOptions {
     ui: UIType;
     x: number;
     y: number;
     width: number;
+    fg?: GWU.color.ColorBase;
+    bg?: GWU.color.ColorBase;
+    promptFg?: GWU.color.ColorBase;
 }
 
 export class Flavor {
@@ -19,10 +22,16 @@ export class Flavor {
     needsUpdate = false;
     isPrompt = false;
     overflow = false;
+    fg: GWU.color.Color;
+    bg: GWU.color.Color;
+    promptFg: GWU.color.Color;
 
     constructor(opts: FlavorOptions) {
         this.ui = opts.ui;
         this.bounds = new GWU.xy.Bounds(opts.x, opts.y, opts.width, 1);
+        this.fg = GWU.color.from(opts.fg ?? 'flavorText');
+        this.bg = GWU.color.from(opts.bg ?? 'black');
+        this.promptFg = GWU.color.from(opts.promptFg ?? 'flavorPrompt');
     }
 
     setFlavorText(text: string) {
@@ -50,14 +59,14 @@ export class Flavor {
         if (!force && !this.needsUpdate) return false;
 
         const buffer = this.ui.buffer;
-        const color = this.isPrompt ? flavorPromptColor : flavorTextColor;
+        const color = this.isPrompt ? this.fg : this.promptFg;
         const nextY = buffer.wrapText(
             this.bounds.x,
             this.bounds.y,
             this.bounds.width,
             this.text,
             color,
-            GWU.colors.black
+            this.bg
         );
         this.overflow = nextY !== this.bounds.y + 1;
         this.ui.render();

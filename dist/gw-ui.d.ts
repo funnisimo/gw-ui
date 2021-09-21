@@ -93,6 +93,9 @@ interface FlavorOptions {
     x: number;
     y: number;
     width: number;
+    fg?: GWU.color.ColorBase;
+    bg?: GWU.color.ColorBase;
+    promptFg?: GWU.color.ColorBase;
 }
 declare class Flavor {
     ui: UIType;
@@ -101,6 +104,9 @@ declare class Flavor {
     needsUpdate: boolean;
     isPrompt: boolean;
     overflow: boolean;
+    fg: GWU.color.Color;
+    bg: GWU.color.Color;
+    promptFg: GWU.color.Color;
     constructor(opts: FlavorOptions);
     setFlavorText(text: string): void;
     clear(): void;

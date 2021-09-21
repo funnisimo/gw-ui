@@ -1,7 +1,7 @@
 {
     "name": "gw-ui",
     "version": "0.5.0",
-    "description": "UI components for Roguelikes",
+    "description": "UI components for Goblinwerks Roguelikes",
     "main": "dist/gw-ui.js",
     "browser": "dist/gw-ui.min.js",
     "module": "dist/gw-ui.mjs",
@@ -26,7 +26,8 @@
     },
     "keywords": [
         "roguelike",
-        "ui"
+        "ui",
+        "goblinwerks"
     ],
     "author": "Funnisimo",
     "license": "MIT",

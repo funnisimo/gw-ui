@@ -1,6 +1,4 @@
-import * as Map from '../ts/map';
-import { Actor, ActorKind } from '../ts/actor';
-import { Item, ItemKind } from '../ts/item';
+import * as GWM from 'gw-map';
 
 // export const rnd = jest.fn();
 // export const counts = new Array(100).fill(0);
@@ -35,7 +33,7 @@ export async function alwaysAsync(fn: Function, count = 1000) {
     }
 }
 
-export function countTile(map: Map.Map, tile: string) {
+export function countTile(map: GWM.map.Map, tile: string) {
     let count = 0;
     map.cells.forEach((cell) => {
         if (cell.hasTile(tile)) ++count;
@@ -43,22 +41,22 @@ export function countTile(map: Map.Map, tile: string) {
     return count;
 }
 
-export function mockCell(): Map.Cell {
-    const cell = new Map.Cell();
+export function mockCell(map: GWM.map.Map, x: number, y: number): GWM.map.Cell {
+    const cell = new GWM.map.Cell(map, x, y);
     jest.spyOn(cell, 'tileFlags').mockReturnValue(0);
     jest.spyOn(cell, 'tileMechFlags').mockReturnValue(0);
     return cell;
 }
 
-export function mockMap(w = 10, h = 10): Map.Map {
-    const map = Map.make(w, h);
+export function mockMap(w = 10, h = 10): GWM.map.Map {
+    const map = GWM.map.make(w, h);
     jest.spyOn(map, 'isVisible').mockReturnValue(true);
     return map;
 }
 
-export function mockActor(): Actor {
-    const kind = new ActorKind({ name: 'mock' });
-    const actor = new Actor(kind);
+export function mockActor(): GWM.actor.Actor {
+    const kind = new GWM.actor.ActorKind({ name: 'mock' });
+    const actor = new GWM.actor.Actor(kind);
     actor.sprite.ch = 'a';
     jest.spyOn(actor, 'isPlayer').mockReturnValue(false);
     jest.spyOn(actor, 'forbidsCell').mockReturnValue(false);
@@ -66,7 +64,7 @@ export function mockActor(): Actor {
     return actor;
 }
 
-export function mockPlayer(): Actor {
+export function mockPlayer(): GWM.actor.Actor {
     const player = mockActor();
     player.sprite.ch = '@';
     // @ts-ignore
@@ -74,9 +72,9 @@ export function mockPlayer(): Actor {
     return player;
 }
 
-export function mockItem(): Item {
-    const kind = new ItemKind({ name: 'mock', ch: '!' });
-    const item = new Item(kind);
+export function mockItem(): GWM.item.Item {
+    const kind = new GWM.item.ItemKind({ name: 'mock', ch: '!' });
+    const item = new GWM.item.Item(kind);
     jest.spyOn(item, 'forbidsCell').mockReturnValue(false);
     jest.spyOn(item, 'blocksVision').mockReturnValue(false);
     return item;

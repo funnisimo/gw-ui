@@ -1,8 +1,8 @@
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('gw-utils')) :
-    typeof define === 'function' && define.amd ? define(['exports', 'gw-utils'], factory) :
-    (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.GWI = {}, global.GWU));
-}(this, (function (exports, GWU) { 'use strict';
+    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('gw-utils'), require('gw-map')) :
+    typeof define === 'function' && define.amd ? define(['exports', 'gw-utils', 'gw-map'], factory) :
+    (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.GWI = {}, global.GWU, global.GWM));
+}(this, (function (exports, GWU, GWM) { 'use strict';
 
     function _interopNamespace(e) {
         if (e && e.__esModule) return e;
@@ -25,6 +25,7 @@
     }
 
     var GWU__namespace = /*#__PURE__*/_interopNamespace(GWU);
+    var GWM__namespace = /*#__PURE__*/_interopNamespace(GWM);
 
     class UI {
         constructor(opts = {}) {
@@ -213,10 +214,10 @@
             }
         }
         toMapX(x) {
-            return x + this.offsetX;
+            return x + this.offsetX - this.bounds.x;
         }
         toMapY(y) {
-            return y + this.offsetY;
+            return y + this.offsetY - this.bounds.y;
         }
         toInnerX(x) {
             return x - this.bounds.x;
@@ -297,6 +298,198 @@
         }
     }
 
+    const flavorTextColor = GWU__namespace.color.install('flavorText', 50, 40, 90);
+    const flavorPromptColor = GWU__namespace.color.install('flavorPrompt', 100, 90, 20);
+    class Flavor {
+        constructor(opts) {
+            this.text = '';
+            this.needsUpdate = false;
+            this.isPrompt = false;
+            this.overflow = false;
+            this.ui = opts.ui;
+            this.bounds = new GWU__namespace.xy.Bounds(opts.x, opts.y, opts.width, 1);
+        }
+        setFlavorText(text) {
+            this.text = GWU__namespace.text.capitalize(text);
+            this.needsUpdate = true;
+            this.isPrompt = false;
+            this.draw();
+        }
+        clear() {
+            this.text = '';
+            this.needsUpdate = true;
+            this.isPrompt = false;
+            this.draw();
+        }
+        showPrompt(text) {
+            this.text = GWU__namespace.text.capitalize(text);
+            this.needsUpdate = true;
+            this.isPrompt = true;
+            this.draw();
+        }
+        draw(force = false) {
+            if (!force && !this.needsUpdate)
+                return false;
+            const buffer = this.ui.buffer;
+            const color = this.isPrompt ? flavorPromptColor : flavorTextColor;
+            const nextY = buffer.wrapText(this.bounds.x, this.bounds.y, this.bounds.width, this.text, color, GWU__namespace.colors.black);
+            this.overflow = nextY !== this.bounds.y + 1;
+            this.ui.render();
+            this.needsUpdate = false;
+            return true;
+        }
+        getFlavorText(map, x, y) {
+            const cell = map.cell(x, y);
+            let buf;
+            // let magicItem;
+            // let standsInTerrain;
+            // let subjectMoving;
+            // let prepositionLocked = false;
+            // let subject;
+            // let verb;
+            // let preposition;
+            let object = '';
+            // let adjective;
+            const actor = cell.actor || null;
+            const player = (actor === null || actor === void 0 ? void 0 : actor.isPlayer()) ? actor : null;
+            const theItem = cell.item;
+            const standsInTile = cell.hasTileFlag(GWM__namespace.flags.Tile.T_STAND_IN_TILE);
+            if (player && x == player.x && y == player.y) {
+                if (player.hasStatus('levitating')) {
+                    buf = GWU__namespace.text.apply('you are hovering above §flavor§.', {
+                        actor: player,
+                        flavor: cell.getFlavor(),
+                    });
+                }
+                else {
+                    // if (theItem) {
+                    // 	buf = ITEM.getFlavor(theItem);
+                    // }
+                    // else {
+                    buf = GWU__namespace.text.apply('you see yourself.', { actor });
+                    // }
+                }
+                return buf;
+            }
+            //
+            // // detecting magical items
+            // magicItem = null;
+            // if (theItem && !playerCanSeeOrSense(x, y)
+            // 	&& GW.item.isDetected(theItem))
+            // {
+            // 	magicItem = theItem;
+            // } else if (monst && !playerCanSeeOrSense(x, y)
+            // 		   && monst.carriedItem
+            // 		   && GW.item.isDetected(monst.carriedItem))
+            // {
+            // 	magicItem = monst.carriedItem;
+            // }
+            // if (magicItem) {
+            // 	return GW.item.detectedText(magicItem);
+            // }
+            //
+            // // telepathy
+            // if (monst
+            //       && !(cell.flags & VISIBLE) 					 // && !GW.player.canSeeMonster(monst)
+            // 			&& (cell.flags & TELEPATHIC_VISIBLE)) // GW.actor.telepathicallyRevealed(monst))
+            // {
+            // 	return GW.actor.telepathyText(monst);
+            // }
+            //
+            // if (monst && !playerCanSeeOrSense(x, y)) {
+            //       // Monster is not visible.
+            // 	monst = null;
+            // }
+            if (!map.fov.isAnyKindOfVisible(x, y)) {
+                buf = '';
+                if (map.fov.isRevealed(x, y)) {
+                    // memory
+                    const cellInfo = map.cellInfo(x, y, true);
+                    if (cellInfo.item) {
+                        // if (player.status.hallucinating && !GW.GAME.playbackOmniscience) {
+                        //     object = GW.item.describeHallucinatedItem();
+                        // } else {
+                        object = cellInfo.item.getName({
+                            color: false,
+                            article: true,
+                        });
+                        // object = GW.item.describeItemBasedOnParameters(cell.rememberedItemCategory, cell.rememberedItemKind, cell.rememberedItemQuantity);
+                        // }
+                    }
+                    else if (cellInfo.actor) {
+                        object = cellInfo.actor.getName({
+                            color: false,
+                            article: true,
+                        });
+                    }
+                    else {
+                        object = cellInfo.tile.getFlavor();
+                    }
+                    buf = GWU__namespace.text.apply('you remember seeing §object§ here.', {
+                        actor,
+                        object,
+                    });
+                }
+                else if (map.fov.isMagicMapped(x, y)) {
+                    // magic mapped
+                    const cellInfo = map.cellInfo(x, y, true);
+                    buf = GWU__namespace.text.apply('you expect §text§ to be here.', {
+                        actor,
+                        text: cellInfo.tile.getFlavor(),
+                    });
+                }
+                return buf;
+            }
+            let needObjectArticle = false;
+            if (actor) {
+                object =
+                    actor.getName({ color: false, article: true }) + ' standing';
+                needObjectArticle = true;
+            }
+            else if (theItem) {
+                object = theItem.getName({ color: false, article: true });
+                needObjectArticle = true;
+            }
+            let article = standsInTile ? ' in ' : ' on ';
+            const groundTile = cell.depthTile(GWM__namespace.flags.Depth.GROUND) || GWM__namespace.tile.tiles.NULL;
+            const surfaceTile = cell.depthTile(GWM__namespace.flags.Depth.SURFACE);
+            const liquidTile = cell.depthTile(GWM__namespace.flags.Depth.LIQUID);
+            // const gasTile = cell.depthTile(GWM.flags.Depth.GAS);
+            let surface = '';
+            if (surfaceTile) {
+                const tile = surfaceTile;
+                if (needObjectArticle) {
+                    needObjectArticle = false;
+                    object += ' on ';
+                }
+                if (tile.hasTileFlag(GWM__namespace.flags.Tile.T_BRIDGE)) {
+                    article = ' over ';
+                }
+                surface = surfaceTile.getFlavor() + article;
+            }
+            let liquid = '';
+            if (liquidTile) {
+                liquid = liquidTile.getFlavor() + ' covering ';
+                if (needObjectArticle) {
+                    needObjectArticle = false;
+                    object += ' in ';
+                }
+            }
+            if (needObjectArticle) {
+                needObjectArticle = false;
+                object += ' on ';
+            }
+            let ground = groundTile.getFlavor({ article: true });
+            buf = GWU__namespace.text.apply('you §action§ §text§.', {
+                actor,
+                action: map.isVisible(x, y) ? 'see' : 'sense',
+                text: object + surface + liquid + ground,
+            });
+            return buf;
+        }
+    }
+
+    exports.Flavor = Flavor;
     exports.Messages = Messages;
     exports.UI = UI;
     exports.Viewport = Viewport;

@@ -44,7 +44,7 @@ export class Messages {
         return this.cache.needsUpdate;
     }
 
-    get buffer(): GWU.canvas.Buffer {
+    get buffer(): GWU.canvas.DataBuffer {
         return this.ui.buffer;
     }
 

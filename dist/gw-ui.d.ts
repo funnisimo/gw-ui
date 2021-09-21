@@ -2,8 +2,9 @@ import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 
 interface UIType {
-    buffer: GWU.canvas.Buffer;
+    buffer: GWU.canvas.DataBuffer;
     loop: GWU.io.Loop;
+    render(): void;
     startDialog(): GWU.canvas.Buffer;
     resetDialogBuffer(dest: GWU.canvas.Buffer): void;
     finishDialog(): void;
@@ -45,7 +46,7 @@ declare class Messages {
     constructor(opts: MessageOptions);
     contains(x: number, y: number): boolean;
     get needsUpdate(): boolean;
-    get buffer(): GWU.canvas.Buffer;
+    get buffer(): GWU.canvas.DataBuffer;
     draw(force?: boolean): boolean;
     toBufferY(y: number): number;
     toBufferX(x: number): number;
@@ -87,4 +88,25 @@ declare class Viewport {
     draw(map: GWM.map.Map, playerX?: number, playerY?: number): boolean;
 }
 
-export { MessageOptions, Messages, UI, UIOptions, UIType, ViewFilterFn, Viewport, ViewportOptions };
+interface FlavorOptions {
+    ui: UIType;
+    x: number;
+    y: number;
+    width: number;
+}
+declare class Flavor {
+    ui: UIType;
+    bounds: GWU.xy.Bounds;
+    text: string;
+    needsUpdate: boolean;
+    isPrompt: boolean;
+    overflow: boolean;
+    constructor(opts: FlavorOptions);
+    setFlavorText(text: string): void;
+    clear(): void;
+    showPrompt(text: string): void;
+    draw(force?: boolean): boolean;
+    getFlavorText(map: GWM.map.Map, x: number, y: number): string;
+}
+
+export { Flavor, FlavorOptions, MessageOptions, Messages, UI, UIOptions, UIType, ViewFilterFn, Viewport, ViewportOptions };

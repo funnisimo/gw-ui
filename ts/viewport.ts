@@ -59,11 +59,11 @@ export class Viewport {
     }
 
     toMapX(x: number): number {
-        return x + this.offsetX;
+        return x + this.offsetX - this.bounds.x;
     }
 
     toMapY(y: number): number {
-        return y + this.offsetY;
+        return y + this.offsetY - this.bounds.y;
     }
 
     toInnerX(x: number): number {

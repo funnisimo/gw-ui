@@ -90,7 +90,7 @@ export class Sidebar {
 
         this.cellCache.length = 0;
         GWU.xy.forRect(map.width, map.height, (x, y) => {
-            const info = map.knowledge(x, y);
+            const info = map.cell(x, y);
             if (info.hasEntityFlag(GWM.flags.Entity.L_LIST_IN_SIDEBAR)) {
                 this.cellCache.push(info);
             }
@@ -111,12 +111,22 @@ export class Sidebar {
         return new CellEntry(cell);
     }
 
-    getPriority(map: GWM.map.Map, x: number, y: number): number {
-        if (map.fov.isDirectlyVisible(x, y)) {
+    getPriority(
+        map: GWM.map.Map,
+        x: number,
+        y: number,
+        fov?: GWU.fov.FovSystem
+    ): number {
+        if (!fov) {
+            return map.cell(x, y).hasCellFlag(GWM.flags.Cell.STABLE_MEMORY)
+                ? 3
+                : 1;
+        }
+        if (fov.isDirectlyVisible(x, y)) {
             return 1;
-        } else if (map.fov.isAnyKindOfVisible(x, y)) {
+        } else if (fov.isAnyKindOfVisible(x, y)) {
             return 2;
-        } else if (map.fov.isRevealed(x, y)) {
+        } else if (fov.isRevealed(x, y)) {
             return 3;
         }
         return -1; // not visible, or revealed
@@ -126,9 +136,10 @@ export class Sidebar {
         actor: GWM.actor.Actor,
         map: GWM.map.Map,
         x: number,
-        y: number
+        y: number,
+        fov?: GWU.fov.FovSystem
     ): boolean {
-        const priority = this.getPriority(map, actor.x, actor.y);
+        const priority = this.getPriority(map, actor.x, actor.y, fov);
         if (priority < 0) return false;
 
         const entry = this.makeActorEntry(actor);
@@ -143,9 +154,10 @@ export class Sidebar {
         item: GWM.item.Item,
         map: GWM.map.Map,
         x: number,
-        y: number
+        y: number,
+        fov?: GWU.fov.FovSystem
     ): boolean {
-        const priority = this.getPriority(map, item.x, item.y);
+        const priority = this.getPriority(map, item.x, item.y, fov);
         if (priority < 0) return false;
 
         const entry = this.makeItemEntry(item);
@@ -160,9 +172,10 @@ export class Sidebar {
         cell: GWM.map.CellInfoType,
         map: GWM.map.Map,
         x: number,
-        y: number
+        y: number,
+        fov?: GWU.fov.FovSystem
     ): boolean {
-        const priority = this.getPriority(map, cell.x, cell.y);
+        const priority = this.getPriority(map, cell.x, cell.y, fov);
         if (priority < 0) return false;
 
         const entry = this.makeCellEntry(cell);
@@ -173,7 +186,12 @@ export class Sidebar {
         return true;
     }
 
-    findEntries(map: GWM.map.Map, cx: number, cy: number) {
+    findEntries(
+        map: GWM.map.Map,
+        cx: number,
+        cy: number,
+        fov?: GWU.fov.FovSystem
+    ) {
         if (map === this.lastMap && cx === this.lastX && cy === this.lastY)
             return;
 
@@ -185,26 +203,26 @@ export class Sidebar {
         const done = GWU.grid.alloc(map.width, map.height);
 
         map.eachActor((a) => {
-            const x = a.lastSeen ? a.lastSeen.x : a.x;
-            const y = a.lastSeen ? a.lastSeen.y : a.y;
+            const x = a.x;
+            const y = a.y;
             if (done[x][y]) return;
-            if (this.addActor(a, map, cx, cy)) {
+            if (this.addActor(a, map, cx, cy, fov)) {
                 done[x][y] = 1;
             }
         });
 
         map.eachItem((i) => {
-            const x = i.lastSeen ? i.lastSeen.x : i.x;
-            const y = i.lastSeen ? i.lastSeen.y : i.y;
+            const x = i.x;
+            const y = i.y;
             if (done[x][y]) return;
-            if (this.addItem(i, map, cx, cy)) {
+            if (this.addItem(i, map, cx, cy, fov)) {
                 done[x][y] = 1;
             }
         });
 
         this.cellCache.forEach((c) => {
             if (done[c.x][c.y]) return;
-            if (this.addCell(c, map, cx, cy)) {
+            if (this.addCell(c, map, cx, cy, fov)) {
                 done[c.x][c.y] = 1;
             }
         });
@@ -231,9 +249,14 @@ export class Sidebar {
         );
     }
 
-    update(map: GWM.map.Map, x: number, y: number): boolean {
+    update(
+        map: GWM.map.Map,
+        cx: number,
+        cy: number,
+        fov?: GWU.fov.FovSystem
+    ): boolean {
         this.updateCellCache(map);
-        this.findEntries(map, x, y);
+        this.findEntries(map, cx, cy, fov);
         this.clearSidebar();
 
         return true;

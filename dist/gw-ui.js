@@ -342,8 +342,8 @@
             this.needsUpdate = false;
             return true;
         }
-        getFlavorText(map, x, y) {
-            const cell = map.knowledge(x, y);
+        getFlavorText(map, x, y, fov) {
+            const cell = map.cell(x, y); // KNOWLEDGE / MEMORY !!!
             let buf;
             // let magicItem;
             // let standsInTerrain;
@@ -354,11 +354,10 @@
             // let preposition;
             let object = '';
             // let adjective;
-            const isAnyKindOfVisible = map.fov.isAnyKindOfVisible(x, y);
-            const isDirectlyVisible = map.fov.isDirectlyVisible(x, y) ||
-                (!map.fov.isEnabled && isAnyKindOfVisible);
-            const isRemembered = map.fov.isRevealed(x, y);
-            const isMapped = map.fov.isMagicMapped(x, y);
+            const isAnyKindOfVisible = fov ? fov.isAnyKindOfVisible(x, y) : true;
+            const isDirectlyVisible = fov ? fov.isDirectlyVisible(x, y) : true;
+            const isRemembered = fov ? fov.isRevealed(x, y) : false;
+            const isMapped = fov ? fov.isMagicMapped(x, y) : false;
             let intro;
             if (isDirectlyVisible) {
                 intro = 'you see';
@@ -482,7 +481,7 @@
             this.lastMap = null; // Force us to regather the entries, even if at same location
             this.cellCache.length = 0;
             GWU__namespace.xy.forRect(map.width, map.height, (x, y) => {
-                const info = map.knowledge(x, y);
+                const info = map.cell(x, y);
                 if (info.hasEntityFlag(GWM__namespace.flags.Entity.L_LIST_IN_SIDEBAR)) {
                     this.cellCache.push(info);
                 }
@@ -498,20 +497,25 @@
         makeCellEntry(cell) {
             return new CellEntry(cell);
         }
-        getPriority(map, x, y) {
-            if (map.fov.isDirectlyVisible(x, y)) {
+        getPriority(map, x, y, fov) {
+            if (!fov) {
+                return map.cell(x, y).hasCellFlag(GWM__namespace.flags.Cell.STABLE_MEMORY)
+                    ? 3
+                    : 1;
+            }
+            if (fov.isDirectlyVisible(x, y)) {
                 return 1;
             }
-            else if (map.fov.isAnyKindOfVisible(x, y)) {
+            else if (fov.isAnyKindOfVisible(x, y)) {
                 return 2;
             }
-            else if (map.fov.isRevealed(x, y)) {
+            else if (fov.isRevealed(x, y)) {
                 return 3;
             }
             return -1; // not visible, or revealed
         }
-        addActor(actor, map, x, y) {
-            const priority = this.getPriority(map, actor.x, actor.y);
+        addActor(actor, map, x, y, fov) {
+            const priority = this.getPriority(map, actor.x, actor.y, fov);
             if (priority < 0)
                 return false;
             const entry = this.makeActorEntry(actor);
@@ -520,8 +524,8 @@
             this.entries.push(entry);
             return true;
         }
-        addItem(item, map, x, y) {
-            const priority = this.getPriority(map, item.x, item.y);
+        addItem(item, map, x, y, fov) {
+            const priority = this.getPriority(map, item.x, item.y, fov);
             if (priority < 0)
                 return false;
             const entry = this.makeItemEntry(item);
@@ -530,8 +534,8 @@
             this.entries.push(entry);
             return true;
         }
-        addCell(cell, map, x, y) {
-            const priority = this.getPriority(map, cell.x, cell.y);
+        addCell(cell, map, x, y, fov) {
+            const priority = this.getPriority(map, cell.x, cell.y, fov);
             if (priority < 0)
                 return false;
             const entry = this.makeCellEntry(cell);
@@ -540,7 +544,7 @@
             this.entries.push(entry);
             return true;
         }
-        findEntries(map, cx, cy) {
+        findEntries(map, cx, cy, fov) {
             if (map === this.lastMap && cx === this.lastX && cy === this.lastY)
                 return;
             this.lastMap = map;
@@ -549,27 +553,27 @@
             this.entries.length = 0;
             const done = GWU__namespace.grid.alloc(map.width, map.height);
             map.eachActor((a) => {
-                const x = a.lastSeen ? a.lastSeen.x : a.x;
-                const y = a.lastSeen ? a.lastSeen.y : a.y;
+                const x = a.x;
+                const y = a.y;
                 if (done[x][y])
                     return;
-                if (this.addActor(a, map, cx, cy)) {
+                if (this.addActor(a, map, cx, cy, fov)) {
                     done[x][y] = 1;
                 }
             });
             map.eachItem((i) => {
-                const x = i.lastSeen ? i.lastSeen.x : i.x;
-                const y = i.lastSeen ? i.lastSeen.y : i.y;
+                const x = i.x;
+                const y = i.y;
                 if (done[x][y])
                     return;
-                if (this.addItem(i, map, cx, cy)) {
+                if (this.addItem(i, map, cx, cy, fov)) {
                     done[x][y] = 1;
                 }
             });
             this.cellCache.forEach((c) => {
                 if (done[c.x][c.y])
                     return;
-                if (this.addCell(c, map, cx, cy)) {
+                if (this.addCell(c, map, cx, cy, fov)) {
                     done[c.x][c.y] = 1;
                 }
             });
@@ -584,9 +588,9 @@
         clearSidebar() {
             this.ui.buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, 0, 0, this.bg);
         }
-        update(map, x, y) {
+        update(map, cx, cy, fov) {
             this.updateCellCache(map);
-            this.findEntries(map, x, y);
+            this.findEntries(map, cx, cy, fov);
             this.clearSidebar();
             return true;
         }

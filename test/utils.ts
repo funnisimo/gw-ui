@@ -1,4 +1,6 @@
+import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
+import { UIType } from '../ts/types';
 
 // export const rnd = jest.fn();
 // export const counts = new Array(100).fill(0);
@@ -78,4 +80,15 @@ export function mockItem(): GWM.item.Item {
     jest.spyOn(item, 'forbidsCell').mockReturnValue(false);
     jest.spyOn(item, 'blocksVision').mockReturnValue(false);
     return item;
+}
+
+export function mockUI(width = 100, height = 38): UIType {
+    return {
+        buffer: new GWU.canvas.DataBuffer(width, height),
+        loop: GWU.loop,
+        render: jest.fn(),
+        startDialog: jest.fn(),
+        finishDialog: jest.fn(),
+        resetDialogBuffer: jest.fn(),
+    } as UIType;
 }

@@ -75,7 +75,7 @@ export class Flavor {
     }
 
     getFlavorText(map: GWM.map.Map, x: number, y: number): string {
-        const cell = map.cellInfo(x, y, true);
+        const cell = map.knowledge(x, y);
         let buf;
 
         // let magicItem;

@@ -1,5 +1,7 @@
-import * as GWU from 'gw-utils';
+// import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
+import * as UTILS from '../test/utils';
+
 import * as Flavor from './flavor';
 import { UIType } from './types';
 
@@ -10,14 +12,7 @@ describe('Flavor', () => {
         let flavor: Flavor.Flavor;
 
         beforeEach(() => {
-            ui = {
-                buffer: new GWU.canvas.DataBuffer(20, 20),
-                loop: GWU.loop,
-                render: jest.fn(),
-                startDialog: jest.fn(),
-                finishDialog: jest.fn(),
-                resetDialogBuffer: jest.fn(),
-            };
+            ui = UTILS.mockUI();
             map = GWM.map.make(20, 20, {
                 tile: 'FLOOR',
                 boundary: 'WALL',

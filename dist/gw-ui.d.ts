@@ -115,4 +115,54 @@ declare class Flavor {
     getFlavorText(map: GWM.map.Map, x: number, y: number): string;
 }
 
-export { Flavor, FlavorOptions, MessageOptions, Messages, UI, UIOptions, UIType, ViewFilterFn, Viewport, ViewportOptions };
+interface SidebarOptions {
+    ui: UIType;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    bg?: GWU.color.ColorBase;
+}
+declare class EntryBase {
+    dist: number;
+    priority: number;
+    changed: boolean;
+}
+declare class ActorEntry extends EntryBase {
+    actor: GWM.actor.Actor;
+    constructor(actor: GWM.actor.Actor);
+}
+declare class ItemEntry extends EntryBase {
+    item: GWM.item.Item;
+    constructor(item: GWM.item.Item);
+}
+declare class CellEntry extends EntryBase {
+    cell: GWM.map.CellInfoType;
+    constructor(cell: GWM.map.CellInfoType);
+}
+declare type SidebarEntry = ActorEntry | ItemEntry | CellEntry;
+declare class Sidebar {
+    ui: UIType;
+    bounds: GWU.xy.Bounds;
+    cellCache: GWM.map.CellInfoType[];
+    lastX: number;
+    lastY: number;
+    lastMap: GWM.map.Map | null;
+    entries: SidebarEntry[];
+    bg: GWU.color.Color;
+    constructor(opts: SidebarOptions);
+    contains(x: number, y: number): boolean;
+    updateCellCache(map: GWM.map.Map): void;
+    makeActorEntry(actor: GWM.actor.Actor): ActorEntry;
+    makeItemEntry(item: GWM.item.Item): ItemEntry;
+    makeCellEntry(cell: GWM.map.CellInfoType): CellEntry;
+    getPriority(map: GWM.map.Map, x: number, y: number): number;
+    addActor(actor: GWM.actor.Actor, map: GWM.map.Map, x: number, y: number): boolean;
+    addItem(item: GWM.item.Item, map: GWM.map.Map, x: number, y: number): boolean;
+    addCell(cell: GWM.map.CellInfoType, map: GWM.map.Map, x: number, y: number): boolean;
+    findEntries(map: GWM.map.Map, cx: number, cy: number): void;
+    clearSidebar(): void;
+    update(map: GWM.map.Map, x: number, y: number): boolean;
+}
+
+export { ActorEntry, CellEntry, EntryBase, Flavor, FlavorOptions, ItemEntry, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UIOptions, UIType, ViewFilterFn, Viewport, ViewportOptions };

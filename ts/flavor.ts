@@ -74,8 +74,13 @@ export class Flavor {
         return true;
     }
 
-    getFlavorText(map: GWM.map.Map, x: number, y: number): string {
-        const cell = map.knowledge(x, y);
+    getFlavorText(
+        map: GWM.map.Map,
+        x: number,
+        y: number,
+        fov?: GWU.fov.FovSystem
+    ): string {
+        const cell = map.cell(x, y); // KNOWLEDGE / MEMORY !!!
         let buf;
 
         // let magicItem;
@@ -89,12 +94,10 @@ export class Flavor {
         let object = '';
         // let adjective;
 
-        const isAnyKindOfVisible = map.fov.isAnyKindOfVisible(x, y);
-        const isDirectlyVisible =
-            map.fov.isDirectlyVisible(x, y) ||
-            (!map.fov.isEnabled && isAnyKindOfVisible);
-        const isRemembered = map.fov.isRevealed(x, y);
-        const isMapped = map.fov.isMagicMapped(x, y);
+        const isAnyKindOfVisible = fov ? fov.isAnyKindOfVisible(x, y) : true;
+        const isDirectlyVisible = fov ? fov.isDirectlyVisible(x, y) : true;
+        const isRemembered = fov ? fov.isRevealed(x, y) : false;
+        const isMapped = fov ? fov.isMagicMapped(x, y) : false;
 
         let intro: string;
         if (isDirectlyVisible) {
@@ -109,9 +112,9 @@ export class Flavor {
             return '';
         }
 
-        const actor = cell.actor || null;
+        const actor = cell.hasActor() ? map.actorAt(x, y) : null;
         // const player = actor?.isPlayer() ? actor : null;
-        const theItem = cell.item;
+        const theItem = cell.hasItem() ? map.itemAt(x, y) : null;
 
         const standsInTile = cell.hasTileFlag(GWM.flags.Tile.T_STAND_IN_TILE);
 

@@ -112,7 +112,7 @@ declare class Flavor {
     clear(): void;
     showPrompt(text: string): void;
     draw(force?: boolean): boolean;
-    getFlavorText(map: GWM.map.Map, x: number, y: number): string;
+    getFlavorText(map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovSystem): string;
 }
 
 interface SidebarOptions {
@@ -156,13 +156,13 @@ declare class Sidebar {
     makeActorEntry(actor: GWM.actor.Actor): ActorEntry;
     makeItemEntry(item: GWM.item.Item): ItemEntry;
     makeCellEntry(cell: GWM.map.CellInfoType): CellEntry;
-    getPriority(map: GWM.map.Map, x: number, y: number): number;
-    addActor(actor: GWM.actor.Actor, map: GWM.map.Map, x: number, y: number): boolean;
-    addItem(item: GWM.item.Item, map: GWM.map.Map, x: number, y: number): boolean;
-    addCell(cell: GWM.map.CellInfoType, map: GWM.map.Map, x: number, y: number): boolean;
-    findEntries(map: GWM.map.Map, cx: number, cy: number): void;
+    getPriority(map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovSystem): number;
+    addActor(actor: GWM.actor.Actor, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovSystem): boolean;
+    addItem(item: GWM.item.Item, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovSystem): boolean;
+    addCell(cell: GWM.map.CellInfoType, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovSystem): boolean;
+    findEntries(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovSystem): void;
     clearSidebar(): void;
-    update(map: GWM.map.Map, x: number, y: number): boolean;
+    update(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovSystem): boolean;
 }
 
 export { ActorEntry, CellEntry, EntryBase, Flavor, FlavorOptions, ItemEntry, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UIOptions, UIType, ViewFilterFn, Viewport, ViewportOptions };

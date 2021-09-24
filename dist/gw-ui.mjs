@@ -348,9 +348,9 @@ class Flavor {
         else {
             return '';
         }
-        const actor = cell.actor || null;
+        const actor = cell.hasActor() ? map.actorAt(x, y) : null;
         // const player = actor?.isPlayer() ? actor : null;
-        const theItem = cell.item;
+        const theItem = cell.hasItem() ? map.itemAt(x, y) : null;
         const standsInTile = cell.hasTileFlag(GWM.flags.Tile.T_STAND_IN_TILE);
         let needObjectArticle = false;
         if (actor) {
@@ -413,11 +413,15 @@ class EntryBase {
         this.priority = 0;
         this.changed = false;
     }
+    draw(_sidebar) { }
 }
 class ActorEntry extends EntryBase {
     constructor(actor) {
         super();
         this.actor = actor;
+    }
+    draw(sidebar) {
+        this.actor.drawStatus(sidebar);
     }
 }
 class ItemEntry extends EntryBase {
@@ -425,11 +429,17 @@ class ItemEntry extends EntryBase {
         super();
         this.item = item;
     }
+    draw(sidebar) {
+        this.item.drawStatus(sidebar);
+    }
 }
 class CellEntry extends EntryBase {
     constructor(cell) {
         super();
         this.cell = cell;
+    }
+    draw(sidebar) {
+        this.cell.drawStatus(sidebar);
     }
 }
 class Sidebar {
@@ -439,9 +449,15 @@ class Sidebar {
         this.lastY = -1;
         this.lastMap = null;
         this.entries = [];
+        this.mixer = new GWU.sprite.Mixer();
+        this.currentY = 0;
         this.ui = opts.ui;
         this.bounds = new GWU.xy.Bounds(opts.x, opts.y, opts.width, opts.height);
         this.bg = GWU.color.from(opts.bg || 'black');
+        this.fg = GWU.color.from(opts.fg || 'purple');
+    }
+    get buffer() {
+        return this.ui.buffer;
     }
     contains(x, y) {
         return this.bounds.contains(x, y);
@@ -562,11 +578,38 @@ class Sidebar {
     clearSidebar() {
         this.ui.buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, 0, 0, this.bg);
     }
-    update(map, cx, cy, fov) {
+    draw(map, cx, cy, fov) {
         this.updateCellCache(map);
         this.findEntries(map, cx, cy, fov);
         this.clearSidebar();
+        this.currentY = this.bounds.y;
+        for (let i = 0; i < this.entries.length && this.currentY < this.bounds.bottom; ++i) {
+            const entry = this.entries[i];
+            entry.draw(this);
+            ++this.currentY; // skip a line
+        }
         return true;
+    }
+    drawTitle(cell, title, fg) {
+        this.buffer.drawSprite(this.bounds.x + 1, this.currentY, cell);
+        this.buffer.wrapText(this.bounds.x + 3, this.currentY, this.bounds.width - 3, title, fg || this.fg);
+        ++this.currentY;
+    }
+    drawTextLine(text, fg) {
+        this.buffer.drawText(this.bounds.x + 3, this.currentY, text, fg || this.fg, this.bounds.width - 3);
+        ++this.currentY;
+    }
+    drawProgressBar(val, max, text, color, bg, fg) {
+        color = GWU.color.from(color || this.fg);
+        bg = GWU.color.from(bg || color.clone().darken(50));
+        fg = GWU.color.from(fg || color.clone().lighten(50));
+        this.buffer.fillRect(this.bounds.x + 1, this.currentY, this.bounds.width - 1, 1, undefined, undefined, bg);
+        const len = Math.floor(((this.bounds.width - 1) * val) / max);
+        this.buffer.fillRect(this.bounds.x + 1, this.currentY, len, 1, undefined, undefined, color);
+        const title = GWU.text.center(text, this.bounds.width);
+        this.buffer.drawText(this.bounds.x + 1, this.currentY, title, fg, undefined, this.bounds.width - 1 // just in case title is too long
+        );
+        ++this.currentY;
     }
 }
 

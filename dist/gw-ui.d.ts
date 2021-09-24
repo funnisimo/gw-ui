@@ -121,27 +121,32 @@ interface SidebarOptions {
     y: number;
     width: number;
     height: number;
+    fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
 }
 declare class EntryBase {
     dist: number;
     priority: number;
     changed: boolean;
+    draw(_sidebar: Sidebar): void;
 }
 declare class ActorEntry extends EntryBase {
     actor: GWM.actor.Actor;
     constructor(actor: GWM.actor.Actor);
+    draw(sidebar: Sidebar): void;
 }
 declare class ItemEntry extends EntryBase {
     item: GWM.item.Item;
     constructor(item: GWM.item.Item);
+    draw(sidebar: Sidebar): void;
 }
 declare class CellEntry extends EntryBase {
     cell: GWM.map.CellInfoType;
     constructor(cell: GWM.map.CellInfoType);
+    draw(sidebar: Sidebar): void;
 }
 declare type SidebarEntry = ActorEntry | ItemEntry | CellEntry;
-declare class Sidebar {
+declare class Sidebar implements GWM.entity.StatusDrawer {
     ui: UIType;
     bounds: GWU.xy.Bounds;
     cellCache: GWM.map.CellInfoType[];
@@ -149,8 +154,12 @@ declare class Sidebar {
     lastY: number;
     lastMap: GWM.map.Map | null;
     entries: SidebarEntry[];
+    fg: GWU.color.Color;
     bg: GWU.color.Color;
+    mixer: GWU.sprite.Mixer;
+    currentY: number;
     constructor(opts: SidebarOptions);
+    get buffer(): GWU.canvas.DataBuffer;
     contains(x: number, y: number): boolean;
     updateCellCache(map: GWM.map.Map): void;
     makeActorEntry(actor: GWM.actor.Actor): ActorEntry;
@@ -162,7 +171,10 @@ declare class Sidebar {
     addCell(cell: GWM.map.CellInfoType, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovSystem): boolean;
     findEntries(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovSystem): void;
     clearSidebar(): void;
-    update(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovSystem): boolean;
+    draw(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovSystem): boolean;
+    drawTitle(cell: GWU.sprite.Mixer, title: string, fg?: GWU.color.ColorBase): void;
+    drawTextLine(text: string, fg?: GWU.color.ColorBase): void;
+    drawProgressBar(val: number, max: number, text: string, color?: GWU.color.ColorBase, bg?: GWU.color.ColorBase, fg?: GWU.color.ColorBase): void;
 }
 
 export { ActorEntry, CellEntry, EntryBase, Flavor, FlavorOptions, ItemEntry, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UIOptions, UIType, ViewFilterFn, Viewport, ViewportOptions };

@@ -14,6 +14,7 @@ export interface SidebarOptions {
     y: number;
     width: number;
     height: number;
+    fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
 }
 
@@ -21,6 +22,8 @@ export class EntryBase {
     dist = 0;
     priority = 0;
     changed = false;
+
+    draw(_sidebar: Sidebar): void {}
 }
 
 export class ActorEntry extends EntryBase {
@@ -29,6 +32,10 @@ export class ActorEntry extends EntryBase {
     constructor(actor: GWM.actor.Actor) {
         super();
         this.actor = actor;
+    }
+
+    draw(sidebar: Sidebar): void {
+        this.actor.drawStatus(sidebar);
     }
 }
 
@@ -39,6 +46,10 @@ export class ItemEntry extends EntryBase {
         super();
         this.item = item;
     }
+
+    draw(sidebar: Sidebar): void {
+        this.item.drawStatus(sidebar);
+    }
 }
 
 export class CellEntry extends EntryBase {
@@ -48,11 +59,15 @@ export class CellEntry extends EntryBase {
         super();
         this.cell = cell;
     }
+
+    draw(sidebar: Sidebar): void {
+        this.cell.drawStatus(sidebar);
+    }
 }
 
 export type SidebarEntry = ActorEntry | ItemEntry | CellEntry;
 
-export class Sidebar {
+export class Sidebar implements GWM.entity.StatusDrawer {
     ui: UIType;
     bounds: GWU.xy.Bounds;
     cellCache: GWM.map.CellInfoType[] = [];
@@ -60,7 +75,10 @@ export class Sidebar {
     lastY = -1;
     lastMap: GWM.map.Map | null = null;
     entries: SidebarEntry[] = [];
+    fg: GWU.color.Color;
     bg: GWU.color.Color;
+    mixer: GWU.sprite.Mixer = new GWU.sprite.Mixer();
+    currentY = 0;
 
     constructor(opts: SidebarOptions) {
         this.ui = opts.ui;
@@ -71,6 +89,11 @@ export class Sidebar {
             opts.height
         );
         this.bg = GWU.color.from(opts.bg || 'black');
+        this.fg = GWU.color.from(opts.fg || 'purple');
+    }
+
+    get buffer(): GWU.canvas.DataBuffer {
+        return this.ui.buffer;
     }
 
     contains(x: number, y: number): boolean {
@@ -249,7 +272,7 @@ export class Sidebar {
         );
     }
 
-    update(
+    draw(
         map: GWM.map.Map,
         cx: number,
         cy: number,
@@ -259,6 +282,87 @@ export class Sidebar {
         this.findEntries(map, cx, cy, fov);
         this.clearSidebar();
 
+        this.currentY = this.bounds.y;
+
+        for (
+            let i = 0;
+            i < this.entries.length && this.currentY < this.bounds.bottom;
+            ++i
+        ) {
+            const entry = this.entries[i];
+            entry.draw(this);
+            ++this.currentY; // skip a line
+        }
+
         return true;
+    }
+
+    drawTitle(
+        cell: GWU.sprite.Mixer,
+        title: string,
+        fg?: GWU.color.ColorBase
+    ): void {
+        this.buffer.drawSprite(this.bounds.x + 1, this.currentY, cell);
+        this.buffer.wrapText(
+            this.bounds.x + 3,
+            this.currentY,
+            this.bounds.width - 3,
+            title,
+            fg || this.fg
+        );
+        ++this.currentY;
+    }
+    drawTextLine(text: string, fg?: GWU.color.ColorBase): void {
+        this.buffer.drawText(
+            this.bounds.x + 3,
+            this.currentY,
+            text,
+            fg || this.fg,
+            this.bounds.width - 3
+        );
+        ++this.currentY;
+    }
+    drawProgressBar(
+        val: number,
+        max: number,
+        text: string,
+        color?: GWU.color.ColorBase,
+        bg?: GWU.color.ColorBase,
+        fg?: GWU.color.ColorBase
+    ): void {
+        color = GWU.color.from(color || this.fg);
+        bg = GWU.color.from(bg || color.clone().darken(50));
+        fg = GWU.color.from(fg || color.clone().lighten(50));
+
+        this.buffer.fillRect(
+            this.bounds.x + 1,
+            this.currentY,
+            this.bounds.width - 1,
+            1,
+            undefined,
+            undefined,
+            bg
+        );
+        const len = Math.floor(((this.bounds.width - 1) * val) / max);
+        this.buffer.fillRect(
+            this.bounds.x + 1,
+            this.currentY,
+            len,
+            1,
+            undefined,
+            undefined,
+            color
+        );
+
+        const title = GWU.text.center(text, this.bounds.width);
+        this.buffer.drawText(
+            this.bounds.x + 1,
+            this.currentY,
+            title,
+            fg,
+            undefined,
+            this.bounds.width - 1 // just in case title is too long
+        );
+        ++this.currentY;
     }
 }

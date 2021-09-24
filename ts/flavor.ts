@@ -112,9 +112,9 @@ export class Flavor {
             return '';
         }
 
-        const actor = cell.actor || null;
+        const actor = cell.hasActor() ? map.actorAt(x, y) : null;
         // const player = actor?.isPlayer() ? actor : null;
-        const theItem = cell.item;
+        const theItem = cell.hasItem() ? map.itemAt(x, y) : null;
 
         const standsInTile = cell.hasTileFlag(GWM.flags.Tile.T_STAND_IN_TILE);
 

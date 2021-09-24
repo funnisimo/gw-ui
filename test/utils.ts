@@ -52,7 +52,6 @@ export function mockCell(map: GWM.map.Map, x: number, y: number): GWM.map.Cell {
 
 export function mockMap(w = 10, h = 10): GWM.map.Map {
     const map = GWM.map.make(w, h);
-    jest.spyOn(map, 'isVisible').mockReturnValue(true);
     return map;
 }
 

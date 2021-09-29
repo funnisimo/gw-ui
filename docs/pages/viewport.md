@@ -43,9 +43,10 @@ const player = GWM.actor.from({
     fg: 'white',
     name: 'Player',
     flags: 'HAS_MEMORY, USES_FOV, IS_PLAYER',
+    vision: 5,
 });
-map.addActor(40, 17, player);
-
+map.addActor(1, 1, player);
+player.fov.update();
 viewport.draw(player.memory);
 ui.render();
 
@@ -56,7 +57,7 @@ LOOP.run({
         const y = viewport.toMapY(e.y);
         map.removeActor(player);
         map.addActor(x, y, player);
-        player.fov.update(x, y, 5);
+        player.fov.update();
         viewport.draw(player.memory, player.fov);
         ui.render();
     },

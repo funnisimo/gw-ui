@@ -395,10 +395,12 @@
                 return false;
             }
             this._map = map;
+            this.kind.addToMap(this, map);
             return true;
         }
         removeFromMap() {
             this.clearEntityFlag(Entity$1.L_ON_MAP);
+            this.kind.removeFromMap(this);
         }
         get sprite() {
             return this.kind.sprite;
@@ -529,6 +531,8 @@
                 entity.machineHome = opts.machineHome;
             }
         }
+        addToMap(_entity, _map) { }
+        removeFromMap(_entity) { }
         canBeSeen(_entity) {
             return true;
         }
@@ -573,6 +577,82 @@
         EntityKind: EntityKind,
         Entity: Entity
     });
+
+    class Actor extends Entity {
+        constructor(kind) {
+            super(kind);
+            this.next = null;
+            this.leader = null;
+            this.items = null;
+            this.fov = null;
+            this.memory = null;
+            this.visionDistance = 99;
+            // @ts-ignore - initialized in Entity
+            this.flags.actor = 0;
+            this.depth = Depth$1.ACTOR;
+            this.kind = kind;
+        }
+        copy(other) {
+            super.copy(other);
+            this.leader = other.leader;
+            this.items = other.items;
+            this.fov = other.fov;
+            this.memory = other.memory;
+            this.visionDistance = other.visionDistance;
+        }
+        hasActorFlag(flag) {
+            return !!(this.flags.actor & flag);
+        }
+        hasAllActorFlags(flags) {
+            return (this.flags.actor & flags) === flags;
+        }
+        actorFlags() {
+            return this.flags.actor;
+        }
+        isPlayer() {
+            return this.hasActorFlag(Actor$1.IS_PLAYER);
+        }
+        canSee(x, y) {
+            if (x instanceof Entity) {
+                return this.canSee(x.x, x.y) && this.kind.isAbleToSee(this, x);
+            }
+            if (this.fov) {
+                return this.fov.isDirectlyVisible(x, y);
+            }
+            else if (this.map) {
+                return GWU__namespace.xy.forLineBetween(this.x, this.y, x, y, (i, j) => GWU__namespace.xy.distanceBetween(this.x, this.y, i, j) <=
+                    this.visionDistance &&
+                    !this.map.cell(i, j).blocksVision());
+            }
+            else {
+                return false; // need a map or an fov
+            }
+        }
+        canSeeOrSense(x, y) {
+            if (x instanceof Entity) {
+                return (this.canSeeOrSense(x.x, x.y) &&
+                    (this.kind.isAbleToSee(this, x) ||
+                        this.kind.isAbleToSense(this, x)));
+            }
+            if (this.fov) {
+                return this.fov.isAnyKindOfVisible(x, y);
+            }
+            return this.canSee(x, y);
+        }
+        isAbleToSee(entity) {
+            return this.kind.isAbleToSee(this, entity);
+        }
+        isAbleToSense(entity) {
+            return this.kind.isAbleToSense(this, entity);
+        }
+        ////////////////// INVENTORY
+        async pickupItem(item, opts) {
+            return this.kind.pickupItem(this, item, opts);
+        }
+        async dropItem(item, opts) {
+            return this.kind.dropItem(this, item, opts);
+        }
+    }
 
     // @ts-nocheck
     class Handler {
@@ -3491,97 +3571,16 @@
         get: get$2
     });
 
-    class Actor extends Entity {
-        constructor(kind) {
-            super(kind);
-            this.next = null;
-            this.leader = null;
-            this.items = null;
-            this.fov = null;
-            this.memory = null;
-            // @ts-ignore - initialized in Entity
-            this.flags.actor = 0;
-            this.depth = Depth$1.ACTOR;
-            this.kind = kind;
-        }
-        hasActorFlag(flag) {
-            return !!(this.flags.actor & flag);
-        }
-        hasAllActorFlags(flags) {
-            return (this.flags.actor & flags) === flags;
-        }
-        actorFlags() {
-            return this.flags.actor;
-        }
-        isPlayer() {
-            return this.hasActorFlag(Actor$1.IS_PLAYER);
-        }
-        addToMap(map, x, y) {
-            if (!super.addToMap(map, x, y))
-                return false;
-            if (this.kind.hasActorFlag(Actor$1.HAS_MEMORY)) {
-                this.memory = get$2(this, map);
-            }
-            if (this.kind.hasActorFlag(Actor$1.USES_FOV)) {
-                this.fov = new GWU__namespace.fov.FovSystem(map);
-                if (this.memory) {
-                    this.fov.onFovChange = this.memory;
-                }
-            }
-            return true;
-        }
-        removeFromMap() {
-            if (this._map && this.memory) {
-                store(this, this._map, this.memory);
-            }
-            super.removeFromMap();
-        }
-        canSee(x, y) {
-            if (x instanceof Entity) {
-                return this.canSee(x.x, x.y) && this.kind.isAbleToSee(this, x);
-            }
-            if (this.fov) {
-                return this.fov.isDirectlyVisible(x, y);
-            }
-            else if (this.map) {
-                return GWU__namespace.xy.forLineBetween(this.x, this.y, x, y, (i, j) => !this.map.cell(i, j).blocksVision());
-            }
-            else {
-                return false; // need a map or an fov
-            }
-        }
-        canSeeOrSense(x, y) {
-            if (x instanceof Entity) {
-                return (this.canSeeOrSense(x.x, x.y) &&
-                    (this.kind.isAbleToSee(this, x) ||
-                        this.kind.isAbleToSense(this, x)));
-            }
-            if (this.fov) {
-                return this.fov.isAnyKindOfVisible(x, y);
-            }
-            return this.canSee(x, y);
-        }
-        isAbleToSee(entity) {
-            return this.kind.isAbleToSee(this, entity);
-        }
-        isAbleToSense(entity) {
-            return this.kind.isAbleToSense(this, entity);
-        }
-        ////////////////// INVENTORY
-        async pickupItem(item, opts) {
-            return this.kind.pickupItem(this, item, opts);
-        }
-        async dropItem(item, opts) {
-            return this.kind.dropItem(this, item, opts);
-        }
-    }
-
     class ActorKind extends EntityKind {
         constructor(opts) {
             super(opts);
             this.flags = { actor: 0 };
+            this.vision = {};
             if (opts.flags) {
                 this.flags.actor = GWU__namespace.flag.from(Actor$1, opts.flags);
+            }
+            if (opts.vision) {
+                this.vision.normal = opts.vision;
             }
         }
         make(options) {
@@ -3596,6 +3595,28 @@
             }
             if (options.memory) {
                 actor.memory = options.memory;
+            }
+            if (this.vision.normal) {
+                actor.visionDistance = this.vision.normal;
+            }
+        }
+        addToMap(actor, map) {
+            super.addToMap(actor, map);
+            if (this.hasActorFlag(Actor$1.HAS_MEMORY)) {
+                actor.memory = get$2(actor, map);
+            }
+            if (this.hasActorFlag(Actor$1.USES_FOV)) {
+                actor.fov = new GWU__namespace.fov.FovSystem(map);
+                actor.fov.follow = actor;
+                if (actor.memory) {
+                    actor.fov.onFovChange = actor.memory;
+                }
+            }
+        }
+        removeFromMap(actor) {
+            super.removeFromMap(actor);
+            if (actor._map && actor.memory) {
+                store(actor, actor._map, actor.memory);
             }
         }
         hasActorFlag(flag) {

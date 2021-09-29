@@ -56,7 +56,6 @@ declare class Messages {
 declare type ViewFilterFn = (mixer: GWU.sprite.Mixer, x: number, y: number, map: GWM.map.Map) => void;
 interface ViewportOptions {
     snap?: boolean;
-    follow?: boolean;
     ui: UIType;
     x: number;
     y: number;
@@ -69,7 +68,7 @@ interface ViewportOptions {
 }
 declare class Viewport {
     ui: UIType;
-    follow: boolean;
+    follow: GWU.xy.XY | null;
     snap: boolean;
     bounds: GWU.xy.Bounds;
     filter: ViewFilterFn | null;
@@ -85,7 +84,9 @@ declare class Viewport {
     contains(x: number, y: number): boolean;
     halfWidth(): number;
     halfHeight(): number;
-    draw(map: GWM.map.Map, playerX?: number, playerY?: number): boolean;
+    centerOn(map: GWU.xy.Size, x: number, y: number): void;
+    updateOffset(map: GWU.xy.Size, focus: GWU.xy.XY | null): void;
+    draw(map: GWM.map.Map, fov?: GWU.fov.FovTracker): boolean;
 }
 
 interface FlavorOptions {
@@ -158,6 +159,7 @@ declare class Sidebar implements GWM.entity.StatusDrawer {
     bg: GWU.color.Color;
     mixer: GWU.sprite.Mixer;
     currentY: number;
+    currentPriority: number;
     constructor(opts: SidebarOptions);
     get buffer(): GWU.canvas.DataBuffer;
     contains(x: number, y: number): boolean;

@@ -188,7 +188,7 @@
 
     class Viewport {
         constructor(opts) {
-            this.follow = false;
+            this.follow = null;
             this.snap = false;
             this.filter = null;
             this.offsetX = 0;
@@ -196,7 +196,6 @@
             this.lockX = false;
             this.lockY = false;
             this.ui = opts.ui;
-            this.follow = opts.follow || false;
             this.snap = opts.snap || false;
             this.bounds = new GWU__namespace.xy.Bounds(opts.x, opts.y, opts.width, opts.height);
             this.filter = opts.filter || null;
@@ -234,41 +233,37 @@
         halfHeight() {
             return Math.floor(this.bounds.height / 2);
         }
-        draw(map, playerX, playerY) {
-            if (!map)
-                return false;
-            // if (!map.hasMapFlag(GWM.flags.Map.MAP_CHANGED)) return false;
-            if (this.follow && playerX !== undefined && playerY !== undefined) {
-                this.offsetX = playerX - this.halfWidth();
-                this.offsetY = playerY - this.halfHeight();
-            }
-            else if (this.snap &&
-                playerX !== undefined &&
-                playerY !== undefined) {
-                const left = this.offsetX;
-                const right = this.offsetX + this.bounds.width;
-                const top = this.offsetY;
-                const bottom = this.offsetY + this.bounds.height;
-                const edgeX = Math.floor(this.bounds.width / 5);
-                const edgeY = Math.floor(this.bounds.height / 5);
-                const thirdW = Math.floor(this.bounds.width / 3);
-                if (left + edgeX >= playerX) {
-                    this.offsetX = Math.max(0, playerX + thirdW - this.bounds.width);
+        centerOn(map, x, y) {
+            this.updateOffset(map, { x, y });
+        }
+        updateOffset(map, focus) {
+            if (focus && GWU__namespace.xy.contains(map, focus.x, focus.y)) {
+                if (this.snap) {
+                    const left = this.offsetX;
+                    const right = this.offsetX + this.bounds.width;
+                    const top = this.offsetY;
+                    const bottom = this.offsetY + this.bounds.height;
+                    const edgeX = Math.floor(this.bounds.width / 5);
+                    const edgeY = Math.floor(this.bounds.height / 5);
+                    const thirdW = Math.floor(this.bounds.width / 3);
+                    if (left + edgeX >= focus.x) {
+                        this.offsetX = Math.max(0, focus.x + thirdW - this.bounds.width);
+                    }
+                    else if (right - edgeX <= focus.x) {
+                        this.offsetX = Math.min(focus.x - thirdW, map.width - this.bounds.width);
+                    }
+                    const thirdH = Math.floor(this.bounds.height / 3);
+                    if (top + edgeY >= focus.y) {
+                        this.offsetY = Math.max(0, focus.y + thirdH - this.bounds.height);
+                    }
+                    else if (bottom - edgeY <= focus.y) {
+                        this.offsetY = Math.min(focus.y - thirdH, map.height - this.bounds.height);
+                    }
                 }
-                else if (right - edgeX <= playerX) {
-                    this.offsetX = Math.min(playerX - thirdW, map.width - this.bounds.width);
+                else {
+                    this.offsetX = focus.x - this.halfWidth();
+                    this.offsetY = focus.y - this.halfHeight();
                 }
-                const thirdH = Math.floor(this.bounds.height / 3);
-                if (top + edgeY >= playerY) {
-                    this.offsetY = Math.max(0, playerY + thirdH - this.bounds.height);
-                }
-                else if (bottom - edgeY <= playerY) {
-                    this.offsetY = Math.min(playerY - thirdH, map.height - this.bounds.height);
-                }
-            }
-            else if (playerX !== undefined && playerY !== undefined) {
-                this.offsetX = playerX;
-                this.offsetY = playerY;
             }
             if (this.lockX) {
                 this.offsetX = GWU__namespace.clamp(this.offsetX, 0, map.width - this.bounds.width);
@@ -276,13 +271,20 @@
             if (this.lockY) {
                 this.offsetY = GWU__namespace.clamp(this.offsetY, 0, map.height - this.bounds.height);
             }
+        }
+        draw(map, fov) {
+            if (!map)
+                return false;
+            // if (!map.hasMapFlag(GWM.flags.Map.MAP_CHANGED)) return false;
+            this.updateOffset(map, this.follow);
             const mixer = new GWU__namespace.sprite.Mixer();
             for (let x = 0; x < this.bounds.width; ++x) {
                 for (let y = 0; y < this.bounds.height; ++y) {
                     const mapX = x + this.offsetX;
                     const mapY = y + this.offsetY;
                     if (map.hasXY(mapX, mapY)) {
-                        map.getAppearanceAt(mapX, mapY, mixer);
+                        const cell = map.cell(x, y);
+                        map.drawer.drawCell(mixer, cell, fov);
                     }
                     else {
                         mixer.blackOut();
@@ -477,6 +479,7 @@
             this.entries = [];
             this.mixer = new GWU__namespace.sprite.Mixer();
             this.currentY = 0;
+            this.currentPriority = -1;
             this.ui = opts.ui;
             this.bounds = new GWU__namespace.xy.Bounds(opts.x, opts.y, opts.width, opts.height);
             this.bg = GWU__namespace.color.from(opts.bg || 'black');
@@ -609,26 +612,38 @@
             this.findEntries(map, cx, cy, fov);
             this.clearSidebar();
             this.currentY = this.bounds.y;
+            this.currentPriority = -1;
             for (let i = 0; i < this.entries.length && this.currentY < this.bounds.bottom; ++i) {
                 const entry = this.entries[i];
+                this.currentPriority = entry.priority;
                 entry.draw(this);
                 ++this.currentY; // skip a line
             }
+            this.currentPriority = -1;
             return true;
         }
         drawTitle(cell, title, fg) {
+            fg = GWU__namespace.color.from(fg || this.fg);
+            const fgColor = this.currentPriority < 3 ? fg : fg.clone().darken(50);
             this.buffer.drawSprite(this.bounds.x + 1, this.currentY, cell);
-            this.buffer.wrapText(this.bounds.x + 3, this.currentY, this.bounds.width - 3, title, fg || this.fg);
+            this.buffer.wrapText(this.bounds.x + 3, this.currentY, this.bounds.width - 3, title, fgColor);
             ++this.currentY;
         }
         drawTextLine(text, fg) {
-            this.buffer.drawText(this.bounds.x + 3, this.currentY, text, fg || this.fg, this.bounds.width - 3);
+            fg = GWU__namespace.color.from(fg || this.fg);
+            const fgColor = this.currentPriority < 3 ? fg : fg.clone().darken(50);
+            this.buffer.drawText(this.bounds.x + 3, this.currentY, text, fgColor, this.bounds.width - 3);
             ++this.currentY;
         }
         drawProgressBar(val, max, text, color, bg, fg) {
             color = GWU__namespace.color.from(color || this.fg);
             bg = GWU__namespace.color.from(bg || color.clone().darken(50));
             fg = GWU__namespace.color.from(fg || color.clone().lighten(50));
+            if (this.currentPriority < 3) {
+                bg.darken(50);
+                fg.darken(50);
+                color.darken(50);
+            }
             this.buffer.fillRect(this.bounds.x + 1, this.currentY, this.bounds.width - 1, 1, undefined, undefined, bg);
             const len = Math.floor(((this.bounds.width - 1) * val) / max);
             this.buffer.fillRect(this.bounds.x + 1, this.currentY, len, 1, undefined, undefined, color);

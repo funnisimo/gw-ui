@@ -11,7 +11,6 @@ export type ViewFilterFn = (
 
 export interface ViewportOptions {
     snap?: boolean;
-    follow?: boolean;
     ui: UIType;
     x: number;
     y: number;
@@ -25,7 +24,7 @@ export interface ViewportOptions {
 
 export class Viewport {
     ui: UIType;
-    follow = false;
+    follow: GWU.xy.XY | null = null;
     snap = false;
     bounds: GWU.xy.Bounds;
     filter: ViewFilterFn | null = null;
@@ -36,7 +35,6 @@ export class Viewport {
 
     constructor(opts: ViewportOptions) {
         this.ui = opts.ui;
-        this.follow = opts.follow || false;
         this.snap = opts.snap || false;
         this.bounds = new GWU.xy.Bounds(
             opts.x,
@@ -86,54 +84,50 @@ export class Viewport {
         return Math.floor(this.bounds.height / 2);
     }
 
-    draw(map: GWM.map.Map, playerX?: number, playerY?: number): boolean {
-        if (!map) return false;
-        // if (!map.hasMapFlag(GWM.flags.Map.MAP_CHANGED)) return false;
+    centerOn(map: GWU.xy.Size, x: number, y: number) {
+        this.updateOffset(map, { x, y });
+    }
 
-        if (this.follow && playerX !== undefined && playerY !== undefined) {
-            this.offsetX = playerX - this.halfWidth();
-            this.offsetY = playerY - this.halfHeight();
-        } else if (
-            this.snap &&
-            playerX !== undefined &&
-            playerY !== undefined
-        ) {
-            const left = this.offsetX;
-            const right = this.offsetX + this.bounds.width;
-            const top = this.offsetY;
-            const bottom = this.offsetY + this.bounds.height;
+    updateOffset(map: GWU.xy.Size, focus: GWU.xy.XY | null) {
+        if (focus && GWU.xy.contains(map, focus.x, focus.y)) {
+            if (this.snap) {
+                const left = this.offsetX;
+                const right = this.offsetX + this.bounds.width;
+                const top = this.offsetY;
+                const bottom = this.offsetY + this.bounds.height;
 
-            const edgeX = Math.floor(this.bounds.width / 5);
-            const edgeY = Math.floor(this.bounds.height / 5);
+                const edgeX = Math.floor(this.bounds.width / 5);
+                const edgeY = Math.floor(this.bounds.height / 5);
 
-            const thirdW = Math.floor(this.bounds.width / 3);
-            if (left + edgeX >= playerX) {
-                this.offsetX = Math.max(
-                    0,
-                    playerX + thirdW - this.bounds.width
-                );
-            } else if (right - edgeX <= playerX) {
-                this.offsetX = Math.min(
-                    playerX - thirdW,
-                    map.width - this.bounds.width
-                );
+                const thirdW = Math.floor(this.bounds.width / 3);
+                if (left + edgeX >= focus.x) {
+                    this.offsetX = Math.max(
+                        0,
+                        focus.x + thirdW - this.bounds.width
+                    );
+                } else if (right - edgeX <= focus.x) {
+                    this.offsetX = Math.min(
+                        focus.x - thirdW,
+                        map.width - this.bounds.width
+                    );
+                }
+
+                const thirdH = Math.floor(this.bounds.height / 3);
+                if (top + edgeY >= focus.y) {
+                    this.offsetY = Math.max(
+                        0,
+                        focus.y + thirdH - this.bounds.height
+                    );
+                } else if (bottom - edgeY <= focus.y) {
+                    this.offsetY = Math.min(
+                        focus.y - thirdH,
+                        map.height - this.bounds.height
+                    );
+                }
+            } else {
+                this.offsetX = focus.x - this.halfWidth();
+                this.offsetY = focus.y - this.halfHeight();
             }
-
-            const thirdH = Math.floor(this.bounds.height / 3);
-            if (top + edgeY >= playerY) {
-                this.offsetY = Math.max(
-                    0,
-                    playerY + thirdH - this.bounds.height
-                );
-            } else if (bottom - edgeY <= playerY) {
-                this.offsetY = Math.min(
-                    playerY - thirdH,
-                    map.height - this.bounds.height
-                );
-            }
-        } else if (playerX !== undefined && playerY !== undefined) {
-            this.offsetX = playerX;
-            this.offsetY = playerY;
         }
 
         if (this.lockX) {
@@ -150,6 +144,13 @@ export class Viewport {
                 map.height - this.bounds.height
             );
         }
+    }
+
+    draw(map: GWM.map.Map, fov?: GWU.fov.FovTracker): boolean {
+        if (!map) return false;
+        // if (!map.hasMapFlag(GWM.flags.Map.MAP_CHANGED)) return false;
+
+        this.updateOffset(map, this.follow);
 
         const mixer = new GWU.sprite.Mixer();
         for (let x = 0; x < this.bounds.width; ++x) {
@@ -157,7 +158,8 @@ export class Viewport {
                 const mapX = x + this.offsetX;
                 const mapY = y + this.offsetY;
                 if (map.hasXY(mapX, mapY)) {
-                    map.getAppearanceAt(mapX, mapY, mixer);
+                    const cell = map.cell(x, y);
+                    map.drawer.drawCell(mixer, cell, fov);
                 } else {
                     mixer.blackOut();
                 }

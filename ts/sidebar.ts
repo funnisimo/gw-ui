@@ -79,6 +79,7 @@ export class Sidebar implements GWM.entity.StatusDrawer {
     bg: GWU.color.Color;
     mixer: GWU.sprite.Mixer = new GWU.sprite.Mixer();
     currentY = 0;
+    currentPriority = -1;
 
     constructor(opts: SidebarOptions) {
         this.ui = opts.ui;
@@ -283,6 +284,7 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         this.clearSidebar();
 
         this.currentY = this.bounds.y;
+        this.currentPriority = -1;
 
         for (
             let i = 0;
@@ -290,10 +292,12 @@ export class Sidebar implements GWM.entity.StatusDrawer {
             ++i
         ) {
             const entry = this.entries[i];
+            this.currentPriority = entry.priority;
             entry.draw(this);
             ++this.currentY; // skip a line
         }
 
+        this.currentPriority = -1;
         return true;
     }
 
@@ -302,22 +306,26 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         title: string,
         fg?: GWU.color.ColorBase
     ): void {
+        fg = GWU.color.from(fg || this.fg);
+        const fgColor = this.currentPriority < 3 ? fg : fg.clone().darken(50);
         this.buffer.drawSprite(this.bounds.x + 1, this.currentY, cell);
         this.buffer.wrapText(
             this.bounds.x + 3,
             this.currentY,
             this.bounds.width - 3,
             title,
-            fg || this.fg
+            fgColor
         );
         ++this.currentY;
     }
     drawTextLine(text: string, fg?: GWU.color.ColorBase): void {
+        fg = GWU.color.from(fg || this.fg);
+        const fgColor = this.currentPriority < 3 ? fg : fg.clone().darken(50);
         this.buffer.drawText(
             this.bounds.x + 3,
             this.currentY,
             text,
-            fg || this.fg,
+            fgColor,
             this.bounds.width - 3
         );
         ++this.currentY;
@@ -333,6 +341,12 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         color = GWU.color.from(color || this.fg);
         bg = GWU.color.from(bg || color.clone().darken(50));
         fg = GWU.color.from(fg || color.clone().lighten(50));
+
+        if (this.currentPriority < 3) {
+            bg.darken(50);
+            fg.darken(50);
+            color.darken(50);
+        }
 
         this.buffer.fillRect(
             this.bounds.x + 1,

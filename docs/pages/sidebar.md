@@ -41,7 +41,9 @@ const player = GWM.actor.from({ ch: '@', fg: 'white', name: 'Actor' });
 map.addActor(1, 1, player);
 
 sidebar.follow = player;
-viewport.draw(map);
+viewport.follow = player;
+
+viewport.drawFor(player);
 sidebar.draw();
 ui.render();
 
@@ -50,7 +52,8 @@ LOOP.run({
         if (!viewport.contains(e.x, e.y)) return;
         map.removeActor(player);
         map.addActor(viewport.toMapX(e.x), viewport.toMapY(e.y), player);
-        viewport.draw(map);
+
+        viewport.drawFor(player);
         sidebar.draw();
         ui.render();
     },
@@ -101,12 +104,14 @@ for (let i = 0; i < 20; ++i) {
 }
 
 map.addActor(1, 1, player);
-const memory = player.memory;
-const fov = player.fov;
-sidebar.follow = player;
-fov.update(player.x, player.y, 5);
 
-viewport.draw(memory);
+const fov = player.fov;
+fov.update();
+
+sidebar.follow = player;
+viewport.follow = player;
+
+viewport.drawFor(player);
 sidebar.draw();
 ui.render();
 
@@ -115,8 +120,9 @@ LOOP.run({
         if (!viewport.contains(e.x, e.y)) return;
         map.removeActor(player);
         map.addActor(viewport.toMapX(e.x), viewport.toMapY(e.y), player);
-        fov.update(player.x, player.y, 5);
-        viewport.draw(memory, fov);
+
+        fov.update();
+        viewport.drawFor(player);
         sidebar.draw();
         ui.render();
     },

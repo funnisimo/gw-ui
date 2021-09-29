@@ -22,7 +22,7 @@ for (let i = 0; i < 40; ++i) {
     map.setTile(x, y, tile);
 }
 
-const camera = { x: 20, y: 17 };
+const camera = { x: 1, y: 1 };
 viewport.follow = camera;
 
 viewport.draw(map);
@@ -70,7 +70,7 @@ for (let i = 0; i < 40; ++i) {
     map.setTile(x, y, tile);
 }
 
-const camera = { x: 20, y: 17 };
+const camera = { x: 1, y: 1 };
 viewport.follow = camera;
 
 viewport.draw(map);
@@ -107,7 +107,8 @@ const viewport = new GWI.Viewport({
     width: 40,
     height: 17,
     ui,
-    lock: true,
+    lock: true, // lock edge of map to boundary
+    center: true, // keep player in center
 });
 const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
 
@@ -125,7 +126,7 @@ const player = GWM.actor.from({
 viewport.follow = player;
 
 map.addActor(40, 17, player);
-viewport.draw(map);
+viewport.draw();
 ui.render();
 
 LOOP.run({
@@ -134,7 +135,7 @@ LOOP.run({
         if (d) {
             await map.removeActor(player);
             await map.addActor(player.x + d[0], player.y + d[1], player);
-            viewport.draw(map);
+            viewport.draw();
             ui.render();
         }
     },
@@ -177,7 +178,7 @@ const player = GWM.actor.from({
 
 map.addActor(40, 17, player);
 viewport.follow = player;
-viewport.draw(map, player.x, player.y);
+viewport.draw();
 ui.render();
 
 LOOP.run({
@@ -189,7 +190,7 @@ LOOP.run({
             if (map.hasXY(newX, newY)) {
                 map.removeActor(player);
                 map.addActor(newX, newY, player);
-                viewport.draw(map);
+                viewport.draw();
                 ui.render();
             }
         }

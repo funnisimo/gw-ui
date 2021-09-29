@@ -72,10 +72,11 @@ interface ViewportOptions {
     lockX?: boolean;
     lockY?: boolean;
     lock?: boolean;
+    center?: boolean;
 }
 declare class Viewport {
     ui: UICore;
-    follow: GWU.xy.XY | null;
+    center: boolean;
     snap: boolean;
     bounds: GWU.xy.Bounds;
     filter: ViewFilterFn | null;
@@ -83,7 +84,10 @@ declare class Viewport {
     offsetY: number;
     lockX: boolean;
     lockY: boolean;
+    _follow: UISubject | null;
     constructor(opts: ViewportOptions);
+    get follow(): UISubject | null;
+    set follow(subject: UISubject | null);
     toMapX(x: number): number;
     toMapY(y: number): number;
     toInnerX(x: number): number;
@@ -91,9 +95,10 @@ declare class Viewport {
     contains(x: number, y: number): boolean;
     halfWidth(): number;
     halfHeight(): number;
-    centerOn(map: GWU.xy.Size, x: number, y: number): void;
-    updateOffset(map: GWU.xy.Size, focus: GWU.xy.XY | null): void;
-    draw(map: GWM.map.Map, fov?: GWU.fov.FovTracker): boolean;
+    centerOn(x: number, y: number, map?: GWU.xy.Size): void;
+    updateOffset(focus: GWU.xy.XY | null, map?: GWU.xy.Size): void;
+    drawFor(subject: UISubject): boolean;
+    draw(map?: GWM.map.Map, fov?: GWU.fov.FovTracker): boolean;
 }
 
 interface FlavorOptions {

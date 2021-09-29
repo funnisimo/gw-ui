@@ -35,7 +35,14 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport({ x: 0, y: 4, width: 80, height: 34, ui });
+const viewport = new GWI.Viewport({
+    x: 0,
+    y: 4,
+    width: 80,
+    height: 34,
+    ui,
+    lock: true, // Necessary if you are going to center on the player and use the mouse to move them around
+});
 const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
 
 const player = GWM.actor.from({
@@ -47,7 +54,9 @@ const player = GWM.actor.from({
 });
 map.addActor(1, 1, player);
 player.fov.update();
-viewport.draw(player.memory);
+viewport.follow = player;
+
+viewport.draw();
 ui.render();
 
 LOOP.run({
@@ -57,8 +66,9 @@ LOOP.run({
         const y = viewport.toMapY(e.y);
         map.removeActor(player);
         map.addActor(x, y, player);
+
         player.fov.update();
-        viewport.draw(player.memory, player.fov);
+        viewport.draw();
         ui.render();
     },
 });

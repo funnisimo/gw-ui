@@ -162,13 +162,14 @@ class Messages {
 
 class Viewport {
     constructor(opts) {
-        this.follow = null;
+        this.center = false;
         this.snap = false;
         this.filter = null;
         this.offsetX = 0;
         this.offsetY = 0;
         this.lockX = false;
         this.lockY = false;
+        this._follow = null;
         this.ui = opts.ui;
         this.snap = opts.snap || false;
         this.bounds = new GWU.xy.Bounds(opts.x, opts.y, opts.width, opts.height);
@@ -185,6 +186,18 @@ class Viewport {
                 this.lockY = true;
             }
         }
+    }
+    get follow() {
+        return this._follow;
+    }
+    set follow(subject) {
+        this.center = !!subject;
+        if (subject) {
+            this.offsetX = subject.x - this.halfWidth();
+            this.offsetY = subject.y - this.halfHeight();
+            this.centerOn(subject.x, subject.y, subject.map);
+        }
+        this._follow = subject;
     }
     toMapX(x) {
         return x + this.offsetX - this.bounds.x;
@@ -207,16 +220,27 @@ class Viewport {
     halfHeight() {
         return Math.floor(this.bounds.height / 2);
     }
-    centerOn(map, x, y) {
-        this.updateOffset(map, { x, y });
+    centerOn(x, y, map) {
+        this.center = true;
+        this.updateOffset({ x, y }, map);
     }
-    updateOffset(map, focus) {
-        if (focus && GWU.xy.contains(map, focus.x, focus.y)) {
+    updateOffset(focus, map) {
+        const bounds = map || this.bounds;
+        if (focus && GWU.xy.contains(bounds, focus.x, focus.y)) {
             if (this.snap) {
-                const left = this.offsetX;
-                const right = this.offsetX + this.bounds.width;
-                const top = this.offsetY;
-                const bottom = this.offsetY + this.bounds.height;
+                let left = this.offsetX;
+                let right = this.offsetX + this.bounds.width;
+                let top = this.offsetY;
+                let bottom = this.offsetY + this.bounds.height;
+                // auto center if outside the viewport
+                if (focus.x < left || focus.x > right) {
+                    left = this.offsetX = focus.x - this.halfWidth();
+                    right = left + this.bounds.width;
+                }
+                if (focus.y < top || focus.y > bottom) {
+                    top = this.offsetY = focus.y - this.halfHeight();
+                    bottom = top + this.bounds.height;
+                }
                 const edgeX = Math.floor(this.bounds.width / 5);
                 const edgeY = Math.floor(this.bounds.height / 5);
                 const thirdW = Math.floor(this.bounds.width / 3);
@@ -224,40 +248,52 @@ class Viewport {
                     this.offsetX = Math.max(0, focus.x + thirdW - this.bounds.width);
                 }
                 else if (right - edgeX <= focus.x) {
-                    this.offsetX = Math.min(focus.x - thirdW, map.width - this.bounds.width);
+                    this.offsetX = Math.min(focus.x - thirdW, bounds.width - this.bounds.width);
                 }
                 const thirdH = Math.floor(this.bounds.height / 3);
                 if (top + edgeY >= focus.y) {
                     this.offsetY = Math.max(0, focus.y + thirdH - this.bounds.height);
                 }
                 else if (bottom - edgeY <= focus.y) {
-                    this.offsetY = Math.min(focus.y - thirdH, map.height - this.bounds.height);
+                    this.offsetY = Math.min(focus.y - thirdH, bounds.height - this.bounds.height);
                 }
             }
-            else {
+            else if (this.center) {
                 this.offsetX = focus.x - this.halfWidth();
                 this.offsetY = focus.y - this.halfHeight();
             }
+            else {
+                this.offsetX = focus.x;
+                this.offsetY = focus.y;
+            }
         }
-        if (this.lockX) {
+        if (this.lockX && map) {
             this.offsetX = GWU.clamp(this.offsetX, 0, map.width - this.bounds.width);
         }
-        if (this.lockY) {
+        if (this.lockY && map) {
             this.offsetY = GWU.clamp(this.offsetY, 0, map.height - this.bounds.height);
         }
     }
+    drawFor(subject) {
+        if (!subject.map)
+            throw new Error('No map!');
+        return this.draw(subject.memory || subject.map, subject.fov);
+    }
     draw(map, fov) {
-        if (!map)
-            return false;
+        if (!map) {
+            if (!this._follow)
+                throw new Error('Either map or follow must be set.');
+            return this.drawFor(this._follow);
+        }
         // if (!map.hasMapFlag(GWM.flags.Map.MAP_CHANGED)) return false;
-        this.updateOffset(map, this.follow);
+        this.updateOffset(this._follow, map);
         const mixer = new GWU.sprite.Mixer();
         for (let x = 0; x < this.bounds.width; ++x) {
             for (let y = 0; y < this.bounds.height; ++y) {
                 const mapX = x + this.offsetX;
                 const mapY = y + this.offsetY;
                 if (map.hasXY(mapX, mapY)) {
-                    const cell = map.cell(x, y);
+                    const cell = map.cell(mapX, mapY);
                     map.drawer.drawCell(mixer, cell, fov);
                 }
                 else {

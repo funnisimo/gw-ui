@@ -1,6 +1,6 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import { UIType } from '../ts/types';
+import { UICore } from '../ts/types';
 
 // export const rnd = jest.fn();
 // export const counts = new Array(100).fill(0);
@@ -81,7 +81,7 @@ export function mockItem(): GWM.item.Item {
     return item;
 }
 
-export function mockUI(width = 100, height = 38): UIType {
+export function mockUI(width = 100, height = 38): UICore {
     return {
         buffer: new GWU.canvas.DataBuffer(width, height),
         loop: GWU.loop,
@@ -89,5 +89,5 @@ export function mockUI(width = 100, height = 38): UIType {
         startDialog: jest.fn(),
         finishDialog: jest.fn(),
         resetDialogBuffer: jest.fn(),
-    } as UIType;
+    } as UICore;
 }

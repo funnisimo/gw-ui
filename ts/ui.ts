@@ -1,12 +1,12 @@
 import * as GWU from 'gw-utils';
-import { UIType } from './types';
+import { UICore } from './types';
 
 export interface UIOptions {
     canvas: GWU.canvas.BaseCanvas;
     loop: GWU.io.Loop;
 }
 
-export class UI implements UIType {
+export class UI implements UICore {
     buffer: GWU.canvas.Buffer;
     canvas: GWU.canvas.BaseCanvas;
     loop: GWU.io.Loop;

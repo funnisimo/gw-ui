@@ -3,12 +3,12 @@ import * as GWM from 'gw-map';
 import * as UTILS from '../test/utils';
 
 import * as Flavor from './flavor';
-import { UIType } from './types';
+import { UICore } from './types';
 
 describe('Flavor', () => {
     describe('getFlavorText', () => {
         let map: GWM.map.Map;
-        let ui: UIType;
+        let ui: UICore;
         let flavor: Flavor.Flavor;
         let fov: GWU.fov.FovSystem;
 

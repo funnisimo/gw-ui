@@ -3,10 +3,10 @@ import * as UTILS from '../test/utils';
 import * as GWM from 'gw-map';
 import * as GWU from 'gw-utils';
 import * as Sidebar from './sidebar';
-import { UIType } from './types';
+import { UICore } from './types';
 
 describe('Sidebar', () => {
-    let ui: UIType;
+    let ui: UICore;
     let sidebar: Sidebar.Sidebar;
 
     beforeAll(() => {

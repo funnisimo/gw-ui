@@ -1,12 +1,12 @@
 import * as GWU from 'gw-utils';
-import { UIType } from './types';
+import { UICore } from './types';
 
 export interface MessageOptions {
     x: number;
     y: number;
     width?: number;
     height?: number;
-    ui: UIType;
+    ui: UICore;
     bg?: GWU.color.ColorBase;
     fg?: GWU.color.ColorBase;
 }
@@ -14,7 +14,7 @@ export interface MessageOptions {
 export class Messages {
     bounds: GWU.xy.Bounds;
     cache: GWU.message.MessageCache;
-    ui: UIType;
+    ui: UICore;
     bg: GWU.color.Color;
     fg: GWU.color.Color;
 

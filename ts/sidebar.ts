@@ -1,7 +1,7 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 
-import { UIType } from './types';
+import { UICore, UISubject } from './types';
 
 GWU.color.install('blueBar', 15, 10, 50);
 GWU.color.install('redBar', 45, 10, 15);
@@ -9,7 +9,7 @@ GWU.color.install('purpleBar', 50, 0, 50);
 GWU.color.install('greenBar', 10, 50, 10);
 
 export interface SidebarOptions {
-    ui: UIType;
+    ui: UICore;
     x: number;
     y: number;
     width: number;
@@ -68,7 +68,7 @@ export class CellEntry extends EntryBase {
 export type SidebarEntry = ActorEntry | ItemEntry | CellEntry;
 
 export class Sidebar implements GWM.entity.StatusDrawer {
-    ui: UIType;
+    ui: UICore;
     bounds: GWU.xy.Bounds;
     cellCache: GWM.map.CellInfoType[] = [];
     lastX = -1;
@@ -80,6 +80,7 @@ export class Sidebar implements GWM.entity.StatusDrawer {
     mixer: GWU.sprite.Mixer = new GWU.sprite.Mixer();
     currentY = 0;
     currentPriority = -1;
+    follow: UISubject | null = null;
 
     constructor(opts: SidebarOptions) {
         this.ui = opts.ui;
@@ -139,7 +140,7 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         map: GWM.map.Map,
         x: number,
         y: number,
-        fov?: GWU.fov.FovSystem
+        fov?: GWU.fov.FovTracker
     ): number {
         if (!fov) {
             return map.cell(x, y).hasCellFlag(GWM.flags.Cell.STABLE_MEMORY)
@@ -161,7 +162,7 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         map: GWM.map.Map,
         x: number,
         y: number,
-        fov?: GWU.fov.FovSystem
+        fov?: GWU.fov.FovTracker
     ): boolean {
         const priority = this.getPriority(map, actor.x, actor.y, fov);
         if (priority < 0) return false;
@@ -179,7 +180,7 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         map: GWM.map.Map,
         x: number,
         y: number,
-        fov?: GWU.fov.FovSystem
+        fov?: GWU.fov.FovTracker
     ): boolean {
         const priority = this.getPriority(map, item.x, item.y, fov);
         if (priority < 0) return false;
@@ -197,7 +198,7 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         map: GWM.map.Map,
         x: number,
         y: number,
-        fov?: GWU.fov.FovSystem
+        fov?: GWU.fov.FovTracker
     ): boolean {
         const priority = this.getPriority(map, cell.x, cell.y, fov);
         if (priority < 0) return false;
@@ -214,7 +215,7 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         map: GWM.map.Map,
         cx: number,
         cy: number,
-        fov?: GWU.fov.FovSystem
+        fov?: GWU.fov.FovTracker
     ) {
         if (map === this.lastMap && cx === this.lastX && cy === this.lastY)
             return;
@@ -273,14 +274,36 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         );
     }
 
+    drawFor(subject: UISubject): boolean {
+        return this.draw(
+            subject.memory || subject.map,
+            subject.x,
+            subject.y,
+            subject.fov
+        );
+    }
+
+    draw(): boolean;
     draw(
         map: GWM.map.Map,
         cx: number,
         cy: number,
-        fov?: GWU.fov.FovSystem
+        fov?: GWU.fov.FovTracker
+    ): boolean;
+    draw(
+        map?: GWM.map.Map,
+        cx?: number,
+        cy?: number,
+        fov?: GWU.fov.FovTracker
     ): boolean {
-        this.updateCellCache(map);
-        this.findEntries(map, cx, cy, fov);
+        if (arguments.length < 3) {
+            if (this.follow) {
+                return this.drawFor(this.follow);
+            }
+            throw new Error('Not following a subject - map, cx, cy required.');
+        }
+        this.updateCellCache(map!);
+        this.findEntries(map!, cx!, cy!, fov);
         this.clearSidebar();
 
         this.currentY = this.bounds.y;

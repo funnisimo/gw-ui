@@ -1,6 +1,6 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import { UIType } from './types';
+import { UICore } from './types';
 
 export type ViewFilterFn = (
     mixer: GWU.sprite.Mixer,
@@ -11,7 +11,7 @@ export type ViewFilterFn = (
 
 export interface ViewportOptions {
     snap?: boolean;
-    ui: UIType;
+    ui: UICore;
     x: number;
     y: number;
     width: number;
@@ -23,7 +23,7 @@ export interface ViewportOptions {
 }
 
 export class Viewport {
-    ui: UIType;
+    ui: UICore;
     follow: GWU.xy.XY | null = null;
     snap = false;
     bounds: GWU.xy.Bounds;

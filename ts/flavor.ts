@@ -1,12 +1,12 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import { UIType } from './types';
+import { UICore } from './types';
 
 GWU.color.install('flavorText', 50, 40, 90);
 GWU.color.install('flavorPrompt', 100, 90, 20);
 
 export interface FlavorOptions {
-    ui: UIType;
+    ui: UICore;
     x: number;
     y: number;
     width: number;
@@ -16,7 +16,7 @@ export interface FlavorOptions {
 }
 
 export class Flavor {
-    ui: UIType;
+    ui: UICore;
     bounds: GWU.xy.Bounds;
     text: string = '';
     needsUpdate = false;

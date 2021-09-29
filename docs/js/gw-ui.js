@@ -480,6 +480,7 @@
             this.mixer = new GWU__namespace.sprite.Mixer();
             this.currentY = 0;
             this.currentPriority = -1;
+            this.follow = null;
             this.ui = opts.ui;
             this.bounds = new GWU__namespace.xy.Bounds(opts.x, opts.y, opts.width, opts.height);
             this.bg = GWU__namespace.color.from(opts.bg || 'black');
@@ -607,7 +608,16 @@
         clearSidebar() {
             this.ui.buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, 0, 0, this.bg);
         }
+        drawFor(subject) {
+            return this.draw(subject.memory || subject.map, subject.x, subject.y, subject.fov);
+        }
         draw(map, cx, cy, fov) {
+            if (arguments.length < 3) {
+                if (this.follow) {
+                    return this.drawFor(this.follow);
+                }
+                throw new Error('Not following a subject - map, cx, cy required.');
+            }
             this.updateCellCache(map);
             this.findEntries(map, cx, cy, fov);
             this.clearSidebar();

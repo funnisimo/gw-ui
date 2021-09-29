@@ -39,8 +39,10 @@ for (let i = 0; i < 20; ++i) {
 
 const player = GWM.actor.from({ ch: '@', fg: 'white', name: 'Actor' });
 map.addActor(1, 1, player);
+
+sidebar.follow = player;
 viewport.draw(map);
-sidebar.draw(map, player.x, player.y);
+sidebar.draw();
 ui.render();
 
 LOOP.run({
@@ -49,7 +51,7 @@ LOOP.run({
         map.removeActor(player);
         map.addActor(viewport.toMapX(e.x), viewport.toMapY(e.y), player);
         viewport.draw(map);
-        sidebar.draw(map, player.x, player.y);
+        sidebar.draw();
         ui.render();
     },
 });
@@ -101,10 +103,11 @@ for (let i = 0; i < 20; ++i) {
 map.addActor(1, 1, player);
 const memory = player.memory;
 const fov = player.fov;
+sidebar.follow = player;
 fov.update(player.x, player.y, 5);
 
 viewport.draw(memory);
-sidebar.draw(memory, player.x, player.y, fov);
+sidebar.draw();
 ui.render();
 
 LOOP.run({
@@ -114,7 +117,7 @@ LOOP.run({
         map.addActor(viewport.toMapX(e.x), viewport.toMapY(e.y), player);
         fov.update(player.x, player.y, 5);
         viewport.draw(memory, fov);
-        sidebar.draw(memory, player.x, player.y, fov);
+        sidebar.draw();
         ui.render();
     },
 });

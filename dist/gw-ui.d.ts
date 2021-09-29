@@ -1,7 +1,7 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 
-interface UIType {
+interface UICore {
     buffer: GWU.canvas.DataBuffer;
     loop: GWU.io.Loop;
     render(): void;
@@ -9,12 +9,19 @@ interface UIType {
     resetDialogBuffer(dest: GWU.canvas.Buffer): void;
     finishDialog(): void;
 }
+interface UISubject {
+    readonly map: GWM.map.Map;
+    readonly x: number;
+    readonly y: number;
+    readonly fov?: GWU.fov.FovTracker;
+    readonly memory?: GWM.memory.Memory;
+}
 
 interface UIOptions {
     canvas: GWU.canvas.BaseCanvas;
     loop: GWU.io.Loop;
 }
-declare class UI implements UIType {
+declare class UI implements UICore {
     buffer: GWU.canvas.Buffer;
     canvas: GWU.canvas.BaseCanvas;
     loop: GWU.io.Loop;
@@ -33,14 +40,14 @@ interface MessageOptions {
     y: number;
     width?: number;
     height?: number;
-    ui: UIType;
+    ui: UICore;
     bg?: GWU.color.ColorBase;
     fg?: GWU.color.ColorBase;
 }
 declare class Messages {
     bounds: GWU.xy.Bounds;
     cache: GWU.message.MessageCache;
-    ui: UIType;
+    ui: UICore;
     bg: GWU.color.Color;
     fg: GWU.color.Color;
     constructor(opts: MessageOptions);
@@ -56,7 +63,7 @@ declare class Messages {
 declare type ViewFilterFn = (mixer: GWU.sprite.Mixer, x: number, y: number, map: GWM.map.Map) => void;
 interface ViewportOptions {
     snap?: boolean;
-    ui: UIType;
+    ui: UICore;
     x: number;
     y: number;
     width: number;
@@ -67,7 +74,7 @@ interface ViewportOptions {
     lock?: boolean;
 }
 declare class Viewport {
-    ui: UIType;
+    ui: UICore;
     follow: GWU.xy.XY | null;
     snap: boolean;
     bounds: GWU.xy.Bounds;
@@ -90,7 +97,7 @@ declare class Viewport {
 }
 
 interface FlavorOptions {
-    ui: UIType;
+    ui: UICore;
     x: number;
     y: number;
     width: number;
@@ -99,7 +106,7 @@ interface FlavorOptions {
     promptFg?: GWU.color.ColorBase;
 }
 declare class Flavor {
-    ui: UIType;
+    ui: UICore;
     bounds: GWU.xy.Bounds;
     text: string;
     needsUpdate: boolean;
@@ -117,7 +124,7 @@ declare class Flavor {
 }
 
 interface SidebarOptions {
-    ui: UIType;
+    ui: UICore;
     x: number;
     y: number;
     width: number;
@@ -148,7 +155,7 @@ declare class CellEntry extends EntryBase {
 }
 declare type SidebarEntry = ActorEntry | ItemEntry | CellEntry;
 declare class Sidebar implements GWM.entity.StatusDrawer {
-    ui: UIType;
+    ui: UICore;
     bounds: GWU.xy.Bounds;
     cellCache: GWM.map.CellInfoType[];
     lastX: number;
@@ -160,6 +167,7 @@ declare class Sidebar implements GWM.entity.StatusDrawer {
     mixer: GWU.sprite.Mixer;
     currentY: number;
     currentPriority: number;
+    follow: UISubject | null;
     constructor(opts: SidebarOptions);
     get buffer(): GWU.canvas.DataBuffer;
     contains(x: number, y: number): boolean;
@@ -167,16 +175,18 @@ declare class Sidebar implements GWM.entity.StatusDrawer {
     makeActorEntry(actor: GWM.actor.Actor): ActorEntry;
     makeItemEntry(item: GWM.item.Item): ItemEntry;
     makeCellEntry(cell: GWM.map.CellInfoType): CellEntry;
-    getPriority(map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovSystem): number;
-    addActor(actor: GWM.actor.Actor, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovSystem): boolean;
-    addItem(item: GWM.item.Item, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovSystem): boolean;
-    addCell(cell: GWM.map.CellInfoType, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovSystem): boolean;
-    findEntries(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovSystem): void;
+    getPriority(map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): number;
+    addActor(actor: GWM.actor.Actor, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): boolean;
+    addItem(item: GWM.item.Item, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): boolean;
+    addCell(cell: GWM.map.CellInfoType, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): boolean;
+    findEntries(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovTracker): void;
     clearSidebar(): void;
-    draw(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovSystem): boolean;
+    drawFor(subject: UISubject): boolean;
+    draw(): boolean;
+    draw(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovTracker): boolean;
     drawTitle(cell: GWU.sprite.Mixer, title: string, fg?: GWU.color.ColorBase): void;
     drawTextLine(text: string, fg?: GWU.color.ColorBase): void;
     drawProgressBar(val: number, max: number, text: string, color?: GWU.color.ColorBase, bg?: GWU.color.ColorBase, fg?: GWU.color.ColorBase): void;
 }
 
-export { ActorEntry, CellEntry, EntryBase, Flavor, FlavorOptions, ItemEntry, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UIOptions, UIType, ViewFilterFn, Viewport, ViewportOptions };
+export { ActorEntry, CellEntry, EntryBase, Flavor, FlavorOptions, ItemEntry, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions };

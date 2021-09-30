@@ -36,8 +36,8 @@ export class Messages {
         this.fg = GWU.color.from(opts.fg || 'white');
     }
 
-    contains(x: number, y: number): boolean {
-        return this.bounds.contains(x, y);
+    contains(e: GWU.io.Event): boolean {
+        return this.bounds.contains(e.x, e.y);
     }
 
     get needsUpdate() {

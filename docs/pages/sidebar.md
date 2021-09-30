@@ -12,7 +12,14 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport({ x: 0, y: 4, width: 80, height: 34, ui });
+const viewport = new GWI.Viewport({
+    x: 0,
+    y: 4,
+    width: 80,
+    height: 34,
+    ui,
+    lock: true,
+});
 const sidebar = new GWI.Sidebar({
     x: 80,
     y: 0,
@@ -49,7 +56,7 @@ ui.render();
 
 LOOP.run({
     mousemove(e) {
-        if (!viewport.contains(e.x, e.y)) return;
+        if (!viewport.contains(e)) return;
         map.removeActor(player);
         map.addActor(viewport.toMapX(e.x), viewport.toMapY(e.y), player);
 
@@ -76,10 +83,18 @@ const player = GWM.actor.from({
     fg: 'white',
     name: 'Player',
     flags: 'HAS_MEMORY, IS_PLAYER, USES_FOV',
+    vision: 5,
 });
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport({ x: 0, y: 4, width: 80, height: 34, ui });
+const viewport = new GWI.Viewport({
+    x: 0,
+    y: 4,
+    width: 80,
+    height: 34,
+    ui,
+    lock: true,
+});
 const sidebar = new GWI.Sidebar({
     x: 80,
     y: 0,
@@ -103,7 +118,7 @@ for (let i = 0; i < 20; ++i) {
     map.setTile(x, y, tile);
 }
 
-map.addActor(1, 1, player);
+map.addActor(40, 17, player);
 
 const fov = player.fov;
 fov.update();
@@ -111,18 +126,40 @@ fov.update();
 sidebar.follow = player;
 viewport.follow = player;
 
-viewport.drawFor(player);
+viewport.draw();
 sidebar.draw();
 ui.render();
 
+let needsDraw = true;
 LOOP.run({
+    dir(e) {
+        sidebar.clearHighlight();
+        const newX = player.x + e.dir[0];
+        const newY = player.y + e.dir[1];
+        if (map.hasXY(newX, newY)) {
+            map.removeActor(player);
+            map.addActor(newX, newY, player);
+            fov.update();
+            needsDraw = true;
+        }
+    },
     mousemove(e) {
-        if (!viewport.contains(e.x, e.y)) return;
-        map.removeActor(player);
-        map.addActor(viewport.toMapX(e.x), viewport.toMapY(e.y), player);
-
-        fov.update();
-        viewport.drawFor(player);
+        if (sidebar.highlight) {
+            fov.clearCursor(sidebar.highlight.x, sidebar.highlight.y);
+            sidebar.clearHighlight();
+            needsDraw = true;
+        }
+        if (sidebar.contains(e)) {
+            if (sidebar.updateHighlight(e)) {
+                fov.setCursor(sidebar.highlight.x, sidebar.highlight.y);
+                needsDraw = true;
+            }
+        }
+    },
+    draw() {
+        if (!needsDraw) return;
+        needsDraw = false;
+        viewport.draw();
         sidebar.draw();
         ui.render();
     },

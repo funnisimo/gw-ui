@@ -87,8 +87,8 @@ export class Viewport {
         return y - this.bounds.y;
     }
 
-    contains(x: number, y: number): boolean {
-        return this.bounds.contains(x, y);
+    contains(e: GWU.io.Event): boolean {
+        return this.bounds.contains(e.x, e.y);
     }
 
     halfWidth(): number {

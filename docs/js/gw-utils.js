@@ -63,6 +63,14 @@
         a.splice(index, 1);
         return true;
     }
+    function arrayFindRight(a, fn) {
+        for (let i = a.length - 1; i >= 0; --i) {
+            const e = a[i];
+            if (fn(e))
+                return e;
+        }
+        return undefined;
+    }
     function sum(arr) {
         return arr.reduce((a, b) => a + b);
     }
@@ -2341,6 +2349,8 @@
         FovFlags[FovFlags["IN_FOV"] = fl(12)] = "IN_FOV";
         FovFlags[FovFlags["WAS_IN_FOV"] = fl(13)] = "WAS_IN_FOV";
         FovFlags[FovFlags["ALWAYS_VISIBLE"] = fl(14)] = "ALWAYS_VISIBLE";
+        FovFlags[FovFlags["IS_CURSOR"] = fl(15)] = "IS_CURSOR";
+        FovFlags[FovFlags["IS_HIGHLIGHTED"] = fl(16)] = "IS_HIGHLIGHTED";
         FovFlags[FovFlags["ANY_KIND_OF_VISIBLE"] = FovFlags.VISIBLE | FovFlags.CLAIRVOYANT_VISIBLE | FovFlags.TELEPATHIC_VISIBLE] = "ANY_KIND_OF_VISIBLE";
         FovFlags[FovFlags["IS_WAS_ANY_KIND_OF_VISIBLE"] = FovFlags.VISIBLE |
             FovFlags.WAS_VISIBLE |
@@ -2565,11 +2575,50 @@
             this._changed = v;
             this.needsUpdate = this.needsUpdate || v;
         }
+        // CURSOR
+        setCursor(x, y, keep = false) {
+            if (!keep) {
+                this.flags.update((f) => f & ~FovFlags.IS_CURSOR);
+            }
+            this.flags[x][y] |= FovFlags.IS_CURSOR;
+        }
+        clearCursor(x, y) {
+            if (x === undefined || y === undefined) {
+                this.flags.update((f) => f & ~FovFlags.IS_CURSOR);
+            }
+            else {
+                this.flags[x][y] &= ~FovFlags.IS_CURSOR;
+            }
+        }
+        isCursor(x, y) {
+            return !!(this.flags[x][y] & FovFlags.IS_CURSOR);
+        }
+        // HIGHLIGHT
+        setHighlight(x, y, keep = false) {
+            if (!keep) {
+                this.flags.update((f) => f & ~FovFlags.IS_HIGHLIGHTED);
+            }
+            this.flags[x][y] |= FovFlags.IS_HIGHLIGHTED;
+        }
+        clearHighlight(x, y) {
+            if (x === undefined || y === undefined) {
+                this.flags.update((f) => f & ~FovFlags.IS_HIGHLIGHTED);
+            }
+            else {
+                this.flags[x][y] &= ~FovFlags.IS_HIGHLIGHTED;
+            }
+        }
+        isHighlight(x, y) {
+            return !!(this.flags[x][y] & FovFlags.IS_HIGHLIGHTED);
+        }
+        // COPY
         copy(other) {
             this.flags.copy(other.flags);
             this.needsUpdate = other.needsUpdate;
             this._changed = other._changed;
         }
+        //////////////////////////
+        // UPDATE
         demoteCellVisibility(flag) {
             flag &= ~(FovFlags.WAS_ANY_KIND_OF_VISIBLE | FovFlags.WAS_IN_FOV);
             if (flag & FovFlags.IN_FOV) {
@@ -6621,6 +6670,7 @@ void main() {
     exports.WARN = WARN;
     exports.ZERO = ZERO;
     exports.arrayDelete = arrayDelete;
+    exports.arrayFindRight = arrayFindRight;
     exports.arraysIntersect = arraysIntersect;
     exports.blob = blob;
     exports.canvas = index$2;

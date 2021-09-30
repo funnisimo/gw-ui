@@ -61,7 +61,7 @@ ui.render();
 
 LOOP.run({
     mousemove(e) {
-        if (!viewport.contains(e.x, e.y)) return;
+        if (!viewport.contains(e)) return;
         const x = viewport.toMapX(e.x);
         const y = viewport.toMapY(e.y);
         map.removeActor(player);

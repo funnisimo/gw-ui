@@ -18,10 +18,14 @@ export interface SidebarOptions {
     bg?: GWU.color.ColorBase;
 }
 
-export class EntryBase {
+export abstract class EntryBase {
     dist = 0;
     priority = 0;
     changed = false;
+    sidebarY = -1;
+
+    abstract get x(): number;
+    abstract get y(): number;
 
     draw(_sidebar: Sidebar): void {}
 }
@@ -32,6 +36,13 @@ export class ActorEntry extends EntryBase {
     constructor(actor: GWM.actor.Actor) {
         super();
         this.actor = actor;
+    }
+
+    get x() {
+        return this.actor.x;
+    }
+    get y() {
+        return this.actor.y;
     }
 
     draw(sidebar: Sidebar): void {
@@ -47,6 +58,13 @@ export class ItemEntry extends EntryBase {
         this.item = item;
     }
 
+    get x() {
+        return this.item.x;
+    }
+    get y() {
+        return this.item.y;
+    }
+
     draw(sidebar: Sidebar): void {
         this.item.drawStatus(sidebar);
     }
@@ -58,6 +76,13 @@ export class CellEntry extends EntryBase {
     constructor(cell: GWM.map.CellInfoType) {
         super();
         this.cell = cell;
+    }
+
+    get x() {
+        return this.cell.x;
+    }
+    get y() {
+        return this.cell.y;
     }
 
     draw(sidebar: Sidebar): void {
@@ -79,8 +104,9 @@ export class Sidebar implements GWM.entity.StatusDrawer {
     bg: GWU.color.Color;
     mixer: GWU.sprite.Mixer = new GWU.sprite.Mixer();
     currentY = 0;
-    currentPriority = -1;
     follow: UISubject | null = null;
+    highlight: EntryBase | null = null;
+    currentEntry: EntryBase | null = null;
 
     constructor(opts: SidebarOptions) {
         this.ui = opts.ui;
@@ -98,8 +124,41 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         return this.ui.buffer;
     }
 
-    contains(x: number, y: number): boolean {
-        return this.bounds.contains(x, y);
+    contains(e: GWU.io.Event): boolean {
+        return this.bounds.contains(e.x, e.y);
+    }
+
+    toInnerY(y: number) {
+        return GWU.clamp(y - this.bounds.top, 0, this.bounds.height);
+    }
+
+    updateHighlight(e: GWU.io.Event): boolean {
+        if (!this.contains(e)) {
+            this.clearHighlight();
+            return false;
+        }
+        return this.highlightRow(this.toInnerY(e.y));
+    }
+
+    highlightRow(innerY: number) {
+        const y = GWU.clamp(innerY, 0, this.bounds.height);
+        this.highlight = null;
+        // processed in ascending y order
+        this.entries.forEach((e) => {
+            if (e.sidebarY <= y && e.sidebarY !== -1) {
+                this.highlight = e;
+            }
+        });
+        if (this.highlight) {
+            // @ts-ignore
+            this.highlight.highlight = true;
+            return true;
+        }
+        return false;
+    }
+
+    clearHighlight() {
+        this.highlight = null;
     }
 
     updateCellCache(map: GWM.map.Map) {
@@ -124,19 +183,19 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         map.clearMapFlag(GWM.flags.Map.MAP_SIDEBAR_TILES_CHANGED);
     }
 
-    makeActorEntry(actor: GWM.actor.Actor): ActorEntry {
+    _makeActorEntry(actor: GWM.actor.Actor): ActorEntry {
         return new ActorEntry(actor);
     }
 
-    makeItemEntry(item: GWM.item.Item): ItemEntry {
+    _makeItemEntry(item: GWM.item.Item): ItemEntry {
         return new ItemEntry(item);
     }
 
-    makeCellEntry(cell: GWM.map.CellInfoType): CellEntry {
+    _makeCellEntry(cell: GWM.map.CellInfoType): CellEntry {
         return new CellEntry(cell);
     }
 
-    getPriority(
+    _getPriority(
         map: GWM.map.Map,
         x: number,
         y: number,
@@ -157,17 +216,22 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         return -1; // not visible, or revealed
     }
 
-    addActor(
+    _isDim(entry: EntryBase): boolean {
+        if (entry === this.highlight) return false;
+        return !!this.highlight || entry.priority > 2;
+    }
+
+    _addActorEntry(
         actor: GWM.actor.Actor,
         map: GWM.map.Map,
         x: number,
         y: number,
         fov?: GWU.fov.FovTracker
     ): boolean {
-        const priority = this.getPriority(map, actor.x, actor.y, fov);
+        const priority = this._getPriority(map, actor.x, actor.y, fov);
         if (priority < 0) return false;
 
-        const entry = this.makeActorEntry(actor);
+        const entry = this._makeActorEntry(actor);
         entry.dist = GWU.xy.distanceBetween(x, y, actor.x, actor.y);
         entry.priority = actor.isPlayer() ? 0 : priority;
 
@@ -175,17 +239,17 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         return true;
     }
 
-    addItem(
+    _addItemEntry(
         item: GWM.item.Item,
         map: GWM.map.Map,
         x: number,
         y: number,
         fov?: GWU.fov.FovTracker
     ): boolean {
-        const priority = this.getPriority(map, item.x, item.y, fov);
+        const priority = this._getPriority(map, item.x, item.y, fov);
         if (priority < 0) return false;
 
-        const entry = this.makeItemEntry(item);
+        const entry = this._makeItemEntry(item);
         entry.dist = GWU.xy.distanceBetween(x, y, item.x, item.y);
         entry.priority = priority;
 
@@ -193,17 +257,17 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         return true;
     }
 
-    addCell(
+    _addCellEntry(
         cell: GWM.map.CellInfoType,
         map: GWM.map.Map,
         x: number,
         y: number,
         fov?: GWU.fov.FovTracker
     ): boolean {
-        const priority = this.getPriority(map, cell.x, cell.y, fov);
+        const priority = this._getPriority(map, cell.x, cell.y, fov);
         if (priority < 0) return false;
 
-        const entry = this.makeCellEntry(cell);
+        const entry = this._makeCellEntry(cell);
         entry.dist = GWU.xy.distanceBetween(x, y, cell.x, cell.y);
         entry.priority = priority;
 
@@ -220,6 +284,7 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         if (map === this.lastMap && cx === this.lastX && cy === this.lastY)
             return;
 
+        this.clearHighlight(); // If we are moving around the map, then turn off the highlight
         this.lastMap = map;
         this.lastX = cx;
         this.lastY = cy;
@@ -231,7 +296,7 @@ export class Sidebar implements GWM.entity.StatusDrawer {
             const x = a.x;
             const y = a.y;
             if (done[x][y]) return;
-            if (this.addActor(a, map, cx, cy, fov)) {
+            if (this._addActorEntry(a, map, cx, cy, fov)) {
                 done[x][y] = 1;
             }
         });
@@ -240,14 +305,14 @@ export class Sidebar implements GWM.entity.StatusDrawer {
             const x = i.x;
             const y = i.y;
             if (done[x][y]) return;
-            if (this.addItem(i, map, cx, cy, fov)) {
+            if (this._addItemEntry(i, map, cx, cy, fov)) {
                 done[x][y] = 1;
             }
         });
 
         this.cellCache.forEach((c) => {
             if (done[c.x][c.y]) return;
-            if (this.addCell(c, map, cx, cy, fov)) {
+            if (this._addCellEntry(c, map, cx, cy, fov)) {
                 done[c.x][c.y] = 1;
             }
         });
@@ -307,20 +372,22 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         this.clearSidebar();
 
         this.currentY = this.bounds.y;
-        this.currentPriority = -1;
+
+        // clear the row information
+        this.entries.forEach((e) => (e.sidebarY = -1));
 
         for (
             let i = 0;
             i < this.entries.length && this.currentY < this.bounds.bottom;
             ++i
         ) {
-            const entry = this.entries[i];
-            this.currentPriority = entry.priority;
-            entry.draw(this);
+            this.currentEntry = this.entries[i];
+            this.currentEntry.sidebarY = this.currentY;
+            this.currentEntry.draw(this);
             ++this.currentY; // skip a line
         }
 
-        this.currentPriority = -1;
+        this.currentEntry = null;
         return true;
     }
 
@@ -330,7 +397,9 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         fg?: GWU.color.ColorBase
     ): void {
         fg = GWU.color.from(fg || this.fg);
-        const fgColor = this.currentPriority < 3 ? fg : fg.clone().darken(50);
+        const fgColor = this._isDim(this.currentEntry!)
+            ? fg.clone().darken(50)
+            : fg;
         this.buffer.drawSprite(this.bounds.x + 1, this.currentY, cell);
         this.buffer.wrapText(
             this.bounds.x + 3,
@@ -343,7 +412,9 @@ export class Sidebar implements GWM.entity.StatusDrawer {
     }
     drawTextLine(text: string, fg?: GWU.color.ColorBase): void {
         fg = GWU.color.from(fg || this.fg);
-        const fgColor = this.currentPriority < 3 ? fg : fg.clone().darken(50);
+        const fgColor = this._isDim(this.currentEntry!)
+            ? fg.clone().darken(50)
+            : fg;
         this.buffer.drawText(
             this.bounds.x + 3,
             this.currentY,
@@ -365,7 +436,7 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         bg = GWU.color.from(bg || color.clone().darken(50));
         fg = GWU.color.from(fg || color.clone().lighten(50));
 
-        if (this.currentPriority < 3) {
+        if (this._isDim(this.currentEntry!)) {
             bg.darken(50);
             fg.darken(50);
             color.darken(50);

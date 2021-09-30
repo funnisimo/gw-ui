@@ -27,7 +27,7 @@ ui.render();
 
 LOOP.run({
     async mousemove(e) {
-        if (!viewport.contains(e.x, e.y)) return;
+        if (!viewport.contains(e)) return;
         const mapX = viewport.toMapX(e.x);
         const mapY = viewport.toMapY(e.y);
         const text = flavor.getFlavorText(map, mapX, mapY);

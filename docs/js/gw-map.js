@@ -213,8 +213,6 @@
         Cell[Cell["HAS_ACTOR"] = Fl$3(27)] = "HAS_ACTOR";
         Cell[Cell["HAS_DORMANT_MONSTER"] = Fl$3(18)] = "HAS_DORMANT_MONSTER";
         Cell[Cell["HAS_ITEM"] = Fl$3(19)] = "HAS_ITEM";
-        Cell[Cell["IS_IN_PATH"] = Fl$3(20)] = "IS_IN_PATH";
-        Cell[Cell["IS_CURSOR"] = Fl$3(21)] = "IS_CURSOR";
         Cell[Cell["HAS_TICK_EFFECT"] = Fl$3(22)] = "HAS_TICK_EFFECT";
         Cell[Cell["IS_WIRED"] = Fl$3(26)] = "IS_WIRED";
         Cell[Cell["IS_CIRCUIT_BREAKER"] = Fl$3(27)] = "IS_CIRCUIT_BREAKER";
@@ -2263,7 +2261,7 @@
             item.addToMap(this.map, this.x, this.y);
             this.map.items.push(item);
             this.needsRedraw = true;
-            this.clearCellFlag(Cell$1.STABLE_SNAPSHOT);
+            // this.clearCellFlag(Flags.Cell.STABLE_SNAPSHOT);
             if (withEffects) {
                 if (item.key &&
                     item.key.matches(this.x, this.y) &&
@@ -2302,7 +2300,7 @@
             this.map.items.splice(foundIndex, 1); // delete the item
             item.removeFromMap();
             this.needsRedraw = true;
-            this.clearCellFlag(Cell$1.STABLE_SNAPSHOT);
+            // this.clearCellFlag(Flags.Cell.STABLE_SNAPSHOT);
             if (withEffects) {
                 if (item.isKey(this.x, this.y) && this.hasEffect('no_key')) {
                     const tile = this.tileWithEffect('no_key');
@@ -2344,7 +2342,7 @@
             actor.addToMap(this.map, this.x, this.y);
             this.map.actors.push(actor);
             this.needsRedraw = true;
-            this.clearCellFlag(Cell$1.STABLE_SNAPSHOT);
+            // this.clearCellFlag(Flags.Cell.STABLE_SNAPSHOT);
             if (withEffects) {
                 if (actor.isKey(this.x, this.y) && this.hasEffect('key')) {
                     const tile = this.tileWithEffect('key');
@@ -2396,7 +2394,7 @@
             actor.removeFromMap();
             this.map.actors.splice(foundIndex, 1); // delete the actor
             this.needsRedraw = true;
-            this.clearCellFlag(Cell$1.STABLE_SNAPSHOT);
+            // this.clearCellFlag(Flags.Cell.STABLE_SNAPSHOT);
             if (withEffects) {
                 if (actor.isKey(this.x, this.y) && this.hasEffect('no_key')) {
                     const tile = this.tileWithEffect('no_key');
@@ -2794,9 +2792,9 @@
         }
         drawCell(dest, cell, fov) {
             dest.blackOut();
-            const isVisible = fov ? fov.isAnyKindOfVisible(cell.x, cell.y) : true;
+            // const isVisible = fov ? fov.isAnyKindOfVisible(cell.x, cell.y) : true;
             const needSnapshot = !cell.hasCellFlag(Cell$1.STABLE_SNAPSHOT);
-            if (needSnapshot || (cell.needsRedraw && isVisible)) {
+            if (cell.needsRedraw || needSnapshot) {
                 this.getAppearance(dest, cell);
                 cell.putSnapshot(dest);
                 cell.needsRedraw = false;
@@ -2806,7 +2804,8 @@
                 cell.getSnapshot(dest);
             }
             this.applyLight(dest, cell, fov);
-            if (cell.hasEntityFlag(Entity$1.L_VISUALLY_DISTINCT)) {
+            if (cell.hasEntityFlag(Entity$1.L_VISUALLY_DISTINCT |
+                Entity$1.L_LIST_IN_SIDEBAR, true)) {
                 GWU__namespace.color.separate(dest.fg, dest.bg);
             }
             return true;
@@ -2877,17 +2876,20 @@
         applyLight(dest, cell, fov) {
             const isVisible = !fov || fov.isAnyKindOfVisible(cell.x, cell.y);
             const isRevealed = !fov || fov.isRevealed(cell.x, cell.y);
-            if (isVisible) {
-                const light = cell.map.light.getLight(cell.x, cell.y);
-                dest.multiply(light);
-                // TODO - is Clairy
-                // TODO - is Telepathy
+            const light = cell.map.light.getLight(cell.x, cell.y);
+            dest.multiply(light);
+            // TODO - is Clairy
+            // TODO - is Telepathy
+            if (fov && fov.isCursor(cell.x, cell.y)) {
+                dest.invert();
             }
-            else if (isRevealed) {
-                dest.scale(50);
-            }
-            else {
-                dest.blackOut();
+            else if (!isVisible) {
+                if (isRevealed) {
+                    dest.scale(50);
+                }
+                else {
+                    dest.blackOut();
+                }
             }
         }
     }
@@ -3481,7 +3483,7 @@
             this.actors.forEach(cb);
         }
         storeMemory(x, y) {
-            const mem = this.memory(x, y);
+            const mem = this.cells[x][y];
             const currentList = mem.hasEntityFlag(Entity$1.L_LIST_IN_SIDEBAR, true);
             // cleanup any old items+actors
             if (mem.hasItem()) {
@@ -3493,13 +3495,16 @@
             const cell = this.source.cell(x, y);
             mem.copy(cell);
             mem.setCellFlag(Cell$1.STABLE_MEMORY);
+            mem.map = this; // so that drawing this cell results in using the right map
             let newList = mem.hasEntityFlag(Entity$1.L_LIST_IN_SIDEBAR);
             // add any current items+actors
             if (cell.hasItem()) {
                 const item = this.source.itemAt(x, y);
                 if (item) {
-                    this.items.push(item.clone());
-                    if (item.hasEntityFlag(Entity$1.L_LIST_IN_SIDEBAR)) {
+                    const copy = item.clone();
+                    copy._map = this; // memory is map
+                    this.items.push(copy);
+                    if (copy.hasEntityFlag(Entity$1.L_LIST_IN_SIDEBAR)) {
                         newList = true;
                     }
                 }
@@ -3507,8 +3512,10 @@
             if (cell.hasActor()) {
                 const actor = this.source.actorAt(x, y);
                 if (actor) {
-                    this.actors.push(actor.clone());
-                    if (actor.hasEntityFlag(Entity$1.L_LIST_IN_SIDEBAR)) {
+                    const copy = actor.clone();
+                    copy._map = this; // memory is map
+                    this.actors.push(copy);
+                    if (copy.hasEntityFlag(Entity$1.L_LIST_IN_SIDEBAR)) {
                         newList = true;
                     }
                 }

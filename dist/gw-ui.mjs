@@ -53,8 +53,8 @@ class Messages {
         this.bg = GWU.color.from(opts.bg || 'black');
         this.fg = GWU.color.from(opts.fg || 'white');
     }
-    contains(x, y) {
-        return this.bounds.contains(x, y);
+    contains(e) {
+        return this.bounds.contains(e.x, e.y);
     }
     get needsUpdate() {
         return this.cache.needsUpdate;
@@ -211,8 +211,8 @@ class Viewport {
     toInnerY(y) {
         return y - this.bounds.y;
     }
-    contains(x, y) {
-        return this.bounds.contains(x, y);
+    contains(e) {
+        return this.bounds.contains(e.x, e.y);
     }
     halfWidth() {
         return Math.floor(this.bounds.width / 2);
@@ -450,6 +450,7 @@ class EntryBase {
         this.dist = 0;
         this.priority = 0;
         this.changed = false;
+        this.sidebarY = -1;
     }
     draw(_sidebar) { }
 }
@@ -457,6 +458,12 @@ class ActorEntry extends EntryBase {
     constructor(actor) {
         super();
         this.actor = actor;
+    }
+    get x() {
+        return this.actor.x;
+    }
+    get y() {
+        return this.actor.y;
     }
     draw(sidebar) {
         this.actor.drawStatus(sidebar);
@@ -467,6 +474,12 @@ class ItemEntry extends EntryBase {
         super();
         this.item = item;
     }
+    get x() {
+        return this.item.x;
+    }
+    get y() {
+        return this.item.y;
+    }
     draw(sidebar) {
         this.item.drawStatus(sidebar);
     }
@@ -475,6 +488,12 @@ class CellEntry extends EntryBase {
     constructor(cell) {
         super();
         this.cell = cell;
+    }
+    get x() {
+        return this.cell.x;
+    }
+    get y() {
+        return this.cell.y;
     }
     draw(sidebar) {
         this.cell.drawStatus(sidebar);
@@ -489,8 +508,9 @@ class Sidebar {
         this.entries = [];
         this.mixer = new GWU.sprite.Mixer();
         this.currentY = 0;
-        this.currentPriority = -1;
         this.follow = null;
+        this.highlight = null;
+        this.currentEntry = null;
         this.ui = opts.ui;
         this.bounds = new GWU.xy.Bounds(opts.x, opts.y, opts.width, opts.height);
         this.bg = GWU.color.from(opts.bg || 'black');
@@ -499,8 +519,37 @@ class Sidebar {
     get buffer() {
         return this.ui.buffer;
     }
-    contains(x, y) {
-        return this.bounds.contains(x, y);
+    contains(e) {
+        return this.bounds.contains(e.x, e.y);
+    }
+    toInnerY(y) {
+        return GWU.clamp(y - this.bounds.top, 0, this.bounds.height);
+    }
+    updateHighlight(e) {
+        if (!this.contains(e)) {
+            this.clearHighlight();
+            return false;
+        }
+        return this.highlightRow(this.toInnerY(e.y));
+    }
+    highlightRow(innerY) {
+        const y = GWU.clamp(innerY, 0, this.bounds.height);
+        this.highlight = null;
+        // processed in ascending y order
+        this.entries.forEach((e) => {
+            if (e.sidebarY <= y && e.sidebarY !== -1) {
+                this.highlight = e;
+            }
+        });
+        if (this.highlight) {
+            // @ts-ignore
+            this.highlight.highlight = true;
+            return true;
+        }
+        return false;
+    }
+    clearHighlight() {
+        this.highlight = null;
     }
     updateCellCache(map) {
         if (this.lastMap &&
@@ -518,16 +567,16 @@ class Sidebar {
         });
         map.clearMapFlag(GWM.flags.Map.MAP_SIDEBAR_TILES_CHANGED);
     }
-    makeActorEntry(actor) {
+    _makeActorEntry(actor) {
         return new ActorEntry(actor);
     }
-    makeItemEntry(item) {
+    _makeItemEntry(item) {
         return new ItemEntry(item);
     }
-    makeCellEntry(cell) {
+    _makeCellEntry(cell) {
         return new CellEntry(cell);
     }
-    getPriority(map, x, y, fov) {
+    _getPriority(map, x, y, fov) {
         if (!fov) {
             return map.cell(x, y).hasCellFlag(GWM.flags.Cell.STABLE_MEMORY)
                 ? 3
@@ -544,31 +593,36 @@ class Sidebar {
         }
         return -1; // not visible, or revealed
     }
-    addActor(actor, map, x, y, fov) {
-        const priority = this.getPriority(map, actor.x, actor.y, fov);
+    _isDim(entry) {
+        if (entry === this.highlight)
+            return false;
+        return !!this.highlight || entry.priority > 2;
+    }
+    _addActorEntry(actor, map, x, y, fov) {
+        const priority = this._getPriority(map, actor.x, actor.y, fov);
         if (priority < 0)
             return false;
-        const entry = this.makeActorEntry(actor);
+        const entry = this._makeActorEntry(actor);
         entry.dist = GWU.xy.distanceBetween(x, y, actor.x, actor.y);
         entry.priority = actor.isPlayer() ? 0 : priority;
         this.entries.push(entry);
         return true;
     }
-    addItem(item, map, x, y, fov) {
-        const priority = this.getPriority(map, item.x, item.y, fov);
+    _addItemEntry(item, map, x, y, fov) {
+        const priority = this._getPriority(map, item.x, item.y, fov);
         if (priority < 0)
             return false;
-        const entry = this.makeItemEntry(item);
+        const entry = this._makeItemEntry(item);
         entry.dist = GWU.xy.distanceBetween(x, y, item.x, item.y);
         entry.priority = priority;
         this.entries.push(entry);
         return true;
     }
-    addCell(cell, map, x, y, fov) {
-        const priority = this.getPriority(map, cell.x, cell.y, fov);
+    _addCellEntry(cell, map, x, y, fov) {
+        const priority = this._getPriority(map, cell.x, cell.y, fov);
         if (priority < 0)
             return false;
-        const entry = this.makeCellEntry(cell);
+        const entry = this._makeCellEntry(cell);
         entry.dist = GWU.xy.distanceBetween(x, y, cell.x, cell.y);
         entry.priority = priority;
         this.entries.push(entry);
@@ -577,6 +631,7 @@ class Sidebar {
     findEntries(map, cx, cy, fov) {
         if (map === this.lastMap && cx === this.lastX && cy === this.lastY)
             return;
+        this.clearHighlight(); // If we are moving around the map, then turn off the highlight
         this.lastMap = map;
         this.lastX = cx;
         this.lastY = cy;
@@ -587,7 +642,7 @@ class Sidebar {
             const y = a.y;
             if (done[x][y])
                 return;
-            if (this.addActor(a, map, cx, cy, fov)) {
+            if (this._addActorEntry(a, map, cx, cy, fov)) {
                 done[x][y] = 1;
             }
         });
@@ -596,14 +651,14 @@ class Sidebar {
             const y = i.y;
             if (done[x][y])
                 return;
-            if (this.addItem(i, map, cx, cy, fov)) {
+            if (this._addItemEntry(i, map, cx, cy, fov)) {
                 done[x][y] = 1;
             }
         });
         this.cellCache.forEach((c) => {
             if (done[c.x][c.y])
                 return;
-            if (this.addCell(c, map, cx, cy, fov)) {
+            if (this._addCellEntry(c, map, cx, cy, fov)) {
                 done[c.x][c.y] = 1;
             }
         });
@@ -632,26 +687,31 @@ class Sidebar {
         this.findEntries(map, cx, cy, fov);
         this.clearSidebar();
         this.currentY = this.bounds.y;
-        this.currentPriority = -1;
+        // clear the row information
+        this.entries.forEach((e) => (e.sidebarY = -1));
         for (let i = 0; i < this.entries.length && this.currentY < this.bounds.bottom; ++i) {
-            const entry = this.entries[i];
-            this.currentPriority = entry.priority;
-            entry.draw(this);
+            this.currentEntry = this.entries[i];
+            this.currentEntry.sidebarY = this.currentY;
+            this.currentEntry.draw(this);
             ++this.currentY; // skip a line
         }
-        this.currentPriority = -1;
+        this.currentEntry = null;
         return true;
     }
     drawTitle(cell, title, fg) {
         fg = GWU.color.from(fg || this.fg);
-        const fgColor = this.currentPriority < 3 ? fg : fg.clone().darken(50);
+        const fgColor = this._isDim(this.currentEntry)
+            ? fg.clone().darken(50)
+            : fg;
         this.buffer.drawSprite(this.bounds.x + 1, this.currentY, cell);
         this.buffer.wrapText(this.bounds.x + 3, this.currentY, this.bounds.width - 3, title, fgColor);
         ++this.currentY;
     }
     drawTextLine(text, fg) {
         fg = GWU.color.from(fg || this.fg);
-        const fgColor = this.currentPriority < 3 ? fg : fg.clone().darken(50);
+        const fgColor = this._isDim(this.currentEntry)
+            ? fg.clone().darken(50)
+            : fg;
         this.buffer.drawText(this.bounds.x + 3, this.currentY, text, fgColor, this.bounds.width - 3);
         ++this.currentY;
     }
@@ -659,7 +719,7 @@ class Sidebar {
         color = GWU.color.from(color || this.fg);
         bg = GWU.color.from(bg || color.clone().darken(50));
         fg = GWU.color.from(fg || color.clone().lighten(50));
-        if (this.currentPriority < 3) {
+        if (this._isDim(this.currentEntry)) {
             bg.darken(50);
             fg.darken(50);
             color.darken(50);

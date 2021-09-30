@@ -30,7 +30,7 @@ ui.render();
 
 LOOP.run({
     mousemove(e) {
-        if (!viewport.contains(e.x, e.y)) return;
+        if (!viewport.contains(e)) return;
         camera.x = Math.round(
             (map.width * viewport.toInnerX(e.x)) / (viewport.bounds.width - 1)
         );
@@ -78,7 +78,7 @@ ui.render();
 
 LOOP.run({
     mousemove(e) {
-        if (!viewport.contains(e.x, e.y)) return;
+        if (!viewport.contains(e)) return;
         camera.x = Math.round(
             (map.width * viewport.toInnerX(e.x)) / (viewport.bounds.width - 1)
         );

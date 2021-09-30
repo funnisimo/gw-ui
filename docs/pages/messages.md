@@ -35,7 +35,7 @@ const messages = new GWI.Messages({
 
 LOOP.run({
     async click(e) {
-        if (messages.contains(e.x, e.y)) {
+        if (messages.contains(e)) {
             await messages.showArchive();
         }
     },
@@ -67,7 +67,7 @@ const messages = new GWI.Messages({
 
 LOOP.run({
     async click(e) {
-        if (messages.contains(e.x, e.y)) {
+        if (messages.contains(e)) {
             await messages.showArchive();
         }
     },

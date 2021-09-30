@@ -51,7 +51,7 @@ declare class Messages {
     bg: GWU.color.Color;
     fg: GWU.color.Color;
     constructor(opts: MessageOptions);
-    contains(x: number, y: number): boolean;
+    contains(e: GWU.io.Event): boolean;
     get needsUpdate(): boolean;
     get buffer(): GWU.canvas.DataBuffer;
     draw(force?: boolean): boolean;
@@ -92,7 +92,7 @@ declare class Viewport {
     toMapY(y: number): number;
     toInnerX(x: number): number;
     toInnerY(y: number): number;
-    contains(x: number, y: number): boolean;
+    contains(e: GWU.io.Event): boolean;
     halfWidth(): number;
     halfHeight(): number;
     centerOn(x: number, y: number, map?: GWU.xy.Size): void;
@@ -137,25 +137,34 @@ interface SidebarOptions {
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
 }
-declare class EntryBase {
+declare abstract class EntryBase {
     dist: number;
     priority: number;
     changed: boolean;
+    sidebarY: number;
+    abstract get x(): number;
+    abstract get y(): number;
     draw(_sidebar: Sidebar): void;
 }
 declare class ActorEntry extends EntryBase {
     actor: GWM.actor.Actor;
     constructor(actor: GWM.actor.Actor);
+    get x(): number;
+    get y(): number;
     draw(sidebar: Sidebar): void;
 }
 declare class ItemEntry extends EntryBase {
     item: GWM.item.Item;
     constructor(item: GWM.item.Item);
+    get x(): number;
+    get y(): number;
     draw(sidebar: Sidebar): void;
 }
 declare class CellEntry extends EntryBase {
     cell: GWM.map.CellInfoType;
     constructor(cell: GWM.map.CellInfoType);
+    get x(): number;
+    get y(): number;
     draw(sidebar: Sidebar): void;
 }
 declare type SidebarEntry = ActorEntry | ItemEntry | CellEntry;
@@ -171,19 +180,25 @@ declare class Sidebar implements GWM.entity.StatusDrawer {
     bg: GWU.color.Color;
     mixer: GWU.sprite.Mixer;
     currentY: number;
-    currentPriority: number;
     follow: UISubject | null;
+    highlight: EntryBase | null;
+    currentEntry: EntryBase | null;
     constructor(opts: SidebarOptions);
     get buffer(): GWU.canvas.DataBuffer;
-    contains(x: number, y: number): boolean;
+    contains(e: GWU.io.Event): boolean;
+    toInnerY(y: number): number;
+    updateHighlight(e: GWU.io.Event): boolean;
+    highlightRow(innerY: number): boolean;
+    clearHighlight(): void;
     updateCellCache(map: GWM.map.Map): void;
-    makeActorEntry(actor: GWM.actor.Actor): ActorEntry;
-    makeItemEntry(item: GWM.item.Item): ItemEntry;
-    makeCellEntry(cell: GWM.map.CellInfoType): CellEntry;
-    getPriority(map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): number;
-    addActor(actor: GWM.actor.Actor, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): boolean;
-    addItem(item: GWM.item.Item, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): boolean;
-    addCell(cell: GWM.map.CellInfoType, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): boolean;
+    _makeActorEntry(actor: GWM.actor.Actor): ActorEntry;
+    _makeItemEntry(item: GWM.item.Item): ItemEntry;
+    _makeCellEntry(cell: GWM.map.CellInfoType): CellEntry;
+    _getPriority(map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): number;
+    _isDim(entry: EntryBase): boolean;
+    _addActorEntry(actor: GWM.actor.Actor, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): boolean;
+    _addItemEntry(item: GWM.item.Item, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): boolean;
+    _addCellEntry(cell: GWM.map.CellInfoType, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): boolean;
     findEntries(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovTracker): void;
     clearSidebar(): void;
     drawFor(subject: UISubject): boolean;

@@ -1287,7 +1287,11 @@
                 value.forEach((v) => {
                     if (typeof v == 'string') {
                         v = v.trim();
-                        if (v.startsWith('!')) {
+                        const parts = v.split(/[,|]/);
+                        if (parts.length > 1) {
+                            result = from$3(obj, result, parts);
+                        }
+                        else if (v.startsWith('!')) {
                             // @ts-ignore
                             const f = obj[v.substring(1)];
                             result &= ~f;
@@ -1320,23 +1324,7 @@
     function make$8(obj) {
         const out = {};
         Object.entries(obj).forEach(([key, value]) => {
-            if (typeof value === 'string') {
-                const parts = value.split(/[,|]/).map((t) => t.trim());
-                const flag = parts.reduce((result, id) => result | out[id], 0);
-                out[key] = flag;
-            }
-            else if (Array.isArray(value)) {
-                const flag = value.reduce((result, v) => {
-                    if (typeof v === 'string') {
-                        return result | out[v];
-                    }
-                    return result | v;
-                }, 0);
-                out[key] = flag;
-            }
-            else if (value) {
-                out[key] = value;
-            }
+            out[key] = from$3(out, value);
         });
         return out;
     }

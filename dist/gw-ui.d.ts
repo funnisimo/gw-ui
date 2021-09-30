@@ -209,4 +209,53 @@ declare class Sidebar implements GWM.entity.StatusDrawer {
     drawProgressBar(val: number, max: number, text: string, color?: GWU.color.ColorBase, bg?: GWU.color.ColorBase, fg?: GWU.color.ColorBase): void;
 }
 
-export { ActorEntry, CellEntry, EntryBase, Flavor, FlavorOptions, ItemEntry, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions };
+declare type ButtonFn = (button: Button) => Promise<boolean>;
+interface ButtonOptions {
+    text: string;
+    fn: ButtonFn;
+}
+declare class Button {
+    menu: Menu;
+    text: string;
+    fn: ButtonFn;
+    x: number;
+    hovered: boolean;
+    constructor(menu: Menu, opts: ButtonOptions);
+    contains(_e: GWU.io.Event): boolean;
+    handleMouse(_e: GWU.io.Event): boolean;
+    click(): Promise<void>;
+    draw(buffer: GWU.canvas.DataBuffer, x: number, y: number): number;
+}
+interface MenuOptions {
+    ui: UICore;
+    x: number;
+    y: number;
+    width: number;
+    separator?: string;
+    lead?: string;
+    fg?: GWU.color.ColorBase;
+    bg?: GWU.color.ColorBase;
+    hoverFg?: GWU.color.ColorBase;
+    hoverBg?: GWU.color.ColorBase;
+    buttons?: ButtonOptions[] | Record<string, ButtonFn | Omit<ButtonOptions, 'text'>>;
+}
+declare class Menu {
+    bounds: GWU.xy.Bounds;
+    buttons: Button[];
+    ui: UICore;
+    separator: string;
+    lead: string;
+    fg: GWU.color.Color;
+    bg: GWU.color.Color;
+    hoverFg: GWU.color.Color;
+    hoverBg: GWU.color.Color;
+    needsRedraw: boolean;
+    constructor(opts: MenuOptions);
+    contains(e: GWU.io.Event): boolean;
+    handleMouse(e: GWU.io.Event): boolean;
+    handleClick(e: GWU.io.Event): Promise<boolean>;
+    addButton(opts: ButtonOptions): void;
+    draw(): boolean;
+}
+
+export { ActorEntry, Button, ButtonFn, ButtonOptions, CellEntry, EntryBase, Flavor, FlavorOptions, ItemEntry, Menu, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions };

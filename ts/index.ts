@@ -4,3 +4,4 @@ export * from './message';
 export * from './viewport';
 export * from './flavor';
 export * from './sidebar';
+export * from './menu';

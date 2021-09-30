@@ -760,11 +760,151 @@
         }
     }
 
+    class Button {
+        constructor(menu, opts) {
+            this.x = -1;
+            this.hovered = false;
+            this.menu = menu;
+            this.text = opts.text;
+            this.fn = opts.fn || GWU__namespace.NOOP;
+        }
+        contains(_e) {
+            return false;
+        }
+        handleMouse(_e) {
+            return false;
+        }
+        async click() {
+            await this.fn(this);
+        }
+        draw(buffer, x, y) {
+            const color = this.hovered ? this.menu.hoverFg : this.menu.fg;
+            const len = GWU__namespace.text.length(this.text);
+            buffer.drawText(x, y, this.text, color);
+            return x + len;
+        }
+    }
+    class Menu {
+        constructor(opts) {
+            this.buttons = [];
+            this.separator = ' | ';
+            this.lead = ' ';
+            this.needsRedraw = false;
+            this.bounds = new GWU__namespace.xy.Bounds(opts.x, opts.y, opts.width, 1);
+            this.ui = opts.ui;
+            this.needsRedraw = true;
+            this.fg = GWU__namespace.color.from(opts.fg || 'white');
+            this.bg = GWU__namespace.color.from(opts.bg || 'black');
+            this.hoverFg = GWU__namespace.color.from(opts.hoverFg || 'teal');
+            this.hoverBg = GWU__namespace.color.from(opts.hoverBg || 'black');
+            if (opts.buttons) {
+                if (Array.isArray(opts.buttons)) {
+                    opts.buttons.forEach((b) => this.addButton(b));
+                }
+                else {
+                    Object.entries(opts.buttons).forEach(([text, opts]) => {
+                        if (typeof opts === 'function') {
+                            opts = { fn: opts };
+                        }
+                        opts.text = text;
+                        this.addButton(opts);
+                    });
+                }
+            }
+            if (opts.separator) {
+                this.separator = opts.separator;
+            }
+            if (opts.lead !== undefined) {
+                this.lead = opts.lead ? opts.lead : '';
+            }
+        }
+        contains(e) {
+            if (this.bounds.contains(e.x, e.y))
+                return true;
+            return this.buttons.some((b) => b.contains(e));
+        }
+        handleMouse(e) {
+            if (this.bounds.contains(e.x, e.y)) {
+                this.needsRedraw = true;
+                let hovered = null;
+                this.buttons.forEach((b) => {
+                    b.hovered = false;
+                    if (b.x < e.x) {
+                        hovered = b;
+                    }
+                });
+                if (hovered) {
+                    // @ts-ignore
+                    hovered.hovered = true;
+                }
+                return true;
+            }
+            for (let b of this.buttons) {
+                if (b.contains(e)) {
+                    return b.handleMouse(e);
+                }
+            }
+            this.buttons.forEach((b) => {
+                if (b.hovered) {
+                    this.needsRedraw = true;
+                    b.hovered = false;
+                }
+            });
+            return false;
+        }
+        async handleClick(e) {
+            if (this.bounds.contains(e.x, e.y)) {
+                let clicked = null;
+                this.buttons.forEach((b) => {
+                    if (b.x < e.x) {
+                        clicked = b;
+                    }
+                });
+                this.needsRedraw = true;
+                if (clicked) {
+                    // @ts-ignore
+                    await clicked.click();
+                    return true;
+                }
+            }
+            return false;
+        }
+        addButton(opts) {
+            this.needsRedraw = true;
+            const length = this.buttons.reduce((len, button) => len + button.text.length + 2, 0);
+            if (length + opts.text.length + 2 > this.bounds.width) {
+                throw new Error('Button makes menu too wide :' + opts.text);
+            }
+            const button = new Button(this, opts);
+            this.buttons.push(button);
+        }
+        draw() {
+            if (!this.needsRedraw)
+                return false;
+            this.needsRedraw = false;
+            const buffer = this.ui.buffer;
+            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, 1, 0, 0, 0);
+            let x = this.bounds.x;
+            const y = this.bounds.y;
+            buffer.drawText(x, y, this.lead, this.fg);
+            x += this.lead.length;
+            this.buttons.forEach((b) => {
+                b.x = x;
+                x = b.draw(buffer, x, y);
+                buffer.drawText(x, y, this.separator, this.fg);
+                x += this.separator.length;
+            });
+            return true;
+        }
+    }
+
     exports.ActorEntry = ActorEntry;
+    exports.Button = Button;
     exports.CellEntry = CellEntry;
     exports.EntryBase = EntryBase;
     exports.Flavor = Flavor;
     exports.ItemEntry = ItemEntry;
+    exports.Menu = Menu;
     exports.Messages = Messages;
     exports.Sidebar = Sidebar;
     exports.UI = UI;

@@ -21,6 +21,16 @@ interface UIOptions {
     canvas: GWU.canvas.BaseCanvas;
     loop: GWU.io.Loop;
 }
+interface GetInputOptions {
+    fg?: GWU.color.ColorBase;
+    bg?: GWU.color.ColorBase;
+    errorFg?: GWU.color.ColorBase;
+    default?: string;
+    minLength?: number;
+    numbersOnly?: boolean;
+    min?: number;
+    max?: number;
+}
 declare class UI implements UICore {
     buffer: GWU.canvas.Buffer;
     canvas: GWU.canvas.BaseCanvas;
@@ -33,6 +43,7 @@ declare class UI implements UICore {
     startDialog(): GWU.canvas.Buffer;
     resetDialogBuffer(dest: GWU.canvas.Buffer): void;
     finishDialog(): void;
+    getInputAt(x: number, y: number, maxLength: number, opts?: GetInputOptions): Promise<string>;
 }
 
 interface MessageOptions {
@@ -280,4 +291,4 @@ declare class Menu {
     drawInto(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActionButton, ActionFn, ActorEntry, Button, CellEntry, DropDownButton, EntryBase, Flavor, FlavorOptions, ItemEntry, Menu, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions, showDropDown };
+export { ActionButton, ActionFn, ActorEntry, Button, CellEntry, DropDownButton, EntryBase, Flavor, FlavorOptions, GetInputOptions, ItemEntry, Menu, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions, showDropDown };

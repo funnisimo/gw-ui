@@ -39,6 +39,64 @@ class UI {
         this.buffer.render();
         this.inDialog = this.layers.length > 0;
     }
+    // assumes you are in a dialog and give the buffer for that dialog
+    async getInputAt(x, y, maxLength, opts = {}) {
+        let defaultEntry = opts.default || '';
+        let numbersOnly = opts.numbersOnly || false;
+        const textEntryBounds = numbersOnly ? ['0', '9'] : [' ', '~'];
+        const buffer = this.startDialog();
+        maxLength = Math.min(maxLength, buffer.width - x);
+        const minLength = opts.minLength || 1;
+        let inputText = defaultEntry;
+        let charNum = GWU.text.length(inputText);
+        const fg = GWU.color.from(opts.fg || 'white');
+        if (opts.bg) {
+            const bg = GWU.color.from(opts.bg);
+            buffer.fillRect(x, y, maxLength, 1, null, null, bg);
+        }
+        const errorFg = GWU.color.from(opts.errorFg || 'red');
+        function isValid(text) {
+            if (numbersOnly) {
+                const val = Number.parseInt(text);
+                if (opts.min && val < opts.min)
+                    return false;
+                if (opts.max && val > opts.max)
+                    return false;
+                return val > 0;
+            }
+            return text.length >= minLength;
+        }
+        let ev;
+        do {
+            buffer.render();
+            ev = await this.loop.nextKeyPress(-1);
+            if (!ev || !ev.key)
+                continue;
+            if ((ev.key == 'Delete' || ev.key == 'Backspace') && charNum > 0) {
+                buffer.draw(x + charNum - 1, y, ' ', fg);
+                charNum--;
+                inputText = GWU.text.spliceRaw(inputText, charNum, 1);
+            }
+            else if (ev.key.length > 1) ;
+            else if (ev.key >= textEntryBounds[0] &&
+                ev.key <= textEntryBounds[1]) {
+                // allow only permitted input
+                if (charNum < maxLength) {
+                    inputText += ev.key;
+                    charNum++;
+                }
+            }
+            const color = isValid(inputText) ? fg : errorFg;
+            buffer.drawText(x, y, inputText, color);
+            if (ev.key == 'Escape') {
+                this.finishDialog();
+                return '';
+            }
+        } while (!isValid(inputText) || !ev || ev.key != 'Enter');
+        this.finishDialog();
+        // GW.ui.draw(); // reverts to old display
+        return inputText;
+    }
 }
 
 class Messages {

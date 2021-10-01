@@ -2104,10 +2104,8 @@
             this.CURRENT_HANDLER = null;
             this.PAUSED = null;
             this.LAST_CLICK = { x: -1, y: -1 };
-            this.interval = setInterval(() => {
-                const e = makeTickEvent(16);
-                this.pushEvent(e);
-            }, 16);
+            this.interval = 0;
+            this.intervalCount = 0;
         }
         hasEvents() {
             return this.events.length;
@@ -2117,6 +2115,22 @@
                 const ev = this.events.shift();
                 DEAD_EVENTS.push(ev);
             }
+        }
+        _startTicks() {
+            ++this.intervalCount;
+            if (this.interval)
+                return;
+            this.interval = setInterval(() => {
+                const e = makeTickEvent(16);
+                this.pushEvent(e);
+            }, 16);
+        }
+        _stopTicks() {
+            --this.intervalCount;
+            if (this.intervalCount)
+                return;
+            clearInterval(this.interval);
+            this.interval = 0;
         }
         pushEvent(ev) {
             if (this.PAUSED) {
@@ -2185,7 +2199,7 @@
             if (ms == 0)
                 return Promise.resolve(null);
             if (this.CURRENT_HANDLER) {
-                console.warn('OVERWRITE HANDLER -- Check for a missing await around GWU.io.* function calls.');
+                throw new Error('OVERWRITE HANDLER -- Check for a missing await around Loop function calls.');
             }
             else if (this.events.length) {
                 console.warn('SET HANDLER WITH QUEUED EVENTS - nextEvent');
@@ -2212,6 +2226,7 @@
         async run(keymap, ms = -1) {
             this.running = true;
             this.clearEvents(); // ??? Should we do this?
+            this._startTicks();
             if (keymap.start && typeof keymap.start === 'function') {
                 await keymap.start();
             }
@@ -2228,6 +2243,7 @@
             if (keymap.stop && typeof keymap.stop === 'function') {
                 await keymap.stop();
             }
+            this._stopTicks();
         }
         stop() {
             this.running = false;
@@ -4806,6 +4822,11 @@ void main() {
         out += text.substring(start);
         return out;
     }
+    function spliceRaw(msg, begin, length, add = '') {
+        const preText = msg.substring(0, begin);
+        const postText = msg.substring(begin + length);
+        return preText + add + postText;
+    }
 
     function nextBreak(text, start) {
         const CS = options.colorStart;
@@ -5016,7 +5037,8 @@ void main() {
         splitIntoLines: splitIntoLines,
         configure: configure,
         addHelper: addHelper,
-        options: options
+        options: options,
+        spliceRaw: spliceRaw
     });
 
     class DataBuffer {

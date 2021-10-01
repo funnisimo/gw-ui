@@ -1,23 +1,9 @@
 import * as GWU from 'gw-utils';
-import { UICore } from './types';
+import { UICore, GetInputOptions } from './types';
 
 export interface UIOptions {
     canvas: GWU.canvas.BaseCanvas;
     loop: GWU.io.Loop;
-}
-
-export interface GetInputOptions {
-    fg?: GWU.color.ColorBase;
-    bg?: GWU.color.ColorBase;
-
-    errorFg?: GWU.color.ColorBase;
-
-    default?: string;
-    minLength?: number;
-
-    numbersOnly?: boolean;
-    min?: number;
-    max?: number;
 }
 
 export class UI implements UICore {

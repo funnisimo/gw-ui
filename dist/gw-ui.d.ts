@@ -1,6 +1,16 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 
+interface GetInputOptions {
+    fg?: GWU.color.ColorBase;
+    bg?: GWU.color.ColorBase;
+    errorFg?: GWU.color.ColorBase;
+    default?: string;
+    minLength?: number;
+    numbersOnly?: boolean;
+    min?: number;
+    max?: number;
+}
 interface UICore {
     buffer: GWU.canvas.DataBuffer;
     loop: GWU.io.Loop;
@@ -8,6 +18,7 @@ interface UICore {
     startDialog(): GWU.canvas.Buffer;
     resetDialogBuffer(dest: GWU.canvas.Buffer): void;
     finishDialog(): void;
+    getInputAt(x: number, y: number, maxLength: number, opts?: GetInputOptions): Promise<string>;
 }
 interface UISubject {
     readonly map: GWM.map.Map;
@@ -20,16 +31,6 @@ interface UISubject {
 interface UIOptions {
     canvas: GWU.canvas.BaseCanvas;
     loop: GWU.io.Loop;
-}
-interface GetInputOptions {
-    fg?: GWU.color.ColorBase;
-    bg?: GWU.color.ColorBase;
-    errorFg?: GWU.color.ColorBase;
-    default?: string;
-    minLength?: number;
-    numbersOnly?: boolean;
-    min?: number;
-    max?: number;
 }
 declare class UI implements UICore {
     buffer: GWU.canvas.Buffer;

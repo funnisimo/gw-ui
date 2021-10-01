@@ -92,5 +92,6 @@ export function mockUI(width = 100, height = 38): UICore {
         resetDialogBuffer: jest.fn().mockImplementation(() => {
             buffer.blackOut();
         }),
+        getInputAt: jest.fn(),
     } as UICore;
 }

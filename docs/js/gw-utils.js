@@ -1944,6 +1944,7 @@
     const CLICK = 'click';
     const TICK = 'tick';
     const MOUSEUP = 'mouseup';
+    const STOP = 'stop';
     const CONTROL_CODES = [
         'ShiftLeft',
         'ShiftRight',
@@ -1961,6 +1962,10 @@
         let result;
         let command;
         km = km || KEYMAP;
+        if (ev.type === STOP) {
+            recycleEvent(ev);
+            return true; // Should stop loops, etc...
+        }
         if (typeof km === 'function') {
             command = km;
         }
@@ -1993,6 +1998,12 @@
     }
     function recycleEvent(ev) {
         DEAD_EVENTS.push(ev);
+    }
+    // STOP
+    function makeStopEvent() {
+        const ev = makeTickEvent(0);
+        ev.type = STOP;
+        return ev;
     }
     // TICK
     function makeTickEvent(dt) {
@@ -2087,12 +2098,16 @@
     }
     class Loop {
         constructor() {
-            this.running = false;
+            this.running = true;
             this.events = [];
             this.mouse = { x: -1, y: -1 };
             this.CURRENT_HANDLER = null;
             this.PAUSED = null;
             this.LAST_CLICK = { x: -1, y: -1 };
+            this.interval = setInterval(() => {
+                const e = makeTickEvent(16);
+                this.pushEvent(e);
+            }, 16);
         }
         hasEvents() {
             return this.events.length;
@@ -2170,7 +2185,7 @@
             if (ms == 0)
                 return Promise.resolve(null);
             if (this.CURRENT_HANDLER) {
-                console.warn('OVERWRITE HANDLER - nextEvent');
+                console.warn('OVERWRITE HANDLER -- Check for a missing await around GWU.io.* function calls.');
             }
             else if (this.events.length) {
                 console.warn('SET HANDLER WITH QUEUED EVENTS - nextEvent');
@@ -2195,33 +2210,32 @@
             return new Promise((resolve) => (done = resolve));
         }
         async run(keymap, ms = -1) {
-            const interval = setInterval(() => {
-                const e = makeTickEvent(16);
-                this.pushEvent(e);
-            }, 16);
+            this.running = true;
+            this.clearEvents(); // ??? Should we do this?
             if (keymap.start && typeof keymap.start === 'function') {
-                // @ts-ignore
                 await keymap.start();
             }
-            this.running = true;
-            while (this.running) {
+            let running = true;
+            while (this.running && running) {
                 const ev = await this.nextEvent(ms);
                 if (ev && (await dispatchEvent(ev, keymap))) {
-                    this.running = false;
+                    running = false;
                 }
                 if (keymap.draw && typeof keymap.draw === 'function') {
-                    // @ts-ignore
                     keymap.draw();
                 }
             }
             if (keymap.stop && typeof keymap.stop === 'function') {
-                // @ts-ignore
                 await keymap.stop();
             }
-            clearInterval(interval);
         }
         stop() {
             this.running = false;
+            this.pushEvent(makeStopEvent());
+            if (this.interval) {
+                clearInterval(this.interval);
+                this.interval = 0;
+            }
         }
         pauseEvents() {
             if (this.PAUSED)
@@ -2308,8 +2322,10 @@
         CLICK: CLICK,
         TICK: TICK,
         MOUSEUP: MOUSEUP,
+        STOP: STOP,
         setKeymap: setKeymap,
         dispatchEvent: dispatchEvent,
+        makeStopEvent: makeStopEvent,
         makeTickEvent: makeTickEvent,
         makeKeyEvent: makeKeyEvent,
         keyCodeDirection: keyCodeDirection,

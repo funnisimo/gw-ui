@@ -209,23 +209,38 @@ declare class Sidebar implements GWM.entity.StatusDrawer {
     drawProgressBar(val: number, max: number, text: string, color?: GWU.color.ColorBase, bg?: GWU.color.ColorBase, fg?: GWU.color.ColorBase): void;
 }
 
-declare type ButtonFn = (button: Button) => Promise<boolean>;
-interface ButtonOptions {
-    text: string;
-    fn: ButtonFn;
+declare type ActionFn = (button: ActionButton) => boolean | Promise<boolean>;
+interface Rec<T> {
+    [keys: string]: T;
 }
+declare type DropdownConfig = Rec<ButtonConfig>;
+declare type ActionConfig = ActionFn;
+declare type ButtonConfig = ActionConfig | DropdownConfig;
 declare class Button {
-    menu: Menu;
     text: string;
-    fn: ButtonFn;
-    x: number;
     hovered: boolean;
-    constructor(menu: Menu, opts: ButtonOptions);
-    contains(_e: GWU.io.Event): boolean;
-    handleMouse(_e: GWU.io.Event): boolean;
-    click(): Promise<void>;
-    draw(buffer: GWU.canvas.DataBuffer, x: number, y: number): number;
+    x: number;
+    constructor(text: string);
+    get width(): number;
 }
+declare class ActionButton extends Button {
+    fn: ActionFn;
+    constructor(text: string, fn: ActionFn);
+    activate(): any;
+}
+declare class DropDownButton extends Button {
+    bounds: GWU.xy.Bounds;
+    buttons: Button[];
+    menu: Menu;
+    parent: DropDownButton | null;
+    constructor(menu: Menu, parent: DropDownButton | null, text: string, buttons: ButtonConfig);
+    addButton(text: string, config: ButtonConfig): void;
+    setBounds(px: number, py: number, pwidth: number): void;
+    contains(e: GWU.io.Event): boolean;
+    buttonAt(e: GWU.io.Event): Button | null;
+    drawInto(buffer: GWU.canvas.DataBuffer): void;
+}
+declare function showDropDown(menu: Menu, button: DropDownButton): Promise<void>;
 interface MenuOptions {
     ui: UICore;
     x: number;
@@ -237,7 +252,7 @@ interface MenuOptions {
     bg?: GWU.color.ColorBase;
     hoverFg?: GWU.color.ColorBase;
     hoverBg?: GWU.color.ColorBase;
-    buttons?: ButtonOptions[] | Record<string, ButtonFn | Omit<ButtonOptions, 'text'>>;
+    buttons: ButtonConfig;
 }
 declare class Menu {
     bounds: GWU.xy.Bounds;
@@ -253,9 +268,11 @@ declare class Menu {
     constructor(opts: MenuOptions);
     contains(e: GWU.io.Event): boolean;
     handleMouse(e: GWU.io.Event): boolean;
+    getButtonAt(x: number, _y: number): Button | null;
     handleClick(e: GWU.io.Event): Promise<boolean>;
-    addButton(opts: ButtonOptions): void;
-    draw(): boolean;
+    addButton(text: string, config: ButtonConfig): void;
+    draw(force?: boolean): boolean;
+    drawInto(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActorEntry, Button, ButtonFn, ButtonOptions, CellEntry, EntryBase, Flavor, FlavorOptions, ItemEntry, Menu, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions };
+export { ActionButton, ActionFn, ActorEntry, Button, CellEntry, DropDownButton, EntryBase, Flavor, FlavorOptions, ItemEntry, Menu, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions, showDropDown };

@@ -735,28 +735,167 @@ class Sidebar {
 }
 
 class Button {
-    constructor(menu, opts) {
-        this.x = -1;
+    constructor(text) {
         this.hovered = false;
+        this.x = 999;
+        this.text = text;
+    }
+    get width() {
+        return this.text.length;
+    }
+}
+class ActionButton extends Button {
+    constructor(text, fn) {
+        super(text);
+        this.fn = fn;
+    }
+    activate() {
+        return this.fn(this);
+    }
+}
+class DropDownButton extends Button {
+    constructor(menu, parent, text, buttons) {
+        super(text);
+        this.buttons = [];
+        this.parent = null;
         this.menu = menu;
-        this.text = opts.text;
-        this.fn = opts.fn || GWU.NOOP;
+        this.parent = parent;
+        this.text = text;
+        this.bounds = new GWU.xy.Bounds(0, 0, 0, 0);
+        Object.entries(buttons).forEach(([text, opts]) => {
+            this.addButton(text, opts);
+        });
+        this.buttons.forEach((b, i) => {
+            if (b instanceof DropDownButton) {
+                b.setBounds(this.bounds.x, this.bounds.y + i, this.bounds.width);
+            }
+        });
     }
-    contains(_e) {
-        return false;
+    addButton(text, config) {
+        if (this.buttons.length >= this.menu.ui.buffer.height - 1) {
+            throw new Error('Too many menu options.');
+        }
+        let button;
+        if (typeof config === 'function') {
+            button = new ActionButton(text, config);
+        }
+        else {
+            button = new DropDownButton(this.menu, this, text, config);
+        }
+        this.buttons.push(button);
+        ++this.bounds.height;
+        this.bounds.width = Math.max(this.bounds.width, text.length + 2);
     }
-    handleMouse(_e) {
-        return false;
+    setBounds(px, py, pwidth) {
+        const right = px + pwidth;
+        const left = px;
+        const totalWidth = this.menu.ui.buffer.width;
+        if (this.bounds.width < totalWidth - right) {
+            this.bounds.x = right;
+        }
+        else if (this.bounds.width < left) {
+            this.bounds.x = left - this.bounds.width;
+        }
+        else {
+            throw new Error('Menu does not fit - too wide.');
+        }
+        const totalHeight = this.menu.ui.buffer.height;
+        if (this.bounds.height <= totalHeight - py) {
+            this.bounds.y = py;
+        }
+        else if (this.bounds.height < totalHeight) {
+            this.bounds.y = totalHeight - this.bounds.height - 1;
+        }
+        else {
+            throw new Error('Menu does not fit - too tall.');
+        }
     }
-    async click() {
-        await this.fn(this);
+    contains(e) {
+        return this.bounds.contains(e.x, e.y);
     }
-    draw(buffer, x, y) {
-        const color = this.hovered ? this.menu.hoverFg : this.menu.fg;
-        const len = GWU.text.length(this.text);
-        buffer.drawText(x, y, this.text, color);
-        return x + len;
+    buttonAt(e) {
+        const index = e.y - this.bounds.y;
+        return this.buttons[index] || null;
     }
+    drawInto(buffer) {
+        const width = this.bounds.width;
+        const height = this.bounds.height;
+        const x = this.bounds.x;
+        let y = this.bounds.y;
+        buffer.fillRect(x, y, width, height, 0, 0, this.menu.hoverBg);
+        // Now draw the individual buttons...
+        this.buttons.forEach((b) => {
+            buffer.drawText(x, y, b.text, b.hovered ? this.menu.hoverFg : this.menu.fg);
+            ++y;
+        });
+        if (this.parent) {
+            this.parent.drawInto(buffer);
+        }
+    }
+}
+async function showDropDown(menu, button) {
+    const ui = button.menu.ui;
+    // Start dialog
+    const dialog = ui.startDialog();
+    let activeButton = button;
+    await ui.loop.run({
+        // @ts-ignore
+        mousemove: (e) => {
+            if (!activeButton)
+                return true; // we are done (should not happen)
+            let newActive = activeButton;
+            while (newActive && !newActive.contains(e)) {
+                newActive = newActive.parent;
+            }
+            if (newActive) {
+                activeButton = newActive;
+            }
+            else {
+                if (menu.contains(e)) {
+                    menu.needsRedraw = true;
+                    const button = menu.getButtonAt(e.x, e.y);
+                    if (button instanceof DropDownButton) {
+                        activeButton.hovered = false;
+                        activeButton = button;
+                        activeButton.hovered = true;
+                    }
+                    else {
+                        activeButton = null; // done.
+                        if (button)
+                            button.hovered = true;
+                    }
+                }
+            }
+            return !activeButton; // if no active button we are done (should not happen)
+        },
+        // @ts-ignore
+        click: async (e) => {
+            if (!activeButton)
+                return true; // we are done (should not happen)
+            if (!activeButton.contains(e)) {
+                menu.needsRedraw = true;
+                return true; // we are done
+            }
+            const actionButton = activeButton.buttonAt(e);
+            if (!actionButton) {
+                return true; // weird, but we are done.
+            }
+            if (actionButton instanceof ActionButton) {
+                return actionButton.activate(); // actions return true if they want to close the menu (otherwise the menu stays open)
+            }
+        },
+        // @ts-ignore
+        draw: () => {
+            if (!activeButton)
+                return;
+            ui.resetDialogBuffer(dialog);
+            activeButton.drawInto(dialog);
+            menu.drawInto(dialog);
+            dialog.render();
+        },
+    });
+    ui.finishDialog();
+    menu.needsRedraw = true;
 }
 class Menu {
     constructor(opts) {
@@ -771,20 +910,9 @@ class Menu {
         this.bg = GWU.color.from(opts.bg || 'black');
         this.hoverFg = GWU.color.from(opts.hoverFg || 'teal');
         this.hoverBg = GWU.color.from(opts.hoverBg || 'black');
-        if (opts.buttons) {
-            if (Array.isArray(opts.buttons)) {
-                opts.buttons.forEach((b) => this.addButton(b));
-            }
-            else {
-                Object.entries(opts.buttons).forEach(([text, opts]) => {
-                    if (typeof opts === 'function') {
-                        opts = { fn: opts };
-                    }
-                    opts.text = text;
-                    this.addButton(opts);
-                });
-            }
-        }
+        Object.entries(opts.buttons).forEach(([text, opts]) => {
+            this.addButton(text, opts);
+        });
         if (opts.separator) {
             this.separator = opts.separator;
         }
@@ -793,11 +921,17 @@ class Menu {
         }
     }
     contains(e) {
-        if (this.bounds.contains(e.x, e.y))
-            return true;
-        return this.buttons.some((b) => b.contains(e));
+        return this.bounds.contains(e);
     }
     handleMouse(e) {
+        // turn off all the hovers
+        this.buttons.forEach((b) => {
+            if (b.hovered) {
+                this.needsRedraw = true;
+                b.hovered = false;
+            }
+        });
+        // highlight one of them...
         if (this.bounds.contains(e.x, e.y)) {
             this.needsRedraw = true;
             let hovered = null;
@@ -811,65 +945,66 @@ class Menu {
                 // @ts-ignore
                 hovered.hovered = true;
             }
-            return true;
+            return true; // we handled the message
         }
-        for (let b of this.buttons) {
-            if (b.contains(e)) {
-                return b.handleMouse(e);
-            }
-        }
-        this.buttons.forEach((b) => {
-            if (b.hovered) {
-                this.needsRedraw = true;
-                b.hovered = false;
-            }
-        });
         return false;
+    }
+    getButtonAt(x, _y) {
+        return GWU.arrayFindRight(this.buttons, (b) => b.x < x) || null;
     }
     async handleClick(e) {
         if (this.bounds.contains(e.x, e.y)) {
-            let clicked = null;
-            this.buttons.forEach((b) => {
-                if (b.x < e.x) {
-                    clicked = b;
-                }
-            });
-            this.needsRedraw = true;
-            if (clicked) {
-                // @ts-ignore
-                await clicked.click();
-                return true;
+            // get active button
+            let activeButton = this.getButtonAt(e.x, e.y);
+            if (!activeButton)
+                return false;
+            if (activeButton instanceof DropDownButton) {
+                await showDropDown(this, activeButton);
             }
+            else if (activeButton instanceof ActionButton) {
+                await activeButton.activate();
+            }
+            return true;
         }
         return false;
     }
-    addButton(opts) {
+    addButton(text, config) {
         this.needsRedraw = true;
-        const length = this.buttons.reduce((len, button) => len + button.text.length + 2, 0);
-        if (length + opts.text.length + 2 > this.bounds.width) {
-            throw new Error('Button makes menu too wide :' + opts.text);
+        const x = this.buttons.reduce((len, button) => len + button.text.length + this.separator.length, this.lead.length + this.bounds.x);
+        if (x + text.length + 2 > this.bounds.width) {
+            throw new Error('Button makes menu too wide :' + text);
         }
-        const button = new Button(this, opts);
+        let button;
+        if (typeof config === 'function') {
+            button = new ActionButton(text, config);
+        }
+        else {
+            button = new DropDownButton(this, null, text, config);
+            button.setBounds(x, this.bounds.y ? this.bounds.y - 1 : 1, 0);
+        }
+        button.x = x;
         this.buttons.push(button);
     }
-    draw() {
-        if (!this.needsRedraw)
+    draw(force = false) {
+        if (!this.needsRedraw && !force)
             return false;
-        this.needsRedraw = false;
         const buffer = this.ui.buffer;
+        return this.drawInto(buffer);
+    }
+    drawInto(buffer) {
+        this.needsRedraw = false;
         buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, 1, 0, 0, 0);
         let x = this.bounds.x;
         const y = this.bounds.y;
         buffer.drawText(x, y, this.lead, this.fg);
-        x += this.lead.length;
         this.buttons.forEach((b) => {
-            b.x = x;
-            x = b.draw(buffer, x, y);
+            const color = b.hovered ? this.hoverFg : this.fg;
+            buffer.drawText(b.x, y, b.text, color);
+            x = b.x + b.text.length;
             buffer.drawText(x, y, this.separator, this.fg);
-            x += this.separator.length;
         });
         return true;
     }
 }
 
-export { ActorEntry, Button, CellEntry, EntryBase, Flavor, ItemEntry, Menu, Messages, Sidebar, UI, Viewport };
+export { ActionButton, ActorEntry, Button, CellEntry, DropDownButton, EntryBase, Flavor, ItemEntry, Menu, Messages, Sidebar, UI, Viewport, showDropDown };

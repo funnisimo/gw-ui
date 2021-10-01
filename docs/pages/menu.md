@@ -22,8 +22,16 @@ const topMenu = new GWI.Menu({
     fg: 'yellow',
     buttons: {
         File: clickHandler,
-        Insert: clickHandler,
-        Window: { fn: clickHandler },
+        Insert: {
+            Apple: clickHandler,
+            Banana: clickHandler,
+            Carrot: clickHandler,
+        },
+        Window: {
+            Automobile: clickHandler,
+            Biplane: clickHandler,
+            ChooChoo: clickHandler,
+        },
     },
 });
 
@@ -37,23 +45,37 @@ const bottomMenu = new GWI.Menu({
     hoverFg: 'gold',
     buttons: {
         Add: clickHandler,
-        Remove: clickHandler,
-        Test: { fn: clickHandler },
+        Remove: {
+            Airplane: clickHandler,
+            Bicycle: clickHandler,
+            Car: clickHandler,
+        },
+        Test: {
+            Automobile: clickHandler,
+            Biplane: clickHandler,
+            ChooChoo: clickHandler,
+        },
     },
 });
 
+let needDraw = true;
 LOOP.run({
     async click(e) {
-        if (await topMenu.handleClick(e)) return;
-        if (await bottomMenu.handleClick(e)) return;
+        if (await topMenu.handleClick(e)) {
+            needDraw = true;
+        }
+        if (await bottomMenu.handleClick(e)) {
+            needDraw = true;
+        }
     },
     mousemove(e) {
         // Need to do both so that hover gets cleared correctly
         let handled = topMenu.handleMouse(e);
         handled = bottomMenu.handleMouse(e) || handled;
+        needDraw |= handled;
     },
     draw() {
-        let needDraw = topMenu.draw();
+        needDraw = topMenu.draw() || needDraw;
         needDraw = bottomMenu.draw() || needDraw;
         if (needDraw) {
             ui.render();

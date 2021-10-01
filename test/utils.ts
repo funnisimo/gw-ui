@@ -82,12 +82,15 @@ export function mockItem(): GWM.item.Item {
 }
 
 export function mockUI(width = 100, height = 38): UICore {
+    const buffer = new GWU.canvas.DataBuffer(width, height);
     return {
-        buffer: new GWU.canvas.DataBuffer(width, height),
+        buffer,
         loop: GWU.loop,
         render: jest.fn(),
-        startDialog: jest.fn(),
+        startDialog: jest.fn().mockReturnValue(buffer),
         finishDialog: jest.fn(),
-        resetDialogBuffer: jest.fn(),
+        resetDialogBuffer: jest.fn().mockImplementation(() => {
+            buffer.blackOut();
+        }),
     } as UICore;
 }

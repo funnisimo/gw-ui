@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { UICore, GetInputOptions } from './types';
+import { UICore, GetInputOptions, AlertOptions } from './types';
 
 export interface UIOptions {
     canvas: GWU.canvas.BaseCanvas;
@@ -73,6 +73,80 @@ export class UI implements UICore {
             this.resetDialogBuffer(buffer);
             buffer.mix(color, pct);
             buffer.render();
+        }
+
+        this.finishDialog();
+    }
+
+    async alert(opts: number | AlertOptions, text: string, args: any) {
+        if (typeof opts === 'number') {
+            opts = { duration: opts } as AlertOptions;
+        }
+        const buffer = this.startDialog();
+
+        if (args) {
+            text = GWU.text.apply(text, args);
+        }
+
+        let padX = opts.padX || 2;
+        let padY = opts.padY || 1;
+
+        if (opts.title) {
+            padY = Math.max(padY, 2);
+        }
+
+        let lines = [text];
+        if (text.includes('\n')) {
+            lines = text.split('\n');
+        }
+
+        const lineLen = lines.reduce(
+            (len, line) => Math.max(len, GWU.text.length(line)),
+            0
+        );
+        const totalLength = lineLen + padX * 2;
+
+        let width = totalLength + padX * 2;
+        if (opts.width && opts.width > 0) {
+            width = opts.width;
+            if (opts.width < totalLength) {
+                lines = GWU.text.splitIntoLines(text, opts.width - padX * 2);
+            }
+        }
+        let height = Math.max(lines.length + 2 * padY, opts.height || 0);
+
+        const x = opts.x ?? Math.min(Math.floor((buffer.width - width) / 2));
+        const y = opts.y ?? Math.floor((buffer.height - height) / 2);
+
+        const fg = GWU.color.from(opts.fg || 'white');
+
+        if (opts.borderBg) {
+            buffer.fillRect(x, y, width, height, 0, 0, opts.borderBg);
+            buffer.fillRect(
+                x + 1,
+                y + 1,
+                width - 2,
+                height - 2,
+                0,
+                0,
+                opts.bg || 'gray'
+            );
+        } else {
+            buffer.fillRect(x, y, width, height, 0, 0, opts.bg || 'gray');
+        }
+        if (opts.title) {
+            let tx = x + Math.floor((width - opts.title.length) / 2);
+            buffer.drawText(tx, y, opts.title, opts.titleFg || fg);
+        }
+        lines.forEach((line, i) => {
+            buffer.drawText(x + padX, y + padY + i, line, fg);
+        });
+        buffer.render();
+
+        if (opts.waitForAck) {
+            await this.loop.waitForAck();
+        } else {
+            await this.loop.pause(opts.duration || 30 * 1000);
         }
 
         this.finishDialog();

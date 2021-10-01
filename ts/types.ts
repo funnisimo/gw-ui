@@ -17,6 +17,27 @@ export interface GetInputOptions {
     max?: number;
 }
 
+export interface AlertOptions {
+    duration?: number;
+    waitForAck?: boolean;
+
+    x?: number;
+    y?: number;
+
+    bg?: GWU.color.ColorBase;
+    borderBg?: GWU.color.ColorBase;
+
+    fg?: GWU.color.ColorBase;
+
+    title?: string;
+    titleFg?: GWU.color.ColorBase;
+
+    width?: number;
+    height?: number;
+    padX?: number;
+    padY?: number;
+}
+
 export interface UICore {
     buffer: GWU.canvas.DataBuffer;
     loop: GWU.io.Loop;
@@ -34,6 +55,7 @@ export interface UICore {
         maxLength: number,
         opts?: GetInputOptions
     ): Promise<string>;
+    alert(opts: number | AlertOptions, text: string, args: any): Promise<void>;
 }
 
 export interface UISubject {

@@ -93,5 +93,7 @@ export function mockUI(width = 100, height = 38): UICore {
             buffer.blackOut();
         }),
         getInputAt: jest.fn(),
+        fadeTo: jest.fn(),
+        alert: jest.fn(),
     } as UICore;
 }

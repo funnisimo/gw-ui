@@ -13,6 +13,21 @@ interface GetInputOptions {
     min?: number;
     max?: number;
 }
+interface AlertOptions {
+    duration?: number;
+    waitForAck?: boolean;
+    x?: number;
+    y?: number;
+    bg?: GWU.color.ColorBase;
+    borderBg?: GWU.color.ColorBase;
+    fg?: GWU.color.ColorBase;
+    title?: string;
+    titleFg?: GWU.color.ColorBase;
+    width?: number;
+    height?: number;
+    padX?: number;
+    padY?: number;
+}
 interface UICore {
     buffer: GWU.canvas.DataBuffer;
     loop: GWU.io.Loop;
@@ -22,6 +37,7 @@ interface UICore {
     finishDialog(): void;
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
     getInputAt(x: number, y: number, maxLength: number, opts?: GetInputOptions): Promise<string>;
+    alert(opts: number | AlertOptions, text: string, args: any): Promise<void>;
 }
 interface UISubject {
     readonly map: GWM.map.Map;
@@ -48,6 +64,7 @@ declare class UI implements UICore {
     resetDialogBuffer(dest: GWU.canvas.Buffer): void;
     finishDialog(): void;
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
+    alert(opts: number | AlertOptions, text: string, args: any): Promise<void>;
     getInputAt(x: number, y: number, maxLength: number, opts?: GetInputOptions): Promise<string>;
 }
 
@@ -296,4 +313,4 @@ declare class Menu {
     drawInto(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActionButton, ActionFn, ActorEntry, Button, CellEntry, DropDownButton, EntryBase, Flavor, FlavorOptions, GetInputOptions, ItemEntry, Menu, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions, showDropDown };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Button, CellEntry, DropDownButton, EntryBase, Flavor, FlavorOptions, GetInputOptions, ItemEntry, Menu, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions, showDropDown };

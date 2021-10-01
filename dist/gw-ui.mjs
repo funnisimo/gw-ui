@@ -39,6 +39,23 @@ class UI {
         this.buffer.render();
         this.inDialog = this.layers.length > 0;
     }
+    async fadeTo(color = 'black', duration = 1000) {
+        color = GWU.color.from(color);
+        const buffer = this.startDialog();
+        let pct = 0;
+        let elapsed = 0;
+        while (elapsed < duration) {
+            elapsed += 32;
+            if (await this.loop.pause(32)) {
+                elapsed = duration;
+            }
+            pct = Math.floor((100 * elapsed) / duration);
+            this.resetDialogBuffer(buffer);
+            buffer.mix(color, pct);
+            buffer.render();
+        }
+        this.finishDialog();
+    }
     // assumes you are in a dialog and give the buffer for that dialog
     async getInputAt(x, y, maxLength, opts = {}) {
         let numbersOnly = opts.numbersOnly || false;

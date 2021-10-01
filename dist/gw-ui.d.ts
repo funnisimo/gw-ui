@@ -20,6 +20,7 @@ interface UICore {
     startDialog(): GWU.canvas.Buffer;
     resetDialogBuffer(dest: GWU.canvas.Buffer): void;
     finishDialog(): void;
+    fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
     getInputAt(x: number, y: number, maxLength: number, opts?: GetInputOptions): Promise<string>;
 }
 interface UISubject {
@@ -46,6 +47,7 @@ declare class UI implements UICore {
     startDialog(): GWU.canvas.Buffer;
     resetDialogBuffer(dest: GWU.canvas.Buffer): void;
     finishDialog(): void;
+    fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
     getInputAt(x: number, y: number, maxLength: number, opts?: GetInputOptions): Promise<string>;
 }
 

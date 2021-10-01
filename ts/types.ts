@@ -27,6 +27,7 @@ export interface UICore {
     resetDialogBuffer(dest: GWU.canvas.Buffer): void;
     finishDialog(): void;
 
+    fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
     getInputAt(
         x: number,
         y: number,

@@ -252,6 +252,8 @@ interface MenuOptions {
     bg?: GWU.color.ColorBase;
     hoverFg?: GWU.color.ColorBase;
     hoverBg?: GWU.color.ColorBase;
+    dropFg?: GWU.color.ColorBase;
+    dropBg?: GWU.color.ColorBase;
     buttons: ButtonConfig;
 }
 declare class Menu {
@@ -264,10 +266,13 @@ declare class Menu {
     bg: GWU.color.Color;
     hoverFg: GWU.color.Color;
     hoverBg: GWU.color.Color;
+    dropFg: GWU.color.Color;
+    dropBg: GWU.color.Color;
     needsRedraw: boolean;
     constructor(opts: MenuOptions);
     contains(e: GWU.io.Event): boolean;
     handleMouse(e: GWU.io.Event): boolean;
+    clearHighlight(): void;
     getButtonAt(x: number, _y: number): Button | null;
     handleClick(e: GWU.io.Event): Promise<boolean>;
     addButton(text: string, config: ButtonConfig): void;

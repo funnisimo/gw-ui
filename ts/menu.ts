@@ -123,15 +123,16 @@ export class DropDownButton extends Button {
         const x = this.bounds.x;
         let y = this.bounds.y;
 
-        buffer.fillRect(x, y, width, height, 0, 0, this.menu.hoverBg);
+        buffer.fillRect(x, y, width, height, 0, 0, this.menu.dropBg);
 
         // Now draw the individual buttons...
         this.buttons.forEach((b) => {
             buffer.drawText(
-                x,
+                x + 1,
                 y,
                 b.text,
-                b.hovered ? this.menu.hoverFg : this.menu.fg
+                b.hovered ? this.menu.hoverFg : this.menu.dropFg,
+                b.hovered ? this.menu.hoverBg : this.menu.dropBg
             );
             ++y;
         });
@@ -150,7 +151,10 @@ export async function showDropDown(menu: Menu, button: DropDownButton) {
 
     let activeButton: DropDownButton | null = button;
     await ui.loop.run({
-        // @ts-ignore
+        Escape() {
+            return true;
+        },
+
         mousemove: (e: GWU.io.Event) => {
             if (!activeButton) return true; // we are done (should not happen)
 
@@ -166,6 +170,9 @@ export async function showDropDown(menu: Menu, button: DropDownButton) {
                         b.hovered = false;
                     });
                     selected.hovered = true;
+                    if (selected instanceof DropDownButton) {
+                        activeButton = selected;
+                    }
                 }
             } else {
                 if (menu.contains(e)) {
@@ -185,11 +192,11 @@ export async function showDropDown(menu: Menu, button: DropDownButton) {
             return !activeButton; // if no active button we are done (should not happen)
         },
 
-        // @ts-ignore
         click: async (e: GWU.io.Event) => {
             if (!activeButton) return true; // we are done (should not happen)
 
             if (!activeButton.contains(e)) {
+                menu.clearHighlight();
                 return true; // we are done
             }
 
@@ -203,7 +210,6 @@ export async function showDropDown(menu: Menu, button: DropDownButton) {
             }
         },
 
-        // @ts-ignore
         draw: () => {
             if (!activeButton) return;
             ui.resetDialogBuffer(dialog);
@@ -232,6 +238,8 @@ export interface MenuOptions {
     bg?: GWU.color.ColorBase;
     hoverFg?: GWU.color.ColorBase;
     hoverBg?: GWU.color.ColorBase;
+    dropFg?: GWU.color.ColorBase;
+    dropBg?: GWU.color.ColorBase;
 
     buttons: ButtonConfig;
 }
@@ -248,6 +256,8 @@ export class Menu {
     bg: GWU.color.Color;
     hoverFg: GWU.color.Color;
     hoverBg: GWU.color.Color;
+    dropFg: GWU.color.Color;
+    dropBg: GWU.color.Color;
 
     needsRedraw = false;
 
@@ -256,10 +266,20 @@ export class Menu {
         this.ui = opts.ui;
         this.needsRedraw = true;
 
-        this.fg = GWU.color.from(opts.fg || 'white');
-        this.bg = GWU.color.from(opts.bg || 'black');
-        this.hoverFg = GWU.color.from(opts.hoverFg || 'teal');
-        this.hoverBg = GWU.color.from(opts.hoverBg || 'black');
+        this.fg = GWU.color.from(opts.fg || 'black');
+        this.bg = GWU.color.from(opts.bg || 'light_gray');
+        this.hoverFg = opts.hoverFg
+            ? GWU.color.from(opts.hoverFg)
+            : this.fg.clone().lighten(50);
+        this.hoverBg = opts.hoverBg
+            ? GWU.color.from(opts.hoverBg)
+            : this.bg.clone().darken(50);
+        this.dropFg = opts.dropFg
+            ? GWU.color.from(opts.dropFg)
+            : this.fg.clone();
+        this.dropBg = opts.dropBg
+            ? GWU.color.from(opts.dropBg)
+            : this.bg.clone();
 
         Object.entries(opts.buttons).forEach(([text, opts]) => {
             this.addButton(text, opts);
@@ -307,6 +327,13 @@ export class Menu {
         return false;
     }
 
+    clearHighlight() {
+        this.buttons.forEach((b) => {
+            b.hovered = false;
+        });
+        this.needsRedraw = true;
+    }
+
     getButtonAt(x: number, _y: number): Button | null {
         return GWU.arrayFindRight(this.buttons, (b) => b.x < x) || null;
     }
@@ -345,7 +372,7 @@ export class Menu {
         } else {
             button = new DropDownButton(this, null, text, config);
             (<DropDownButton>button).setBounds(
-                x,
+                x - 1,
                 this.bounds.y ? this.bounds.y - 1 : 1,
                 0
             );
@@ -370,7 +397,7 @@ export class Menu {
             1,
             0,
             0,
-            0
+            this.bg
         );
 
         let x = this.bounds.x;
@@ -379,7 +406,8 @@ export class Menu {
 
         this.buttons.forEach((b) => {
             const color = b.hovered ? this.hoverFg : this.fg;
-            buffer.drawText(b.x, y, b.text, color);
+            const bgColor = b.hovered ? this.hoverBg : this.bg;
+            buffer.drawText(b.x, y, b.text, color, bgColor);
             x = b.x + b.text.length;
             buffer.drawText(x, y, this.separator, this.fg);
         });

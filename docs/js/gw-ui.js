@@ -848,10 +848,10 @@
             const height = this.bounds.height;
             const x = this.bounds.x;
             let y = this.bounds.y;
-            buffer.fillRect(x, y, width, height, 0, 0, this.menu.hoverBg);
+            buffer.fillRect(x, y, width, height, 0, 0, this.menu.dropBg);
             // Now draw the individual buttons...
             this.buttons.forEach((b) => {
-                buffer.drawText(x, y, b.text, b.hovered ? this.menu.hoverFg : this.menu.fg);
+                buffer.drawText(x + 1, y, b.text, b.hovered ? this.menu.hoverFg : this.menu.dropFg, b.hovered ? this.menu.hoverBg : this.menu.dropBg);
                 ++y;
             });
             if (this.parent) {
@@ -865,7 +865,9 @@
         const dialog = ui.startDialog();
         let activeButton = button;
         await ui.loop.run({
-            // @ts-ignore
+            Escape() {
+                return true;
+            },
             mousemove: (e) => {
                 if (!activeButton)
                     return true; // we are done (should not happen)
@@ -881,6 +883,9 @@
                             b.hovered = false;
                         });
                         selected.hovered = true;
+                        if (selected instanceof DropDownButton) {
+                            activeButton = selected;
+                        }
                     }
                 }
                 else {
@@ -901,11 +906,11 @@
                 }
                 return !activeButton; // if no active button we are done (should not happen)
             },
-            // @ts-ignore
             click: async (e) => {
                 if (!activeButton)
                     return true; // we are done (should not happen)
                 if (!activeButton.contains(e)) {
+                    menu.clearHighlight();
                     return true; // we are done
                 }
                 const actionButton = activeButton.buttonAt(e);
@@ -916,7 +921,6 @@
                     return actionButton.activate(); // actions return true if they want to close the menu (otherwise the menu stays open)
                 }
             },
-            // @ts-ignore
             draw: () => {
                 if (!activeButton)
                     return;
@@ -938,10 +942,20 @@
             this.bounds = new GWU__namespace.xy.Bounds(opts.x, opts.y, opts.width, 1);
             this.ui = opts.ui;
             this.needsRedraw = true;
-            this.fg = GWU__namespace.color.from(opts.fg || 'white');
-            this.bg = GWU__namespace.color.from(opts.bg || 'black');
-            this.hoverFg = GWU__namespace.color.from(opts.hoverFg || 'teal');
-            this.hoverBg = GWU__namespace.color.from(opts.hoverBg || 'black');
+            this.fg = GWU__namespace.color.from(opts.fg || 'black');
+            this.bg = GWU__namespace.color.from(opts.bg || 'light_gray');
+            this.hoverFg = opts.hoverFg
+                ? GWU__namespace.color.from(opts.hoverFg)
+                : this.fg.clone().lighten(50);
+            this.hoverBg = opts.hoverBg
+                ? GWU__namespace.color.from(opts.hoverBg)
+                : this.bg.clone().darken(50);
+            this.dropFg = opts.dropFg
+                ? GWU__namespace.color.from(opts.dropFg)
+                : this.fg.clone();
+            this.dropBg = opts.dropBg
+                ? GWU__namespace.color.from(opts.dropBg)
+                : this.bg.clone();
             Object.entries(opts.buttons).forEach(([text, opts]) => {
                 this.addButton(text, opts);
             });
@@ -981,6 +995,12 @@
             }
             return false;
         }
+        clearHighlight() {
+            this.buttons.forEach((b) => {
+                b.hovered = false;
+            });
+            this.needsRedraw = true;
+        }
         getButtonAt(x, _y) {
             return GWU__namespace.arrayFindRight(this.buttons, (b) => b.x < x) || null;
         }
@@ -1012,7 +1032,7 @@
             }
             else {
                 button = new DropDownButton(this, null, text, config);
-                button.setBounds(x, this.bounds.y ? this.bounds.y - 1 : 1, 0);
+                button.setBounds(x - 1, this.bounds.y ? this.bounds.y - 1 : 1, 0);
             }
             button.x = x;
             this.buttons.push(button);
@@ -1025,13 +1045,14 @@
         }
         drawInto(buffer) {
             this.needsRedraw = false;
-            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, 1, 0, 0, 0);
+            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, 1, 0, 0, this.bg);
             let x = this.bounds.x;
             const y = this.bounds.y;
             buffer.drawText(x, y, this.lead, this.fg);
             this.buttons.forEach((b) => {
                 const color = b.hovered ? this.hoverFg : this.fg;
-                buffer.drawText(b.x, y, b.text, color);
+                const bgColor = b.hovered ? this.hoverBg : this.bg;
+                buffer.drawText(b.x, y, b.text, color, bgColor);
                 x = b.x + b.text.length;
                 buffer.drawText(x, y, this.separator, this.fg);
             });

@@ -2217,12 +2217,12 @@
             }
             let running = true;
             while (this.running && running) {
+                if (keymap.draw && typeof keymap.draw === 'function') {
+                    keymap.draw();
+                }
                 const ev = await this.nextEvent(ms);
                 if (ev && (await dispatchEvent(ev, keymap))) {
                     running = false;
-                }
-                if (keymap.draw && typeof keymap.draw === 'function') {
-                    keymap.draw();
                 }
             }
             if (keymap.stop && typeof keymap.stop === 'function') {

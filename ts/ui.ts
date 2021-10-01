@@ -62,7 +62,6 @@ export class UI implements UICore {
         maxLength: number,
         opts: GetInputOptions = {}
     ) {
-        let defaultEntry = opts.default || '';
         let numbersOnly = opts.numbersOnly || false;
 
         const textEntryBounds = numbersOnly ? ['0', '9'] : [' ', '~'];
@@ -71,21 +70,19 @@ export class UI implements UICore {
         maxLength = Math.min(maxLength, buffer.width - x);
         const minLength = opts.minLength || 1;
 
-        let inputText = defaultEntry;
+        let inputText = opts.default || '';
         let charNum = GWU.text.length(inputText);
 
         const fg = GWU.color.from(opts.fg || 'white');
-        if (opts.bg) {
-            const bg = GWU.color.from(opts.bg);
-            buffer.fillRect(x, y, maxLength, 1, null, null, bg);
-        }
+        const bg = GWU.color.from(opts.bg || 'dark_gray');
         const errorFg = GWU.color.from(opts.errorFg || 'red');
+        const promptFg = opts.promptFg ? GWU.color.from(opts.promptFg) : 'gray';
 
         function isValid(text: string) {
             if (numbersOnly) {
                 const val = Number.parseInt(text);
-                if (opts.min && val < opts.min) return false;
-                if (opts.max && val > opts.max) return false;
+                if (opts.min !== undefined && val < opts.min) return false;
+                if (opts.max !== undefined && val > opts.max) return false;
                 return val > 0;
             }
             return text.length >= minLength;
@@ -93,6 +90,15 @@ export class UI implements UICore {
 
         let ev;
         do {
+            buffer.fillRect(x, y, maxLength, 1, ' ', fg, bg);
+
+            if (!inputText.length && opts.prompt && opts.prompt.length) {
+                buffer.drawText(x, y, opts.prompt, promptFg);
+            } else {
+                const color = isValid(inputText) ? fg : errorFg;
+                buffer.drawText(x, y, inputText, color);
+            }
+
             buffer.render();
 
             ev = await this.loop.nextKeyPress(-1);
@@ -114,9 +120,6 @@ export class UI implements UICore {
                     charNum++;
                 }
             }
-
-            const color = isValid(inputText) ? fg : errorFg;
-            buffer.drawText(x, y, inputText, color);
 
             if (ev.key == 'Escape') {
                 this.finishDialog();

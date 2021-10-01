@@ -6,7 +6,9 @@ export interface GetInputOptions {
     bg?: GWU.color.ColorBase;
 
     errorFg?: GWU.color.ColorBase;
+    promptFg?: GWU.color.ColorBase;
 
+    prompt?: string;
     default?: string;
     minLength?: number;
 

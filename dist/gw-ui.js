@@ -67,26 +67,23 @@
         }
         // assumes you are in a dialog and give the buffer for that dialog
         async getInputAt(x, y, maxLength, opts = {}) {
-            let defaultEntry = opts.default || '';
             let numbersOnly = opts.numbersOnly || false;
             const textEntryBounds = numbersOnly ? ['0', '9'] : [' ', '~'];
             const buffer = this.startDialog();
             maxLength = Math.min(maxLength, buffer.width - x);
             const minLength = opts.minLength || 1;
-            let inputText = defaultEntry;
+            let inputText = opts.default || '';
             let charNum = GWU__namespace.text.length(inputText);
             const fg = GWU__namespace.color.from(opts.fg || 'white');
-            if (opts.bg) {
-                const bg = GWU__namespace.color.from(opts.bg);
-                buffer.fillRect(x, y, maxLength, 1, null, null, bg);
-            }
+            const bg = GWU__namespace.color.from(opts.bg || 'dark_gray');
             const errorFg = GWU__namespace.color.from(opts.errorFg || 'red');
+            const promptFg = opts.promptFg ? GWU__namespace.color.from(opts.promptFg) : 'gray';
             function isValid(text) {
                 if (numbersOnly) {
                     const val = Number.parseInt(text);
-                    if (opts.min && val < opts.min)
+                    if (opts.min !== undefined && val < opts.min)
                         return false;
-                    if (opts.max && val > opts.max)
+                    if (opts.max !== undefined && val > opts.max)
                         return false;
                     return val > 0;
                 }
@@ -94,6 +91,14 @@
             }
             let ev;
             do {
+                buffer.fillRect(x, y, maxLength, 1, ' ', fg, bg);
+                if (!inputText.length && opts.prompt && opts.prompt.length) {
+                    buffer.drawText(x, y, opts.prompt, promptFg);
+                }
+                else {
+                    const color = isValid(inputText) ? fg : errorFg;
+                    buffer.drawText(x, y, inputText, color);
+                }
                 buffer.render();
                 ev = await this.loop.nextKeyPress(-1);
                 if (!ev || !ev.key)
@@ -112,8 +117,6 @@
                         charNum++;
                     }
                 }
-                const color = isValid(inputText) ? fg : errorFg;
-                buffer.drawText(x, y, inputText, color);
                 if (ev.key == 'Escape') {
                     this.finishDialog();
                     return '';

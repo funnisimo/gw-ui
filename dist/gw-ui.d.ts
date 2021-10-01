@@ -5,6 +5,8 @@ interface GetInputOptions {
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
     errorFg?: GWU.color.ColorBase;
+    promptFg?: GWU.color.ColorBase;
+    prompt?: string;
     default?: string;
     minLength?: number;
     numbersOnly?: boolean;

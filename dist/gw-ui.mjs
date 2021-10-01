@@ -765,11 +765,6 @@ class DropDownButton extends Button {
         Object.entries(buttons).forEach(([text, opts]) => {
             this.addButton(text, opts);
         });
-        this.buttons.forEach((b, i) => {
-            if (b instanceof DropDownButton) {
-                b.setBounds(this.bounds.x, this.bounds.y + i, this.bounds.width);
-            }
-        });
     }
     addButton(text, config) {
         if (this.buttons.length >= this.menu.ui.buffer.height - 1) {
@@ -809,6 +804,11 @@ class DropDownButton extends Button {
         else {
             throw new Error('Menu does not fit - too tall.');
         }
+        this.buttons.forEach((b, i) => {
+            if (b instanceof DropDownButton) {
+                b.setBounds(this.bounds.x, this.bounds.y + i, this.bounds.width);
+            }
+        });
     }
     contains(e) {
         return this.bounds.contains(e.x, e.y);
@@ -905,7 +905,7 @@ async function showDropDown(menu, button) {
         },
     });
     ui.finishDialog();
-    menu.needsRedraw = true;
+    menu.clearHighlight();
 }
 class Menu {
     constructor(opts) {

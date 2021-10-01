@@ -10,6 +10,7 @@ function clickHandler(button) {
     canvas.buffer.fillRect(40, 15, 20, 5, 0, 0, 0);
     const text = GWU.text.center(button.text, 16);
     canvas.buffer.drawText(42, 17, text, 'white');
+    return true;
 }
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
@@ -24,7 +25,11 @@ const topMenu = new GWI.Menu({
         File: clickHandler,
         Insert: {
             Apple: clickHandler,
-            Banana: clickHandler,
+            Banana: {
+                Sliced: clickHandler,
+                'Chocolate Covered': clickHandler,
+                Whole: clickHandler,
+            },
             Carrot: clickHandler,
         },
         Window: {

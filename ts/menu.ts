@@ -58,15 +58,6 @@ export class DropDownButton extends Button {
         Object.entries(buttons).forEach(([text, opts]) => {
             this.addButton(text, opts);
         });
-        this.buttons.forEach((b, i) => {
-            if (b instanceof DropDownButton) {
-                b.setBounds(
-                    this.bounds.x,
-                    this.bounds.y + i,
-                    this.bounds.width
-                );
-            }
-        });
     }
 
     addButton(text: string, config: ButtonConfig) {
@@ -106,6 +97,16 @@ export class DropDownButton extends Button {
         } else {
             throw new Error('Menu does not fit - too tall.');
         }
+
+        this.buttons.forEach((b, i) => {
+            if (b instanceof DropDownButton) {
+                b.setBounds(
+                    this.bounds.x,
+                    this.bounds.y + i,
+                    this.bounds.width
+                );
+            }
+        });
     }
 
     contains(e: GWU.io.Event) {
@@ -220,7 +221,7 @@ export async function showDropDown(menu: Menu, button: DropDownButton) {
     });
 
     ui.finishDialog();
-    menu.needsRedraw = true;
+    menu.clearHighlight();
 }
 
 export interface MenuOptions {

@@ -875,6 +875,13 @@
                 }
                 if (newActive) {
                     activeButton = newActive;
+                    const selected = activeButton.buttonAt(e);
+                    if (selected) {
+                        activeButton.buttons.forEach((b) => {
+                            b.hovered = false;
+                        });
+                        selected.hovered = true;
+                    }
                 }
                 else {
                     if (menu.contains(e)) {
@@ -899,7 +906,6 @@
                 if (!activeButton)
                     return true; // we are done (should not happen)
                 if (!activeButton.contains(e)) {
-                    menu.needsRedraw = true;
                     return true; // we are done
                 }
                 const actionButton = activeButton.buttonAt(e);

@@ -160,6 +160,13 @@ export async function showDropDown(menu: Menu, button: DropDownButton) {
             }
             if (newActive) {
                 activeButton = newActive;
+                const selected = activeButton.buttonAt(e);
+                if (selected) {
+                    activeButton.buttons.forEach((b) => {
+                        b.hovered = false;
+                    });
+                    selected.hovered = true;
+                }
             } else {
                 if (menu.contains(e)) {
                     menu.needsRedraw = true;

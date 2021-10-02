@@ -5,8 +5,8 @@ interface GetInputOptions {
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
     errorFg?: GWU.color.ColorBase;
-    promptFg?: GWU.color.ColorBase;
-    prompt?: string;
+    hint?: string;
+    hintFg?: GWU.color.ColorBase;
     default?: string;
     minLength?: number;
     numbersOnly?: boolean;
@@ -27,6 +27,24 @@ interface AlertOptions {
     height?: number;
     padX?: number;
     padY?: number;
+}
+interface ConfirmOptions extends GetInputOptions {
+    x?: number;
+    y?: number;
+    allowCancel?: boolean;
+    width?: number;
+    height?: number;
+    padX?: number;
+    padY?: number;
+    title?: string;
+    titleFg?: GWU.color.ColorBase;
+    borderBg?: GWU.color.ColorBase;
+    ok?: string;
+    cancel?: string;
+    buttonFg?: GWU.color.ColorBase;
+    buttonBg?: GWU.color.ColorBase;
+    hoverFg?: GWU.color.ColorBase;
+    hoverBg?: GWU.color.ColorBase;
 }
 interface UICore {
     buffer: GWU.canvas.DataBuffer;
@@ -65,6 +83,8 @@ declare class UI implements UICore {
     finishDialog(): void;
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
     alert(opts: number | AlertOptions, text: string, args: any): Promise<void>;
+    confirm(text: string, args?: any): Promise<boolean>;
+    confirm(opts: ConfirmOptions, text: string, args?: any): Promise<boolean>;
     getInputAt(x: number, y: number, maxLength: number, opts?: GetInputOptions): Promise<string>;
 }
 
@@ -313,4 +333,4 @@ declare class Menu {
     drawInto(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Button, CellEntry, DropDownButton, EntryBase, Flavor, FlavorOptions, GetInputOptions, ItemEntry, Menu, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions, showDropDown };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Button, CellEntry, ConfirmOptions, DropDownButton, EntryBase, Flavor, FlavorOptions, GetInputOptions, ItemEntry, Menu, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions, showDropDown };

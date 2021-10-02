@@ -4,11 +4,11 @@ import * as GWM from 'gw-map';
 export interface GetInputOptions {
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
-
     errorFg?: GWU.color.ColorBase;
-    promptFg?: GWU.color.ColorBase;
 
-    prompt?: string;
+    hint?: string;
+    hintFg?: GWU.color.ColorBase;
+
     default?: string;
     minLength?: number;
 
@@ -36,6 +36,30 @@ export interface AlertOptions {
     height?: number;
     padX?: number;
     padY?: number;
+}
+
+export interface ConfirmOptions extends GetInputOptions {
+    x?: number;
+    y?: number;
+
+    allowCancel?: boolean;
+
+    width?: number;
+    height?: number;
+    padX?: number;
+    padY?: number;
+
+    title?: string;
+    titleFg?: GWU.color.ColorBase;
+
+    borderBg?: GWU.color.ColorBase;
+
+    ok?: string;
+    cancel?: string;
+    buttonFg?: GWU.color.ColorBase;
+    buttonBg?: GWU.color.ColorBase;
+    hoverFg?: GWU.color.ColorBase;
+    hoverBg?: GWU.color.ColorBase;
 }
 
 export interface UICore {

@@ -68,3 +68,29 @@ LOOP.run({
     },
 });
 ```
+
+## confirm
+
+confirm shows a message to the player until they confirm it. You can allow the player to confirm or cancel the alert. You can even change the text of the buttons to do something like a Yes or No dialog.
+
+```js
+const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
+SHOW(canvas.node);
+
+const ui = new GWI.UI({ canvas, loop: LOOP });
+
+canvas.buffer.drawText(20, 17, 'Click the canvas to see a confirm.', 'yellow');
+canvas.buffer.drawText(
+    20,
+    19,
+    'Press a key to see a more custom confirm.',
+    'yellow'
+);
+canvas.render();
+
+LOOP.run({
+    async click() {
+        await ui.confirm('This is fairly simple.');
+    },
+});
+```

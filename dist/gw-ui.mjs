@@ -110,6 +110,81 @@ class UI {
         }
         this.finishDialog();
     }
+    async confirm(...args) {
+        let opts;
+        let text;
+        let textArgs = null;
+        if (args.length <= 2) {
+            opts = {};
+            text = args[0];
+            textArgs = args[1] || null;
+        }
+        else {
+            opts = args[0];
+            text = args[1];
+            textArgs = args[2] || null;
+        }
+        if (textArgs) {
+            text = GWU.text.apply(text, textArgs);
+        }
+        opts.allowCancel = opts.allowCancel || !!opts.cancel;
+        const buffer = this.startDialog();
+        buffer.mix('black', 50);
+        const btnOK = opts.ok || 'OK';
+        const btnCancel = opts.cancel || 'Cancel';
+        const len = Math.max(text.length, btnOK.length + 4 + btnCancel.length);
+        const x = Math.floor((this.canvas.width - len - 4) / 2) - 2;
+        const y = Math.floor(this.canvas.height / 2) - 1;
+        buffer.fillRect(x, y, len + 4, 5, ' ', 'black', opts.bg || 'dark_gray');
+        buffer.drawText(x + 2, y + 1, text, opts.fg || 'white');
+        buffer.drawText(x + 2, y + 3, btnOK, opts.buttonFg || 'white', opts.buttonBg);
+        if (opts.allowCancel) {
+            buffer.drawText(x + len + 4 - btnCancel.length - 2, y + 3, btnCancel, opts.buttonFg || 'white', opts.buttonBg);
+        }
+        buffer.render();
+        let result;
+        while (result === undefined) {
+            const ev = await this.loop.nextEvent(1000);
+            if (!ev)
+                continue;
+            await GWU.io.dispatchEvent(ev, {
+                enter() {
+                    result = true;
+                },
+                escape() {
+                    if (opts.allowCancel) {
+                        result = false;
+                    }
+                },
+                mousemove() {
+                    let isOK = ev.x < x + btnOK.length + 2;
+                    let isCancel = ev.x > x + len + 4 - btnCancel.length - 4;
+                    if (ev.x < x || ev.x > x + len + 4) {
+                        isOK = false;
+                        isCancel = false;
+                    }
+                    if (ev.y != y + 3) {
+                        isOK = false;
+                        isCancel = false;
+                    }
+                    buffer.drawText(x + 2, y + 3, btnOK, isOK ? GWU.colors.teal : GWU.colors.white);
+                    if (opts.allowCancel) {
+                        buffer.drawText(x + len + 4 - btnCancel.length - 2, y + 3, btnCancel, isCancel ? GWU.colors.teal : GWU.colors.white);
+                    }
+                    buffer.render();
+                },
+                click() {
+                    if (ev.x < x || ev.x > x + len + 4)
+                        return;
+                    if (ev.y < y || ev.y > y + 5)
+                        return;
+                    result = ev.x < x + Math.floor(len / 2) + 2;
+                },
+            });
+        }
+        this.finishDialog();
+        return result;
+    }
     // assumes you are in a dialog and give the buffer for that dialog
     async getInputAt(x, y, maxLength, opts = {}) {
         let numbersOnly = opts.numbersOnly || false;
@@ -122,7 +197,7 @@ class UI {
         const fg = GWU.color.from(opts.fg || 'white');
         const bg = GWU.color.from(opts.bg || 'dark_gray');
         const errorFg = GWU.color.from(opts.errorFg || 'red');
-        const promptFg = opts.promptFg ? GWU.color.from(opts.promptFg) : 'gray';
+        const hintFg = opts.hintFg ? GWU.color.from(opts.hintFg) : 'gray';
         function isValid(text) {
             if (numbersOnly) {
                 const val = Number.parseInt(text);
@@ -137,8 +212,8 @@ class UI {
         let ev;
         do {
             buffer.fillRect(x, y, maxLength, 1, ' ', fg, bg);
-            if (!inputText.length && opts.prompt && opts.prompt.length) {
-                buffer.drawText(x, y, opts.prompt, promptFg);
+            if (!inputText.length && opts.hint && opts.hint.length) {
+                buffer.drawText(x, y, opts.hint, hintFg);
             }
             else {
                 const color = isValid(inputText) ? fg : errorFg;

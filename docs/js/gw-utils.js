@@ -5969,6 +5969,9 @@ void main() {
     function installAll$1(config) {
         Object.entries(config).forEach(([id, msg]) => install$1(id, msg));
     }
+    function get(msgOrId) {
+        return templates[msgOrId] || null;
+    }
     const handlers = [];
     function add(msg, args) {
         return addAt(-1, -1, msg, args);
@@ -6100,6 +6103,7 @@ void main() {
         templates: templates,
         install: install$1,
         installAll: installAll$1,
+        get: get,
         handlers: handlers,
         add: add,
         addAt: addAt,

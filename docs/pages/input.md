@@ -38,8 +38,8 @@ const ui = new GWI.UI({ canvas, loop: LOOP });
         numbersOnly: true,
         min: 15,
         max: 99,
-        prompt: '15-99',
-        promptFg: 'dark_green',
+        hint: '15-99',
+        hintFg: 'dark_green',
     });
     if (age && age.length) {
         canvas.buffer.drawText(11, 6, age, 'yellow');

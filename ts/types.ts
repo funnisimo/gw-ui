@@ -62,6 +62,30 @@ export interface ConfirmOptions extends GetInputOptions {
     hoverBg?: GWU.color.ColorBase;
 }
 
+export interface InputBoxOptions extends GetInputOptions {
+    x?: number;
+    y?: number;
+
+    allowCancel?: boolean;
+
+    width?: number;
+    height?: number;
+    padX?: number;
+    padY?: number;
+
+    title?: string;
+    titleFg?: GWU.color.ColorBase;
+
+    borderBg?: GWU.color.ColorBase;
+
+    ok?: string;
+    cancel?: string;
+    buttonFg?: GWU.color.ColorBase;
+    buttonBg?: GWU.color.ColorBase;
+    hoverFg?: GWU.color.ColorBase;
+    hoverBg?: GWU.color.ColorBase;
+}
+
 export interface UICore {
     buffer: GWU.canvas.DataBuffer;
     loop: GWU.io.Loop;

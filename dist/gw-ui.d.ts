@@ -46,6 +46,24 @@ interface ConfirmOptions extends GetInputOptions {
     hoverFg?: GWU.color.ColorBase;
     hoverBg?: GWU.color.ColorBase;
 }
+interface InputBoxOptions extends GetInputOptions {
+    x?: number;
+    y?: number;
+    allowCancel?: boolean;
+    width?: number;
+    height?: number;
+    padX?: number;
+    padY?: number;
+    title?: string;
+    titleFg?: GWU.color.ColorBase;
+    borderBg?: GWU.color.ColorBase;
+    ok?: string;
+    cancel?: string;
+    buttonFg?: GWU.color.ColorBase;
+    buttonBg?: GWU.color.ColorBase;
+    hoverFg?: GWU.color.ColorBase;
+    hoverBg?: GWU.color.ColorBase;
+}
 interface UICore {
     buffer: GWU.canvas.DataBuffer;
     loop: GWU.io.Loop;
@@ -86,6 +104,7 @@ declare class UI implements UICore {
     confirm(text: string, args?: any): Promise<boolean>;
     confirm(opts: ConfirmOptions, text: string, args?: any): Promise<boolean>;
     getInputAt(x: number, y: number, maxLength: number, opts?: GetInputOptions): Promise<string>;
+    inputBox(opts: InputBoxOptions, prompt: string, args?: any): Promise<string>;
 }
 
 interface MessageOptions {
@@ -333,4 +352,4 @@ declare class Menu {
     drawInto(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Button, CellEntry, ConfirmOptions, DropDownButton, EntryBase, Flavor, FlavorOptions, GetInputOptions, ItemEntry, Menu, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions, showDropDown };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Button, CellEntry, ConfirmOptions, DropDownButton, EntryBase, Flavor, FlavorOptions, GetInputOptions, InputBoxOptions, ItemEntry, Menu, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions, showDropDown };

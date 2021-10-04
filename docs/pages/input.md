@@ -50,3 +50,58 @@ const ui = new GWI.UI({ canvas, loop: LOOP });
     }
 })();
 ```
+
+## inputBox
+
+This function allows you to prompt the user for some input.
+
+```js
+const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
+SHOW(canvas.node);
+
+const ui = new GWI.UI({ canvas, loop: LOOP });
+
+(async () => {
+    canvas.buffer.drawText(5, 5, 'Name: ', 'white');
+    canvas.render();
+
+    const text = await ui.inputBox(
+        {
+            bg: 'gray',
+            fg: 'white',
+            minLength: 5,
+        },
+        'What is your name?'
+    );
+    if (text && text.length) {
+        canvas.buffer.drawText(11, 5, text, 'yellow');
+        canvas.render();
+    } else {
+        canvas.buffer.drawText(11, 5, 'CANCELED', 'red');
+        canvas.render();
+    }
+
+    canvas.buffer.drawText(5, 6, 'Age: ', 'white');
+    canvas.render();
+
+    const age = await ui.inputBox(
+        {
+            bg: 'gray',
+            fg: 'white',
+            numbersOnly: true,
+            min: 15,
+            max: 99,
+            hint: '15-99',
+            hintFg: 'dark_green',
+        },
+        'What is your age?'
+    );
+    if (age && age.length) {
+        canvas.buffer.drawText(11, 6, age, 'yellow');
+        canvas.render();
+    } else {
+        canvas.buffer.drawText(11, 6, 'CANCELED', 'red');
+        canvas.render();
+    }
+})();
+```

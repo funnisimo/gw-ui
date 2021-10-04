@@ -81,11 +81,27 @@ export function mockItem(): GWM.item.Item {
     return item;
 }
 
+export function mockLoop(): GWU.io.Loop {
+    const loopKeymap = {};
+    let done: (value: unknown) => void;
+    return {
+        run: jest.fn().mockImplementation((keymap) => {
+            Object.assign(loopKeymap, keymap);
+            return new Promise((resolve) => {
+                done = resolve;
+            });
+        }),
+        stop() {
+            done(void 0);
+        },
+    } as unknown as GWU.io.Loop;
+}
+
 export function mockUI(width = 100, height = 38): UICore {
     const buffer = new GWU.canvas.DataBuffer(width, height);
     return {
         buffer,
-        loop: GWU.loop,
+        loop: GWU.loop, // mockLoop(),
         render: jest.fn(),
         startDialog: jest.fn().mockReturnValue(buffer),
         finishDialog: jest.fn(),
@@ -96,4 +112,30 @@ export function mockUI(width = 100, height = 38): UICore {
         fadeTo: jest.fn(),
         alert: jest.fn(),
     } as UICore;
+}
+
+export function getBufferText(
+    buffer: GWU.canvas.DataBuffer,
+    x: number,
+    y: number,
+    width: number
+): string {
+    let text = '';
+    for (let i = 0; i < width; ++i) {
+        const data = buffer.get(x + i, y);
+        if (!data.glyph) data.glyph = 32;
+        text += String.fromCharCode(data.glyph);
+    }
+    return text.trim();
+}
+
+export function keypress(key: string): GWU.io.Event {
+    return GWU.io.makeKeyEvent({
+        key,
+        code: 'KEY_' + key.toUpperCase(),
+    } as KeyboardEvent);
+}
+
+export function click(x: number, y: number): GWU.io.Event {
+    return GWU.io.makeMouseEvent({ buttons: 1 } as MouseEvent, x, y);
 }

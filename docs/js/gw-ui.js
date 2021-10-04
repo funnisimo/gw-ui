@@ -272,6 +272,33 @@
             // GW.ui.draw(); // reverts to old display
             return inputText;
         }
+        async inputBox(opts, prompt, args) {
+            var _a;
+            let text;
+            if (prompt) {
+                text = GWU__namespace.text.apply(prompt, args);
+            }
+            const allowCancel = (_a = opts.allowCancel) !== null && _a !== void 0 ? _a : true;
+            const bg = opts.bg || 'black';
+            const buffer = this.startDialog();
+            buffer.mix('black', 50);
+            const btnOK = 'OK';
+            const btnCancel = 'Cancel';
+            const len = Math.max(text.length, btnOK.length + 4 + btnCancel.length);
+            const x = Math.floor((buffer.width - len - 4) / 2) - 2;
+            const y = Math.floor(buffer.height / 2) - 1;
+            buffer.fillRect(x, y, len + 4, 6, ' ', 'black', bg);
+            buffer.drawText(x + 2, y + 1, text);
+            buffer.fillRect(x + 2, y + 2, len - 4, 1, ' ', 'gray', 'gray');
+            buffer.drawText(x + 2, y + 4, btnOK);
+            if (allowCancel) {
+                buffer.drawText(x + len + 4 - btnCancel.length - 2, y + 4, btnCancel);
+            }
+            buffer.render();
+            const value = await this.getInputAt(x + 2, y + 2, len - 4, opts);
+            this.finishDialog();
+            return value;
+        }
     }
 
     class Messages {

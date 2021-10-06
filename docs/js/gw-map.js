@@ -482,8 +482,8 @@
         getVerb(verb) {
             return this.kind.getVerb(this, verb);
         }
-        drawStatus(sidebar) {
-            this.kind.drawStatus(this, sidebar);
+        drawStatus(buffer, bounds) {
+            return this.kind.drawStatus(this, buffer, bounds);
         }
         drawInto(dest, _observer) {
             dest.drawSprite(this.sprite);
@@ -562,13 +562,16 @@
         getVerb(_entity, verb) {
             return verb;
         }
-        drawStatus(entity, sidebar) {
+        drawStatus(entity, buffer, bounds) {
             if (!entity.map)
-                return;
+                return 0;
             if (entity.isDestroyed)
-                return;
-            entity.map.getAppearanceAt(entity.x, entity.y, sidebar.mixer);
-            sidebar.drawTitle(sidebar.mixer, entity.getName());
+                return 0;
+            const mixer = new GWU__namespace.sprite.Mixer();
+            entity.map.getAppearanceAt(entity.x, entity.y, mixer);
+            buffer.drawSprite(bounds.x + 1, bounds.y, mixer);
+            buffer.wrapText(bounds.x + 3, bounds.y, bounds.width - 3, entity.getName(), 'purple');
+            return 1;
         }
     }
 
@@ -1794,6 +1797,7 @@
         evacuateItems: evacuateItems
     });
 
+    GWU__namespace.color.install('cellStatusName', 'light_blue');
     // class CellEntities {
     //     cell: Cell;
     //     constructor(cell: Cell) {
@@ -2454,11 +2458,9 @@
             }
             return this.highestPriorityTile().sprite.ch || ' ';
         }
-        drawStatus(sidebar) {
-            if (!this.map)
-                return;
-            this.map.getAppearanceAt(this.x, this.y, sidebar.mixer);
-            sidebar.drawTitle(sidebar.mixer, this.getName());
+        drawStatus(buffer, bounds) {
+            const lines = buffer.wrapText(bounds.x + 1, bounds.y, bounds.width - 1, this.getName(), 'cellStatusName');
+            return lines;
         }
         toString() {
             return `Cell @ ${this.x},${this.y}`;

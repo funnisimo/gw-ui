@@ -1,19 +1,19 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import * as UTILS from '../test/utils';
+// import * as UTILS from '../test/utils';
 
 import * as Flavor from './flavor';
-import { UICore } from './types';
+// import { UICore } from './types';
 
 describe('Flavor', () => {
     describe('getFlavorText', () => {
         let map: GWM.map.Map;
-        let ui: UICore;
+        // let ui: UICore;
         let flavor: Flavor.Flavor;
         let fov: GWU.fov.FovSystem;
 
         beforeEach(() => {
-            ui = UTILS.mockUI();
+            // ui = UTILS.mockUI();
             map = GWM.map.make(20, 20, {
                 tile: 'FLOOR',
                 boundary: 'WALL',
@@ -21,7 +21,7 @@ describe('Flavor', () => {
             });
             fov = new GWU.fov.FovSystem(map);
             fov.update(5, 5, 10);
-            flavor = new Flavor.Flavor({ ui, x: 0, y: 4, width: 80 });
+            flavor = new Flavor.Flavor('FLAVOR', { x: 0, y: 4, width: 80 });
         });
 
         test('Basics', () => {

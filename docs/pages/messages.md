@@ -23,8 +23,7 @@ const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
 SHOW(canvas.node);
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const messages = new GWI.Messages({
-    ui,
+const messages = new GWI.Messages('MSG', {
     x: 0,
     y: 0,
     width: 80,
@@ -35,12 +34,10 @@ const messages = new GWI.Messages({
 
 LOOP.run({
     async click(e) {
-        if (messages.contains(e)) {
-            await messages.showArchive();
-        }
+        await messages.click(e, ui);
     },
     draw() {
-        messages.draw();
+        messages.draw(ui.buffer);
         ui.render();
     },
 });
@@ -55,8 +52,7 @@ const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
 SHOW(canvas.node);
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const messages = new GWI.Messages({
-    ui,
+const messages = new GWI.Messages('MSG', {
     x: 20,
     y: canvas.height - 4,
     width: 80,
@@ -67,12 +63,10 @@ const messages = new GWI.Messages({
 
 LOOP.run({
     async click(e) {
-        if (messages.contains(e)) {
-            await messages.showArchive();
-        }
+        await messages.click(e, ui);
     },
     draw() {
-        messages.draw();
+        messages.draw(ui.buffer);
         ui.render();
     },
 });

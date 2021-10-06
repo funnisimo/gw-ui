@@ -20,6 +20,7 @@ const ui = new GWI.UI({ canvas, loop: LOOP });
         bg: 'gray',
         fg: 'white',
         minLength: 5,
+        errorFg: 'lightest_red',
     });
     if (text && text.length) {
         canvas.buffer.drawText(11, 5, text, 'yellow');
@@ -40,6 +41,7 @@ const ui = new GWI.UI({ canvas, loop: LOOP });
         max: 99,
         hint: '15-99',
         hintFg: 'dark_green',
+        errorFg: 'lightest_red',
     });
     if (age && age.length) {
         canvas.buffer.drawText(11, 6, age, 'yellow');
@@ -69,7 +71,14 @@ const ui = new GWI.UI({ canvas, loop: LOOP });
         {
             bg: 'gray',
             fg: 'white',
-            minLength: 5,
+            input: {
+                activeFg: 'black',
+                activeBg: 'teal',
+                hoverFg: 'yellow',
+                hoverBg: 'red',
+                minLength: 5,
+                errorFg: 'lightest_red',
+            },
         },
         'What is your name?'
     );
@@ -88,11 +97,14 @@ const ui = new GWI.UI({ canvas, loop: LOOP });
         {
             bg: 'gray',
             fg: 'white',
-            numbersOnly: true,
-            min: 15,
-            max: 99,
-            hint: '15-99',
-            hintFg: 'dark_green',
+            input: {
+                numbersOnly: true,
+                min: 15,
+                max: 99,
+                hint: '15-99',
+                hintFg: 'dark_green',
+                errorFg: 'lightest_red',
+            },
         },
         'What is your age?'
     );

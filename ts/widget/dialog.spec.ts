@@ -1,5 +1,6 @@
 import * as UTILS from '../../test/utils';
 import { UICore } from '../types';
+import { buildDialog } from './dialog';
 // import * as GWU from 'gw-utils';
 import * as Widget from './index';
 
@@ -15,102 +16,108 @@ describe('Dialog', () => {
     });
 
     test('build - confirm', async () => {
-        const dlg = new Widget.Dialog('TEST', {
+        const dlg = buildDialog(ui, {
             width: 20,
             height: 5,
             bg: 'blue',
             borderBg: 'dark_blue',
             title: 'Dialog',
             titleFg: 'yellow',
-        });
-        dlg.addWidget(
-            2,
-            1,
-            new Widget.Text('PROMPT', { text: 'Hello World!', fg: 'green' })
-        );
-        const ok = dlg.addWidget(
-            2,
-            3,
-            new Widget.Button('OK', {
-                text: 'OK',
-                width: 10,
-                fg: 'green',
-                activeFg: 'light_green',
-                activeBg: 'darkest_green',
-            })
-        );
+        })
+            .with(
+                new Widget.Text('PROMPT', {
+                    x: 2,
+                    y: 1,
+                    text: 'Hello World!',
+                    fg: 'green',
+                })
+            )
+            .with(
+                new Widget.Button('OK', {
+                    x: 2,
+                    y: 3,
+                    text: 'OK',
+                    width: 10,
+                    fg: 'green',
+                    activeFg: 'light_green',
+                    activeBg: 'darkest_green',
+                })
+            )
+            .center()
+            .done();
+
         dlg.setActionHandlers({
             OK: () => {
                 dlg.close(true);
             },
         });
-        // dlg.setKeyHandlers({
-        //     Escape: () => {
-        //         dlg.close(false);
-        //     },
-        // });
-
-        expect(dlg.bounds.x).toEqual(-1);
-        expect(dlg.bounds.y).toEqual(-1);
-
-        let result = dlg.show(ui);
 
         expect(dlg.bounds.x).toEqual(20);
         expect(dlg.bounds.y).toEqual(17);
+        const ok = dlg.getWidget('OK')!;
+
+        // OK - Enter
+
+        let result = dlg.show();
         expect(dlg.activeWidget).toBe(ok);
 
         ui.loop.pushEvent(UTILS.keypress('Enter'));
 
         expect(await result).toBeTruthy();
 
-        result = dlg.show(ui);
+        // OK - Click
 
-        expect(dlg.bounds.x).toEqual(20);
-        expect(dlg.bounds.y).toEqual(17);
+        result = dlg.show();
         expect(dlg.activeWidget).toBe(ok);
 
-        expect(ok.contains(24 - dlg.bounds.x, 20 - dlg.bounds.y)).toBeTruthy();
+        expect(ok.contains(24, 20)).toBeTruthy();
         ui.loop.pushEvent(UTILS.click(24, 20));
 
         expect(await result).toBeTruthy();
     });
 
     test('build - confirm or cancel', async () => {
-        const dlg = new Widget.Dialog('TEST', {
+        const dlg = buildDialog(ui, {
             width: 50,
             height: 5,
             bg: 'blue',
             borderBg: 'dark_blue',
             title: 'Dialog',
             titleFg: 'yellow',
-        });
-        dlg.addWidget(
-            2,
-            1,
-            new Widget.Text('PROMPT', { text: 'Hello World!', fg: 'green' })
-        );
-        const ok = dlg.addWidget(
-            2,
-            -2, // From bottom
-            new Widget.Button('OK', {
-                text: 'OK',
-                fg: 'green',
-                activeFg: 'light_green',
-                activeBg: 'darkest_green',
-                width: 10,
-            })
-        );
-        const cancel = dlg.addWidget(
-            -12, // 12 from right
-            -2,
-            new Widget.Button('CANCEL', {
-                text: 'CANCEL',
-                fg: 'green',
-                activeFg: 'light_green',
-                activeBg: 'darkest_green',
-                width: 10,
-            })
-        );
+        })
+            .with(
+                new Widget.Text('PROMPT', {
+                    x: 2,
+                    y: 1,
+                    text: 'Hello World!',
+                    fg: 'green',
+                })
+            )
+            .with(
+                new Widget.Button('OK', {
+                    x: 2,
+                    y: 3,
+                    text: 'OK',
+                    fg: 'green',
+                    activeFg: 'light_green',
+                    activeBg: 'darkest_green',
+                    width: 10,
+                })
+            )
+            .with(
+                new Widget.Button('CANCEL', {
+                    x: -2,
+                    y: 3,
+                    text: 'CANCEL',
+                    fg: 'green',
+                    activeFg: 'light_green',
+                    activeBg: 'darkest_green',
+                    width: 10,
+                })
+            )
+            .center()
+            .done();
+
         dlg.setActionHandlers({
             OK: () => {
                 dlg.close(true);
@@ -120,34 +127,31 @@ describe('Dialog', () => {
             },
         });
 
-        expect(dlg.bounds.x).toEqual(-1);
-        expect(dlg.bounds.y).toEqual(-1);
+        expect(dlg.bounds.x).toEqual(5);
+        expect(dlg.bounds.y).toEqual(17);
+        const ok = dlg.getWidget('OK')!;
+        const cancel = dlg.getWidget('CANCEL')!;
 
         // OK HANDLERS
 
-        let result = dlg.show(ui);
+        let result = dlg.show();
 
-        expect(dlg.bounds.x).toEqual(5);
-        expect(dlg.bounds.y).toEqual(17);
         expect(dlg.activeWidget).toBe(ok);
 
         ui.loop.pushEvent(UTILS.keypress('Enter'));
         expect(await result).toBeTruthy();
 
-        result = dlg.show(ui);
+        result = dlg.show();
 
-        expect(dlg.bounds.x).toEqual(5);
-        expect(dlg.bounds.y).toEqual(17);
         expect(dlg.activeWidget).toBe(ok);
-
-        expect(ok.contains(9 - dlg.bounds.x, 20 - dlg.bounds.y)).toBeTruthy();
+        expect(ok.contains(9, 20)).toBeTruthy();
         ui.loop.pushEvent(UTILS.click(9, 20));
 
         expect(await result).toBeTruthy();
 
         // CANCEL HANDLERS
 
-        result = dlg.show(ui);
+        result = dlg.show();
 
         expect(dlg.activeWidget).toBe(ok);
         ui.loop.pushEvent(UTILS.keypress('Tab'));
@@ -155,7 +159,7 @@ describe('Dialog', () => {
         expect(await result).toBeFalsy();
         expect(dlg.activeWidget).toBe(cancel);
 
-        result = dlg.show(ui);
+        result = dlg.show();
 
         expect(dlg.activeWidget).toBe(ok);
         expect(dlg.widgetAt(43, 20)).toBe(cancel);
@@ -165,22 +169,25 @@ describe('Dialog', () => {
     });
 
     test('build - alert', async () => {
-        const dlg = new Widget.Dialog('TEST', {
+        const dlg = buildDialog(ui, {
             bg: 'blue',
             borderBg: 'dark_blue',
             title: 'Dialog',
             titleFg: 'yellow',
             width: 50, // TODO - Figure out how to dynamically size?
-        });
-        dlg.addWidget(
-            2,
-            1,
-            new Widget.Text('PROMPT', {
-                text: 'Hello World!',
-                fg: 'green',
-                wrap: 46,
-            })
-        );
+        })
+            .with(
+                new Widget.Text('PROMPT', {
+                    x: 2,
+                    y: 1,
+                    text: 'Hello World!',
+                    fg: 'green',
+                    wrap: 46,
+                })
+            )
+            .center()
+            .done();
+
         dlg.setActionHandlers({
             DONE: () => {
                 dlg.close(false);
@@ -194,67 +201,71 @@ describe('Dialog', () => {
 
         dlg.setTimeout('DONE', 500);
 
-        let result = await dlg.show(ui);
+        let result = await dlg.show();
         expect(result).toBeFalsy(); // not interrupted
 
         // MUST set timeout again
         dlg.setTimeout('DONE', 500);
 
-        result = dlg.show(ui);
+        result = dlg.show();
         ui.loop.pushEvent(UTILS.keypress('a'));
         expect(await result).toBeTruthy(); // interrupted
     });
 
-    test.only('input box - confirm or cancel', async () => {
-        const dlg = new Widget.Dialog('TEST', {
+    test('input box - confirm or cancel', async () => {
+        const dlg = buildDialog(ui, {
             width: 50,
             height: 7,
             bg: 'blue',
             borderBg: 'dark_blue',
             title: 'Dialog',
             titleFg: 'yellow',
-        });
-        dlg.addWidget(
-            2,
-            1,
-            new Widget.Text('PROMPT', {
-                text: 'What is your name?',
-                fg: 'green',
-            })
-        );
+        })
+            .with(
+                new Widget.Text('PROMPT', {
+                    x: 2,
+                    y: 1,
+                    text: 'What is your name?',
+                    fg: 'green',
+                })
+            )
+            .with(new Widget.Text('LABEL', { x: 2, y: 3, text: 'Name:' }))
+            .with(
+                new Widget.Input('INPUT', {
+                    x: 8,
+                    y: 3,
+                    hint: 'length 5',
+                    minLength: 5,
+                    width: 10,
+                })
+            )
+            .with(
+                new Widget.Button('OK', {
+                    x: 2,
+                    y: 6,
+                    text: 'OK',
+                    fg: 'green',
+                    activeFg: 'light_green',
+                    activeBg: 'darkest_green',
+                    width: 10,
+                })
+            )
+            .with(
+                new Widget.Button('CANCEL', {
+                    x: -2, // 12 from right
+                    y: 6,
+                    text: 'CANCEL',
+                    fg: 'green',
+                    activeFg: 'light_green',
+                    activeBg: 'darkest_green',
+                    width: 10,
+                })
+            )
+            .center()
+            .done();
 
-        dlg.addWidget(2, 3, new Widget.Text('LABEL', { text: 'Name:' }));
-        const input: Widget.Input = dlg.addWidget(
-            8,
-            3,
-            new Widget.Input('INPUT', {
-                hint: 'length 5',
-                minLength: 5,
-                width: 10,
-            })
-        );
-        dlg.addWidget(
-            2,
-            -2,
-            new Widget.Button('OK', {
-                text: 'OK',
-                fg: 'green',
-                activeFg: 'light_green',
-                activeBg: 'darkest_green',
-                width: 10,
-            })
-        );
-        dlg.addWidget(
-            -12, // 12 from right
-            -2,
-            new Widget.Button('CANCEL', {
-                text: 'CANCEL',
-                fg: 'green',
-                activeFg: 'light_green',
-                activeBg: 'darkest_green',
-                width: 10,
-            })
-        );
+        const input = dlg.getWidget('INPUT') as Widget.Input;
+
         dlg.setKeyHandlers({
             Enter: () => {
                 if (input.isValid()) dlg.close(input.value);
@@ -274,7 +285,7 @@ describe('Dialog', () => {
 
         // OK
 
-        let result = dlg.show(ui);
+        let result = dlg.show();
         expect(dlg.activeWidget).toBe(input);
 
         for (let letter of 'testing') {
@@ -286,7 +297,7 @@ describe('Dialog', () => {
 
         // Cancel
 
-        result = dlg.show(ui);
+        result = dlg.show();
         expect(dlg.activeWidget).toBe(input);
         expect(input.text).toEqual(''); // resets on second display of dialog
 
@@ -297,7 +308,7 @@ describe('Dialog', () => {
         expect(await result).toEqual(null);
 
         // Too short (Does not submit)
-        result = dlg.show(ui);
+        result = dlg.show();
         expect(dlg.activeWidget).toBe(input);
         expect(input.text).toEqual(''); // resets on second display of dialog
 
@@ -307,5 +318,90 @@ describe('Dialog', () => {
         ui.loop.pushEvent(UTILS.keypress('Enter'));
         ui.loop.pushEvent(UTILS.keypress('Escape'));
         expect(await result).toEqual(null);
+    });
+
+    test('build - pad=1', () => {
+        const dlg = Widget.buildDialog(ui, {})
+            .with(
+                new Widget.Text('TEXT', {
+                    text: 'This is a simple example.',
+                    wrap: 40,
+                })
+            )
+            .center()
+            .done();
+
+        const text = dlg.getWidget('TEXT') as Widget.Button;
+        expect(text.bounds.width).toEqual(40);
+        expect(text.bounds.height).toEqual(1);
+
+        expect(dlg.bounds.height).toEqual(3);
+        expect(dlg.bounds.width).toEqual(42);
+    });
+
+    test('build - pad=1, 2 texts', () => {
+        const dlg = Widget.buildDialog(ui, {})
+            .with(
+                new Widget.Text('A', {
+                    text: 'This is a simple example.',
+                    wrap: 40,
+                })
+            )
+            .with(
+                new Widget.Text('B', {
+                    text: 'This is a simple example.',
+                    wrap: 30,
+                })
+            )
+            .center()
+            .done();
+
+        const textA = dlg.getWidget('A') as Widget.Button;
+        expect(textA.bounds.width).toEqual(40);
+        expect(textA.bounds.height).toEqual(1);
+
+        const textB = dlg.getWidget('B') as Widget.Button;
+        expect(textB.bounds.width).toEqual(30);
+        expect(textB.bounds.height).toEqual(1);
+
+        expect(dlg.bounds.height).toEqual(5);
+        expect(dlg.bounds.width).toEqual(42);
+    });
+
+    test.only('build - negative x, y, pad=1', () => {
+        const builder = Widget.buildDialog(ui, { height: 5, width: 42 });
+
+        builder.with(
+            new Widget.Text('TEXT', {
+                text: 'This is a simple example.',
+            })
+        );
+        builder.with(new Widget.Button('OK', { text: 'OK', y: -1 }));
+        builder.with(
+            new Widget.Button('CANCEL', { text: 'CANCEL', x: -1, y: -1 })
+        );
+        builder.center();
+        const dlg = builder.done();
+
+        const ok = dlg.getWidget('OK') as Widget.Button;
+        const cancel = dlg.getWidget('CANCEL') as Widget.Button;
+
+        // console.log('dialog', dlg.bounds, dlg.bounds.right, dlg.bounds.bottom);
+        // console.log('text', dlg.getWidget('TEXT')!.bounds);
+        // console.log('ok', ok.bounds);
+        // console.log(
+        //     'cancel',
+        //     cancel.bounds,
+        //     cancel.bounds.right,
+        //     cancel.bounds.bottom
+        // );
+
+        expect(dlg.bounds.height).toEqual(5);
+        expect(dlg.bounds.width).toEqual(42);
+
+        expect(ok.bounds.x).toEqual(dlg.bounds.x + 1);
+        expect(ok.bounds.y).toEqual(dlg.bounds.bottom - 1);
+        expect(cancel.bounds.y).toEqual(dlg.bounds.bottom - 1);
+        expect(cancel.bounds.right).toEqual(dlg.bounds.right - 1);
     });
 });

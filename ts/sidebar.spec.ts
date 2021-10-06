@@ -3,10 +3,9 @@ import * as UTILS from '../test/utils';
 import * as GWM from 'gw-map';
 import * as GWU from 'gw-utils';
 import * as Sidebar from './sidebar';
-import { UICore } from './types';
+// import { UICore } from './types';
 
 describe('Sidebar', () => {
-    let ui: UICore;
     let sidebar: Sidebar.Sidebar;
 
     beforeAll(() => {
@@ -18,10 +17,7 @@ describe('Sidebar', () => {
             fg: 'white',
         });
 
-        ui = UTILS.mockUI(100, 38);
-
-        sidebar = new Sidebar.Sidebar({
-            ui,
+        sidebar = new Sidebar.Sidebar('ID', {
             x: 0,
             y: 0,
             width: 20,
@@ -124,29 +120,30 @@ describe('Sidebar', () => {
             onFovChange: memory,
             visible: true,
         });
+        const ui = UTILS.mockUI();
 
         // These will be visible...
         map.setTile(2, 2, 'SIGN');
         const a1 = GWM.actor.from({ ch: 'a', name: 'Actor 1' });
-        await map.addActor(3, 3, a1);
+        map.addActor(3, 3, a1);
         const i1 = GWM.item.from({ ch: 'b', name: 'Item 1' });
-        await map.addItem(4, 4, i1);
+        map.addItem(4, 4, i1);
 
         // These will be revealed...
         map.setTile(7, 7, 'SIGN');
         const a2 = GWM.actor.from({ ch: 'a', name: 'Actor 2' });
-        await map.addActor(8, 8, a2);
+        map.addActor(8, 8, a2);
         const i2 = GWM.item.from({ ch: 'b', name: 'Item 2' });
-        await map.addItem(9, 9, i2);
+        map.addItem(9, 9, i2);
 
         fov.update(1, 1, 5);
 
         // These will not be known (not in memory)
         map.setTile(16, 16, 'SIGN');
         const a3 = GWM.actor.from({ ch: 'a', name: 'Actor 3' });
-        await map.addActor(17, 17, a3);
+        map.addActor(17, 17, a3);
         const i3 = GWM.item.from({ ch: 'b', name: 'Item 3' });
-        await map.addItem(18, 18, i3);
+        map.addItem(18, 18, i3);
 
         expect(memory.actors).toHaveLength(1); // 1 not visible + known actor
         expect(map.actors).toHaveLength(3);
@@ -166,5 +163,38 @@ describe('Sidebar', () => {
 
         sidebar.findEntries(memory, 1, 1, fov);
         expect(sidebar.entries).toHaveLength(6); // visible sign + actor + item, revealed sign + actor + item
+
+        expect(sidebar.highlight).toBeNull();
+        sidebar.mousemove(UTILS.mousemove(1, 1), ui);
+        expect(sidebar.highlight).toBeNull(); // not drawn yet -- no y information on entries
+
+        const buffer = new GWU.canvas.DataBuffer(100, 40);
+        sidebar.draw(buffer);
+
+        sidebar.mousemove(UTILS.mousemove(1, 1), ui);
+        expect(sidebar.highlight).not.toBeNull();
+        expect(sidebar.highlight).toBe(sidebar.entries[0]);
+
+        expect(sidebar._isDim(sidebar.entries[0])).toBeFalsy();
+        expect(sidebar._isDim(sidebar.entries[1])).toBeTruthy();
+        expect(sidebar._isDim(sidebar.entries[2])).toBeTruthy();
+        expect(sidebar._isDim(sidebar.entries[3])).toBeTruthy();
+
+        sidebar.mousemove(UTILS.mousemove(5, 4), ui);
+        expect(sidebar.highlight).not.toBeNull();
+        expect(sidebar.highlight).toBe(sidebar.entries[2]);
+
+        expect(sidebar._isDim(sidebar.entries[0])).toBeTruthy();
+        expect(sidebar._isDim(sidebar.entries[1])).toBeTruthy();
+        expect(sidebar._isDim(sidebar.entries[2])).toBeFalsy();
+        expect(sidebar._isDim(sidebar.entries[3])).toBeTruthy();
+
+        sidebar.mousemove(UTILS.mousemove(50, 14), ui);
+        expect(sidebar.highlight).toBeNull();
+
+        expect(sidebar._isDim(sidebar.entries[0])).toBeFalsy();
+        expect(sidebar._isDim(sidebar.entries[1])).toBeFalsy();
+        expect(sidebar._isDim(sidebar.entries[2])).toBeFalsy();
+        expect(sidebar._isDim(sidebar.entries[3])).toBeTruthy(); // not visible, just revealed
     });
 });

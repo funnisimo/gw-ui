@@ -12,20 +12,18 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport({
+const viewport = new GWI.Viewport('VIEW', {
     x: 0,
     y: 4,
     width: 80,
     height: 34,
-    ui,
     lock: true,
 });
-const sidebar = new GWI.Sidebar({
+const sidebar = new GWI.Sidebar('SIDE', {
     x: 80,
     y: 0,
     width: 20,
     height: 38,
-    ui,
     bg: 0x234,
 });
 const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
@@ -44,24 +42,48 @@ for (let i = 0; i < 20; ++i) {
     map.setTile(x, y, tile);
 }
 
-const player = GWM.actor.from({ ch: '@', fg: 'white', name: 'Actor' });
+const player = GWM.actor.from({
+    ch: '@',
+    fg: 'white',
+    name: 'Actor',
+    flags: 'USES_FOV, IS_PLAYER',
+});
 map.addActor(1, 1, player);
+const fov = player.fov;
+fov.makeAlwaysVisible();
 
-sidebar.follow = player;
-viewport.follow = player;
+sidebar.subject = player;
+viewport.subject = player;
 
-viewport.drawFor(player);
-sidebar.draw();
+sidebar.update();
+
+viewport.draw(ui.buffer);
+sidebar.draw(ui.buffer);
 ui.render();
 
+let needsDraw = true;
 LOOP.run({
     mousemove(e) {
+        if (sidebar.mousemove(e)) {
+            if (sidebar.highlight) {
+                fov.setCursor(sidebar.highlight.x, sidebar.highlight.y);
+            } else {
+                fov.clearCursor();
+            }
+            needsDraw = true;
+        }
+
         if (!viewport.contains(e)) return;
         map.removeActor(player);
         map.addActor(viewport.toMapX(e.x), viewport.toMapY(e.y), player);
-
-        viewport.drawFor(player);
-        sidebar.draw();
+        sidebar.update();
+        needsDraw = true;
+    },
+    draw() {
+        if (!needsDraw) return;
+        needsDraw = false;
+        viewport.draw(ui.buffer);
+        sidebar.draw(ui.buffer);
         ui.render();
     },
 });
@@ -87,20 +109,18 @@ const player = GWM.actor.from({
 });
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport({
+const viewport = new GWI.Viewport('VIEW', {
     x: 0,
     y: 4,
     width: 80,
     height: 34,
-    ui,
     lock: true,
 });
-const sidebar = new GWI.Sidebar({
+const sidebar = new GWI.Sidebar('SIDE', {
     x: 80,
     y: 0,
     width: 20,
     height: 38,
-    ui,
     bg: 0x234,
 });
 
@@ -120,14 +140,15 @@ for (let i = 0; i < 20; ++i) {
 
 map.addActor(40, 17, player);
 
+sidebar.subject = player;
+viewport.subject = player;
+
 const fov = player.fov;
 fov.update();
+sidebar.update();
 
-sidebar.follow = player;
-viewport.follow = player;
-
-viewport.draw();
-sidebar.draw();
+viewport.draw(ui.buffer);
+sidebar.draw(ui.buffer);
 ui.render();
 
 let needsDraw = true;
@@ -140,27 +161,25 @@ LOOP.run({
             map.removeActor(player);
             map.addActor(newX, newY, player);
             fov.update();
+            sidebar.update();
             needsDraw = true;
         }
     },
     mousemove(e) {
-        if (sidebar.highlight) {
-            fov.clearCursor(sidebar.highlight.x, sidebar.highlight.y);
-            sidebar.clearHighlight();
-            needsDraw = true;
-        }
-        if (sidebar.contains(e)) {
-            if (sidebar.updateHighlight(e)) {
+        if (sidebar.mousemove(e)) {
+            if (sidebar.highlight) {
                 fov.setCursor(sidebar.highlight.x, sidebar.highlight.y);
-                needsDraw = true;
+            } else {
+                fov.clearCursor();
             }
+            needsDraw = true;
         }
     },
     draw() {
         if (!needsDraw) return;
         needsDraw = false;
-        viewport.draw();
-        sidebar.draw();
+        viewport.draw(ui.buffer);
+        sidebar.draw(ui.buffer);
         ui.render();
     },
 });

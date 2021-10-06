@@ -1,89 +1,39 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
+import * as Widget from './widget';
 
-export interface GetInputOptions {
-    fg?: GWU.color.ColorBase;
-    bg?: GWU.color.ColorBase;
-    errorFg?: GWU.color.ColorBase;
+// export interface GetInputOptions {
+//     fg?: GWU.color.ColorBase;
+//     bg?: GWU.color.ColorBase;
+//     errorFg?: GWU.color.ColorBase;
 
-    hint?: string;
-    hintFg?: GWU.color.ColorBase;
+//     hint?: string;
+//     hintFg?: GWU.color.ColorBase;
 
-    default?: string;
-    minLength?: number;
+//     default?: string;
+//     minLength?: number;
 
-    numbersOnly?: boolean;
-    min?: number;
-    max?: number;
-}
+//     numbersOnly?: boolean;
+//     min?: number;
+//     max?: number;
+// }
 
-export interface AlertOptions {
+export interface AlertOptions extends Widget.DialogOptions {
     duration?: number;
     waitForAck?: boolean;
-
-    x?: number;
-    y?: number;
-
-    bg?: GWU.color.ColorBase;
-    borderBg?: GWU.color.ColorBase;
-
-    fg?: GWU.color.ColorBase;
-
-    title?: string;
-    titleFg?: GWU.color.ColorBase;
-
-    width?: number;
-    height?: number;
-    padX?: number;
-    padY?: number;
 }
 
-export interface ConfirmOptions extends GetInputOptions {
-    x?: number;
-    y?: number;
-
+export interface ConfirmOptions extends Widget.DialogOptions {
     allowCancel?: boolean;
 
-    width?: number;
-    height?: number;
-    padX?: number;
-    padY?: number;
-
-    title?: string;
-    titleFg?: GWU.color.ColorBase;
-
-    borderBg?: GWU.color.ColorBase;
-
-    ok?: string;
-    cancel?: string;
-    buttonFg?: GWU.color.ColorBase;
-    buttonBg?: GWU.color.ColorBase;
-    hoverFg?: GWU.color.ColorBase;
-    hoverBg?: GWU.color.ColorBase;
+    buttons?: Widget.ButtonOptions;
+    ok?: string | Widget.ButtonOptions;
+    cancel?: string | Widget.ButtonOptions;
 }
 
-export interface InputBoxOptions extends GetInputOptions {
-    x?: number;
-    y?: number;
-
-    allowCancel?: boolean;
-
-    width?: number;
-    height?: number;
-    padX?: number;
-    padY?: number;
-
-    title?: string;
-    titleFg?: GWU.color.ColorBase;
-
-    borderBg?: GWU.color.ColorBase;
-
-    ok?: string;
-    cancel?: string;
-    buttonFg?: GWU.color.ColorBase;
-    buttonBg?: GWU.color.ColorBase;
-    hoverFg?: GWU.color.ColorBase;
-    hoverBg?: GWU.color.ColorBase;
+export interface InputBoxOptions extends ConfirmOptions {
+    prompt?: string | Widget.TextOptions;
+    input?: Widget.InputOptions;
 }
 
 export interface UICore {
@@ -101,7 +51,7 @@ export interface UICore {
         x: number,
         y: number,
         maxLength: number,
-        opts?: GetInputOptions
+        opts?: Widget.InputOptions
     ): Promise<string>;
     alert(opts: number | AlertOptions, text: string, args: any): Promise<void>;
 }

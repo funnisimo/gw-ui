@@ -1,6 +1,635 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 
+class Widget {
+    constructor(id, opts) {
+        this.active = false;
+        this.hovered = false;
+        this.tabStop = false;
+        this.fg = 0xfff;
+        this.bg = -1;
+        this.activeFg = 0xfff;
+        this.activeBg = -1;
+        this.hoverFg = 0xfff;
+        this.hoverBg = -1;
+        this.text = '';
+        this.align = 'left';
+        this.valign = 'middle';
+        this.bounds = new GWU.xy.Bounds(0, 0, 0, 0);
+        this.id = id;
+        if (opts)
+            this.init(opts);
+        this.reset();
+    }
+    init(opts) {
+        if (opts.x !== undefined)
+            this.bounds.x = opts.x;
+        if (opts.y !== undefined)
+            this.bounds.y = opts.y;
+        if (opts.width !== undefined)
+            this.bounds.width = opts.width;
+        if (opts.height !== undefined)
+            this.bounds.height = opts.height;
+        if (opts.text) {
+            this.text = opts.text;
+            if (!this.bounds.width)
+                this.bounds.width = opts.text.length;
+            if (!this.bounds.height)
+                this.bounds.height = 1;
+        }
+        if (opts.fg !== undefined) {
+            this.fg = opts.fg;
+            this.activeFg = opts.fg;
+            this.hoverFg = opts.fg;
+        }
+        if (opts.bg !== undefined) {
+            this.bg = opts.bg;
+            this.activeBg = opts.bg;
+            this.hoverBg = opts.bg;
+        }
+        if (opts.activeFg !== undefined) {
+            this.activeFg = opts.activeFg;
+            this.hoverFg = opts.activeFg;
+        }
+        if (opts.activeBg !== undefined) {
+            this.activeBg = opts.activeBg;
+            this.hoverBg = opts.activeBg;
+        }
+        if (opts.hoverFg !== undefined)
+            this.hoverFg = opts.hoverFg;
+        if (opts.hoverBg !== undefined)
+            this.hoverBg = opts.hoverBg;
+        if (opts.tabStop !== undefined)
+            this.tabStop = opts.tabStop;
+        this.action = opts.action || this.id;
+    }
+    reset() { }
+    contains(x, y) {
+        if (arguments.length == 1)
+            return this.bounds.contains(x);
+        return this.bounds.contains(x, y);
+    }
+    // returns true if mouse is over this widget
+    mousemove(e, _ui) {
+        this.hovered = this.contains(e);
+        return this.hovered;
+    }
+    tick(_e, _ui) { }
+    // returns true if click is handled by this widget (stopPropagation)
+    click(_e, _ui) {
+        return false;
+    }
+    // returns true if key is used by widget and you want to stopPropagation
+    keypress(_e, _ui) {
+        return false;
+    }
+    draw(buffer) {
+        const fg = this.active
+            ? this.activeFg
+            : this.hovered
+                ? this.hoverFg
+                : this.fg;
+        const bg = this.active
+            ? this.activeBg
+            : this.hovered
+                ? this.hoverBg
+                : this.bg;
+        const textLen = GWU.text.length(this.text);
+        if (this.bounds.width > textLen || this.bounds.height > 1) {
+            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', fg, bg);
+        }
+        let x = this.bounds.x;
+        if (this.align == 'center') {
+            x += Math.floor((this.bounds.width - textLen) / 2);
+        }
+        else if (this.align == 'right') {
+            x += this.bounds.width - textLen;
+        }
+        let y = this.bounds.y; // 'top'
+        if (this.bounds.height > 1) {
+            if (this.valign == 'middle') {
+                y += Math.floor(this.bounds.height / 2);
+            }
+            else if (this.valign == 'bottom') {
+                y += this.bounds.height - 1;
+            }
+        }
+        buffer.drawText(x, y, this.text, fg, bg);
+    }
+}
+
+class Text extends Widget {
+    constructor(id, opts) {
+        super(id, opts);
+    }
+    init(opts) {
+        // if (!opts.text)
+        //     throw new Error(
+        //         'Must have text value in config for Text widget - ' + this.id
+        //     );
+        this.text = opts.text || '';
+        if (opts.wrap) {
+            opts.width = opts.wrap;
+            this.lines = GWU.text.splitIntoLines(this.text, 
+            // @ts-ignore
+            opts.width);
+        }
+        else {
+            const textLen = GWU.text.length(this.text);
+            opts.width = opts.width || textLen || 10;
+            if (opts.width < textLen) {
+                opts.text = GWU.text.truncate(this.text, opts.width);
+            }
+            this.lines = [this.text];
+        }
+        opts.height = Math.max(this.lines.length, opts.height || 1);
+        super.init(opts);
+    }
+    // TODO - get text() {}, set text(v:string) { // do lines stuff }
+    draw(buffer) {
+        const fg = this.active ? this.activeFg : this.fg;
+        const bg = this.active ? this.activeBg : this.bg;
+        this.lines.forEach((line, i) => {
+            buffer.drawText(this.bounds.x, this.bounds.y + i, line, fg, bg, this.bounds.width);
+        });
+    }
+}
+
+class Button$1 extends Widget {
+    constructor(id, opts) {
+        super(id, opts);
+    }
+    init(opts) {
+        var _a;
+        this.actionFn = null;
+        if (!opts.text)
+            throw new Error('Must have text value in config for Button widget - ' + this.id);
+        opts.tabStop = (_a = opts.tabStop) !== null && _a !== void 0 ? _a : true; // Can receive input (Enter)
+        super.init(opts);
+        if (opts.actionFn)
+            this.actionFn = opts.actionFn;
+    }
+    click(ev) {
+        if (!this.contains(ev))
+            return false;
+        let r;
+        if (this.actionFn) {
+            r = this.actionFn(ev, this);
+        }
+        else {
+            r = this.parent.fireAction(this.action, this);
+        }
+        if (r)
+            return r.then(() => true);
+        return true;
+    }
+    keypress(ev) {
+        if (!ev.key)
+            return false;
+        if (ev.key === 'Enter') {
+            const r = this.parent.fireAction(this.action, this);
+            if (r)
+                return r.then(() => true);
+            return true;
+        }
+        return false;
+    }
+}
+
+class Input extends Widget {
+    constructor(id, opts) {
+        super(id, opts);
+    }
+    init(opts) {
+        var _a, _b, _c;
+        this.minLength = opts.minLength || 1;
+        if (!opts.width) {
+            opts.width = Math.max(this.minLength, 10);
+        }
+        opts.tabStop = (_a = opts.tabStop) !== null && _a !== void 0 ? _a : true; // Need to receive input
+        super.init(opts);
+        this.default = opts.default || '';
+        this.errorFg = opts.errorFg || this.fg;
+        this.hint = opts.hint || '';
+        this.hintFg = opts.hintFg || this.errorFg;
+        this.numbersOnly = opts.numbersOnly || false;
+        this.min = (_b = opts.min) !== null && _b !== void 0 ? _b : Number.MIN_SAFE_INTEGER;
+        this.max = (_c = opts.max) !== null && _c !== void 0 ? _c : Number.MAX_SAFE_INTEGER;
+        if (!this.bounds.width) {
+            if (this.hint)
+                this.bounds.width = this.hint.length;
+            if (this.default)
+                this.bounds.width = this.default.length;
+        }
+        if (!this.bounds.height) {
+            this.bounds.height = 1;
+        }
+        this.reset();
+    }
+    reset() {
+        this.text = this.default;
+    }
+    isValid() {
+        if (this.numbersOnly) {
+            const val = Number.parseInt(this.text);
+            if (this.min !== undefined && val < this.min)
+                return false;
+            if (this.max !== undefined && val > this.max)
+                return false;
+            return val > 0;
+        }
+        return this.text.length >= this.minLength;
+    }
+    get value() {
+        if (this.numbersOnly)
+            return Number.parseInt(this.text);
+        return this.text;
+    }
+    keypress(ev, _ui) {
+        const textEntryBounds = this.numbersOnly ? ['0', '9'] : [' ', '~'];
+        if (!ev.key)
+            return false;
+        if (ev.key === 'Enter' && this.isValid()) {
+            const r = this.parent.fireAction(this.action, this);
+            if (r)
+                return r.then(() => true);
+            return true;
+        }
+        if (ev.key == 'Delete' || ev.key == 'Backspace') {
+            if (this.text.length) {
+                this.text = GWU.text.spliceRaw(this.text, this.text.length - 1, 1);
+            }
+            return true;
+        }
+        else if (ev.key.length > 1) {
+            // ignore other special keys...
+            return false;
+        }
+        // eat/use all other keys
+        if (ev.key >= textEntryBounds[0] && ev.key <= textEntryBounds[1]) {
+            // allow only permitted input
+            if (this.text.length < this.bounds.width) {
+                this.text += ev.key;
+            }
+        }
+        return true;
+    }
+    draw(buffer) {
+        const x = this.bounds.x;
+        const y = this.bounds.y;
+        const fg = this.active
+            ? this.activeFg
+            : this.hovered
+                ? this.hoverFg
+                : this.fg;
+        const bg = this.active
+            ? this.activeBg
+            : this.hovered
+                ? this.hoverBg
+                : this.bg;
+        buffer.fillRect(x, y, this.bounds.width, 1, ' ', fg, bg);
+        if (!this.text.length && this.hint && this.hint.length) {
+            buffer.drawText(x, y, this.hint, this.hintFg);
+        }
+        else {
+            const color = this.isValid() ? fg : this.errorFg;
+            buffer.drawText(x, y, this.text, color);
+        }
+    }
+}
+
+class Dialog {
+    constructor(ui, opts) {
+        this.title = '';
+        this.titleFg = 0xfff;
+        this.bg = 0x999;
+        this.borderBg = 0x999;
+        this.widgets = [];
+        this.actionHandlers = {};
+        this.keypressHandlers = {};
+        this.clickHandlers = {};
+        this._activeWidget = null;
+        this.result = null;
+        this.done = false;
+        this.timers = {};
+        this.needsRedraw = true;
+        this.ui = ui;
+        this.id = 'DIALOG';
+        this.bounds = new GWU.xy.Bounds(-1, -1, 0, 0);
+        if (opts)
+            this.init(opts);
+    }
+    init(opts) {
+        if (opts.id)
+            this.id = opts.id;
+        if (opts.x !== undefined)
+            this.bounds.x = opts.x;
+        if (opts.y !== undefined)
+            this.bounds.y = opts.y;
+        if (opts.height !== undefined)
+            this.bounds.height = opts.height;
+        if (opts.width !== undefined)
+            this.bounds.width = opts.width;
+        if (opts.title)
+            this.title = opts.title;
+        if (opts.titleFg)
+            this.titleFg = opts.titleFg;
+        if (opts.bg) {
+            this.bg = opts.bg;
+            this.borderBg = opts.bg;
+        }
+        if (opts.borderBg) {
+            this.borderBg = opts.borderBg;
+        }
+    }
+    get activeWidget() {
+        return this._activeWidget;
+    }
+    set activeWidget(w) {
+        if (this._activeWidget) {
+            this._activeWidget.active = false;
+        }
+        this._activeWidget = w;
+        if (this._activeWidget) {
+            this._activeWidget.active = true;
+        }
+    }
+    contains(e) {
+        return this.bounds.contains(e);
+    }
+    requestRedraw() {
+        this.needsRedraw = true;
+    }
+    setTimeout(action, time) {
+        this.timers[action] = time;
+    }
+    clearTimeout(action) {
+        delete this.timers[action];
+    }
+    fireAction(action, widget) {
+        const handler = this.actionHandlers[action];
+        if (handler) {
+            return handler(action, widget, this);
+        }
+    }
+    setActionHandlers(map) {
+        this.actionHandlers = map;
+    }
+    setKeyHandlers(map) {
+        this.keypressHandlers = map;
+    }
+    setClickHandlers(map) {
+        this.clickHandlers = map;
+    }
+    async show() {
+        this.done = false;
+        // reset any temp data...
+        this.widgets.forEach((w) => w.reset());
+        // first tabStop is the starting active Widget
+        this.activeWidget = this.widgets.find((w) => w.tabStop) || null;
+        // start dialog
+        const buffer = this.ui.startDialog();
+        // run input loop
+        await this.ui.loop.run({
+            keypress: this.keypress.bind(this),
+            mousemove: this.mousemove.bind(this),
+            click: this.click.bind(this),
+            tick: this.tick.bind(this),
+            draw: () => {
+                this.draw(buffer);
+                buffer.render();
+            },
+        }, 100);
+        // stop dialog
+        this.ui.finishDialog();
+        return this.result;
+    }
+    close(returnValue) {
+        this.result = returnValue;
+        this.done = true;
+    }
+    widgetAt(x, y) {
+        return this.widgets.find((w) => w.contains(x, y)) || null;
+    }
+    getWidget(id) {
+        return this.widgets.find((w) => w.id === id) || null;
+    }
+    nextTabstop() {
+        if (!this.activeWidget) {
+            this.activeWidget = this.widgets.find((w) => w.tabStop) || null;
+            return !!this.activeWidget;
+        }
+        const next = GWU.arrayNext(this.widgets, this.activeWidget, (w) => w.tabStop);
+        if (next) {
+            this.activeWidget = next;
+            return true;
+        }
+        return false;
+    }
+    prevTabstop() {
+        if (!this.activeWidget) {
+            this.activeWidget = this.widgets.find((w) => w.tabStop) || null;
+            return !!this.activeWidget;
+        }
+        const prev = GWU.arrayPrev(this.widgets, this.activeWidget, (w) => w.tabStop);
+        if (prev) {
+            this.activeWidget = prev;
+            return true;
+        }
+        return false;
+    }
+    tick(e) {
+        const dt = e.dt;
+        let promises = [];
+        Object.entries(this.timers).forEach(([action, time]) => {
+            time -= dt;
+            if (time <= 0) {
+                delete this.timers[action];
+                const r = this.fireAction(action, null);
+                if (r && r.then) {
+                    promises.push(r);
+                }
+            }
+            else {
+                this.timers[action] = time;
+            }
+        });
+        for (let w of this.widgets) {
+            const r = w.tick(e, this.ui);
+            if (r && r.then) {
+                promises.push(r);
+            }
+        }
+        if (promises.length) {
+            return Promise.all(promises).then(() => this.done);
+        }
+        return this.done;
+    }
+    // TODO - async - to allow animations or events on mouseover?
+    mousemove(e) {
+        // this.activeWidget = null;
+        this.widgets.forEach((w) => {
+            w.mousemove(e, this.ui);
+            if (w.hovered && w.tabStop) {
+                this.activeWidget = w;
+            }
+        });
+        return this.done;
+    }
+    click(e) {
+        this.mousemove(e); // make sure activeWidget is set correctly
+        let fn = null;
+        if (this.activeWidget) {
+            fn = this.clickHandlers[this.activeWidget.id];
+        }
+        if (!fn && this.contains(e)) {
+            fn = this.clickHandlers[this.id];
+        }
+        if (!fn) {
+            fn = this.clickHandlers.click;
+        }
+        if (fn) {
+            const r = fn(e, this.activeWidget, this);
+            if (r && r.then) {
+                return r.then(() => this.done);
+            }
+        }
+        else if (this.activeWidget) {
+            const r = this.activeWidget.click(e, this.ui);
+            if (typeof r !== 'boolean') {
+                return r.then(() => this.done);
+            }
+        }
+        return this.done;
+    }
+    keypress(e) {
+        if (!e.key)
+            return false;
+        const fn = this.keypressHandlers[e.key] ||
+            (e.code && this.keypressHandlers[e.code]) ||
+            this.keypressHandlers.keypress;
+        if (fn) {
+            const r = fn(e, this.activeWidget, this);
+            if (r && r.then) {
+                return r.then(() => this.done);
+            }
+            return this.done;
+        }
+        if (this.activeWidget) {
+            const r = this.activeWidget.keypress(e, this.ui);
+            if (typeof r !== 'boolean') {
+                return r.then(() => this.done);
+            }
+            if (e.key === 'Tab') {
+                // Next widget
+                this.nextTabstop();
+            }
+            else if (e.key === 'TAB') {
+                // Prev Widget
+                this.prevTabstop();
+            }
+        }
+        return this.done;
+    }
+    draw(buffer, force = false) {
+        if (!this.needsRedraw && !force)
+            return;
+        // Draw dialog
+        if (this.borderBg) {
+            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.borderBg, this.borderBg);
+            buffer.fillRect(this.bounds.x + 1, this.bounds.y + 1, this.bounds.width - 2, this.bounds.height - 2, ' ', this.bg, this.bg);
+        }
+        else {
+            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.bg, this.bg);
+        }
+        if (this.title) {
+            const x = this.bounds.x +
+                Math.floor((this.bounds.width - GWU.text.length(this.title)) / 2);
+            buffer.drawText(x, this.bounds.y, this.title, this.titleFg);
+        }
+        this.widgets.forEach((w) => w.draw(buffer));
+    }
+}
+class DialogBuilder {
+    constructor(ui, opts = {}) {
+        this.nextY = 0;
+        this.padY = 1;
+        this.padX = 1;
+        this.padX = opts.padX || opts.pad || 1;
+        this.padY = opts.padY || opts.pad || 1;
+        this.nextY = this.padY;
+        this.dialog = new Dialog(ui, opts);
+    }
+    with(widget) {
+        // widget bounds are set relative to the dialog top left,
+        // if we don't get any, help them out
+        let y = widget.bounds.y;
+        if (y >= 0 && y < this.padY) {
+            y = this.nextY;
+        }
+        else if (y < 0 && y > -this.padY) {
+            y = -this.padY;
+        }
+        widget.bounds.y = y;
+        let x = widget.bounds.x;
+        if (x >= 0 && x < this.padX) {
+            x = this.padX;
+        }
+        else if (x < 0 && x > -this.padX) {
+            x = -this.padX;
+        }
+        widget.bounds.x = x;
+        // TODO - Get rid of x, y
+        this.addWidget(widget);
+        this.nextY = Math.max(this.nextY, widget.bounds.bottom + 1 + this.padY);
+        return this;
+    }
+    center() {
+        const size = this.dialog.ui.buffer;
+        const bounds = this.dialog.bounds;
+        bounds.x = Math.floor((size.width - bounds.width) / 2);
+        bounds.y = Math.floor((size.height - bounds.height) / 2);
+        return this;
+    }
+    place(x, y) {
+        const bounds = this.dialog.bounds;
+        bounds.x = x;
+        bounds.y = y;
+        return this;
+    }
+    done() {
+        // lock in locations
+        this.dialog.widgets.forEach((w) => {
+            w.bounds.x += this.dialog.bounds.x;
+            w.bounds.y += this.dialog.bounds.y;
+        });
+        return this.dialog;
+    }
+    addWidget(widget) {
+        widget.parent = this.dialog;
+        const dlgBounds = this.dialog.bounds;
+        const x = widget.bounds.x;
+        const y = widget.bounds.y;
+        if (x >= 0) {
+            dlgBounds.width = Math.max(dlgBounds.width, widget.bounds.width + x + this.padX);
+        }
+        else {
+            widget.bounds.right = dlgBounds.width + x - 1;
+        }
+        if (y >= 0) {
+            dlgBounds.height = Math.max(dlgBounds.height, widget.bounds.height + y + this.padY);
+        }
+        else {
+            widget.bounds.bottom = dlgBounds.height + y - 1;
+        }
+        this.dialog.widgets.push(widget);
+        return widget;
+    }
+}
+function buildDialog(ui, opts = {}) {
+    return new DialogBuilder(ui, opts);
+}
+
 class UI {
     constructor(opts = {}) {
         this.layers = [];
@@ -14,6 +643,12 @@ class UI {
     }
     render() {
         this.buffer.render();
+    }
+    get baseBuffer() {
+        return this.layers[this.layers.length - 1] || this.canvas.buffer;
+    }
+    get canvasBuffer() {
+        return this.canvas.buffer;
     }
     startDialog() {
         this.inDialog = true;
@@ -39,6 +674,7 @@ class UI {
         this.buffer.render();
         this.inDialog = this.layers.length > 0;
     }
+    // UTILITY FUNCTIONS
     async fadeTo(color = 'black', duration = 1000) {
         color = GWU.color.from(color);
         const buffer = this.startDialog();
@@ -57,64 +693,41 @@ class UI {
         this.finishDialog();
     }
     async alert(opts, text, args) {
-        var _a, _b;
         if (typeof opts === 'number') {
             opts = { duration: opts };
         }
-        const buffer = this.startDialog();
         if (args) {
             text = GWU.text.apply(text, args);
         }
-        let padX = opts.padX || 2;
-        let padY = opts.padY || 1;
-        if (opts.title) {
-            padY = Math.max(padY, 2);
+        const padX = opts.padX || opts.pad || 1;
+        const padY = opts.padY || opts.pad || 1;
+        opts.width = opts.width || GWU.text.length(text) + padX * 2;
+        const textOpts = {
+            fg: opts.fg,
+            text,
+            x: padX,
+            y: padY,
+            wrap: opts.width - 2 * padX,
+        };
+        textOpts.text = text;
+        textOpts.wrap = opts.width;
+        const dlg = buildDialog(this, opts)
+            .with(new Text('TEXT', textOpts))
+            .center()
+            .done();
+        dlg.setClickHandlers({ click: () => dlg.close(true) }); // any click
+        dlg.setKeyHandlers({ keypress: () => dlg.close(true) }); // any key
+        dlg.setActionHandlers({ TIMEOUT: () => dlg.close(false) });
+        if (!opts.waitForAck) {
+            dlg.setTimeout('TIMEOUT', opts.duration || 3000);
         }
-        let lines = [text];
-        if (text.includes('\n')) {
-            lines = text.split('\n');
-        }
-        const lineLen = lines.reduce((len, line) => Math.max(len, GWU.text.length(line)), 0);
-        const totalLength = lineLen + padX * 2;
-        let width = totalLength + padX * 2;
-        if (opts.width && opts.width > 0) {
-            width = opts.width;
-            if (opts.width < totalLength) {
-                lines = GWU.text.splitIntoLines(text, opts.width - padX * 2);
-            }
-        }
-        let height = Math.max(lines.length + 2 * padY, opts.height || 0);
-        const x = (_a = opts.x) !== null && _a !== void 0 ? _a : Math.min(Math.floor((buffer.width - width) / 2));
-        const y = (_b = opts.y) !== null && _b !== void 0 ? _b : Math.floor((buffer.height - height) / 2);
-        const fg = GWU.color.from(opts.fg || 'white');
-        if (opts.borderBg) {
-            buffer.fillRect(x, y, width, height, 0, 0, opts.borderBg);
-            buffer.fillRect(x + 1, y + 1, width - 2, height - 2, 0, 0, opts.bg || 'gray');
-        }
-        else {
-            buffer.fillRect(x, y, width, height, 0, 0, opts.bg || 'gray');
-        }
-        if (opts.title) {
-            let tx = x + Math.floor((width - opts.title.length) / 2);
-            buffer.drawText(tx, y, opts.title, opts.titleFg || fg);
-        }
-        lines.forEach((line, i) => {
-            buffer.drawText(x + padX, y + padY + i, line, fg);
-        });
-        buffer.render();
-        if (opts.waitForAck) {
-            await this.loop.waitForAck();
-        }
-        else {
-            await this.loop.pause(opts.duration || 30 * 1000);
-        }
-        this.finishDialog();
+        return await dlg.show();
     }
     async confirm(...args) {
         let opts;
         let text;
         let textArgs = null;
-        if (args.length <= 2) {
+        if (args.length <= 2 && typeof args[0] === 'string') {
             opts = {};
             text = args[0];
             textArgs = args[1] || null;
@@ -127,253 +740,244 @@ class UI {
         if (textArgs) {
             text = GWU.text.apply(text, textArgs);
         }
-        opts.allowCancel = opts.allowCancel || !!opts.cancel;
-        const buffer = this.startDialog();
-        buffer.mix('black', 50);
-        const btnOK = opts.ok || 'OK';
-        const btnCancel = opts.cancel || 'Cancel';
-        const len = Math.max(text.length, btnOK.length + 4 + btnCancel.length);
-        const x = Math.floor((this.canvas.width - len - 4) / 2) - 2;
-        const y = Math.floor(this.canvas.height / 2) - 1;
-        buffer.fillRect(x, y, len + 4, 5, ' ', 'black', opts.bg || 'dark_gray');
-        buffer.drawText(x + 2, y + 1, text, opts.fg || 'white');
-        buffer.drawText(x + 2, y + 3, btnOK, opts.buttonFg || 'white', opts.buttonBg);
+        const padX = opts.padX || opts.pad || 1;
+        const padY = opts.padY || opts.pad || 1;
+        opts.width =
+            opts.width ||
+                Math.min(Math.floor(this.buffer.width / 2), GWU.text.length(text) + padX * 2);
+        let textWidth = opts.width - padX * 2;
+        const textOpts = {
+            fg: opts.fg,
+            text,
+            wrap: textWidth,
+        };
+        const textWidget = new Text('TEXT', textOpts);
+        opts.height = textWidget.bounds.height + 2 * padY + 2;
+        opts.allowCancel = opts.allowCancel !== false;
+        opts.buttons = Object.assign({
+            fg: 'white',
+            activeFg: 'teal',
+            bg: 'dark_gray',
+            activeBg: 'darkest_gray',
+        }, opts.buttons || {});
+        if (typeof opts.ok === 'string') {
+            opts.ok = { text: opts.ok };
+        }
+        if (typeof opts.cancel === 'string') {
+            opts.cancel = { text: opts.cancel };
+        }
+        opts.ok = opts.ok || {};
+        opts.cancel = opts.cancel || {};
+        const okOpts = Object.assign({}, opts.buttons, { text: 'OK', y: -padY, x: padX }, opts.ok);
+        const cancelOpts = Object.assign({}, opts.buttons, { text: 'CANCEL', y: -padY, x: -padX }, opts.cancel);
+        const builder = buildDialog(this, opts)
+            .with(textWidget)
+            .with(new Button$1('OK', okOpts));
         if (opts.allowCancel) {
-            buffer.drawText(x + len + 4 - btnCancel.length - 2, y + 3, btnCancel, opts.buttonFg || 'white', opts.buttonBg);
+            builder.with(new Button$1('CANCEL', cancelOpts));
         }
-        buffer.render();
-        let result;
-        while (result === undefined) {
-            const ev = await this.loop.nextEvent(1000);
-            if (!ev)
-                continue;
-            await GWU.io.dispatchEvent(ev, {
-                enter() {
-                    result = true;
-                },
-                escape() {
-                    if (opts.allowCancel) {
-                        result = false;
-                    }
-                },
-                mousemove() {
-                    let isOK = ev.x < x + btnOK.length + 2;
-                    let isCancel = ev.x > x + len + 4 - btnCancel.length - 4;
-                    if (ev.x < x || ev.x > x + len + 4) {
-                        isOK = false;
-                        isCancel = false;
-                    }
-                    if (ev.y != y + 3) {
-                        isOK = false;
-                        isCancel = false;
-                    }
-                    buffer.drawText(x + 2, y + 3, btnOK, isOK ? GWU.colors.teal : GWU.colors.white);
-                    if (opts.allowCancel) {
-                        buffer.drawText(x + len + 4 - btnCancel.length - 2, y + 3, btnCancel, isCancel ? GWU.colors.teal : GWU.colors.white);
-                    }
-                    buffer.render();
-                },
-                click() {
-                    if (ev.x < x || ev.x > x + len + 4)
-                        return;
-                    if (ev.y < y || ev.y > y + 5)
-                        return;
-                    result = ev.x < x + Math.floor(len / 2) + 2;
-                },
-            });
-        }
-        this.finishDialog();
-        return result;
+        const dlg = builder.center().done();
+        dlg.setClickHandlers({
+            OK() {
+                dlg.close(true);
+            },
+            CANCEL() {
+                dlg.close(false);
+            },
+        });
+        dlg.setKeyHandlers({
+            Escape() {
+                dlg.close(false);
+            },
+            Enter() {
+                dlg.close(true);
+            },
+        });
+        return await dlg.show();
     }
     // assumes you are in a dialog and give the buffer for that dialog
     async getInputAt(x, y, maxLength, opts = {}) {
-        let numbersOnly = opts.numbersOnly || false;
-        const textEntryBounds = numbersOnly ? ['0', '9'] : [' ', '~'];
+        opts.width = maxLength;
+        opts.x = x;
+        opts.y = y;
+        const widget = new Input('INPUT', opts);
         const buffer = this.startDialog();
-        maxLength = Math.min(maxLength, buffer.width - x);
-        const minLength = opts.minLength || 1;
-        let inputText = opts.default || '';
-        let charNum = GWU.text.length(inputText);
-        const fg = GWU.color.from(opts.fg || 'white');
-        const bg = GWU.color.from(opts.bg || 'dark_gray');
-        const errorFg = GWU.color.from(opts.errorFg || 'red');
-        const hintFg = opts.hintFg ? GWU.color.from(opts.hintFg) : 'gray';
-        function isValid(text) {
-            if (numbersOnly) {
-                const val = Number.parseInt(text);
-                if (opts.min !== undefined && val < opts.min)
-                    return false;
-                if (opts.max !== undefined && val > opts.max)
-                    return false;
-                return val > 0;
-            }
-            return text.length >= minLength;
-        }
-        let ev;
-        do {
-            buffer.fillRect(x, y, maxLength, 1, ' ', fg, bg);
-            if (!inputText.length && opts.hint && opts.hint.length) {
-                buffer.drawText(x, y, opts.hint, hintFg);
-            }
-            else {
-                const color = isValid(inputText) ? fg : errorFg;
-                buffer.drawText(x, y, inputText, color);
-            }
-            buffer.render();
-            ev = await this.loop.nextKeyPress(-1);
-            if (!ev || !ev.key)
-                continue;
-            if ((ev.key == 'Delete' || ev.key == 'Backspace') && charNum > 0) {
-                buffer.draw(x + charNum - 1, y, ' ', fg);
-                charNum--;
-                inputText = GWU.text.spliceRaw(inputText, charNum, 1);
-            }
-            else if (ev.key.length > 1) ;
-            else if (ev.key >= textEntryBounds[0] &&
-                ev.key <= textEntryBounds[1]) {
-                // allow only permitted input
-                if (charNum < maxLength) {
-                    inputText += ev.key;
-                    charNum++;
-                }
-            }
-            if (ev.key == 'Escape') {
-                this.finishDialog();
-                return '';
-            }
-        } while (!isValid(inputText) || !ev || ev.key != 'Enter');
+        await this.loop.run({
+            Enter: () => {
+                return true; // done
+            },
+            Escape: () => {
+                widget.text = '';
+                return true; // done
+            },
+            keypress: (e) => {
+                widget.keypress(e, this);
+            },
+            draw() {
+                widget.draw(buffer);
+                buffer.render();
+            },
+        });
         this.finishDialog();
-        // GW.ui.draw(); // reverts to old display
-        return inputText;
+        return widget.text;
     }
     async inputBox(opts, prompt, args) {
-        var _a;
-        let text;
-        if (prompt) {
-            text = GWU.text.apply(prompt, args);
+        const padX = opts.padX || opts.pad || 1;
+        const padY = opts.padY || opts.pad || 1;
+        if (args) {
+            prompt = GWU.text.apply(prompt, args);
         }
-        const allowCancel = (_a = opts.allowCancel) !== null && _a !== void 0 ? _a : true;
-        const bg = opts.bg || 'black';
-        const buffer = this.startDialog();
-        buffer.mix('black', 50);
-        const btnOK = 'OK';
-        const btnCancel = 'Cancel';
-        const len = Math.max(text.length, btnOK.length + 4 + btnCancel.length);
-        const x = Math.floor((buffer.width - len - 4) / 2) - 2;
-        const y = Math.floor(buffer.height / 2) - 1;
-        buffer.fillRect(x, y, len + 4, 6, ' ', 'black', bg);
-        buffer.drawText(x + 2, y + 1, text);
-        buffer.fillRect(x + 2, y + 2, len - 4, 1, ' ', 'gray', 'gray');
-        buffer.drawText(x + 2, y + 4, btnOK);
-        if (allowCancel) {
-            buffer.drawText(x + len + 4 - btnCancel.length - 2, y + 4, btnCancel);
+        opts.width =
+            opts.width ||
+                Math.min(Math.floor(this.buffer.width / 2), GWU.text.length(prompt) + padX * 2);
+        let promptWidth = opts.width - padX * 2;
+        const promptOpts = {
+            fg: opts.fg,
+            text: prompt,
+            wrap: promptWidth,
+        };
+        const promptWidget = new Text('TEXT', promptOpts);
+        opts.height = promptWidget.bounds.height + 2 * padY + 4;
+        opts.allowCancel = opts.allowCancel !== false;
+        opts.buttons = Object.assign({
+            fg: 'white',
+            activeFg: 'teal',
+            bg: 'dark_gray',
+            activeBg: 'darkest_gray',
+        }, opts.buttons || {});
+        if (typeof opts.ok === 'string') {
+            opts.ok = { text: opts.ok };
         }
-        buffer.render();
-        const value = await this.getInputAt(x + 2, y + 2, len - 4, opts);
-        this.finishDialog();
-        return value;
+        if (typeof opts.cancel === 'string') {
+            opts.cancel = { text: opts.cancel };
+        }
+        opts.ok = opts.ok || {};
+        opts.cancel = opts.cancel || {};
+        const okOpts = Object.assign({}, opts.buttons, { text: 'OK', y: -padY, x: padX }, opts.ok);
+        const cancelOpts = Object.assign({}, opts.buttons, { text: 'CANCEL', y: -padY, x: -padX }, opts.cancel);
+        opts.input = opts.input || {};
+        opts.input.width = opts.input.width || promptWidth;
+        opts.input.bg = opts.input.bg || opts.fg;
+        opts.input.fg = opts.input.fg || opts.bg;
+        const inputWidget = new Input('INPUT', opts.input || {});
+        const builder = buildDialog(this, opts)
+            .with(promptWidget)
+            .with(inputWidget)
+            .with(new Button$1('OK', okOpts));
+        if (opts.allowCancel) {
+            builder.with(new Button$1('CANCEL', cancelOpts));
+        }
+        const dlg = builder.center().done();
+        dlg.setClickHandlers({
+            OK() {
+                dlg.close(inputWidget.text);
+            },
+            CANCEL() {
+                dlg.close('');
+            },
+        });
+        dlg.setKeyHandlers({
+            Escape() {
+                dlg.close('');
+            },
+            Enter() {
+                dlg.close(inputWidget.text);
+            },
+        });
+        return await dlg.show();
     }
 }
 
-class Messages {
-    constructor(opts) {
-        const buffer = opts.ui.buffer;
-        this.bounds = new GWU.xy.Bounds(opts.x, opts.y, Math.min(opts.width || buffer.width, buffer.width - opts.x), Math.min(opts.height || buffer.height, buffer.height - opts.y));
+class Messages extends Widget {
+    constructor(id, opts) {
+        super(id, opts);
+    }
+    init(opts) {
+        super.init(opts);
+        if (!this.bounds.height)
+            throw new Error('Must provde a height for messages widget.');
         this.cache = new GWU.message.MessageCache({
             width: this.bounds.width,
-            length: buffer.height,
+            length: opts.length || 40,
+            match: (_x, _y) => {
+                if (this.parent)
+                    this.parent.requestRedraw();
+                return true;
+            },
         });
-        this.ui = opts.ui;
-        this.bg = GWU.color.from(opts.bg || 'black');
-        this.fg = GWU.color.from(opts.fg || 'white');
     }
-    contains(e) {
-        return this.bounds.contains(e.x, e.y);
-    }
-    get needsUpdate() {
-        return this.cache.needsUpdate;
-    }
-    get buffer() {
-        return this.ui.buffer;
-    }
-    draw(force = false) {
-        if (!force && !this.cache.needsUpdate)
+    click(e, ui) {
+        if (!this.contains(e))
             return false;
-        let messageColor;
-        const tempColor = GWU.color.make();
+        return this.showArchive(ui).then(() => true);
+    }
+    draw(buffer) {
         const isOnTop = this.bounds.y < 10;
         // black out the message area
-        this.buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', 0, this.bg);
-        this.cache.forEach((msg, confirmed, i) => {
+        buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.bg, this.bg);
+        this.cache.forEach((line, confirmed, i) => {
             if (i >= this.bounds.height)
                 return;
-            messageColor = tempColor;
-            messageColor.copy(this.fg);
-            if (confirmed) {
-                messageColor.mix(this.bg, 50);
-                messageColor.mix(this.bg, (75 * i) / (2 * this.bounds.height));
-            }
             const localY = isOnTop ? this.bounds.height - i - 1 : i;
-            const y = this.toBufferY(localY);
-            GWU.text.eachChar(msg, (c, color, _bg, j) => {
-                const x = this.toBufferX(j);
-                if (color && messageColor !== color && confirmed) {
-                    color.mix(this.bg, 50);
-                    color.mix(this.bg, (75 * i) / (2 * this.bounds.height));
-                }
-                messageColor = color || tempColor;
-                this.buffer.draw(x, y, c, messageColor, this.bg);
-            });
-            // for (let j = GWU.text.length(msg); j < this.bounds.width; j++) {
-            //     const x = this.toBufferX(j);
-            //     this.buffer.draw(x, y, ' ', this.bg, this.bg);
-            // }
+            const y = localY + this.bounds.y;
+            buffer.drawText(this.bounds.x, y, line, this.fg);
+            if (confirmed) {
+                buffer.mix(this.bg, 50, this.bounds.x, y, this.bounds.width, 1);
+            }
         });
-        this.cache.needsUpdate = false;
         return true;
     }
-    toBufferY(y) {
-        return this.bounds.y + y;
-    }
-    toBufferX(x) {
-        return this.bounds.x + x;
-    }
-    async showArchive() {
-        let reverse, fadePercent, currentMessageCount = 0;
+    async showArchive(ui) {
+        let reverse, fadePercent = 0;
         let fastForward;
         // Count the number of lines in the archive.
-        let totalMessageCount = 0;
-        this.cache.forEach(() => ++totalMessageCount);
+        let totalMessageCount = this.cache.length;
         if (totalMessageCount <= this.bounds.height)
-            return;
+            return false;
         const isOnTop = this.bounds.y < 10;
-        const dbuf = this.ui.startDialog();
+        const dbuf = ui.startDialog();
+        const fg = GWU.color.from(this.fg);
+        totalMessageCount = Math.min(totalMessageCount, isOnTop ? dbuf.height - this.bounds.top : this.bounds.bottom + 1);
         // Pull-down/pull-up animation:
         for (reverse = 0; reverse <= 1; reverse++) {
             fastForward = false;
-            for (currentMessageCount = reverse
-                ? totalMessageCount
-                : this.bounds.height; reverse
-                ? currentMessageCount >= this.bounds.height
-                : currentMessageCount <= totalMessageCount; currentMessageCount += reverse ? -1 : 1) {
-                this.ui.resetDialogBuffer(dbuf);
-                // Print the message archive text to the dbuf.
-                this.cache.forEach((msg, _confirmed, j) => {
-                    if (j >= currentMessageCount || j >= dbuf.height)
+            const dM = reverse ? -1 : 1;
+            const startM = reverse ? totalMessageCount : this.bounds.height;
+            const endM = reverse
+                ? this.bounds.height + dM + 1
+                : totalMessageCount + dM;
+            // console.log(
+            //     `setting up draw - startM=${startM}, endM=${endM}, dM=${dM}`
+            // );
+            for (let currentM = startM; currentM != endM; currentM += dM) {
+                const startY = isOnTop
+                    ? this.bounds.y + currentM - 1
+                    : this.bounds.bottom - currentM + 1;
+                const endY = isOnTop ? this.bounds.y : this.bounds.bottom;
+                const dy = isOnTop ? -1 : 1;
+                ui.resetDialogBuffer(dbuf);
+                // console.log(
+                //     `draw archive - count=${i}, startY=${startY}, endY=${endY}, dy=${dy}`
+                // );
+                dbuf.fillRect(this.bounds.x, Math.min(startY, endY), this.bounds.width, currentM, ' ', this.bg, this.bg);
+                this.cache.forEach((line, _confirmed, j) => {
+                    const y = startY + j * dy;
+                    if (isOnTop) {
+                        if (y < endY)
+                            return;
+                    }
+                    else if (y > endY)
                         return;
-                    const y = isOnTop ? j : dbuf.height - j - 1;
-                    fadePercent = Math.floor((50 * (currentMessageCount - j)) / currentMessageCount);
-                    const fg = this.fg.clone().mix(this.bg, fadePercent);
-                    dbuf.wrapText(this.toBufferX(0), y, this.bounds.width, msg, fg, this.bg);
+                    fadePercent = Math.floor((50 * j) / currentM);
+                    const fgColor = fg.clone().mix(this.bg, fadePercent);
+                    dbuf.drawText(this.bounds.x, y, line, fgColor, this.bg);
                 });
                 dbuf.render();
-                if (!fastForward &&
-                    (await this.ui.loop.pause(reverse ? 15 : 45))) {
-                    fastForward = true;
-                    // dequeueEvent();
-                    currentMessageCount = reverse
-                        ? this.bounds.height + 1
-                        : totalMessageCount - 1; // skip to the end
+                if (!fastForward) {
+                    if (await ui.loop.pause(reverse ? 15 : 45)) {
+                        fastForward = true;
+                        currentM = endM - 2 * dM; // skip to the end-1
+                    }
                 }
             }
             if (!reverse) {
@@ -381,32 +985,33 @@ class Messages {
                 const x = this.bounds.x > 8
                     ? this.bounds.x - 8 // to left of box
                     : Math.min(this.bounds.x + this.bounds.width, // just to right of box
-                    this.buffer.width - 8 // But definitely on the screen - overwrite some text if necessary
+                    dbuf.width - 8 // But definitely on the screen - overwrite some text if necessary
                     );
                 dbuf.wrapText(x, y, 8, '--DONE--', this.bg, this.fg);
                 dbuf.render();
-                await this.ui.loop.waitForAck();
+                await ui.loop.waitForAck();
             }
         }
-        this.ui.finishDialog();
+        ui.finishDialog();
         this.cache.confirmAll();
-        this.cache.needsUpdate = true;
+        if (this.parent)
+            this.parent.requestRedraw(); // everything is confirmed
+        return true;
     }
 }
 
-class Viewport {
-    constructor(opts) {
-        this.center = false;
-        this.snap = false;
-        this.filter = null;
+class Viewport extends Widget {
+    constructor(id, opts) {
+        super(id, opts);
         this.offsetX = 0;
         this.offsetY = 0;
-        this.lockX = false;
-        this.lockY = false;
-        this._follow = null;
-        this.ui = opts.ui;
+        this._subject = null;
+    }
+    init(opts) {
+        opts.bg = opts.bg || 'black';
+        super.init(opts);
         this.snap = opts.snap || false;
-        this.bounds = new GWU.xy.Bounds(opts.x, opts.y, opts.width, opts.height);
+        this.center = opts.center || false;
         this.filter = opts.filter || null;
         if (opts.lock) {
             this.lockX = true;
@@ -421,17 +1026,22 @@ class Viewport {
             }
         }
     }
-    get follow() {
-        return this._follow;
+    get subject() {
+        return this._subject;
     }
-    set follow(subject) {
+    set subject(subject) {
         this.center = !!subject;
         if (subject) {
             this.offsetX = subject.x - this.halfWidth();
             this.offsetY = subject.y - this.halfHeight();
-            this.centerOn(subject.x, subject.y, subject.map);
         }
-        this._follow = subject;
+        this._subject = subject;
+        if (this.parent)
+            this.parent.requestRedraw();
+    }
+    set lock(v) {
+        this.lockX = v;
+        this.lockY = v;
     }
     toMapX(x) {
         return x + this.offsetX - this.bounds.x;
@@ -445,60 +1055,71 @@ class Viewport {
     toInnerY(y) {
         return y - this.bounds.y;
     }
-    contains(e) {
-        return this.bounds.contains(e.x, e.y);
-    }
     halfWidth() {
         return Math.floor(this.bounds.width / 2);
     }
     halfHeight() {
         return Math.floor(this.bounds.height / 2);
     }
-    centerOn(x, y, map) {
+    centerOn(map, x, y) {
         this.center = true;
-        this.updateOffset({ x, y }, map);
+        this.subject = { x, y, map };
     }
-    updateOffset(focus, map) {
-        const bounds = map || this.bounds;
-        if (focus && GWU.xy.contains(bounds, focus.x, focus.y)) {
+    showMap(map, x = 0, y = 0) {
+        this.subject = { x, y, map };
+        this.offsetX = x;
+        this.offsetY = y;
+        this.center = false;
+        this.snap = false;
+    }
+    updateOffset() {
+        if (!this._subject) {
+            this.offsetX = 0;
+            this.offsetY = 0;
+            return;
+        }
+        const subject = this._subject;
+        const map = subject.memory || subject.map;
+        const bounds = map;
+        if (subject && map.hasXY(subject.x, subject.y)) {
             if (this.snap) {
                 let left = this.offsetX;
                 let right = this.offsetX + this.bounds.width;
                 let top = this.offsetY;
                 let bottom = this.offsetY + this.bounds.height;
                 // auto center if outside the viewport
-                if (focus.x < left || focus.x > right) {
-                    left = this.offsetX = focus.x - this.halfWidth();
+                if (subject.x < left || subject.x > right) {
+                    left = this.offsetX = subject.x - this.halfWidth();
                     right = left + this.bounds.width;
                 }
-                if (focus.y < top || focus.y > bottom) {
-                    top = this.offsetY = focus.y - this.halfHeight();
+                if (subject.y < top || subject.y > bottom) {
+                    top = this.offsetY = subject.y - this.halfHeight();
                     bottom = top + this.bounds.height;
                 }
                 const edgeX = Math.floor(this.bounds.width / 5);
                 const edgeY = Math.floor(this.bounds.height / 5);
                 const thirdW = Math.floor(this.bounds.width / 3);
-                if (left + edgeX >= focus.x) {
-                    this.offsetX = Math.max(0, focus.x + thirdW - this.bounds.width);
+                if (left + edgeX >= subject.x) {
+                    this.offsetX = Math.max(0, subject.x + thirdW - this.bounds.width);
                 }
-                else if (right - edgeX <= focus.x) {
-                    this.offsetX = Math.min(focus.x - thirdW, bounds.width - this.bounds.width);
+                else if (right - edgeX <= subject.x) {
+                    this.offsetX = Math.min(subject.x - thirdW, bounds.width - this.bounds.width);
                 }
                 const thirdH = Math.floor(this.bounds.height / 3);
-                if (top + edgeY >= focus.y) {
-                    this.offsetY = Math.max(0, focus.y + thirdH - this.bounds.height);
+                if (top + edgeY >= subject.y) {
+                    this.offsetY = Math.max(0, subject.y + thirdH - this.bounds.height);
                 }
-                else if (bottom - edgeY <= focus.y) {
-                    this.offsetY = Math.min(focus.y - thirdH, bounds.height - this.bounds.height);
+                else if (bottom - edgeY <= subject.y) {
+                    this.offsetY = Math.min(subject.y - thirdH, bounds.height - this.bounds.height);
                 }
             }
             else if (this.center) {
-                this.offsetX = focus.x - this.halfWidth();
-                this.offsetY = focus.y - this.halfHeight();
+                this.offsetX = subject.x - this.halfWidth();
+                this.offsetY = subject.y - this.halfHeight();
             }
             else {
-                this.offsetX = focus.x;
-                this.offsetY = focus.y;
+                this.offsetX = subject.x;
+                this.offsetY = subject.y;
             }
         }
         if (this.lockX && map) {
@@ -508,19 +1129,14 @@ class Viewport {
             this.offsetY = GWU.clamp(this.offsetY, 0, map.height - this.bounds.height);
         }
     }
-    drawFor(subject) {
-        if (!subject.map)
-            throw new Error('No map!');
-        return this.draw(subject.memory || subject.map, subject.fov);
-    }
-    draw(map, fov) {
-        if (!map) {
-            if (!this._follow)
-                throw new Error('Either map or follow must be set.');
-            return this.drawFor(this._follow);
+    draw(buffer) {
+        buffer.blackOutRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, this.bg);
+        if (!this._subject) {
+            return false;
         }
-        // if (!map.hasMapFlag(GWM.flags.Map.MAP_CHANGED)) return false;
-        this.updateOffset(this._follow, map);
+        this.updateOffset();
+        const map = this._subject.memory || this._subject.map;
+        const fov = this._subject.fov;
         const mixer = new GWU.sprite.Mixer();
         for (let x = 0; x < this.bounds.width; ++x) {
             for (let y = 0; y < this.bounds.height; ++y) {
@@ -531,12 +1147,12 @@ class Viewport {
                     map.drawer.drawCell(mixer, cell, fov);
                 }
                 else {
-                    mixer.blackOut();
+                    mixer.draw(' ', this.bg, this.bg); // blackOut
                 }
                 if (this.filter) {
                     this.filter(mixer, mapX, mapY, map);
                 }
-                this.ui.buffer.drawSprite(x + this.bounds.x, y + this.bounds.y, mixer);
+                buffer.drawSprite(x + this.bounds.x, y + this.bounds.y, mixer);
             }
         }
         // map.clearMapFlag(GWM.flags.Map.MAP_CHANGED);
@@ -546,47 +1162,54 @@ class Viewport {
 
 GWU.color.install('flavorText', 50, 40, 90);
 GWU.color.install('flavorPrompt', 100, 90, 20);
-class Flavor {
-    constructor(opts) {
-        var _a, _b, _c;
-        this.text = '';
-        this.needsUpdate = false;
+class Flavor extends Text {
+    constructor(id, opts) {
+        super(id, opts);
+    }
+    init(opts) {
+        opts.fg = opts.fg || 'flavorText';
+        opts.bg = opts.bg || 'black';
+        super.init(opts);
+        this.promptFg = GWU.color.from(opts.promptFg || 'flavorPrompt');
+        this.overflow = opts.overflow || false;
         this.isPrompt = false;
-        this.overflow = false;
-        this.ui = opts.ui;
-        this.bounds = new GWU.xy.Bounds(opts.x, opts.y, opts.width, 1);
-        this.fg = GWU.color.from((_a = opts.fg) !== null && _a !== void 0 ? _a : 'flavorText');
-        this.bg = GWU.color.from((_b = opts.bg) !== null && _b !== void 0 ? _b : 'black');
-        this.promptFg = GWU.color.from((_c = opts.promptFg) !== null && _c !== void 0 ? _c : 'flavorPrompt');
     }
     showText(text) {
         this.text = GWU.text.capitalize(text);
-        this.needsUpdate = true;
+        const len = GWU.text.length(this.text);
+        if (len > this.bounds.width) {
+            this.lines = GWU.text.splitIntoLines(this.text, this.bounds.width);
+            if (!this.overflow && this.lines.length > this.bounds.height) {
+                if (this.bounds.height == 1) {
+                    this.text = GWU.text.truncate(this.text, this.bounds.width);
+                    this.lines = [this.text];
+                }
+                else {
+                    this.lines.length = this.bounds.height;
+                }
+            }
+        }
+        else {
+            this.lines = [this.text];
+        }
         this.isPrompt = false;
-        this.draw();
+        if (this.parent)
+            this.parent.requestRedraw();
     }
     clear() {
         this.text = '';
-        this.needsUpdate = true;
+        this.lines = [''];
         this.isPrompt = false;
-        this.draw();
+        if (this.parent)
+            this.parent.requestRedraw();
     }
     showPrompt(text) {
-        this.text = GWU.text.capitalize(text);
-        this.needsUpdate = true;
+        this.showText(text);
         this.isPrompt = true;
-        this.draw();
     }
-    draw(force = false) {
-        if (!force && !this.needsUpdate)
-            return false;
-        const buffer = this.ui.buffer;
-        const color = this.isPrompt ? this.fg : this.promptFg;
-        const nextY = buffer.wrapText(this.bounds.x, this.bounds.y, this.bounds.width, this.text, color, this.bg);
-        this.overflow = nextY !== this.bounds.y + 1;
-        this.ui.render();
-        this.needsUpdate = false;
-        return true;
+    draw(buffer) {
+        buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.bg, this.bg);
+        super.draw(buffer);
     }
     getFlavorText(map, x, y, fov) {
         const cell = map.cell(x, y); // KNOWLEDGE / MEMORY !!!
@@ -686,7 +1309,9 @@ class EntryBase {
         this.changed = false;
         this.sidebarY = -1;
     }
-    draw(_sidebar) { }
+    draw(_buffer, _bounds) {
+        return 0;
+    }
 }
 class ActorEntry extends EntryBase {
     constructor(actor) {
@@ -699,8 +1324,8 @@ class ActorEntry extends EntryBase {
     get y() {
         return this.actor.y;
     }
-    draw(sidebar) {
-        this.actor.drawStatus(sidebar);
+    draw(buffer, bounds) {
+        return this.actor.drawStatus(buffer, bounds);
     }
 }
 class ItemEntry extends EntryBase {
@@ -714,8 +1339,8 @@ class ItemEntry extends EntryBase {
     get y() {
         return this.item.y;
     }
-    draw(sidebar) {
-        this.item.drawStatus(sidebar);
+    draw(buffer, bounds) {
+        return this.item.drawStatus(buffer, bounds);
     }
 }
 class CellEntry extends EntryBase {
@@ -729,45 +1354,46 @@ class CellEntry extends EntryBase {
     get y() {
         return this.cell.y;
     }
-    draw(sidebar) {
-        this.cell.drawStatus(sidebar);
+    draw(buffer, bounds) {
+        return this.cell.drawStatus(buffer, bounds);
     }
 }
-class Sidebar {
-    constructor(opts) {
+class Sidebar extends Widget {
+    constructor(id, opts) {
+        super(id, opts);
         this.cellCache = [];
         this.lastX = -1;
         this.lastY = -1;
         this.lastMap = null;
         this.entries = [];
-        this.mixer = new GWU.sprite.Mixer();
-        this.currentY = 0;
-        this.follow = null;
+        this.subject = null;
         this.highlight = null;
-        this.currentEntry = null;
-        this.ui = opts.ui;
-        this.bounds = new GWU.xy.Bounds(opts.x, opts.y, opts.width, opts.height);
-        this.bg = GWU.color.from(opts.bg || 'black');
-        this.fg = GWU.color.from(opts.fg || 'purple');
     }
-    get buffer() {
-        return this.ui.buffer;
+    init(opts) {
+        opts.fg = opts.fg || 'purple';
+        opts.bg = opts.bg || 'black';
+        super.init(opts);
     }
-    contains(e) {
-        return this.bounds.contains(e.x, e.y);
+    reset() {
+        super.reset();
+        this.lastMap = null;
+        this.lastX = -1;
+        this.lastY = -1;
     }
-    toInnerY(y) {
-        return GWU.clamp(y - this.bounds.top, 0, this.bounds.height);
+    entryAt(e) {
+        return (this.entries.find((entry) => {
+            return entry.sidebarY <= e.y && entry.sidebarY !== -1;
+        }) || null);
     }
-    updateHighlight(e) {
-        if (!this.contains(e)) {
-            this.clearHighlight();
-            return false;
+    mousemove(e, ui) {
+        super.mousemove(e, ui);
+        if (this.contains(e)) {
+            return this.highlightRow(e.y);
         }
-        return this.highlightRow(this.toInnerY(e.y));
+        return this.clearHighlight();
     }
-    highlightRow(innerY) {
-        const y = GWU.clamp(innerY, 0, this.bounds.height);
+    highlightRow(y) {
+        const last = this.highlight;
         this.highlight = null;
         // processed in ascending y order
         this.entries.forEach((e) => {
@@ -775,15 +1401,16 @@ class Sidebar {
                 this.highlight = e;
             }
         });
-        if (this.highlight) {
-            // @ts-ignore
-            this.highlight.highlight = true;
-            return true;
-        }
-        return false;
+        if (this.parent)
+            this.parent.requestRedraw();
+        return this.highlight !== last;
     }
     clearHighlight() {
+        const result = !!this.highlight;
         this.highlight = null;
+        if (this.parent)
+            this.parent.requestRedraw();
+        return result;
     }
     updateCellCache(map) {
         if (this.lastMap &&
@@ -830,7 +1457,7 @@ class Sidebar {
     _isDim(entry) {
         if (entry === this.highlight)
             return false;
-        return !!this.highlight || entry.priority > 2;
+        return entry.priority > 2 || !!this.highlight;
     }
     _addActorEntry(actor, map, x, y, fov) {
         const priority = this._getPriority(map, actor.x, actor.y, fov);
@@ -904,67 +1531,42 @@ class Sidebar {
         });
         GWU.grid.free(done);
     }
-    clearSidebar() {
-        this.ui.buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, 0, 0, this.bg);
-    }
-    drawFor(subject) {
-        return this.draw(subject.memory || subject.map, subject.x, subject.y, subject.fov);
-    }
-    draw(map, cx, cy, fov) {
-        if (arguments.length < 3) {
-            if (this.follow) {
-                return this.drawFor(this.follow);
-            }
-            throw new Error('Not following a subject - map, cx, cy required.');
+    update() {
+        if (!this.subject) {
+            throw new Error('Update requires a subject to follow.');
         }
+        return this.updateFor(this.subject);
+    }
+    updateFor(subject) {
+        return this.updateAt(subject.memory || subject.map, subject.x, subject.y, subject.fov);
+    }
+    updateAt(map, cx, cy, fov) {
         this.updateCellCache(map);
         this.findEntries(map, cx, cy, fov);
-        this.clearSidebar();
-        this.currentY = this.bounds.y;
-        // clear the row information
-        this.entries.forEach((e) => (e.sidebarY = -1));
-        for (let i = 0; i < this.entries.length && this.currentY < this.bounds.bottom; ++i) {
-            this.currentEntry = this.entries[i];
-            this.currentEntry.sidebarY = this.currentY;
-            this.currentEntry.draw(this);
-            ++this.currentY; // skip a line
-        }
-        this.currentEntry = null;
+        if (this.parent)
+            this.parent.requestRedraw();
         return true;
     }
-    drawTitle(cell, title, fg) {
-        fg = GWU.color.from(fg || this.fg);
-        const fgColor = this._isDim(this.currentEntry)
-            ? fg.clone().darken(50)
-            : fg;
-        this.buffer.drawSprite(this.bounds.x + 1, this.currentY, cell);
-        this.buffer.wrapText(this.bounds.x + 3, this.currentY, this.bounds.width - 3, title, fgColor);
-        ++this.currentY;
-    }
-    drawTextLine(text, fg) {
-        fg = GWU.color.from(fg || this.fg);
-        const fgColor = this._isDim(this.currentEntry)
-            ? fg.clone().darken(50)
-            : fg;
-        this.buffer.drawText(this.bounds.x + 3, this.currentY, text, fgColor, this.bounds.width - 3);
-        ++this.currentY;
-    }
-    drawProgressBar(val, max, text, color, bg, fg) {
-        color = GWU.color.from(color || this.fg);
-        bg = GWU.color.from(bg || color.clone().darken(50));
-        fg = GWU.color.from(fg || color.clone().lighten(50));
-        if (this._isDim(this.currentEntry)) {
-            bg.darken(50);
-            fg.darken(50);
-            color.darken(50);
+    draw(buffer) {
+        buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, 0, 0, this.bg);
+        // clear the row information
+        this.entries.forEach((e) => (e.sidebarY = -1));
+        const drawBounds = this.bounds.clone();
+        let currentEntry;
+        for (let i = 0; i < this.entries.length && drawBounds.height > 0; ++i) {
+            currentEntry = this.entries[i];
+            currentEntry.sidebarY = drawBounds.y;
+            let usedLines = currentEntry.draw(buffer, drawBounds);
+            if (this._isDim(currentEntry)) {
+                buffer.mix(this.bg, 50, drawBounds.x, drawBounds.y, drawBounds.width, usedLines);
+            }
+            if (usedLines) {
+                ++usedLines; // skip a space
+                drawBounds.y += usedLines;
+                drawBounds.height -= usedLines;
+            }
         }
-        this.buffer.fillRect(this.bounds.x + 1, this.currentY, this.bounds.width - 1, 1, undefined, undefined, bg);
-        const len = Math.floor(((this.bounds.width - 1) * val) / max);
-        this.buffer.fillRect(this.bounds.x + 1, this.currentY, len, 1, undefined, undefined, color);
-        const title = GWU.text.center(text, this.bounds.width);
-        this.buffer.drawText(this.bounds.x + 1, this.currentY, title, fg, undefined, this.bounds.width - 1 // just in case title is too long
-        );
-        ++this.currentY;
+        return true;
     }
 }
 
@@ -983,8 +1585,8 @@ class ActionButton extends Button {
         super(text);
         this.fn = fn;
     }
-    activate() {
-        return this.fn(this);
+    activate(e, ui) {
+        return this.fn(e, ui, this);
     }
 }
 class DropDownButton extends Button {
@@ -1001,12 +1603,21 @@ class DropDownButton extends Button {
         });
     }
     addButton(text, config) {
-        if (this.buttons.length >= this.menu.ui.buffer.height - 1) {
-            throw new Error('Too many menu options.');
-        }
+        // if (this.buttons.length >= this.menu.bounds.height - 1) {
+        //     throw new Error('Too many menu options.');
+        // }
         let button;
         if (typeof config === 'function') {
             button = new ActionButton(text, config);
+        }
+        else if (typeof config === 'string') {
+            button = new ActionButton(text, () => {
+                const r = this.menu.parent.fireAction(config, this.menu);
+                if (r && r.then) {
+                    return r.then(() => true);
+                }
+                return true;
+            });
         }
         else {
             button = new DropDownButton(this.menu, this, text, config);
@@ -1015,20 +1626,20 @@ class DropDownButton extends Button {
         ++this.bounds.height;
         this.bounds.width = Math.max(this.bounds.width, text.length + 2);
     }
-    setBounds(px, py, pwidth) {
-        const right = px + pwidth;
-        const left = px;
-        const totalWidth = this.menu.ui.buffer.width;
+    setBounds(buffer, px, py, pw) {
+        // vertical reveal
+        const right = px + pw;
+        const totalWidth = buffer.width;
         if (this.bounds.width < totalWidth - right) {
             this.bounds.x = right;
         }
-        else if (this.bounds.width < left) {
-            this.bounds.x = left - this.bounds.width;
+        else if (this.bounds.width < px) {
+            this.bounds.x = px - this.bounds.width;
         }
         else {
             throw new Error('Menu does not fit - too wide.');
         }
-        const totalHeight = this.menu.ui.buffer.height;
+        const totalHeight = buffer.height;
         if (this.bounds.height <= totalHeight - py) {
             this.bounds.y = py;
         }
@@ -1038,20 +1649,20 @@ class DropDownButton extends Button {
         else {
             throw new Error('Menu does not fit - too tall.');
         }
-        this.buttons.forEach((b, i) => {
-            if (b instanceof DropDownButton) {
-                b.setBounds(this.bounds.x, this.bounds.y + i, this.bounds.width);
-            }
-        });
+        // this.buttons.forEach((b) => {
+        //     if (b instanceof DropDownButton) {
+        //         b.setBounds(buffer);
+        //     }
+        // });
     }
     contains(e) {
-        return this.bounds.contains(e.x, e.y);
+        return this.bounds.contains(e);
     }
     buttonAt(e) {
         const index = e.y - this.bounds.y;
         return this.buttons[index] || null;
     }
-    drawInto(buffer) {
+    draw(buffer) {
         const width = this.bounds.width;
         const height = this.bounds.height;
         const x = this.bounds.x;
@@ -1059,16 +1670,15 @@ class DropDownButton extends Button {
         buffer.fillRect(x, y, width, height, 0, 0, this.menu.dropBg);
         // Now draw the individual buttons...
         this.buttons.forEach((b) => {
-            buffer.drawText(x + 1, y, b.text, b.hovered ? this.menu.hoverFg : this.menu.dropFg, b.hovered ? this.menu.hoverBg : this.menu.dropBg);
+            buffer.drawText(x + 1, y, b.text, b.hovered ? this.menu.activeFg : this.menu.dropFg, b.hovered ? this.menu.activeBg : this.menu.dropBg);
             ++y;
         });
         if (this.parent) {
-            this.parent.drawInto(buffer);
+            this.parent.draw(buffer);
         }
     }
 }
-async function showDropDown(menu, button) {
-    const ui = button.menu.ui;
+async function showDropDown(menu, button, ui) {
     // Start dialog
     const dialog = ui.startDialog();
     let activeButton = button;
@@ -1092,13 +1702,18 @@ async function showDropDown(menu, button) {
                     });
                     selected.hovered = true;
                     if (selected instanceof DropDownButton) {
+                        selected.buttons.forEach((b) => {
+                            b.hovered = false;
+                        });
+                        selected.setBounds(ui.buffer, activeButton.bounds.x, e.y, activeButton.bounds.width);
                         activeButton = selected;
                     }
                 }
             }
             else {
                 if (menu.contains(e)) {
-                    menu.needsRedraw = true;
+                    if (menu.parent)
+                        menu.parent.requestRedraw();
                     const button = menu.getButtonAt(e.x, e.y);
                     if (button instanceof DropDownButton) {
                         activeButton.hovered = false;
@@ -1126,46 +1741,38 @@ async function showDropDown(menu, button) {
                 return true; // weird, but we are done.
             }
             if (actionButton instanceof ActionButton) {
-                return actionButton.activate(); // actions return true if they want to close the menu (otherwise the menu stays open)
+                return actionButton.activate(e, ui); // actions return true if they want to close the menu (otherwise the menu stays open)
             }
         },
         draw: () => {
             if (!activeButton)
                 return;
             ui.resetDialogBuffer(dialog);
-            activeButton.drawInto(dialog);
-            menu.drawInto(dialog);
+            activeButton.draw(dialog);
+            menu.draw(dialog);
             dialog.render();
         },
     });
     ui.finishDialog();
     menu.clearHighlight();
 }
-class Menu {
-    constructor(opts) {
+class Menu extends Widget {
+    constructor(id, opts) {
+        super(id, opts);
+    }
+    init(opts) {
+        var _a, _b;
+        opts.fg = (_a = opts.fg) !== null && _a !== void 0 ? _a : 'black';
+        opts.bg = (_b = opts.bg) !== null && _b !== void 0 ? _b : 'light_gray';
+        opts.height = opts.height || 1;
+        super.init(opts);
+        this.dropFg = GWU.color.from(opts.dropFg || this.fg);
+        this.dropBg = GWU.color.from(opts.dropBg || this.bg);
         this.buttons = [];
-        this.separator = ' | ';
-        this.lead = ' ';
-        this.needsRedraw = false;
-        this.bounds = new GWU.xy.Bounds(opts.x, opts.y, opts.width, 1);
-        this.ui = opts.ui;
-        this.needsRedraw = true;
-        this.fg = GWU.color.from(opts.fg || 'black');
-        this.bg = GWU.color.from(opts.bg || 'light_gray');
-        this.hoverFg = opts.hoverFg
-            ? GWU.color.from(opts.hoverFg)
-            : this.fg.clone().lighten(50);
-        this.hoverBg = opts.hoverBg
-            ? GWU.color.from(opts.hoverBg)
-            : this.bg.clone().darken(50);
-        this.dropFg = opts.dropFg
-            ? GWU.color.from(opts.dropFg)
-            : this.fg.clone();
-        this.dropBg = opts.dropBg
-            ? GWU.color.from(opts.dropBg)
-            : this.bg.clone();
+        this.separator = opts.separator || ' | ';
+        this.lead = opts.lead || ' ';
         Object.entries(opts.buttons).forEach(([text, opts]) => {
-            this.addButton(text, opts);
+            this._addButton(text, opts);
         });
         if (opts.separator) {
             this.separator = opts.separator;
@@ -1174,20 +1781,15 @@ class Menu {
             this.lead = opts.lead ? opts.lead : '';
         }
     }
-    contains(e) {
-        return this.bounds.contains(e);
-    }
-    handleMouse(e) {
+    mousemove(e) {
         // turn off all the hovers
         this.buttons.forEach((b) => {
             if (b.hovered) {
-                this.needsRedraw = true;
                 b.hovered = false;
             }
         });
         // highlight one of them...
-        if (this.bounds.contains(e.x, e.y)) {
-            this.needsRedraw = true;
+        if (this.bounds.contains(e)) {
             let hovered = null;
             this.buttons.forEach((b) => {
                 b.hovered = false;
@@ -1199,6 +1801,8 @@ class Menu {
                 // @ts-ignore
                 hovered.hovered = true;
             }
+            if (this.parent)
+                this.parent.requestRedraw();
             return true; // we handled the message
         }
         return false;
@@ -1207,29 +1811,29 @@ class Menu {
         this.buttons.forEach((b) => {
             b.hovered = false;
         });
-        this.needsRedraw = true;
+        if (this.parent)
+            this.parent.requestRedraw();
     }
     getButtonAt(x, _y) {
         return GWU.arrayFindRight(this.buttons, (b) => b.x < x) || null;
     }
-    async handleClick(e) {
-        if (this.bounds.contains(e.x, e.y)) {
+    async click(e, ui) {
+        if (this.bounds.contains(e)) {
             // get active button
             let activeButton = this.getButtonAt(e.x, e.y);
             if (!activeButton)
                 return false;
             if (activeButton instanceof DropDownButton) {
-                await showDropDown(this, activeButton);
+                await showDropDown(this, activeButton, ui);
             }
             else if (activeButton instanceof ActionButton) {
-                await activeButton.activate();
+                await activeButton.activate(e, ui);
             }
             return true;
         }
         return false;
     }
-    addButton(text, config) {
-        this.needsRedraw = true;
+    _addButton(text, config) {
         const x = this.buttons.reduce((len, button) => len + button.text.length + this.separator.length, this.lead.length + this.bounds.x);
         if (x + text.length + 2 > this.bounds.width) {
             throw new Error('Button makes menu too wide :' + text);
@@ -1239,27 +1843,27 @@ class Menu {
             button = new ActionButton(text, config);
         }
         else {
-            button = new DropDownButton(this, null, text, config);
-            button.setBounds(x - 1, this.bounds.y ? this.bounds.y - 1 : 1, 0);
+            const dropdown = new DropDownButton(this, null, text, config);
+            dropdown.bounds.x = x;
+            if (this.bounds.y) {
+                dropdown.bounds.y = this.bounds.y - dropdown.bounds.height;
+            }
+            else {
+                dropdown.bounds.y = this.bounds.y + 1;
+            }
+            button = dropdown;
         }
         button.x = x;
         this.buttons.push(button);
     }
-    draw(force = false) {
-        if (!this.needsRedraw && !force)
-            return false;
-        const buffer = this.ui.buffer;
-        return this.drawInto(buffer);
-    }
-    drawInto(buffer) {
-        this.needsRedraw = false;
+    draw(buffer) {
         buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, 1, 0, 0, this.bg);
         let x = this.bounds.x;
         const y = this.bounds.y;
         buffer.drawText(x, y, this.lead, this.fg);
         this.buttons.forEach((b) => {
-            const color = b.hovered ? this.hoverFg : this.fg;
-            const bgColor = b.hovered ? this.hoverBg : this.bg;
+            const color = b.hovered ? this.activeFg : this.fg;
+            const bgColor = b.hovered ? this.activeBg : this.bg;
             buffer.drawText(b.x, y, b.text, color, bgColor);
             x = b.x + b.text.length;
             buffer.drawText(x, y, this.separator, this.fg);

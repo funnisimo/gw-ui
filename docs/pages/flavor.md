@@ -8,8 +8,13 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport({ x: 0, y: 4, width: 80, height: 34, ui });
-const flavor = new GWI.Flavor({ x: 0, y: 3, width: 80, ui });
+const viewport = new GWI.Viewport('VIEW', {
+    x: 0,
+    y: 4,
+    width: 80,
+    height: 34,
+});
+const flavor = new GWI.Flavor('FLAVOR', { x: 0, y: 3, width: 80 });
 const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
 
 const tiles = Object.values(GWM.tile.tiles);
@@ -22,7 +27,10 @@ for (let x = 1; x < map.width - 2; ++x) {
     }
 }
 
-viewport.draw(map);
+viewport.showMap(map);
+
+viewport.draw(ui.buffer);
+flavor.draw(ui.buffer);
 ui.render();
 
 LOOP.run({
@@ -32,6 +40,8 @@ LOOP.run({
         const mapY = viewport.toMapY(e.y);
         const text = flavor.getFlavorText(map, mapX, mapY);
         flavor.showText(text);
+
+        flavor.draw(ui.buffer);
         ui.render();
     },
 });

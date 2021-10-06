@@ -47,6 +47,7 @@ export function mockCell(map: GWM.map.Map, x: number, y: number): GWM.map.Cell {
     const cell = new GWM.map.Cell(map, x, y);
     jest.spyOn(cell, 'tileFlags').mockReturnValue(0);
     jest.spyOn(cell, 'tileMechFlags').mockReturnValue(0);
+    jest.spyOn(cell, 'drawStatus');
     return cell;
 }
 
@@ -62,6 +63,7 @@ export function mockActor(): GWM.actor.Actor {
     jest.spyOn(actor, 'isPlayer').mockReturnValue(false);
     jest.spyOn(actor, 'forbidsCell').mockReturnValue(false);
     jest.spyOn(actor, 'blocksVision').mockReturnValue(false);
+    jest.spyOn(actor, 'drawStatus');
     return actor;
 }
 
@@ -78,6 +80,7 @@ export function mockItem(): GWM.item.Item {
     const item = new GWM.item.Item(kind);
     jest.spyOn(item, 'forbidsCell').mockReturnValue(false);
     jest.spyOn(item, 'blocksVision').mockReturnValue(false);
+    jest.spyOn(item, 'drawStatus');
     return item;
 }
 
@@ -99,9 +102,16 @@ export function mockLoop(): GWU.io.Loop {
 
 export function mockUI(width = 100, height = 38): UICore {
     const buffer = new GWU.canvas.DataBuffer(width, height);
+    // @ts-ignore
+    buffer.render = jest.fn();
+    const loop = new GWU.io.Loop();
+
+    // @ts-ignore
+    jest.spyOn(loop, '_startTicks');
+
     return {
         buffer,
-        loop: GWU.loop, // mockLoop(),
+        loop, // GWU.loop
         render: jest.fn(),
         startDialog: jest.fn().mockReturnValue(buffer),
         finishDialog: jest.fn(),
@@ -129,6 +139,34 @@ export function getBufferText(
     return text.trim();
 }
 
+export function getBufferFg(
+    buffer: GWU.canvas.DataBuffer,
+    x: number,
+    y: number
+): number {
+    const data = buffer.get(x, y);
+    return data.fg;
+}
+
+export function getBufferBg(
+    buffer: GWU.canvas.DataBuffer,
+    x: number,
+    y: number
+): number {
+    const data = buffer.get(x, y);
+    return data.bg;
+}
+
+export async function pushEvent(
+    loop: GWU.io.Loop,
+    event: GWU.io.Event
+): Promise<void> {
+    loop.pushEvent(event);
+    do {
+        await wait(10);
+    } while (loop.events.length);
+}
+
 export function keypress(key: string): GWU.io.Event {
     return GWU.io.makeKeyEvent({
         key,
@@ -138,4 +176,16 @@ export function keypress(key: string): GWU.io.Event {
 
 export function click(x: number, y: number): GWU.io.Event {
     return GWU.io.makeMouseEvent({ buttons: 1 } as MouseEvent, x, y);
+}
+
+export function mousemove(x: number, y: number): GWU.io.Event {
+    return GWU.io.makeMouseEvent({} as MouseEvent, x, y);
+}
+
+export function tick(dt = 16): GWU.io.Event {
+    return GWU.io.makeTickEvent(dt);
+}
+
+export async function wait(dt = 1): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, dt));
 }

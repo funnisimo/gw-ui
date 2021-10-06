@@ -1,9 +1,82 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 
-interface GetInputOptions {
+declare type Align = 'left' | 'center' | 'right';
+declare type VAlign = 'top' | 'middle' | 'bottom';
+interface WidgetContainer {
+    readonly ui: UICore;
+    fireAction(action: string, widget: Widget): void | Promise<void>;
+    requestRedraw(): void;
+}
+interface WidgetOptions {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
+    activeFg?: GWU.color.ColorBase;
+    activeBg?: GWU.color.ColorBase;
+    hoverFg?: GWU.color.ColorBase;
+    hoverBg?: GWU.color.ColorBase;
+    text?: string;
+    align?: Align;
+    valign?: VAlign;
+    tabStop?: boolean;
+    action?: string;
+}
+declare abstract class Widget {
+    bounds: GWU.xy.Bounds;
+    active: boolean;
+    hovered: boolean;
+    tabStop: boolean;
+    fg: GWU.color.ColorBase;
+    bg: GWU.color.ColorBase;
+    activeFg: GWU.color.ColorBase;
+    activeBg: GWU.color.ColorBase;
+    hoverFg: GWU.color.ColorBase;
+    hoverBg: GWU.color.ColorBase;
+    id: string;
+    text: string;
+    align: Align;
+    valign: VAlign;
+    parent: WidgetContainer;
+    action: string;
+    constructor(id: string, opts?: WidgetOptions);
+    init(opts: WidgetOptions): void;
+    reset(): void;
+    contains(e: GWU.xy.XY): boolean;
+    contains(x: number, y: number): boolean;
+    mousemove(e: GWU.io.Event, _ui: UICore): boolean | Promise<boolean>;
+    tick(_e: GWU.io.Event, _ui: UICore): void | Promise<void>;
+    click(_e: GWU.io.Event, _ui: UICore): boolean | Promise<boolean>;
+    keypress(_e: GWU.io.Event, _ui: UICore): boolean | Promise<boolean>;
+    draw(buffer: GWU.canvas.DataBuffer): void;
+}
+
+interface TextOptions extends WidgetOptions {
+    wrap?: number;
+}
+declare class Text extends Widget {
+    lines: string[];
+    constructor(id: string, opts?: TextOptions);
+    init(opts: TextOptions): void;
+    draw(buffer: GWU.canvas.DataBuffer): void;
+}
+
+declare type ActionFn$1 = (e: GWU.io.Event, button: Button$1) => void | Promise<void>;
+interface ButtonOptions extends WidgetOptions {
+    actionFn?: ActionFn$1;
+}
+declare class Button$1 extends Widget {
+    actionFn: ActionFn$1 | null;
+    constructor(id: string, opts?: ButtonOptions);
+    init(opts: ButtonOptions): void;
+    click(ev: GWU.io.Event): boolean | Promise<boolean>;
+    keypress(ev: GWU.io.Event): boolean | Promise<boolean>;
+}
+
+interface InputOptions extends WidgetOptions {
     errorFg?: GWU.color.ColorBase;
     hint?: string;
     hintFg?: GWU.color.ColorBase;
@@ -13,56 +86,35 @@ interface GetInputOptions {
     min?: number;
     max?: number;
 }
-interface AlertOptions {
-    duration?: number;
-    waitForAck?: boolean;
+
+interface DialogOptions extends WidgetOptions {
+    id?: string;
     x?: number;
     y?: number;
+    width?: number;
+    height?: number;
+    title?: string;
+    titleFg?: string;
     bg?: GWU.color.ColorBase;
     borderBg?: GWU.color.ColorBase;
-    fg?: GWU.color.ColorBase;
-    title?: string;
-    titleFg?: GWU.color.ColorBase;
-    width?: number;
-    height?: number;
+    pad?: number;
     padX?: number;
     padY?: number;
 }
-interface ConfirmOptions extends GetInputOptions {
-    x?: number;
-    y?: number;
-    allowCancel?: boolean;
-    width?: number;
-    height?: number;
-    padX?: number;
-    padY?: number;
-    title?: string;
-    titleFg?: GWU.color.ColorBase;
-    borderBg?: GWU.color.ColorBase;
-    ok?: string;
-    cancel?: string;
-    buttonFg?: GWU.color.ColorBase;
-    buttonBg?: GWU.color.ColorBase;
-    hoverFg?: GWU.color.ColorBase;
-    hoverBg?: GWU.color.ColorBase;
+
+interface AlertOptions extends DialogOptions {
+    duration?: number;
+    waitForAck?: boolean;
 }
-interface InputBoxOptions extends GetInputOptions {
-    x?: number;
-    y?: number;
+interface ConfirmOptions extends DialogOptions {
     allowCancel?: boolean;
-    width?: number;
-    height?: number;
-    padX?: number;
-    padY?: number;
-    title?: string;
-    titleFg?: GWU.color.ColorBase;
-    borderBg?: GWU.color.ColorBase;
-    ok?: string;
-    cancel?: string;
-    buttonFg?: GWU.color.ColorBase;
-    buttonBg?: GWU.color.ColorBase;
-    hoverFg?: GWU.color.ColorBase;
-    hoverBg?: GWU.color.ColorBase;
+    buttons?: ButtonOptions;
+    ok?: string | ButtonOptions;
+    cancel?: string | ButtonOptions;
+}
+interface InputBoxOptions extends ConfirmOptions {
+    prompt?: string | TextOptions;
+    input?: InputOptions;
 }
 interface UICore {
     buffer: GWU.canvas.DataBuffer;
@@ -72,7 +124,7 @@ interface UICore {
     resetDialogBuffer(dest: GWU.canvas.Buffer): void;
     finishDialog(): void;
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
-    getInputAt(x: number, y: number, maxLength: number, opts?: GetInputOptions): Promise<string>;
+    getInputAt(x: number, y: number, maxLength: number, opts?: InputOptions): Promise<string>;
     alert(opts: number | AlertOptions, text: string, args: any): Promise<void>;
 }
 interface UISubject {
@@ -96,118 +148,84 @@ declare class UI implements UICore {
     inDialog: boolean;
     constructor(opts?: Partial<UIOptions>);
     render(): void;
+    get baseBuffer(): GWU.canvas.Buffer;
+    get canvasBuffer(): GWU.canvas.Buffer;
     startDialog(): GWU.canvas.Buffer;
     resetDialogBuffer(dest: GWU.canvas.Buffer): void;
     finishDialog(): void;
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
-    alert(opts: number | AlertOptions, text: string, args: any): Promise<void>;
+    alert(opts: number | AlertOptions, text: string, args: any): Promise<any>;
     confirm(text: string, args?: any): Promise<boolean>;
     confirm(opts: ConfirmOptions, text: string, args?: any): Promise<boolean>;
-    getInputAt(x: number, y: number, maxLength: number, opts?: GetInputOptions): Promise<string>;
-    inputBox(opts: InputBoxOptions, prompt: string, args?: any): Promise<string>;
+    getInputAt(x: number, y: number, maxLength: number, opts?: InputOptions): Promise<string>;
+    inputBox(opts: InputBoxOptions, prompt: string, args?: any): Promise<any>;
 }
 
-interface MessageOptions {
-    x: number;
-    y: number;
-    width?: number;
-    height?: number;
-    ui: UICore;
-    bg?: GWU.color.ColorBase;
-    fg?: GWU.color.ColorBase;
+interface MessageOptions extends WidgetOptions {
+    length?: number;
 }
-declare class Messages {
-    bounds: GWU.xy.Bounds;
+declare class Messages extends Widget {
     cache: GWU.message.MessageCache;
-    ui: UICore;
-    bg: GWU.color.Color;
-    fg: GWU.color.Color;
-    constructor(opts: MessageOptions);
-    contains(e: GWU.io.Event): boolean;
-    get needsUpdate(): boolean;
-    get buffer(): GWU.canvas.DataBuffer;
-    draw(force?: boolean): boolean;
-    toBufferY(y: number): number;
-    toBufferX(x: number): number;
-    showArchive(): Promise<void>;
+    constructor(id: string, opts?: MessageOptions);
+    init(opts: MessageOptions): void;
+    click(e: GWU.io.Event, ui: UICore): boolean | Promise<boolean>;
+    draw(buffer: GWU.canvas.DataBuffer): boolean;
+    showArchive(ui: UICore): Promise<boolean>;
 }
 
 declare type ViewFilterFn = (mixer: GWU.sprite.Mixer, x: number, y: number, map: GWM.map.Map) => void;
-interface ViewportOptions {
+interface ViewportOptions extends WidgetOptions {
     snap?: boolean;
-    ui: UICore;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
     filter?: ViewFilterFn;
     lockX?: boolean;
     lockY?: boolean;
     lock?: boolean;
     center?: boolean;
 }
-declare class Viewport {
-    ui: UICore;
+declare class Viewport extends Widget {
     center: boolean;
     snap: boolean;
-    bounds: GWU.xy.Bounds;
     filter: ViewFilterFn | null;
     offsetX: number;
     offsetY: number;
     lockX: boolean;
     lockY: boolean;
-    _follow: UISubject | null;
-    constructor(opts: ViewportOptions);
-    get follow(): UISubject | null;
-    set follow(subject: UISubject | null);
+    _subject: UISubject | null;
+    constructor(id: string, opts?: ViewportOptions);
+    init(opts: ViewportOptions): void;
+    get subject(): UISubject | null;
+    set subject(subject: UISubject | null);
+    set lock(v: boolean);
     toMapX(x: number): number;
     toMapY(y: number): number;
     toInnerX(x: number): number;
     toInnerY(y: number): number;
-    contains(e: GWU.io.Event): boolean;
     halfWidth(): number;
     halfHeight(): number;
-    centerOn(x: number, y: number, map?: GWU.xy.Size): void;
-    updateOffset(focus: GWU.xy.XY | null, map?: GWU.xy.Size): void;
-    drawFor(subject: UISubject): boolean;
-    draw(map?: GWM.map.Map, fov?: GWU.fov.FovTracker): boolean;
+    centerOn(map: GWM.map.Map, x: number, y: number): void;
+    showMap(map: GWM.map.Map, x?: number, y?: number): void;
+    updateOffset(): void;
+    draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-interface FlavorOptions {
-    ui: UICore;
-    x: number;
-    y: number;
-    width: number;
-    fg?: GWU.color.ColorBase;
-    bg?: GWU.color.ColorBase;
+interface FlavorOptions extends TextOptions {
     promptFg?: GWU.color.ColorBase;
+    overflow?: boolean;
 }
-declare class Flavor {
-    ui: UICore;
-    bounds: GWU.xy.Bounds;
-    text: string;
-    needsUpdate: boolean;
+declare class Flavor extends Text {
     isPrompt: boolean;
     overflow: boolean;
-    fg: GWU.color.Color;
-    bg: GWU.color.Color;
     promptFg: GWU.color.Color;
-    constructor(opts: FlavorOptions);
+    constructor(id: string, opts?: FlavorOptions);
+    init(opts: FlavorOptions): void;
     showText(text: string): void;
     clear(): void;
     showPrompt(text: string): void;
-    draw(force?: boolean): boolean;
+    draw(buffer: GWU.canvas.DataBuffer): void;
     getFlavorText(map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovSystem): string;
 }
 
-interface SidebarOptions {
-    ui: UICore;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    fg?: GWU.color.ColorBase;
-    bg?: GWU.color.ColorBase;
+interface SidebarOptions extends WidgetOptions {
 }
 declare abstract class EntryBase {
     dist: number;
@@ -216,52 +234,45 @@ declare abstract class EntryBase {
     sidebarY: number;
     abstract get x(): number;
     abstract get y(): number;
-    draw(_sidebar: Sidebar): void;
+    draw(_buffer: GWU.canvas.DataBuffer, _bounds: GWU.xy.Bounds): number;
 }
 declare class ActorEntry extends EntryBase {
     actor: GWM.actor.Actor;
     constructor(actor: GWM.actor.Actor);
     get x(): number;
     get y(): number;
-    draw(sidebar: Sidebar): void;
+    draw(buffer: GWU.canvas.DataBuffer, bounds: GWU.xy.Bounds): number;
 }
 declare class ItemEntry extends EntryBase {
     item: GWM.item.Item;
     constructor(item: GWM.item.Item);
     get x(): number;
     get y(): number;
-    draw(sidebar: Sidebar): void;
+    draw(buffer: GWU.canvas.DataBuffer, bounds: GWU.xy.Bounds): number;
 }
 declare class CellEntry extends EntryBase {
     cell: GWM.map.CellInfoType;
     constructor(cell: GWM.map.CellInfoType);
     get x(): number;
     get y(): number;
-    draw(sidebar: Sidebar): void;
+    draw(buffer: GWU.canvas.DataBuffer, bounds: GWU.xy.Bounds): number;
 }
 declare type SidebarEntry = ActorEntry | ItemEntry | CellEntry;
-declare class Sidebar implements GWM.entity.StatusDrawer {
-    ui: UICore;
-    bounds: GWU.xy.Bounds;
+declare class Sidebar extends Widget {
     cellCache: GWM.map.CellInfoType[];
     lastX: number;
     lastY: number;
     lastMap: GWM.map.Map | null;
     entries: SidebarEntry[];
-    fg: GWU.color.Color;
-    bg: GWU.color.Color;
-    mixer: GWU.sprite.Mixer;
-    currentY: number;
-    follow: UISubject | null;
+    subject: UISubject | null;
     highlight: EntryBase | null;
-    currentEntry: EntryBase | null;
-    constructor(opts: SidebarOptions);
-    get buffer(): GWU.canvas.DataBuffer;
-    contains(e: GWU.io.Event): boolean;
-    toInnerY(y: number): number;
-    updateHighlight(e: GWU.io.Event): boolean;
-    highlightRow(innerY: number): boolean;
-    clearHighlight(): void;
+    constructor(id: string, opts?: SidebarOptions);
+    init(opts: SidebarOptions): void;
+    reset(): void;
+    entryAt(e: GWU.io.Event): EntryBase | null;
+    mousemove(e: GWU.io.Event, ui: UICore): boolean | Promise<boolean>;
+    highlightRow(y: number): boolean;
+    clearHighlight(): boolean;
     updateCellCache(map: GWM.map.Map): void;
     _makeActorEntry(actor: GWM.actor.Actor): ActorEntry;
     _makeItemEntry(item: GWM.item.Item): ItemEntry;
@@ -272,21 +283,18 @@ declare class Sidebar implements GWM.entity.StatusDrawer {
     _addItemEntry(item: GWM.item.Item, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): boolean;
     _addCellEntry(cell: GWM.map.CellInfoType, map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovTracker): boolean;
     findEntries(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovTracker): void;
-    clearSidebar(): void;
-    drawFor(subject: UISubject): boolean;
-    draw(): boolean;
-    draw(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovTracker): boolean;
-    drawTitle(cell: GWU.sprite.Mixer, title: string, fg?: GWU.color.ColorBase): void;
-    drawTextLine(text: string, fg?: GWU.color.ColorBase): void;
-    drawProgressBar(val: number, max: number, text: string, color?: GWU.color.ColorBase, bg?: GWU.color.ColorBase, fg?: GWU.color.ColorBase): void;
+    update(): boolean;
+    updateFor(subject: UISubject): boolean;
+    updateAt(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovTracker): boolean;
+    draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-declare type ActionFn = (button: ActionButton) => boolean | Promise<boolean>;
+declare type ActionFn = (e: GWU.io.Event, ui: UICore, button: Button) => boolean | Promise<boolean>;
 interface Rec<T> {
     [keys: string]: T;
 }
 declare type DropdownConfig = Rec<ButtonConfig>;
-declare type ActionConfig = ActionFn;
+declare type ActionConfig = ActionFn | string;
 declare type ButtonConfig = ActionConfig | DropdownConfig;
 declare class Button {
     text: string;
@@ -298,7 +306,7 @@ declare class Button {
 declare class ActionButton extends Button {
     fn: ActionFn;
     constructor(text: string, fn: ActionFn);
-    activate(): any;
+    activate(e: GWU.io.Event, ui: UICore): any;
 }
 declare class DropDownButton extends Button {
     bounds: GWU.xy.Bounds;
@@ -307,49 +315,33 @@ declare class DropDownButton extends Button {
     parent: DropDownButton | null;
     constructor(menu: Menu, parent: DropDownButton | null, text: string, buttons: ButtonConfig);
     addButton(text: string, config: ButtonConfig): void;
-    setBounds(px: number, py: number, pwidth: number): void;
+    setBounds(buffer: GWU.canvas.DataBuffer, px: number, py: number, pw: number): void;
     contains(e: GWU.io.Event): boolean;
     buttonAt(e: GWU.io.Event): Button | null;
-    drawInto(buffer: GWU.canvas.DataBuffer): void;
+    draw(buffer: GWU.canvas.DataBuffer): void;
 }
-declare function showDropDown(menu: Menu, button: DropDownButton): Promise<void>;
-interface MenuOptions {
-    ui: UICore;
-    x: number;
-    y: number;
-    width: number;
+declare function showDropDown(menu: Menu, button: DropDownButton, ui: UICore): Promise<void>;
+interface MenuOptions extends WidgetOptions {
     separator?: string;
     lead?: string;
-    fg?: GWU.color.ColorBase;
-    bg?: GWU.color.ColorBase;
-    hoverFg?: GWU.color.ColorBase;
-    hoverBg?: GWU.color.ColorBase;
     dropFg?: GWU.color.ColorBase;
     dropBg?: GWU.color.ColorBase;
     buttons: ButtonConfig;
 }
-declare class Menu {
-    bounds: GWU.xy.Bounds;
+declare class Menu extends Widget {
     buttons: Button[];
-    ui: UICore;
     separator: string;
     lead: string;
-    fg: GWU.color.Color;
-    bg: GWU.color.Color;
-    hoverFg: GWU.color.Color;
-    hoverBg: GWU.color.Color;
     dropFg: GWU.color.Color;
     dropBg: GWU.color.Color;
-    needsRedraw: boolean;
-    constructor(opts: MenuOptions);
-    contains(e: GWU.io.Event): boolean;
-    handleMouse(e: GWU.io.Event): boolean;
+    constructor(id: string, opts?: MenuOptions);
+    init(opts: MenuOptions): void;
+    mousemove(e: GWU.io.Event): boolean;
     clearHighlight(): void;
     getButtonAt(x: number, _y: number): Button | null;
-    handleClick(e: GWU.io.Event): Promise<boolean>;
-    addButton(text: string, config: ButtonConfig): void;
-    draw(force?: boolean): boolean;
-    drawInto(buffer: GWU.canvas.DataBuffer): boolean;
+    click(e: GWU.io.Event, ui: UICore): Promise<boolean>;
+    protected _addButton(text: string, config: ButtonConfig): void;
+    draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Button, CellEntry, ConfirmOptions, DropDownButton, EntryBase, Flavor, FlavorOptions, GetInputOptions, InputBoxOptions, ItemEntry, Menu, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions, showDropDown };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Button, CellEntry, ConfirmOptions, DropDownButton, EntryBase, Flavor, FlavorOptions, InputBoxOptions, ItemEntry, Menu, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, UI, UICore, UIOptions, UISubject, ViewFilterFn, Viewport, ViewportOptions, showDropDown };

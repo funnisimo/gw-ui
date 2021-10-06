@@ -1,77 +1,76 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import { UICore } from './types';
+import * as Widget from './widget';
 
 GWU.color.install('flavorText', 50, 40, 90);
 GWU.color.install('flavorPrompt', 100, 90, 20);
 
-export interface FlavorOptions {
-    ui: UICore;
-    x: number;
-    y: number;
-    width: number;
-    fg?: GWU.color.ColorBase;
-    bg?: GWU.color.ColorBase;
+export interface FlavorOptions extends Widget.TextOptions {
     promptFg?: GWU.color.ColorBase;
+    overflow?: boolean;
 }
 
-export class Flavor {
-    ui: UICore;
-    bounds: GWU.xy.Bounds;
-    text: string = '';
-    needsUpdate = false;
-    isPrompt = false;
-    overflow = false;
-    fg: GWU.color.Color;
-    bg: GWU.color.Color;
-    promptFg: GWU.color.Color;
+export class Flavor extends Widget.Text {
+    isPrompt!: boolean;
+    overflow!: boolean;
+    promptFg!: GWU.color.Color;
 
-    constructor(opts: FlavorOptions) {
-        this.ui = opts.ui;
-        this.bounds = new GWU.xy.Bounds(opts.x, opts.y, opts.width, 1);
-        this.fg = GWU.color.from(opts.fg ?? 'flavorText');
-        this.bg = GWU.color.from(opts.bg ?? 'black');
-        this.promptFg = GWU.color.from(opts.promptFg ?? 'flavorPrompt');
+    constructor(id: string, opts?: FlavorOptions) {
+        super(id, opts);
+    }
+
+    init(opts: FlavorOptions) {
+        opts.fg = opts.fg || 'flavorText';
+        opts.bg = opts.bg || 'black';
+        super.init(opts);
+        this.promptFg = GWU.color.from(opts.promptFg || 'flavorPrompt');
+        this.overflow = opts.overflow || false;
+        this.isPrompt = false;
     }
 
     showText(text: string) {
         this.text = GWU.text.capitalize(text);
-        this.needsUpdate = true;
+        const len = GWU.text.length(this.text);
+        if (len > this.bounds.width) {
+            this.lines = GWU.text.splitIntoLines(this.text, this.bounds.width);
+            if (!this.overflow && this.lines.length > this.bounds.height) {
+                if (this.bounds.height == 1) {
+                    this.text = GWU.text.truncate(this.text, this.bounds.width);
+                    this.lines = [this.text];
+                } else {
+                    this.lines.length = this.bounds.height;
+                }
+            }
+        } else {
+            this.lines = [this.text];
+        }
         this.isPrompt = false;
-        this.draw();
+        if (this.parent) this.parent.requestRedraw();
     }
 
     clear() {
         this.text = '';
-        this.needsUpdate = true;
+        this.lines = [''];
         this.isPrompt = false;
-        this.draw();
+        if (this.parent) this.parent.requestRedraw();
     }
 
     showPrompt(text: string) {
-        this.text = GWU.text.capitalize(text);
-        this.needsUpdate = true;
+        this.showText(text);
         this.isPrompt = true;
-        this.draw();
     }
 
-    draw(force = false): boolean {
-        if (!force && !this.needsUpdate) return false;
-
-        const buffer = this.ui.buffer;
-        const color = this.isPrompt ? this.fg : this.promptFg;
-        const nextY = buffer.wrapText(
+    draw(buffer: GWU.canvas.DataBuffer) {
+        buffer.fillRect(
             this.bounds.x,
             this.bounds.y,
             this.bounds.width,
-            this.text,
-            color,
+            this.bounds.height,
+            ' ',
+            this.bg,
             this.bg
         );
-        this.overflow = nextY !== this.bounds.y + 1;
-        this.ui.render();
-        this.needsUpdate = false;
-        return true;
+        super.draw(buffer);
     }
 
     getFlavorText(

@@ -1,22 +1,15 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
+import * as Widget from './widget';
 
-import { UICore, UISubject } from './types';
+import { UISubject, UICore } from './types';
 
 GWU.color.install('blueBar', 15, 10, 50);
 GWU.color.install('redBar', 45, 10, 15);
 GWU.color.install('purpleBar', 50, 0, 50);
 GWU.color.install('greenBar', 10, 50, 10);
 
-export interface SidebarOptions {
-    ui: UICore;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    fg?: GWU.color.ColorBase;
-    bg?: GWU.color.ColorBase;
-}
+export interface SidebarOptions extends Widget.WidgetOptions {}
 
 export abstract class EntryBase {
     dist = 0;
@@ -27,7 +20,9 @@ export abstract class EntryBase {
     abstract get x(): number;
     abstract get y(): number;
 
-    draw(_sidebar: Sidebar): void {}
+    draw(_buffer: GWU.canvas.DataBuffer, _bounds: GWU.xy.Bounds): number {
+        return 0;
+    }
 }
 
 export class ActorEntry extends EntryBase {
@@ -45,8 +40,8 @@ export class ActorEntry extends EntryBase {
         return this.actor.y;
     }
 
-    draw(sidebar: Sidebar): void {
-        this.actor.drawStatus(sidebar);
+    draw(buffer: GWU.canvas.DataBuffer, bounds: GWU.xy.Bounds): number {
+        return this.actor.drawStatus(buffer, bounds);
     }
 }
 
@@ -65,8 +60,8 @@ export class ItemEntry extends EntryBase {
         return this.item.y;
     }
 
-    draw(sidebar: Sidebar): void {
-        this.item.drawStatus(sidebar);
+    draw(buffer: GWU.canvas.DataBuffer, bounds: GWU.xy.Bounds): number {
+        return this.item.drawStatus(buffer, bounds);
     }
 }
 
@@ -85,63 +80,57 @@ export class CellEntry extends EntryBase {
         return this.cell.y;
     }
 
-    draw(sidebar: Sidebar): void {
-        this.cell.drawStatus(sidebar);
+    draw(buffer: GWU.canvas.DataBuffer, bounds: GWU.xy.Bounds): number {
+        return this.cell.drawStatus(buffer, bounds);
     }
 }
 
 export type SidebarEntry = ActorEntry | ItemEntry | CellEntry;
 
-export class Sidebar implements GWM.entity.StatusDrawer {
-    ui: UICore;
-    bounds: GWU.xy.Bounds;
+export class Sidebar extends Widget.Widget {
     cellCache: GWM.map.CellInfoType[] = [];
     lastX = -1;
     lastY = -1;
     lastMap: GWM.map.Map | null = null;
     entries: SidebarEntry[] = [];
-    fg: GWU.color.Color;
-    bg: GWU.color.Color;
-    mixer: GWU.sprite.Mixer = new GWU.sprite.Mixer();
-    currentY = 0;
-    follow: UISubject | null = null;
+    subject: UISubject | null = null;
     highlight: EntryBase | null = null;
-    currentEntry: EntryBase | null = null;
 
-    constructor(opts: SidebarOptions) {
-        this.ui = opts.ui;
-        this.bounds = new GWU.xy.Bounds(
-            opts.x,
-            opts.y,
-            opts.width,
-            opts.height
+    constructor(id: string, opts?: SidebarOptions) {
+        super(id, opts);
+    }
+
+    init(opts: SidebarOptions) {
+        opts.fg = opts.fg || 'purple';
+        opts.bg = opts.bg || 'black';
+        super.init(opts);
+    }
+
+    reset() {
+        super.reset();
+        this.lastMap = null;
+        this.lastX = -1;
+        this.lastY = -1;
+    }
+
+    entryAt(e: GWU.io.Event): EntryBase | null {
+        return (
+            this.entries.find((entry) => {
+                return entry.sidebarY <= e.y && entry.sidebarY !== -1;
+            }) || null
         );
-        this.bg = GWU.color.from(opts.bg || 'black');
-        this.fg = GWU.color.from(opts.fg || 'purple');
     }
 
-    get buffer(): GWU.canvas.DataBuffer {
-        return this.ui.buffer;
-    }
-
-    contains(e: GWU.io.Event): boolean {
-        return this.bounds.contains(e.x, e.y);
-    }
-
-    toInnerY(y: number) {
-        return GWU.clamp(y - this.bounds.top, 0, this.bounds.height);
-    }
-
-    updateHighlight(e: GWU.io.Event): boolean {
-        if (!this.contains(e)) {
-            this.clearHighlight();
-            return false;
+    mousemove(e: GWU.io.Event, ui: UICore): boolean | Promise<boolean> {
+        super.mousemove(e, ui);
+        if (this.contains(e)) {
+            return this.highlightRow(e.y);
         }
-        return this.highlightRow(this.toInnerY(e.y));
+        return this.clearHighlight();
     }
 
-    highlightRow(innerY: number) {
-        const y = GWU.clamp(innerY, 0, this.bounds.height);
+    highlightRow(y: number) {
+        const last = this.highlight;
         this.highlight = null;
         // processed in ascending y order
         this.entries.forEach((e) => {
@@ -149,16 +138,15 @@ export class Sidebar implements GWM.entity.StatusDrawer {
                 this.highlight = e;
             }
         });
-        if (this.highlight) {
-            // @ts-ignore
-            this.highlight.highlight = true;
-            return true;
-        }
-        return false;
+        if (this.parent) this.parent.requestRedraw();
+        return this.highlight !== last;
     }
 
     clearHighlight() {
+        const result = !!this.highlight;
         this.highlight = null;
+        if (this.parent) this.parent.requestRedraw();
+        return result;
     }
 
     updateCellCache(map: GWM.map.Map) {
@@ -218,7 +206,7 @@ export class Sidebar implements GWM.entity.StatusDrawer {
 
     _isDim(entry: EntryBase): boolean {
         if (entry === this.highlight) return false;
-        return !!this.highlight || entry.priority > 2;
+        return entry.priority > 2 || !!this.highlight;
     }
 
     _addActorEntry(
@@ -327,8 +315,36 @@ export class Sidebar implements GWM.entity.StatusDrawer {
         GWU.grid.free(done);
     }
 
-    clearSidebar() {
-        this.ui.buffer.fillRect(
+    update(): boolean {
+        if (!this.subject) {
+            throw new Error('Update requires a subject to follow.');
+        }
+        return this.updateFor(this.subject);
+    }
+
+    updateFor(subject: UISubject): boolean {
+        return this.updateAt(
+            subject.memory || subject.map,
+            subject.x,
+            subject.y,
+            subject.fov
+        );
+    }
+
+    updateAt(
+        map: GWM.map.Map,
+        cx: number,
+        cy: number,
+        fov?: GWU.fov.FovTracker
+    ): boolean {
+        this.updateCellCache(map);
+        this.findEntries(map, cx, cy, fov);
+        if (this.parent) this.parent.requestRedraw();
+        return true;
+    }
+
+    draw(buffer: GWU.canvas.DataBuffer) {
+        buffer.fillRect(
             this.bounds.x,
             this.bounds.y,
             this.bounds.width,
@@ -337,140 +353,34 @@ export class Sidebar implements GWM.entity.StatusDrawer {
             0,
             this.bg
         );
-    }
-
-    drawFor(subject: UISubject): boolean {
-        return this.draw(
-            subject.memory || subject.map,
-            subject.x,
-            subject.y,
-            subject.fov
-        );
-    }
-
-    draw(): boolean;
-    draw(
-        map: GWM.map.Map,
-        cx: number,
-        cy: number,
-        fov?: GWU.fov.FovTracker
-    ): boolean;
-    draw(
-        map?: GWM.map.Map,
-        cx?: number,
-        cy?: number,
-        fov?: GWU.fov.FovTracker
-    ): boolean {
-        if (arguments.length < 3) {
-            if (this.follow) {
-                return this.drawFor(this.follow);
-            }
-            throw new Error('Not following a subject - map, cx, cy required.');
-        }
-        this.updateCellCache(map!);
-        this.findEntries(map!, cx!, cy!, fov);
-        this.clearSidebar();
-
-        this.currentY = this.bounds.y;
 
         // clear the row information
         this.entries.forEach((e) => (e.sidebarY = -1));
 
-        for (
-            let i = 0;
-            i < this.entries.length && this.currentY < this.bounds.bottom;
-            ++i
-        ) {
-            this.currentEntry = this.entries[i];
-            this.currentEntry.sidebarY = this.currentY;
-            this.currentEntry.draw(this);
-            ++this.currentY; // skip a line
+        const drawBounds = this.bounds.clone();
+        let currentEntry: EntryBase;
+
+        for (let i = 0; i < this.entries.length && drawBounds.height > 0; ++i) {
+            currentEntry = this.entries[i];
+            currentEntry.sidebarY = drawBounds.y;
+            let usedLines = currentEntry.draw(buffer, drawBounds);
+            if (this._isDim(currentEntry)) {
+                buffer.mix(
+                    this.bg,
+                    50,
+                    drawBounds.x,
+                    drawBounds.y,
+                    drawBounds.width,
+                    usedLines
+                );
+            }
+            if (usedLines) {
+                ++usedLines; // skip a space
+                drawBounds.y += usedLines;
+                drawBounds.height -= usedLines;
+            }
         }
 
-        this.currentEntry = null;
         return true;
-    }
-
-    drawTitle(
-        cell: GWU.sprite.Mixer,
-        title: string,
-        fg?: GWU.color.ColorBase
-    ): void {
-        fg = GWU.color.from(fg || this.fg);
-        const fgColor = this._isDim(this.currentEntry!)
-            ? fg.clone().darken(50)
-            : fg;
-        this.buffer.drawSprite(this.bounds.x + 1, this.currentY, cell);
-        this.buffer.wrapText(
-            this.bounds.x + 3,
-            this.currentY,
-            this.bounds.width - 3,
-            title,
-            fgColor
-        );
-        ++this.currentY;
-    }
-    drawTextLine(text: string, fg?: GWU.color.ColorBase): void {
-        fg = GWU.color.from(fg || this.fg);
-        const fgColor = this._isDim(this.currentEntry!)
-            ? fg.clone().darken(50)
-            : fg;
-        this.buffer.drawText(
-            this.bounds.x + 3,
-            this.currentY,
-            text,
-            fgColor,
-            this.bounds.width - 3
-        );
-        ++this.currentY;
-    }
-    drawProgressBar(
-        val: number,
-        max: number,
-        text: string,
-        color?: GWU.color.ColorBase,
-        bg?: GWU.color.ColorBase,
-        fg?: GWU.color.ColorBase
-    ): void {
-        color = GWU.color.from(color || this.fg);
-        bg = GWU.color.from(bg || color.clone().darken(50));
-        fg = GWU.color.from(fg || color.clone().lighten(50));
-
-        if (this._isDim(this.currentEntry!)) {
-            bg.darken(50);
-            fg.darken(50);
-            color.darken(50);
-        }
-
-        this.buffer.fillRect(
-            this.bounds.x + 1,
-            this.currentY,
-            this.bounds.width - 1,
-            1,
-            undefined,
-            undefined,
-            bg
-        );
-        const len = Math.floor(((this.bounds.width - 1) * val) / max);
-        this.buffer.fillRect(
-            this.bounds.x + 1,
-            this.currentY,
-            len,
-            1,
-            undefined,
-            undefined,
-            color
-        );
-
-        const title = GWU.text.center(text, this.bounds.width);
-        this.buffer.drawText(
-            this.bounds.x + 1,
-            this.currentY,
-            title,
-            fg,
-            undefined,
-            this.bounds.width - 1 // just in case title is too long
-        );
-        ++this.currentY;
     }
 }

@@ -14,24 +14,26 @@ export class Text extends Widget.Widget {
     }
 
     init(opts: TextOptions) {
-        if (!opts.text)
-            throw new Error(
-                'Must have text value in config for Text widget - ' + this.id
-            );
+        // if (!opts.text)
+        //     throw new Error(
+        //         'Must have text value in config for Text widget - ' + this.id
+        //     );
+
+        this.text = opts.text || '';
         if (opts.wrap) {
             opts.width = opts.wrap;
             this.lines = GWU.text.splitIntoLines(
-                opts.text,
+                this.text,
                 // @ts-ignore
                 opts.width
             );
         } else {
-            const textLen = GWU.text.length(opts.text);
-            opts.width = opts.width || textLen;
+            const textLen = GWU.text.length(this.text);
+            opts.width = opts.width || textLen || 10;
             if (opts.width < textLen) {
-                opts.text = GWU.text.truncate(opts.text, opts.width);
+                opts.text = GWU.text.truncate(this.text, opts.width);
             }
-            this.lines = [opts.text];
+            this.lines = [this.text];
         }
 
         opts.height = Math.max(this.lines.length, opts.height || 1);
@@ -39,14 +41,16 @@ export class Text extends Widget.Widget {
         super.init(opts);
     }
 
-    draw(buffer: GWU.canvas.DataBuffer, offsetX = 0, offsetY = 0) {
+    // TODO - get text() {}, set text(v:string) { // do lines stuff }
+
+    draw(buffer: GWU.canvas.DataBuffer) {
         const fg = this.active ? this.activeFg : this.fg;
         const bg = this.active ? this.activeBg : this.bg;
 
         this.lines.forEach((line, i) => {
             buffer.drawText(
-                this.bounds.x + offsetX,
-                this.bounds.y + i + offsetY,
+                this.bounds.x,
+                this.bounds.y + i,
                 line,
                 fg,
                 bg,

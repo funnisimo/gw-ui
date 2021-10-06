@@ -1,6 +1,7 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import { UICore, UISubject } from './types';
+import { UISubject } from './types';
+import * as Widget from './widget';
 
 export type ViewFilterFn = (
     mixer: GWU.sprite.Mixer,
@@ -9,13 +10,8 @@ export type ViewFilterFn = (
     map: GWM.map.Map
 ) => void;
 
-export interface ViewportOptions {
+export interface ViewportOptions extends Widget.WidgetOptions {
     snap?: boolean;
-    ui: UICore;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
     filter?: ViewFilterFn;
     lockX?: boolean;
     lockY?: boolean;
@@ -23,27 +19,26 @@ export interface ViewportOptions {
     center?: boolean;
 }
 
-export class Viewport {
-    ui: UICore;
-    center = false;
-    snap = false;
-    bounds: GWU.xy.Bounds;
-    filter: ViewFilterFn | null = null;
+export class Viewport extends Widget.Widget {
+    center!: boolean;
+    snap!: boolean;
+    filter!: ViewFilterFn | null;
     offsetX = 0;
     offsetY = 0;
-    lockX = false;
-    lockY = false;
-    _follow: UISubject | null = null;
+    lockX!: boolean;
+    lockY!: boolean;
+    _subject: UISubject | null = null;
 
-    constructor(opts: ViewportOptions) {
-        this.ui = opts.ui;
+    constructor(id: string, opts?: ViewportOptions) {
+        super(id, opts);
+    }
+
+    init(opts: ViewportOptions) {
+        opts.bg = opts.bg || 'black';
+
+        super.init(opts);
         this.snap = opts.snap || false;
-        this.bounds = new GWU.xy.Bounds(
-            opts.x,
-            opts.y,
-            opts.width,
-            opts.height
-        );
+        this.center = opts.center || false;
         this.filter = opts.filter || null;
         if (opts.lock) {
             this.lockX = true;
@@ -58,17 +53,22 @@ export class Viewport {
         }
     }
 
-    get follow(): UISubject | null {
-        return this._follow;
+    get subject(): UISubject | null {
+        return this._subject;
     }
-    set follow(subject: UISubject | null) {
+    set subject(subject: UISubject | null) {
         this.center = !!subject;
         if (subject) {
             this.offsetX = subject.x - this.halfWidth();
             this.offsetY = subject.y - this.halfHeight();
-            this.centerOn(subject.x, subject.y, subject.map);
         }
-        this._follow = subject;
+        this._subject = subject;
+        if (this.parent) this.parent.requestRedraw();
+    }
+
+    set lock(v: boolean) {
+        this.lockX = v;
+        this.lockY = v;
     }
 
     toMapX(x: number): number {
@@ -87,10 +87,6 @@ export class Viewport {
         return y - this.bounds.y;
     }
 
-    contains(e: GWU.io.Event): boolean {
-        return this.bounds.contains(e.x, e.y);
-    }
-
     halfWidth(): number {
         return Math.floor(this.bounds.width / 2);
     }
@@ -99,14 +95,31 @@ export class Viewport {
         return Math.floor(this.bounds.height / 2);
     }
 
-    centerOn(x: number, y: number, map?: GWU.xy.Size) {
+    centerOn(map: GWM.map.Map, x: number, y: number) {
         this.center = true;
-        this.updateOffset({ x, y }, map);
+        this.subject = { x, y, map };
     }
 
-    updateOffset(focus: GWU.xy.XY | null, map?: GWU.xy.Size) {
-        const bounds = map || this.bounds;
-        if (focus && GWU.xy.contains(bounds, focus.x, focus.y)) {
+    showMap(map: GWM.map.Map, x = 0, y = 0) {
+        this.subject = { x, y, map };
+        this.offsetX = x;
+        this.offsetY = y;
+        this.center = false;
+        this.snap = false;
+    }
+
+    updateOffset() {
+        if (!this._subject) {
+            this.offsetX = 0;
+            this.offsetY = 0;
+            return;
+        }
+
+        const subject = this._subject;
+        const map = subject.memory || subject.map;
+        const bounds = map;
+
+        if (subject && map.hasXY(subject.x, subject.y)) {
             if (this.snap) {
                 let left = this.offsetX;
                 let right = this.offsetX + this.bounds.width;
@@ -114,12 +127,12 @@ export class Viewport {
                 let bottom = this.offsetY + this.bounds.height;
 
                 // auto center if outside the viewport
-                if (focus.x < left || focus.x > right) {
-                    left = this.offsetX = focus.x - this.halfWidth();
+                if (subject.x < left || subject.x > right) {
+                    left = this.offsetX = subject.x - this.halfWidth();
                     right = left + this.bounds.width;
                 }
-                if (focus.y < top || focus.y > bottom) {
-                    top = this.offsetY = focus.y - this.halfHeight();
+                if (subject.y < top || subject.y > bottom) {
+                    top = this.offsetY = subject.y - this.halfHeight();
                     bottom = top + this.bounds.height;
                 }
 
@@ -127,36 +140,36 @@ export class Viewport {
                 const edgeY = Math.floor(this.bounds.height / 5);
 
                 const thirdW = Math.floor(this.bounds.width / 3);
-                if (left + edgeX >= focus.x) {
+                if (left + edgeX >= subject.x) {
                     this.offsetX = Math.max(
                         0,
-                        focus.x + thirdW - this.bounds.width
+                        subject.x + thirdW - this.bounds.width
                     );
-                } else if (right - edgeX <= focus.x) {
+                } else if (right - edgeX <= subject.x) {
                     this.offsetX = Math.min(
-                        focus.x - thirdW,
+                        subject.x - thirdW,
                         bounds.width - this.bounds.width
                     );
                 }
 
                 const thirdH = Math.floor(this.bounds.height / 3);
-                if (top + edgeY >= focus.y) {
+                if (top + edgeY >= subject.y) {
                     this.offsetY = Math.max(
                         0,
-                        focus.y + thirdH - this.bounds.height
+                        subject.y + thirdH - this.bounds.height
                     );
-                } else if (bottom - edgeY <= focus.y) {
+                } else if (bottom - edgeY <= subject.y) {
                     this.offsetY = Math.min(
-                        focus.y - thirdH,
+                        subject.y - thirdH,
                         bounds.height - this.bounds.height
                     );
                 }
             } else if (this.center) {
-                this.offsetX = focus.x - this.halfWidth();
-                this.offsetY = focus.y - this.halfHeight();
+                this.offsetX = subject.x - this.halfWidth();
+                this.offsetY = subject.y - this.halfHeight();
             } else {
-                this.offsetX = focus.x;
-                this.offsetY = focus.y;
+                this.offsetX = subject.x;
+                this.offsetY = subject.y;
             }
         }
 
@@ -176,20 +189,22 @@ export class Viewport {
         }
     }
 
-    drawFor(subject: UISubject): boolean {
-        if (!subject.map) throw new Error('No map!');
-        return this.draw(subject.memory || subject.map, subject.fov);
-    }
+    draw(buffer: GWU.canvas.DataBuffer): boolean {
+        buffer.blackOutRect(
+            this.bounds.x,
+            this.bounds.y,
+            this.bounds.width,
+            this.bounds.height,
+            this.bg
+        );
 
-    draw(map?: GWM.map.Map, fov?: GWU.fov.FovTracker): boolean {
-        if (!map) {
-            if (!this._follow)
-                throw new Error('Either map or follow must be set.');
-            return this.drawFor(this._follow);
+        if (!this._subject) {
+            return false;
         }
-        // if (!map.hasMapFlag(GWM.flags.Map.MAP_CHANGED)) return false;
 
-        this.updateOffset(this._follow, map);
+        this.updateOffset();
+        const map = this._subject.memory || this._subject.map;
+        const fov = this._subject.fov;
 
         const mixer = new GWU.sprite.Mixer();
         for (let x = 0; x < this.bounds.width; ++x) {
@@ -200,18 +215,14 @@ export class Viewport {
                     const cell = map.cell(mapX, mapY);
                     map.drawer.drawCell(mixer, cell, fov);
                 } else {
-                    mixer.blackOut();
+                    mixer.draw(' ', this.bg, this.bg); // blackOut
                 }
 
                 if (this.filter) {
                     this.filter(mixer, mapX, mapY, map);
                 }
 
-                this.ui.buffer.drawSprite(
-                    x + this.bounds.x,
-                    y + this.bounds.y,
-                    mixer
-                );
+                buffer.drawSprite(x + this.bounds.x, y + this.bounds.y, mixer);
             }
         }
 

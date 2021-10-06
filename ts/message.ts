@@ -1,174 +1,140 @@
 import * as GWU from 'gw-utils';
-import { UICore } from './types';
+import { UICore } from '.';
+import * as Widget from './widget';
 
-export interface MessageOptions {
-    x: number;
-    y: number;
-    width?: number;
-    height?: number;
-    ui: UICore;
-    bg?: GWU.color.ColorBase;
-    fg?: GWU.color.ColorBase;
+export interface MessageOptions extends Widget.WidgetOptions {
+    length?: number;
 }
 
-export class Messages {
-    bounds: GWU.xy.Bounds;
-    cache: GWU.message.MessageCache;
-    ui: UICore;
-    bg: GWU.color.Color;
-    fg: GWU.color.Color;
+export class Messages extends Widget.Widget {
+    cache!: GWU.message.MessageCache;
 
-    constructor(opts: MessageOptions) {
-        const buffer = opts.ui.buffer;
+    constructor(id: string, opts?: MessageOptions) {
+        super(id, opts);
+    }
 
-        this.bounds = new GWU.xy.Bounds(
-            opts.x,
-            opts.y,
-            Math.min(opts.width || buffer.width, buffer.width - opts.x),
-            Math.min(opts.height || buffer.height, buffer.height - opts.y)
-        );
+    init(opts: MessageOptions) {
+        super.init(opts);
+        if (!this.bounds.height)
+            throw new Error('Must provde a height for messages widget.');
+
         this.cache = new GWU.message.MessageCache({
             width: this.bounds.width,
-            length: buffer.height,
+            length: opts.length || 40,
+            match: (_x, _y) => {
+                if (this.parent) this.parent.requestRedraw();
+                return true;
+            },
         });
-        this.ui = opts.ui;
-        this.bg = GWU.color.from(opts.bg || 'black');
-        this.fg = GWU.color.from(opts.fg || 'white');
     }
 
-    contains(e: GWU.io.Event): boolean {
-        return this.bounds.contains(e.x, e.y);
+    click(e: GWU.io.Event, ui: UICore): boolean | Promise<boolean> {
+        if (!this.contains(e)) return false;
+        return this.showArchive(ui).then(() => true);
     }
 
-    get needsUpdate() {
-        return this.cache.needsUpdate;
-    }
-
-    get buffer(): GWU.canvas.DataBuffer {
-        return this.ui.buffer;
-    }
-
-    draw(force = false) {
-        if (!force && !this.cache.needsUpdate) return false;
-
-        let messageColor: GWU.color.Color;
-        const tempColor = GWU.color.make();
+    draw(buffer: GWU.canvas.DataBuffer) {
         const isOnTop = this.bounds.y < 10;
 
         // black out the message area
-        this.buffer.fillRect(
+        buffer.fillRect(
             this.bounds.x,
             this.bounds.y,
             this.bounds.width,
             this.bounds.height,
             ' ',
-            0,
+            this.bg,
             this.bg
         );
 
-        this.cache.forEach((msg, confirmed, i) => {
+        this.cache.forEach((line, confirmed, i) => {
             if (i >= this.bounds.height) return;
-            messageColor = tempColor;
-            messageColor.copy(this.fg);
-
-            if (confirmed) {
-                messageColor.mix(this.bg, 50);
-                messageColor.mix(this.bg, (75 * i) / (2 * this.bounds.height));
-            }
 
             const localY = isOnTop ? this.bounds.height - i - 1 : i;
-            const y = this.toBufferY(localY);
+            const y = localY + this.bounds.y;
 
-            GWU.text.eachChar(msg, (c, color, _bg, j) => {
-                const x = this.toBufferX(j);
-
-                if (color && messageColor !== color && confirmed) {
-                    color.mix(this.bg, 50);
-                    color.mix(this.bg, (75 * i) / (2 * this.bounds.height));
-                }
-                messageColor = color || tempColor;
-                this.buffer.draw(x, y, c, messageColor, this.bg);
-            });
-
-            // for (let j = GWU.text.length(msg); j < this.bounds.width; j++) {
-            //     const x = this.toBufferX(j);
-            //     this.buffer.draw(x, y, ' ', this.bg, this.bg);
-            // }
+            buffer.drawText(this.bounds.x, y, line, this.fg);
+            if (confirmed) {
+                buffer.mix(this.bg, 50, this.bounds.x, y, this.bounds.width, 1);
+            }
         });
 
-        this.cache.needsUpdate = false;
         return true;
     }
 
-    toBufferY(y: number): number {
-        return this.bounds.y + y;
-    }
-
-    toBufferX(x: number): number {
-        return this.bounds.x + x;
-    }
-
-    async showArchive() {
+    async showArchive(ui: UICore): Promise<boolean> {
         let reverse,
-            fadePercent,
-            currentMessageCount = 0;
+            fadePercent = 0;
         let fastForward;
 
         // Count the number of lines in the archive.
-        let totalMessageCount = 0;
-        this.cache.forEach(() => ++totalMessageCount);
-
-        if (totalMessageCount <= this.bounds.height) return;
+        let totalMessageCount = this.cache.length;
+        if (totalMessageCount <= this.bounds.height) return false;
 
         const isOnTop = this.bounds.y < 10;
-        const dbuf = this.ui.startDialog();
+        const dbuf = ui.startDialog();
+        const fg = GWU.color.from(this.fg);
+
+        totalMessageCount = Math.min(
+            totalMessageCount,
+            isOnTop ? dbuf.height - this.bounds.top : this.bounds.bottom + 1
+        );
 
         // Pull-down/pull-up animation:
         for (reverse = 0; reverse <= 1; reverse++) {
             fastForward = false;
-            for (
-                currentMessageCount = reverse
-                    ? totalMessageCount
-                    : this.bounds.height;
-                reverse
-                    ? currentMessageCount >= this.bounds.height
-                    : currentMessageCount <= totalMessageCount;
-                currentMessageCount += reverse ? -1 : 1
-            ) {
-                this.ui.resetDialogBuffer(dbuf);
 
-                // Print the message archive text to the dbuf.
-                this.cache.forEach((msg, _confirmed, j) => {
-                    if (j >= currentMessageCount || j >= dbuf.height) return;
+            const dM = reverse ? -1 : 1;
+            const startM = reverse ? totalMessageCount : this.bounds.height;
+            const endM = reverse
+                ? this.bounds.height + dM + 1
+                : totalMessageCount + dM;
 
-                    const y = isOnTop ? j : dbuf.height - j - 1;
+            // console.log(
+            //     `setting up draw - startM=${startM}, endM=${endM}, dM=${dM}`
+            // );
 
-                    fadePercent = Math.floor(
-                        (50 * (currentMessageCount - j)) / currentMessageCount
-                    );
-                    const fg = this.fg.clone().mix(this.bg, fadePercent);
+            for (let currentM = startM; currentM != endM; currentM += dM) {
+                const startY = isOnTop
+                    ? this.bounds.y + currentM - 1
+                    : this.bounds.bottom - currentM + 1;
+                const endY = isOnTop ? this.bounds.y : this.bounds.bottom;
+                const dy = isOnTop ? -1 : 1;
+                ui.resetDialogBuffer(dbuf);
 
-                    dbuf.wrapText(
-                        this.toBufferX(0),
-                        y,
-                        this.bounds.width,
-                        msg,
-                        fg,
-                        this.bg
-                    );
+                // console.log(
+                //     `draw archive - count=${i}, startY=${startY}, endY=${endY}, dy=${dy}`
+                // );
+
+                dbuf.fillRect(
+                    this.bounds.x,
+                    Math.min(startY, endY),
+                    this.bounds.width,
+                    currentM,
+                    ' ',
+                    this.bg,
+                    this.bg
+                );
+
+                this.cache.forEach((line, _confirmed, j) => {
+                    const y = startY + j * dy;
+                    if (isOnTop) {
+                        if (y < endY) return;
+                    } else if (y > endY) return;
+
+                    fadePercent = Math.floor((50 * j) / currentM);
+                    const fgColor = fg.clone().mix(this.bg, fadePercent);
+
+                    dbuf.drawText(this.bounds.x, y, line, fgColor, this.bg);
                 });
 
                 dbuf.render();
 
-                if (
-                    !fastForward &&
-                    (await this.ui.loop.pause(reverse ? 15 : 45))
-                ) {
-                    fastForward = true;
-                    // dequeueEvent();
-                    currentMessageCount = reverse
-                        ? this.bounds.height + 1
-                        : totalMessageCount - 1; // skip to the end
+                if (!fastForward) {
+                    if (await ui.loop.pause(reverse ? 15 : 45)) {
+                        fastForward = true;
+                        currentM = endM - 2 * dM; // skip to the end-1
+                    }
                 }
             }
 
@@ -179,16 +145,18 @@ export class Messages {
                         ? this.bounds.x - 8 // to left of box
                         : Math.min(
                               this.bounds.x + this.bounds.width, // just to right of box
-                              this.buffer.width - 8 // But definitely on the screen - overwrite some text if necessary
+                              dbuf.width - 8 // But definitely on the screen - overwrite some text if necessary
                           );
                 dbuf.wrapText(x, y, 8, '--DONE--', this.bg, this.fg);
                 dbuf.render();
-                await this.ui.loop.waitForAck();
+
+                await ui.loop.waitForAck();
             }
         }
-        this.ui.finishDialog();
+        ui.finishDialog();
 
         this.cache.confirmAll();
-        this.cache.needsUpdate = true;
+        if (this.parent) this.parent.requestRedraw(); // everything is confirmed
+        return true;
     }
 }

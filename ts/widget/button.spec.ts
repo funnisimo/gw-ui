@@ -1,8 +1,15 @@
 import * as UTILS from '../../test/utils';
 import * as GWU from 'gw-utils';
 import * as Widget from './index';
+import { UICore } from '../types';
 
 describe('Button Widget', () => {
+    let ui: UICore;
+
+    beforeEach(() => {
+        ui = UTILS.mockUI(100, 40);
+    });
+
     test('create - text required', () => {
         expect(() => new Widget.Button('ID', { fg: 'red' })).toThrow();
     });
@@ -41,15 +48,15 @@ describe('Button Widget', () => {
         expect(buffer.get(0, 0).fg).toEqual(GWU.color.colors.red);
         expect(buffer.get(0, 0).bg).toEqual(GWU.color.colors.gray);
 
-        widget.mousemove(0, 0);
-        expect(widget.active).toBeTruthy();
+        widget.mousemove(UTILS.mousemove(0, 0), ui);
+        expect(widget.hovered).toBeTruthy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
         expect(buffer.get(0, 0).fg).toEqual(GWU.color.colors.blue);
         expect(buffer.get(0, 0).bg).toEqual(GWU.color.colors.light_gray);
 
-        widget.mousemove(10, 10);
-        expect(widget.active).toBeFalsy();
+        widget.mousemove(UTILS.mousemove(10, 10), ui);
+        expect(widget.hovered).toBeFalsy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
         expect(buffer.get(0, 0).fg).toEqual(GWU.color.colors.red);
@@ -73,15 +80,15 @@ describe('Button Widget', () => {
         expect(buffer.get(0, 1).fg).toEqual(GWU.color.colors.red);
         expect(buffer.get(0, 1).bg).toEqual(GWU.color.colors.gray);
 
-        widget.mousemove(0, 0);
-        expect(widget.active).toBeTruthy();
+        widget.mousemove(UTILS.mousemove(0, 0), ui);
+        expect(widget.hovered).toBeTruthy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 1, 10)).toEqual('Button');
         expect(buffer.get(0, 1).fg).toEqual(GWU.color.colors.blue);
         expect(buffer.get(0, 1).bg).toEqual(GWU.color.colors.light_gray);
 
-        widget.mousemove(10, 10);
-        expect(widget.active).toBeFalsy();
+        widget.mousemove(UTILS.mousemove(10, 10), ui);
+        expect(widget.hovered).toBeFalsy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 1, 10)).toEqual('Button');
         expect(buffer.get(0, 1).fg).toEqual(GWU.color.colors.red);
@@ -91,6 +98,8 @@ describe('Button Widget', () => {
     test('Enter', async () => {
         const container = {
             fireAction: jest.fn(),
+            requestRedraw: jest.fn(),
+            ui,
         };
 
         let widget = new Widget.Button('ID', { width: 10, text: 'Test' });
@@ -126,6 +135,8 @@ describe('Button Widget', () => {
     test('Click', async () => {
         const container = {
             fireAction: jest.fn(),
+            requestRedraw: jest.fn(),
+            ui,
         };
 
         let widget = new Widget.Button('ID', { width: 10, text: 'Test' });

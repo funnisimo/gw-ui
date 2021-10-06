@@ -1,11 +1,6 @@
 import * as GWU from 'gw-utils';
-import {
-    UICore,
-    GetInputOptions,
-    AlertOptions,
-    ConfirmOptions,
-    InputBoxOptions,
-} from './types';
+import { UICore, AlertOptions, ConfirmOptions, InputBoxOptions } from './types';
+import * as Widget from './widget';
 
 export interface UIOptions {
     canvas: GWU.canvas.BaseCanvas;
@@ -31,6 +26,14 @@ export class UI implements UICore {
 
     render() {
         this.buffer.render();
+    }
+
+    get baseBuffer(): GWU.canvas.Buffer {
+        return this.layers[this.layers.length - 1] || this.canvas.buffer;
+    }
+
+    get canvasBuffer(): GWU.canvas.Buffer {
+        return this.canvas.buffer;
     }
 
     startDialog(): GWU.canvas.Buffer {
@@ -61,6 +64,8 @@ export class UI implements UICore {
         this.inDialog = this.layers.length > 0;
     }
 
+    // UTILITY FUNCTIONS
+
     async fadeTo(color: GWU.color.ColorBase = 'black', duration = 1000) {
         color = GWU.color.from(color);
         const buffer = this.startDialog();
@@ -88,74 +93,39 @@ export class UI implements UICore {
         if (typeof opts === 'number') {
             opts = { duration: opts } as AlertOptions;
         }
-        const buffer = this.startDialog();
 
         if (args) {
             text = GWU.text.apply(text, args);
         }
 
-        let padX = opts.padX || 2;
-        let padY = opts.padY || 1;
+        const padX = opts.padX || opts.pad || 1;
+        const padY = opts.padY || opts.pad || 1;
+        opts.width = opts.width || GWU.text.length(text) + padX * 2;
 
-        if (opts.title) {
-            padY = Math.max(padY, 2);
+        const textOpts: Widget.TextOptions = {
+            fg: opts.fg,
+            text,
+            x: padX,
+            y: padY,
+            wrap: opts.width - 2 * padX,
+        };
+        textOpts.text = text;
+        textOpts.wrap = opts.width;
+
+        const dlg: Widget.Dialog = Widget.buildDialog(this, opts)
+            .with(new Widget.Text('TEXT', textOpts))
+            .center()
+            .done();
+
+        dlg.setClickHandlers({ click: () => dlg.close(true) }); // any click
+        dlg.setKeyHandlers({ keypress: () => dlg.close(true) }); // any key
+        dlg.setActionHandlers({ TIMEOUT: () => dlg.close(false) });
+
+        if (!opts.waitForAck) {
+            dlg.setTimeout('TIMEOUT', opts.duration || 3000);
         }
 
-        let lines = [text];
-        if (text.includes('\n')) {
-            lines = text.split('\n');
-        }
-
-        const lineLen = lines.reduce(
-            (len, line) => Math.max(len, GWU.text.length(line)),
-            0
-        );
-        const totalLength = lineLen + padX * 2;
-
-        let width = totalLength + padX * 2;
-        if (opts.width && opts.width > 0) {
-            width = opts.width;
-            if (opts.width < totalLength) {
-                lines = GWU.text.splitIntoLines(text, opts.width - padX * 2);
-            }
-        }
-        let height = Math.max(lines.length + 2 * padY, opts.height || 0);
-
-        const x = opts.x ?? Math.min(Math.floor((buffer.width - width) / 2));
-        const y = opts.y ?? Math.floor((buffer.height - height) / 2);
-
-        const fg = GWU.color.from(opts.fg || 'white');
-
-        if (opts.borderBg) {
-            buffer.fillRect(x, y, width, height, 0, 0, opts.borderBg);
-            buffer.fillRect(
-                x + 1,
-                y + 1,
-                width - 2,
-                height - 2,
-                0,
-                0,
-                opts.bg || 'gray'
-            );
-        } else {
-            buffer.fillRect(x, y, width, height, 0, 0, opts.bg || 'gray');
-        }
-        if (opts.title) {
-            let tx = x + Math.floor((width - opts.title.length) / 2);
-            buffer.drawText(tx, y, opts.title, opts.titleFg || fg);
-        }
-        lines.forEach((line, i) => {
-            buffer.drawText(x + padX, y + padY + i, line, fg);
-        });
-        buffer.render();
-
-        if (opts.waitForAck) {
-            await this.loop.waitForAck();
-        } else {
-            await this.loop.pause(opts.duration || 30 * 1000);
-        }
-
-        this.finishDialog();
+        return await dlg.show();
     }
 
     async confirm(text: string, args?: any): Promise<boolean>;
@@ -168,7 +138,7 @@ export class UI implements UICore {
         let opts: ConfirmOptions;
         let text: string;
         let textArgs: any = null;
-        if (args.length <= 2) {
+        if (args.length <= 2 && typeof args[0] === 'string') {
             opts = {};
             text = args[0];
             textArgs = args[1] || null;
@@ -182,88 +152,85 @@ export class UI implements UICore {
             text = GWU.text.apply(text, textArgs);
         }
 
-        opts.allowCancel = opts.allowCancel || !!opts.cancel;
+        const padX = opts.padX || opts.pad || 1;
+        const padY = opts.padY || opts.pad || 1;
 
-        const buffer = this.startDialog();
-        buffer.mix('black', 50);
-
-        const btnOK = opts.ok || 'OK';
-        const btnCancel = opts.cancel || 'Cancel';
-
-        const len = Math.max(text.length, btnOK.length + 4 + btnCancel.length);
-        const x = Math.floor((this.canvas.width - len - 4) / 2) - 2;
-        const y = Math.floor(this.canvas.height / 2) - 1;
-
-        buffer.fillRect(x, y, len + 4, 5, ' ', 'black', opts.bg || 'dark_gray');
-        buffer.drawText(x + 2, y + 1, text, opts.fg || 'white');
-        buffer.drawText(
-            x + 2,
-            y + 3,
-            btnOK,
-            opts.buttonFg || 'white',
-            opts.buttonBg
-        );
-        if (opts.allowCancel) {
-            buffer.drawText(
-                x + len + 4 - btnCancel.length - 2,
-                y + 3,
-                btnCancel,
-                opts.buttonFg || 'white',
-                opts.buttonBg
+        opts.width =
+            opts.width ||
+            Math.min(
+                Math.floor(this.buffer.width / 2),
+                GWU.text.length(text) + padX * 2
             );
-        }
-        buffer.render();
+        let textWidth = opts.width - padX * 2;
 
-        let result;
-        while (result === undefined) {
-            const ev = await this.loop.nextEvent(1000);
-            if (!ev) continue;
-            await GWU.io.dispatchEvent(ev, {
-                enter() {
-                    result = true;
-                },
-                escape() {
-                    if (opts.allowCancel) {
-                        result = false;
-                    }
-                },
-                mousemove() {
-                    let isOK = ev.x < x + btnOK.length + 2;
-                    let isCancel = ev.x > x + len + 4 - btnCancel.length - 4;
-                    if (ev.x < x || ev.x > x + len + 4) {
-                        isOK = false;
-                        isCancel = false;
-                    }
-                    if (ev.y != y + 3) {
-                        isOK = false;
-                        isCancel = false;
-                    }
-                    buffer.drawText(
-                        x + 2,
-                        y + 3,
-                        btnOK,
-                        isOK ? GWU.colors.teal : GWU.colors.white
-                    );
-                    if (opts.allowCancel) {
-                        buffer.drawText(
-                            x + len + 4 - btnCancel.length - 2,
-                            y + 3,
-                            btnCancel,
-                            isCancel ? GWU.colors.teal : GWU.colors.white
-                        );
-                    }
-                    buffer.render();
-                },
-                click() {
-                    if (ev.x < x || ev.x > x + len + 4) return;
-                    if (ev.y < y || ev.y > y + 5) return;
-                    result = ev.x < x + Math.floor(len / 2) + 2;
-                },
-            });
+        const textOpts: Widget.TextOptions = {
+            fg: opts.fg,
+            text,
+            wrap: textWidth,
+        };
+        const textWidget = new Widget.Text('TEXT', textOpts);
+
+        opts.height = textWidget.bounds.height + 2 * padY + 2;
+        opts.allowCancel = opts.allowCancel !== false;
+        opts.buttons = Object.assign(
+            {
+                fg: 'white',
+                activeFg: 'teal',
+                bg: 'dark_gray',
+                activeBg: 'darkest_gray',
+            },
+            opts.buttons || {}
+        );
+        if (typeof opts.ok === 'string') {
+            opts.ok = { text: opts.ok };
+        }
+        if (typeof opts.cancel === 'string') {
+            opts.cancel = { text: opts.cancel };
+        }
+        opts.ok = opts.ok || {};
+        opts.cancel = opts.cancel || {};
+
+        const okOpts = Object.assign(
+            {},
+            opts.buttons,
+            { text: 'OK', y: -padY, x: padX },
+            opts.ok
+        );
+        const cancelOpts = Object.assign(
+            {},
+            opts.buttons,
+            { text: 'CANCEL', y: -padY, x: -padX },
+            opts.cancel
+        );
+
+        const builder = Widget.buildDialog(this, opts)
+            .with(textWidget)
+            .with(new Widget.Button('OK', okOpts));
+
+        if (opts.allowCancel) {
+            builder.with(new Widget.Button('CANCEL', cancelOpts));
         }
 
-        this.finishDialog();
-        return result;
+        const dlg: Widget.Dialog = builder.center().done();
+
+        dlg.setClickHandlers({
+            OK() {
+                dlg.close(true);
+            },
+            CANCEL() {
+                dlg.close(false);
+            },
+        });
+        dlg.setKeyHandlers({
+            Escape() {
+                dlg.close(false);
+            },
+            Enter() {
+                dlg.close(true);
+            },
+        });
+
+        return await dlg.show();
     }
 
     // assumes you are in a dialog and give the buffer for that dialog
@@ -271,113 +238,127 @@ export class UI implements UICore {
         x: number,
         y: number,
         maxLength: number,
-        opts: GetInputOptions = {}
+        opts: Widget.InputOptions = {}
     ) {
-        let numbersOnly = opts.numbersOnly || false;
-
-        const textEntryBounds = numbersOnly ? ['0', '9'] : [' ', '~'];
+        opts.width = maxLength;
+        opts.x = x;
+        opts.y = y;
+        const widget = new Widget.Input('INPUT', opts);
 
         const buffer = this.startDialog();
-        maxLength = Math.min(maxLength, buffer.width - x);
-        const minLength = opts.minLength || 1;
 
-        let inputText = opts.default || '';
-        let charNum = GWU.text.length(inputText);
-
-        const fg = GWU.color.from(opts.fg || 'white');
-        const bg = GWU.color.from(opts.bg || 'dark_gray');
-        const errorFg = GWU.color.from(opts.errorFg || 'red');
-        const hintFg = opts.hintFg ? GWU.color.from(opts.hintFg) : 'gray';
-
-        function isValid(text: string) {
-            if (numbersOnly) {
-                const val = Number.parseInt(text);
-                if (opts.min !== undefined && val < opts.min) return false;
-                if (opts.max !== undefined && val > opts.max) return false;
-                return val > 0;
-            }
-            return text.length >= minLength;
-        }
-
-        let ev;
-        do {
-            buffer.fillRect(x, y, maxLength, 1, ' ', fg, bg);
-
-            if (!inputText.length && opts.hint && opts.hint.length) {
-                buffer.drawText(x, y, opts.hint, hintFg);
-            } else {
-                const color = isValid(inputText) ? fg : errorFg;
-                buffer.drawText(x, y, inputText, color);
-            }
-
-            buffer.render();
-
-            ev = await this.loop.nextKeyPress(-1);
-            if (!ev || !ev.key) continue;
-
-            if ((ev.key == 'Delete' || ev.key == 'Backspace') && charNum > 0) {
-                buffer.draw(x + charNum - 1, y, ' ', fg);
-                charNum--;
-                inputText = GWU.text.spliceRaw(inputText, charNum, 1);
-            } else if (ev.key.length > 1) {
-                // ignore other special keys...
-            } else if (
-                ev.key >= textEntryBounds[0] &&
-                ev.key <= textEntryBounds[1]
-            ) {
-                // allow only permitted input
-                if (charNum < maxLength) {
-                    inputText += ev.key;
-                    charNum++;
-                }
-            }
-
-            if (ev.key == 'Escape') {
-                this.finishDialog();
-                return '';
-            }
-        } while (!isValid(inputText) || !ev || ev.key != 'Enter');
+        await this.loop.run({
+            Enter: () => {
+                return true; // done
+            },
+            Escape: () => {
+                widget.text = '';
+                return true; // done
+            },
+            keypress: (e) => {
+                widget.keypress(e, this);
+            },
+            draw() {
+                widget.draw(buffer);
+                buffer.render();
+            },
+        });
 
         this.finishDialog();
-        // GW.ui.draw(); // reverts to old display
-        return inputText;
+
+        return widget.text;
     }
 
     async inputBox(opts: InputBoxOptions, prompt: string, args?: any) {
-        let text;
+        const padX = opts.padX || opts.pad || 1;
+        const padY = opts.padY || opts.pad || 1;
 
-        if (prompt) {
-            text = GWU.text.apply(prompt, args);
+        if (args) {
+            prompt = GWU.text.apply(prompt, args);
         }
 
-        const allowCancel = opts.allowCancel ?? true;
-        const bg = opts.bg || 'black';
-
-        const buffer = this.startDialog();
-        buffer.mix('black', 50);
-
-        const btnOK = 'OK';
-        const btnCancel = 'Cancel';
-        const len = Math.max(text.length, btnOK.length + 4 + btnCancel.length);
-
-        const x = Math.floor((buffer.width - len - 4) / 2) - 2;
-        const y = Math.floor(buffer.height / 2) - 1;
-        buffer.fillRect(x, y, len + 4, 6, ' ', 'black', bg);
-        buffer.drawText(x + 2, y + 1, text);
-        buffer.fillRect(x + 2, y + 2, len - 4, 1, ' ', 'gray', 'gray');
-        buffer.drawText(x + 2, y + 4, btnOK);
-        if (allowCancel) {
-            buffer.drawText(
-                x + len + 4 - btnCancel.length - 2,
-                y + 4,
-                btnCancel
+        opts.width =
+            opts.width ||
+            Math.min(
+                Math.floor(this.buffer.width / 2),
+                GWU.text.length(prompt) + padX * 2
             );
+        let promptWidth = opts.width - padX * 2;
+
+        const promptOpts: Widget.TextOptions = {
+            fg: opts.fg,
+            text: prompt,
+            wrap: promptWidth,
+        };
+        const promptWidget = new Widget.Text('TEXT', promptOpts);
+
+        opts.height = promptWidget.bounds.height + 2 * padY + 4;
+        opts.allowCancel = opts.allowCancel !== false;
+        opts.buttons = Object.assign(
+            {
+                fg: 'white',
+                activeFg: 'teal',
+                bg: 'dark_gray',
+                activeBg: 'darkest_gray',
+            },
+            opts.buttons || {}
+        );
+        if (typeof opts.ok === 'string') {
+            opts.ok = { text: opts.ok };
         }
-        buffer.render();
+        if (typeof opts.cancel === 'string') {
+            opts.cancel = { text: opts.cancel };
+        }
+        opts.ok = opts.ok || {};
+        opts.cancel = opts.cancel || {};
 
-        const value = await this.getInputAt(x + 2, y + 2, len - 4, opts);
+        const okOpts = Object.assign(
+            {},
+            opts.buttons,
+            { text: 'OK', y: -padY, x: padX },
+            opts.ok
+        );
+        const cancelOpts = Object.assign(
+            {},
+            opts.buttons,
+            { text: 'CANCEL', y: -padY, x: -padX },
+            opts.cancel
+        );
 
-        this.finishDialog();
-        return value;
+        opts.input = opts.input || {};
+        opts.input.width = opts.input.width || promptWidth;
+        opts.input.bg = opts.input.bg || opts.fg;
+        opts.input.fg = opts.input.fg || opts.bg;
+
+        const inputWidget = new Widget.Input('INPUT', opts.input || {});
+        const builder = Widget.buildDialog(this, opts)
+            .with(promptWidget)
+            .with(inputWidget)
+            .with(new Widget.Button('OK', okOpts));
+
+        if (opts.allowCancel) {
+            builder.with(new Widget.Button('CANCEL', cancelOpts));
+        }
+
+        const dlg: Widget.Dialog = builder.center().done();
+
+        dlg.setClickHandlers({
+            OK() {
+                dlg.close(inputWidget.text);
+            },
+            CANCEL() {
+                dlg.close('');
+            },
+        });
+        dlg.setKeyHandlers({
+            Escape() {
+                dlg.close('');
+            },
+            Enter() {
+                dlg.close(inputWidget.text);
+            },
+        });
+
+        return await dlg.show();
     }
 }

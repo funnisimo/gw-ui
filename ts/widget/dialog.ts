@@ -3,6 +3,8 @@ import * as Widget from './widget';
 import { UICore } from '../types';
 
 export interface DialogOptions extends Widget.WidgetOptions {
+    id?: string;
+
     x?: number;
     y?: number;
     width?: number;
@@ -13,6 +15,10 @@ export interface DialogOptions extends Widget.WidgetOptions {
 
     bg?: GWU.color.ColorBase;
     borderBg?: GWU.color.ColorBase;
+
+    pad?: number;
+    padX?: number;
+    padY?: number;
 }
 
 export type EventCallback = (
@@ -30,6 +36,7 @@ export type ActionCallback = (
 export type ActionHandlers = Record<string, ActionCallback>;
 
 export class Dialog implements Widget.WidgetContainer {
+    ui: UICore;
     id: string;
     bounds: GWU.xy.Bounds;
 
@@ -44,19 +51,22 @@ export class Dialog implements Widget.WidgetContainer {
     keypressHandlers: EventHandlers = {};
     clickHandlers: EventHandlers = {};
 
-    activeWidget: Widget.Widget | null = null;
+    _activeWidget: Widget.Widget | null = null;
     result: any = null;
     done = false;
 
     timers: Record<string, number> = {};
+    needsRedraw = true;
 
-    constructor(id: string, opts?: DialogOptions) {
-        this.id = id;
+    constructor(ui: UICore, opts?: DialogOptions) {
+        this.ui = ui;
+        this.id = 'DIALOG';
         this.bounds = new GWU.xy.Bounds(-1, -1, 0, 0);
         if (opts) this.init(opts);
     }
 
     init(opts: DialogOptions) {
+        if (opts.id) this.id = opts.id;
         if (opts.x !== undefined) this.bounds.x = opts.x;
         if (opts.y !== undefined) this.bounds.y = opts.y;
         if (opts.height !== undefined) this.bounds.height = opts.height;
@@ -72,46 +82,33 @@ export class Dialog implements Widget.WidgetContainer {
         }
     }
 
+    get activeWidget(): Widget.Widget | null {
+        return this._activeWidget;
+    }
+    set activeWidget(w: Widget.Widget | null) {
+        if (this._activeWidget) {
+            this._activeWidget.active = false;
+        }
+        this._activeWidget = w;
+        if (this._activeWidget) {
+            this._activeWidget.active = true;
+        }
+    }
+
+    contains(e: GWU.xy.XY): boolean {
+        return this.bounds.contains(e);
+    }
+
+    requestRedraw() {
+        this.needsRedraw = true;
+    }
+
     setTimeout(action: string, time: number) {
         this.timers[action] = time;
     }
 
     clearTimeout(action: string) {
         delete this.timers[action];
-    }
-
-    addWidget<T extends Widget.Widget>(x: number, y: number, widget: T): T {
-        widget.parent = this;
-
-        if (x >= 0) {
-            widget.bounds.x = x;
-            this.bounds.width = Math.max(
-                this.bounds.width,
-                widget.bounds.width + x + 1
-            );
-        } else {
-            this.bounds.width = Math.max(
-                this.bounds.width,
-                widget.bounds.width - x
-            );
-            widget.bounds.x = this.bounds.width + x;
-        }
-        if (y >= 0) {
-            widget.bounds.y = y;
-            this.bounds.height = Math.max(
-                this.bounds.height,
-                widget.bounds.height + y + 1
-            );
-        } else {
-            this.bounds.height = Math.max(
-                this.bounds.height,
-                widget.bounds.height - y
-            );
-            widget.bounds.y = this.bounds.height + y;
-        }
-
-        this.widgets.push(widget);
-        return widget;
     }
 
     fireAction(
@@ -136,30 +133,20 @@ export class Dialog implements Widget.WidgetContainer {
         this.clickHandlers = map;
     }
 
-    async show(ui: UICore): Promise<any> {
+    async show(): Promise<any> {
         this.done = false;
 
+        // reset any temp data...
         this.widgets.forEach((w) => w.reset());
-
-        if (this.bounds.x < 0) {
-            this.bounds.x = Math.floor(
-                (ui.buffer.width - this.bounds.width) / 2
-            );
-        }
-        if (this.bounds.y < 0) {
-            this.bounds.y = Math.floor(
-                (ui.buffer.height - this.bounds.height) / 2
-            );
-        }
 
         // first tabStop is the starting active Widget
         this.activeWidget = this.widgets.find((w) => w.tabStop) || null;
 
         // start dialog
-        const buffer = ui.startDialog();
+        const buffer = this.ui.startDialog();
 
         // run input loop
-        await ui.loop.run(
+        await this.ui.loop.run(
             {
                 keypress: this.keypress.bind(this),
                 mousemove: this.mousemove.bind(this),
@@ -167,13 +154,14 @@ export class Dialog implements Widget.WidgetContainer {
                 tick: this.tick.bind(this),
                 draw: () => {
                     this.draw(buffer);
+                    buffer.render();
                 },
             },
             100
         );
 
         // stop dialog
-        ui.finishDialog();
+        this.ui.finishDialog();
 
         return this.result;
     }
@@ -184,9 +172,11 @@ export class Dialog implements Widget.WidgetContainer {
     }
 
     widgetAt(x: number, y: number): Widget.Widget | null {
-        x -= this.bounds.x;
-        y -= this.bounds.y;
         return this.widgets.find((w) => w.contains(x, y)) || null;
+    }
+
+    getWidget(id: string): Widget.Widget | null {
+        return this.widgets.find((w) => w.id === id) || null;
     }
 
     nextTabstop() {
@@ -195,24 +185,15 @@ export class Dialog implements Widget.WidgetContainer {
             return !!this.activeWidget;
         }
 
-        let current = this.widgets.indexOf(this.activeWidget);
-
-        for (let i = current + 1; i < this.widgets.length; ++i) {
-            const w = this.widgets[i];
-            if (w.tabStop) {
-                this.activeWidget = w;
-                return true;
-            }
+        const next = GWU.arrayNext(
+            this.widgets,
+            this.activeWidget,
+            (w) => w.tabStop
+        );
+        if (next) {
+            this.activeWidget = next;
+            return true;
         }
-
-        for (let i = 0; i < current; ++i) {
-            const w = this.widgets[i];
-            if (w.tabStop) {
-                this.activeWidget = w;
-                return true;
-            }
-        }
-
         return false;
     }
 
@@ -222,24 +203,15 @@ export class Dialog implements Widget.WidgetContainer {
             return !!this.activeWidget;
         }
 
-        let current = this.widgets.indexOf(this.activeWidget);
-
-        for (let i = current - 1; i >= 0; --i) {
-            const w = this.widgets[i];
-            if (w.tabStop) {
-                this.activeWidget = w;
-                return true;
-            }
+        const prev = GWU.arrayPrev(
+            this.widgets,
+            this.activeWidget,
+            (w) => w.tabStop
+        );
+        if (prev) {
+            this.activeWidget = prev;
+            return true;
         }
-
-        for (let i = this.widgets.length - 1; i > current; --i) {
-            const w = this.widgets[i];
-            if (w.tabStop) {
-                this.activeWidget = w;
-                return true;
-            }
-        }
-
         return false;
     }
 
@@ -261,7 +233,7 @@ export class Dialog implements Widget.WidgetContainer {
         });
 
         for (let w of this.widgets) {
-            const r = w.tick(e);
+            const r = w.tick(e, this.ui);
             if (r && r.then) {
                 promises.push(r);
             }
@@ -274,32 +246,38 @@ export class Dialog implements Widget.WidgetContainer {
 
     // TODO - async - to allow animations or events on mouseover?
     mousemove(e: GWU.io.Event): boolean {
-        const x = e.x - this.bounds.x;
-        const y = e.y - this.bounds.y;
-        this.activeWidget = null;
+        // this.activeWidget = null;
         this.widgets.forEach((w) => {
-            w.mousemove(x, y);
-            if (w.active) {
+            w.mousemove(e, this.ui);
+            if (w.hovered && w.tabStop) {
                 this.activeWidget = w;
             }
         });
+
         return this.done;
     }
 
     click(e: GWU.io.Event): boolean | Promise<boolean> {
         this.mousemove(e); // make sure activeWidget is set correctly
 
+        let fn: EventCallback | null = null;
         if (this.activeWidget) {
-            const fn = this.clickHandlers[this.activeWidget.id];
-            if (fn) {
-                const r = fn(e, this.activeWidget, this);
-                if (r && r.then) {
-                    return r.then(() => this.done);
-                }
-                return this.done;
-            }
+            fn = this.clickHandlers[this.activeWidget.id];
+        }
+        if (!fn && this.contains(e)) {
+            fn = this.clickHandlers[this.id];
+        }
+        if (!fn) {
+            fn = this.clickHandlers.click;
+        }
 
-            const r = this.activeWidget.click(e);
+        if (fn) {
+            const r = fn(e, this.activeWidget, this);
+            if (r && r.then) {
+                return r.then(() => this.done);
+            }
+        } else if (this.activeWidget) {
+            const r = this.activeWidget.click(e, this.ui);
             if (typeof r !== 'boolean') {
                 return r.then(() => this.done);
             }
@@ -322,7 +300,7 @@ export class Dialog implements Widget.WidgetContainer {
             return this.done;
         }
         if (this.activeWidget) {
-            const r = this.activeWidget.keypress(e);
+            const r = this.activeWidget.keypress(e, this.ui);
             if (typeof r !== 'boolean') {
                 return r.then(() => this.done);
             }
@@ -338,7 +316,9 @@ export class Dialog implements Widget.WidgetContainer {
         return this.done;
     }
 
-    draw(buffer: GWU.canvas.DataBuffer) {
+    draw(buffer: GWU.canvas.DataBuffer, force = false) {
+        if (!this.needsRedraw && !force) return;
+
         // Draw dialog
         if (this.borderBg) {
             buffer.fillRect(
@@ -380,8 +360,109 @@ export class Dialog implements Widget.WidgetContainer {
             buffer.drawText(x, this.bounds.y, this.title, this.titleFg);
         }
 
-        this.widgets.forEach((w) =>
-            w.draw(buffer, this.bounds.x, this.bounds.y)
-        );
+        this.widgets.forEach((w) => w.draw(buffer));
     }
+}
+
+export class DialogBuilder {
+    dialog: Dialog;
+    nextY = 0;
+    padY = 1;
+    padX = 1;
+
+    constructor(ui: UICore, opts: DialogOptions = {}) {
+        this.padX = opts.padX || opts.pad || 1;
+        this.padY = opts.padY || opts.pad || 1;
+        this.nextY = this.padY;
+
+        this.dialog = new Dialog(ui, opts);
+    }
+
+    with(widget: Widget.Widget): this {
+        // widget bounds are set relative to the dialog top left,
+        // if we don't get any, help them out
+        let y = widget.bounds.y;
+        if (y >= 0 && y < this.padY) {
+            y = this.nextY;
+        } else if (y < 0 && y > -this.padY) {
+            y = -this.padY;
+        }
+        widget.bounds.y = y;
+
+        let x = widget.bounds.x;
+        if (x >= 0 && x < this.padX) {
+            x = this.padX;
+        } else if (x < 0 && x > -this.padX) {
+            x = -this.padX;
+        }
+        widget.bounds.x = x;
+
+        // TODO - Get rid of x, y
+        this.addWidget(widget);
+
+        this.nextY = Math.max(this.nextY, widget.bounds.bottom + 1 + this.padY);
+
+        return this;
+    }
+
+    center(): this {
+        const size = this.dialog.ui.buffer;
+        const bounds = this.dialog.bounds;
+        bounds.x = Math.floor((size.width - bounds.width) / 2);
+        bounds.y = Math.floor((size.height - bounds.height) / 2);
+        return this;
+    }
+
+    place(x: number, y: number): this {
+        const bounds = this.dialog.bounds;
+        bounds.x = x;
+        bounds.y = y;
+        return this;
+    }
+
+    done(): Dialog {
+        // lock in locations
+        this.dialog.widgets.forEach((w) => {
+            w.bounds.x += this.dialog.bounds.x;
+            w.bounds.y += this.dialog.bounds.y;
+        });
+
+        return this.dialog;
+    }
+
+    protected addWidget<T extends Widget.Widget>(widget: T): T {
+        widget.parent = this.dialog;
+
+        const dlgBounds = this.dialog.bounds;
+        const x = widget.bounds.x;
+        const y = widget.bounds.y;
+
+        if (x >= 0) {
+            dlgBounds.width = Math.max(
+                dlgBounds.width,
+                widget.bounds.width + x + this.padX
+            );
+        } else {
+            widget.bounds.x = dlgBounds.width - widget.bounds.width + x;
+        }
+
+        if (y >= 0) {
+            dlgBounds.height = Math.max(
+                dlgBounds.height,
+                widget.bounds.height + y + this.padY
+            );
+        } else {
+            widget.bounds.y = dlgBounds.height - widget.bounds.height + y;
+        }
+
+        this.dialog.widgets.push(widget);
+        return widget;
+    }
+}
+
+export function buildDialog(
+    ui: UICore,
+    opts: DialogOptions = {}
+): DialogBuilder {
+    return new DialogBuilder(ui, opts);
 }

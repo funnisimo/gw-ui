@@ -12,7 +12,12 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport({ x: 0, y: 4, width: 40, height: 17, ui });
+const viewport = new GWI.Viewport('VIEW', {
+    x: 0,
+    y: 4,
+    width: 40,
+    height: 17,
+});
 const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
 
 for (let i = 0; i < 40; ++i) {
@@ -22,22 +27,22 @@ for (let i = 0; i < 40; ++i) {
     map.setTile(x, y, tile);
 }
 
-const camera = { x: 1, y: 1 };
-viewport.follow = camera;
+const camera = { x: 1, y: 1, map };
+viewport.subject = camera;
 
-viewport.draw(map);
+viewport.draw(ui.buffer);
 ui.render();
 
 LOOP.run({
     mousemove(e) {
         if (!viewport.contains(e)) return;
         camera.x = Math.round(
-            (map.width * viewport.toInnerX(e.x)) / (viewport.bounds.width - 1)
+            (map.width * viewport.toInnerX(e.x)) / viewport.bounds.width
         );
         camera.y = Math.round(
-            (map.height * viewport.toInnerY(e.y)) / (viewport.bounds.height - 1)
+            (map.height * viewport.toInnerY(e.y)) / viewport.bounds.height
         );
-        viewport.draw(map);
+        viewport.draw(ui.buffer);
         ui.render();
     },
 });
@@ -53,12 +58,11 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport({
+const viewport = new GWI.Viewport('VIEW', {
     x: 0,
     y: 4,
     width: 40,
     height: 17,
-    ui,
     lock: true,
 });
 const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
@@ -70,22 +74,22 @@ for (let i = 0; i < 40; ++i) {
     map.setTile(x, y, tile);
 }
 
-const camera = { x: 1, y: 1 };
-viewport.follow = camera;
+const camera = { x: 1, y: 1, map };
+viewport.subject = camera;
 
-viewport.draw(map);
+viewport.draw(ui.buffer);
 ui.render();
 
 LOOP.run({
     mousemove(e) {
         if (!viewport.contains(e)) return;
         camera.x = Math.round(
-            (map.width * viewport.toInnerX(e.x)) / (viewport.bounds.width - 1)
+            (map.width * viewport.toInnerX(e.x)) / viewport.bounds.width
         );
         camera.y = Math.round(
-            (map.height * viewport.toInnerY(e.y)) / (viewport.bounds.height - 1)
+            (map.height * viewport.toInnerY(e.y)) / viewport.bounds.height
         );
-        viewport.draw(map);
+        viewport.draw(ui.buffer);
         ui.render();
     },
 });
@@ -101,12 +105,11 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport({
+const viewport = new GWI.Viewport('VIEW', {
     x: 0,
     y: 4,
     width: 40,
     height: 17,
-    ui,
     lock: true, // lock edge of map to boundary
     center: true, // keep player in center
 });
@@ -123,10 +126,10 @@ const player = GWM.actor.from({
     ch: '@',
     fg: 'yellow',
 });
-viewport.follow = player;
+viewport.subject = player;
 
 map.addActor(40, 17, player);
-viewport.draw();
+viewport.draw(ui.buffer);
 ui.render();
 
 LOOP.run({
@@ -135,7 +138,7 @@ LOOP.run({
         if (d) {
             await map.removeActor(player);
             await map.addActor(player.x + d[0], player.y + d[1], player);
-            viewport.draw();
+            viewport.draw(ui.buffer);
             ui.render();
         }
     },
@@ -154,12 +157,11 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport({
+const viewport = new GWI.Viewport('VIEW', {
     x: 0,
     y: 4,
     width: 40,
     height: 17,
-    ui,
     snap: true,
 });
 const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
@@ -177,8 +179,8 @@ const player = GWM.actor.from({
 });
 
 map.addActor(40, 17, player);
-viewport.follow = player;
-viewport.draw();
+viewport.subject = player;
+viewport.draw(ui.buffer);
 ui.render();
 
 LOOP.run({
@@ -190,7 +192,7 @@ LOOP.run({
             if (map.hasXY(newX, newY)) {
                 map.removeActor(player);
                 map.addActor(newX, newY, player);
-                viewport.draw();
+                viewport.draw(ui.buffer);
                 ui.render();
             }
         }

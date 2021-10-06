@@ -1,4 +1,5 @@
 import * as GWU from 'gw-utils';
+import { UICore } from '..';
 import * as Widget from './widget';
 
 export interface InputOptions extends Widget.WidgetOptions {
@@ -30,6 +31,11 @@ export class Input extends Widget.Widget {
     }
 
     init(opts: InputOptions) {
+        this.minLength = opts.minLength || 1;
+
+        if (!opts.width) {
+            opts.width = Math.max(this.minLength, 10);
+        }
         opts.tabStop = opts.tabStop ?? true; // Need to receive input
         super.init(opts);
 
@@ -39,7 +45,6 @@ export class Input extends Widget.Widget {
         this.hint = opts.hint || '';
         this.hintFg = opts.hintFg || this.errorFg;
 
-        this.minLength = opts.minLength || 1;
         this.numbersOnly = opts.numbersOnly || false;
         this.min = opts.min ?? Number.MIN_SAFE_INTEGER;
         this.max = opts.max ?? Number.MAX_SAFE_INTEGER;
@@ -74,7 +79,7 @@ export class Input extends Widget.Widget {
         return this.text;
     }
 
-    keypress(ev: GWU.io.Event): boolean | Promise<boolean> {
+    keypress(ev: GWU.io.Event, _ui: UICore): boolean | Promise<boolean> {
         const textEntryBounds = this.numbersOnly ? ['0', '9'] : [' ', '~'];
 
         if (!ev.key) return false;
@@ -108,15 +113,27 @@ export class Input extends Widget.Widget {
         return true;
     }
 
-    draw(buffer: GWU.canvas.DataBuffer, offsetX = 0, offsetY = 0) {
-        const x = this.bounds.x + offsetX;
-        const y = this.bounds.y + offsetY;
-        buffer.fillRect(x, y, this.bounds.width, 1, ' ', this.fg, this.bg);
+    draw(buffer: GWU.canvas.DataBuffer) {
+        const x = this.bounds.x;
+        const y = this.bounds.y;
+
+        const fg = this.active
+            ? this.activeFg
+            : this.hovered
+            ? this.hoverFg
+            : this.fg;
+        const bg = this.active
+            ? this.activeBg
+            : this.hovered
+            ? this.hoverBg
+            : this.bg;
+
+        buffer.fillRect(x, y, this.bounds.width, 1, ' ', fg, bg);
 
         if (!this.text.length && this.hint && this.hint.length) {
             buffer.drawText(x, y, this.hint, this.hintFg);
         } else {
-            const color = this.isValid() ? this.fg : this.errorFg;
+            const color = this.isValid() ? fg : this.errorFg;
             buffer.drawText(x, y, this.text, color);
         }
     }

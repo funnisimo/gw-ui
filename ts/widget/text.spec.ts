@@ -3,10 +3,6 @@ import * as GWU from 'gw-utils';
 import * as Widget from './index';
 
 describe('Text Widget', () => {
-    test('text required', () => {
-        expect(() => new Widget.Text('TEST', { fg: 'red' })).toThrow();
-    });
-
     test('text width', () => {
         // Takes everything
         let widget = new Widget.Text('TEST', {

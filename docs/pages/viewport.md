@@ -18,10 +18,16 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport({ x: 0, y: 4, width: 80, height: 34, ui });
+const viewport = new GWI.Viewport('VIEW', {
+    x: 0,
+    y: 4,
+    width: 80,
+    height: 34,
+});
 const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
+viewport.showMap(map);
 
-viewport.draw(map);
+viewport.draw(ui.buffer);
 ui.render();
 ```
 
@@ -35,12 +41,11 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport({
+const viewport = new GWI.Viewport('VIEW', {
     x: 0,
     y: 4,
     width: 80,
     height: 34,
-    ui,
     lock: true, // Necessary if you are going to center on the player and use the mouse to move them around
 });
 const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
@@ -54,21 +59,21 @@ const player = GWM.actor.from({
 });
 map.addActor(1, 1, player);
 player.fov.update();
-viewport.follow = player;
+viewport.subject = player;
 
-viewport.draw();
+viewport.draw(ui.buffer);
 ui.render();
 
 LOOP.run({
     mousemove(e) {
         if (!viewport.contains(e)) return;
-        const x = viewport.toMapX(e.x);
-        const y = viewport.toMapY(e.y);
+        const x = viewport.toInnerX(e.x);
+        const y = viewport.toInnerY(e.y);
         map.removeActor(player);
         map.addActor(x, y, player);
 
         player.fov.update();
-        viewport.draw();
+        viewport.draw(ui.buffer);
         ui.render();
     },
 });

@@ -163,7 +163,7 @@ export async function showDropDown(
     ui: UICore
 ) {
     // Start dialog
-    const dialog = ui.startDialog();
+    const dialog = ui.startLayer();
 
     let activeButton: DropDownButton | null = button;
     await ui.loop.run({
@@ -238,14 +238,14 @@ export async function showDropDown(
 
         draw: () => {
             if (!activeButton) return;
-            ui.resetDialogBuffer(dialog);
+            ui.resetLayerBuffer(dialog);
             activeButton.draw(dialog);
             menu.draw(dialog);
             dialog.render();
         },
     });
 
-    ui.finishDialog();
+    ui.finishLayer();
     menu.clearHighlight();
 }
 

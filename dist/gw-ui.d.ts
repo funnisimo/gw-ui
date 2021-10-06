@@ -120,9 +120,9 @@ interface UICore {
     buffer: GWU.canvas.DataBuffer;
     loop: GWU.io.Loop;
     render(): void;
-    startDialog(): GWU.canvas.Buffer;
-    resetDialogBuffer(dest: GWU.canvas.Buffer): void;
-    finishDialog(): void;
+    startLayer(): GWU.canvas.Buffer;
+    resetLayerBuffer(dest: GWU.canvas.Buffer): void;
+    finishLayer(): void;
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
     getInputAt(x: number, y: number, maxLength: number, opts?: InputOptions): Promise<string>;
     alert(opts: number | AlertOptions, text: string, args: any): Promise<void>;
@@ -150,9 +150,9 @@ declare class UI implements UICore {
     render(): void;
     get baseBuffer(): GWU.canvas.Buffer;
     get canvasBuffer(): GWU.canvas.Buffer;
-    startDialog(): GWU.canvas.Buffer;
-    resetDialogBuffer(dest: GWU.canvas.Buffer): void;
-    finishDialog(): void;
+    startLayer(): GWU.canvas.Buffer;
+    resetLayerBuffer(dest: GWU.canvas.Buffer): void;
+    finishLayer(): void;
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
     alert(opts: number | AlertOptions, text: string, args: any): Promise<any>;
     confirm(text: string, args?: any): Promise<boolean>;

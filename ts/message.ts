@@ -72,7 +72,7 @@ export class Messages extends Widget.Widget {
         if (totalMessageCount <= this.bounds.height) return false;
 
         const isOnTop = this.bounds.y < 10;
-        const dbuf = ui.startDialog();
+        const dbuf = ui.startLayer();
         const fg = GWU.color.from(this.fg);
 
         totalMessageCount = Math.min(
@@ -100,7 +100,7 @@ export class Messages extends Widget.Widget {
                     : this.bounds.bottom - currentM + 1;
                 const endY = isOnTop ? this.bounds.y : this.bounds.bottom;
                 const dy = isOnTop ? -1 : 1;
-                ui.resetDialogBuffer(dbuf);
+                ui.resetLayerBuffer(dbuf);
 
                 // console.log(
                 //     `draw archive - count=${i}, startY=${startY}, endY=${endY}, dy=${dy}`
@@ -153,7 +153,7 @@ export class Messages extends Widget.Widget {
                 await ui.loop.waitForAck();
             }
         }
-        ui.finishDialog();
+        ui.finishLayer();
 
         this.cache.confirmAll();
         if (this.parent) this.parent.requestRedraw(); // everything is confirmed

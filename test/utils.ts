@@ -113,9 +113,9 @@ export function mockUI(width = 100, height = 38): UICore {
         buffer,
         loop, // GWU.loop
         render: jest.fn(),
-        startDialog: jest.fn().mockReturnValue(buffer),
-        finishDialog: jest.fn(),
-        resetDialogBuffer: jest.fn().mockImplementation(() => {
+        startLayer: jest.fn().mockReturnValue(buffer),
+        finishLayer: jest.fn(),
+        resetLayerBuffer: jest.fn().mockImplementation(() => {
             buffer.blackOut();
         }),
         getInputAt: jest.fn(),

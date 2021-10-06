@@ -143,7 +143,7 @@ export class Dialog implements Widget.WidgetContainer {
         this.activeWidget = this.widgets.find((w) => w.tabStop) || null;
 
         // start dialog
-        const buffer = this.ui.startDialog();
+        const buffer = this.ui.startLayer();
 
         // run input loop
         await this.ui.loop.run(
@@ -161,7 +161,7 @@ export class Dialog implements Widget.WidgetContainer {
         );
 
         // stop dialog
-        this.ui.finishDialog();
+        this.ui.finishLayer();
 
         return this.result;
     }

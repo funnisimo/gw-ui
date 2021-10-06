@@ -388,7 +388,7 @@ class Dialog {
         // first tabStop is the starting active Widget
         this.activeWidget = this.widgets.find((w) => w.tabStop) || null;
         // start dialog
-        const buffer = this.ui.startDialog();
+        const buffer = this.ui.startLayer();
         // run input loop
         await this.ui.loop.run({
             keypress: this.keypress.bind(this),
@@ -401,7 +401,7 @@ class Dialog {
             },
         }, 100);
         // stop dialog
-        this.ui.finishDialog();
+        this.ui.finishLayer();
         return this.result;
     }
     close(returnValue) {
@@ -614,13 +614,13 @@ class DialogBuilder {
             dlgBounds.width = Math.max(dlgBounds.width, widget.bounds.width + x + this.padX);
         }
         else {
-            widget.bounds.right = dlgBounds.width + x - 1;
+            widget.bounds.x = dlgBounds.width - widget.bounds.width + x;
         }
         if (y >= 0) {
             dlgBounds.height = Math.max(dlgBounds.height, widget.bounds.height + y + this.padY);
         }
         else {
-            widget.bounds.bottom = dlgBounds.height + y - 1;
+            widget.bounds.y = dlgBounds.height - widget.bounds.height + y;
         }
         this.dialog.widgets.push(widget);
         return widget;
@@ -650,7 +650,7 @@ class UI {
     get canvasBuffer() {
         return this.canvas.buffer;
     }
-    startDialog() {
+    startLayer() {
         this.inDialog = true;
         const base = this.buffer || this.canvas.buffer;
         this.layers.push(base);
@@ -660,11 +660,11 @@ class UI {
         this.buffer.copy(base);
         return this.buffer;
     }
-    resetDialogBuffer(dest) {
+    resetLayerBuffer(dest) {
         const base = this.layers[this.layers.length - 1] || this.canvas.buffer;
         dest.copy(base);
     }
-    finishDialog() {
+    finishLayer() {
         if (!this.inDialog)
             return;
         if (this.buffer !== this.canvas.buffer) {
@@ -677,7 +677,7 @@ class UI {
     // UTILITY FUNCTIONS
     async fadeTo(color = 'black', duration = 1000) {
         color = GWU.color.from(color);
-        const buffer = this.startDialog();
+        const buffer = this.startLayer();
         let pct = 0;
         let elapsed = 0;
         while (elapsed < duration) {
@@ -686,11 +686,11 @@ class UI {
                 elapsed = duration;
             }
             pct = Math.floor((100 * elapsed) / duration);
-            this.resetDialogBuffer(buffer);
+            this.resetLayerBuffer(buffer);
             buffer.mix(color, pct);
             buffer.render();
         }
-        this.finishDialog();
+        this.finishLayer();
     }
     async alert(opts, text, args) {
         if (typeof opts === 'number') {
@@ -801,7 +801,7 @@ class UI {
         opts.x = x;
         opts.y = y;
         const widget = new Input('INPUT', opts);
-        const buffer = this.startDialog();
+        const buffer = this.startLayer();
         await this.loop.run({
             Enter: () => {
                 return true; // done
@@ -818,7 +818,7 @@ class UI {
                 buffer.render();
             },
         });
-        this.finishDialog();
+        this.finishLayer();
         return widget.text;
     }
     async inputBox(opts, prompt, args) {
@@ -935,7 +935,7 @@ class Messages extends Widget {
         if (totalMessageCount <= this.bounds.height)
             return false;
         const isOnTop = this.bounds.y < 10;
-        const dbuf = ui.startDialog();
+        const dbuf = ui.startLayer();
         const fg = GWU.color.from(this.fg);
         totalMessageCount = Math.min(totalMessageCount, isOnTop ? dbuf.height - this.bounds.top : this.bounds.bottom + 1);
         // Pull-down/pull-up animation:
@@ -955,7 +955,7 @@ class Messages extends Widget {
                     : this.bounds.bottom - currentM + 1;
                 const endY = isOnTop ? this.bounds.y : this.bounds.bottom;
                 const dy = isOnTop ? -1 : 1;
-                ui.resetDialogBuffer(dbuf);
+                ui.resetLayerBuffer(dbuf);
                 // console.log(
                 //     `draw archive - count=${i}, startY=${startY}, endY=${endY}, dy=${dy}`
                 // );
@@ -992,7 +992,7 @@ class Messages extends Widget {
                 await ui.loop.waitForAck();
             }
         }
-        ui.finishDialog();
+        ui.finishLayer();
         this.cache.confirmAll();
         if (this.parent)
             this.parent.requestRedraw(); // everything is confirmed
@@ -1680,7 +1680,7 @@ class DropDownButton extends Button {
 }
 async function showDropDown(menu, button, ui) {
     // Start dialog
-    const dialog = ui.startDialog();
+    const dialog = ui.startLayer();
     let activeButton = button;
     await ui.loop.run({
         Escape() {
@@ -1747,13 +1747,13 @@ async function showDropDown(menu, button, ui) {
         draw: () => {
             if (!activeButton)
                 return;
-            ui.resetDialogBuffer(dialog);
+            ui.resetLayerBuffer(dialog);
             activeButton.draw(dialog);
             menu.draw(dialog);
             dialog.render();
         },
     });
-    ui.finishDialog();
+    ui.finishLayer();
     menu.clearHighlight();
 }
 class Menu extends Widget {

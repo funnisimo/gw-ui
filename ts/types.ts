@@ -42,9 +42,9 @@ export interface UICore {
 
     render(): void;
 
-    startDialog(): GWU.canvas.Buffer;
-    resetDialogBuffer(dest: GWU.canvas.Buffer): void;
-    finishDialog(): void;
+    startLayer(): GWU.canvas.Buffer;
+    resetLayerBuffer(dest: GWU.canvas.Buffer): void;
+    finishLayer(): void;
 
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
     getInputAt(

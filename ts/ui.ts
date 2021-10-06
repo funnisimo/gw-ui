@@ -36,7 +36,7 @@ export class UI implements UICore {
         return this.canvas.buffer;
     }
 
-    startDialog(): GWU.canvas.Buffer {
+    startLayer(): GWU.canvas.Buffer {
         this.inDialog = true;
         const base = this.buffer || this.canvas.buffer;
         this.layers.push(base);
@@ -47,12 +47,12 @@ export class UI implements UICore {
         return this.buffer;
     }
 
-    resetDialogBuffer(dest: GWU.canvas.Buffer): void {
+    resetLayerBuffer(dest: GWU.canvas.Buffer): void {
         const base = this.layers[this.layers.length - 1] || this.canvas.buffer;
         dest.copy(base);
     }
 
-    finishDialog(): void {
+    finishLayer(): void {
         if (!this.inDialog) return;
 
         if (this.buffer !== this.canvas.buffer) {
@@ -68,7 +68,7 @@ export class UI implements UICore {
 
     async fadeTo(color: GWU.color.ColorBase = 'black', duration = 1000) {
         color = GWU.color.from(color);
-        const buffer = this.startDialog();
+        const buffer = this.startLayer();
 
         let pct = 0;
         let elapsed = 0;
@@ -81,12 +81,12 @@ export class UI implements UICore {
 
             pct = Math.floor((100 * elapsed) / duration);
 
-            this.resetDialogBuffer(buffer);
+            this.resetLayerBuffer(buffer);
             buffer.mix(color, pct);
             buffer.render();
         }
 
-        this.finishDialog();
+        this.finishLayer();
     }
 
     async alert(opts: number | AlertOptions, text: string, args: any) {
@@ -245,7 +245,7 @@ export class UI implements UICore {
         opts.y = y;
         const widget = new Widget.Input('INPUT', opts);
 
-        const buffer = this.startDialog();
+        const buffer = this.startLayer();
 
         await this.loop.run({
             Enter: () => {
@@ -264,7 +264,7 @@ export class UI implements UICore {
             },
         });
 
-        this.finishDialog();
+        this.finishLayer();
 
         return widget.text;
     }

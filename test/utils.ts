@@ -1,6 +1,7 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 import { UICore } from '../ts/types';
+import * as Widget from '../ts/widget';
 
 // export const rnd = jest.fn();
 // export const counts = new Array(100).fill(0);
@@ -122,6 +123,33 @@ export function mockUI(width = 100, height = 38): UICore {
         fadeTo: jest.fn(),
         alert: jest.fn(),
     } as UICore;
+}
+
+export interface MockWidgetRunner {
+    fireAction: jest.Mock<
+        void | Promise<void>,
+        [action: string, widget: Widget.Widget]
+    >;
+    requestRedraw: jest.Mock<void, []>;
+    ui: UICore;
+}
+
+export function mockDialog(ui: UICore): MockWidgetRunner {
+    const dlg = {
+        fireAction: jest.fn(
+            (
+                _action: string,
+                _widget: Widget.Widget
+            ): void | Promise<void> => {}
+        ),
+        requestRedraw: jest.fn((): void => {}),
+        ui,
+    };
+
+    jest.spyOn(dlg, 'fireAction');
+    jest.spyOn(dlg, 'requestRedraw');
+
+    return dlg;
 }
 
 export function getBufferText(

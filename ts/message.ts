@@ -1,5 +1,4 @@
 import * as GWU from 'gw-utils';
-import { UICore } from '.';
 import * as Widget from './widget';
 
 export interface MessageOptions extends Widget.WidgetOptions {
@@ -14,6 +13,9 @@ export class Messages extends Widget.Widget {
     }
 
     init(opts: MessageOptions) {
+        opts.x = opts.x || 0;
+        opts.y = opts.y || 0;
+
         super.init(opts);
         if (!this.bounds.height)
             throw new Error('Must provde a height for messages widget.');
@@ -22,15 +24,17 @@ export class Messages extends Widget.Widget {
             width: this.bounds.width,
             length: opts.length || 40,
             match: (_x, _y) => {
-                if (this.parent) this.parent.requestRedraw();
                 return true;
             },
         });
     }
 
-    click(e: GWU.io.Event, ui: UICore): boolean | Promise<boolean> {
+    click(
+        e: GWU.io.Event,
+        dialog: Widget.WidgetRunner
+    ): boolean | Promise<boolean> {
         if (!this.contains(e)) return false;
-        return this.showArchive(ui).then(() => true);
+        return this.showArchive(dialog).then(() => true);
     }
 
     draw(buffer: GWU.canvas.DataBuffer) {
@@ -62,10 +66,12 @@ export class Messages extends Widget.Widget {
         return true;
     }
 
-    async showArchive(ui: UICore): Promise<boolean> {
+    async showArchive(dialog: Widget.WidgetRunner): Promise<boolean> {
         let reverse,
             fadePercent = 0;
         let fastForward;
+
+        const ui = dialog.ui;
 
         // Count the number of lines in the archive.
         let totalMessageCount = this.cache.length;
@@ -156,7 +162,7 @@ export class Messages extends Widget.Widget {
         ui.finishLayer();
 
         this.cache.confirmAll();
-        if (this.parent) this.parent.requestRedraw(); // everything is confirmed
+        dialog.requestRedraw(); // everything is confirmed
         return true;
     }
 }

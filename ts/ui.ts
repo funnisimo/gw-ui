@@ -100,7 +100,8 @@ export class UI implements UICore {
 
         const padX = opts.padX || opts.pad || 1;
         const padY = opts.padY || opts.pad || 1;
-        opts.width = opts.width || GWU.text.length(text) + padX * 2;
+
+        opts.width = opts.width || GWU.text.length(text) + 2 * padX;
 
         const textOpts: Widget.TextOptions = {
             fg: opts.fg,
@@ -112,14 +113,21 @@ export class UI implements UICore {
         textOpts.text = text;
         textOpts.wrap = opts.width;
 
+        const textWidget = new Widget.Text('TEXT', textOpts);
+
+        opts.height =
+            (opts.title ? 1 : 0) + padY + textWidget.bounds.height + padY;
+
         const dlg: Widget.Dialog = Widget.buildDialog(this, opts)
-            .with(new Widget.Text('TEXT', textOpts))
+            .with(textWidget)
             .center()
             .done();
 
-        dlg.setClickHandlers({ click: () => dlg.close(true) }); // any click
-        dlg.setKeyHandlers({ keypress: () => dlg.close(true) }); // any key
-        dlg.setActionHandlers({ TIMEOUT: () => dlg.close(false) });
+        dlg.setEventHandlers({
+            click: () => dlg.close(true),
+            keypress: () => dlg.close(true),
+            TIMEOUT: () => dlg.close(false),
+        });
 
         if (!opts.waitForAck) {
             dlg.setTimeout('TIMEOUT', opts.duration || 3000);
@@ -159,18 +167,21 @@ export class UI implements UICore {
             opts.width ||
             Math.min(
                 Math.floor(this.buffer.width / 2),
-                GWU.text.length(text) + padX * 2
+                GWU.text.length(text) + 2 * padX
             );
-        let textWidth = opts.width - padX * 2;
+        let textWidth = opts.width - 2 * padX;
 
         const textOpts: Widget.TextOptions = {
             fg: opts.fg,
             text,
             wrap: textWidth,
+            y: opts.title ? 2 : 1,
+            x: padX,
         };
         const textWidget = new Widget.Text('TEXT', textOpts);
 
-        opts.height = textWidget.bounds.height + 2 * padY + 2;
+        opts.height =
+            (opts.title ? 1 : 0) + padY + textWidget.bounds.height + 2 + padY;
         opts.allowCancel = opts.allowCancel !== false;
         opts.buttons = Object.assign(
             {
@@ -213,15 +224,13 @@ export class UI implements UICore {
 
         const dlg: Widget.Dialog = builder.center().done();
 
-        dlg.setClickHandlers({
+        dlg.setEventHandlers({
             OK() {
                 dlg.close(true);
             },
             CANCEL() {
                 dlg.close(false);
             },
-        });
-        dlg.setKeyHandlers({
             Escape() {
                 dlg.close(false);
             },
@@ -233,66 +242,89 @@ export class UI implements UICore {
         return await dlg.show();
     }
 
+    async showWidget(widget: Widget.Widget, keymap: Widget.EventHandlers = {}) {
+        if (widget.bounds.x < 0) {
+            widget.bounds.x = Math.floor(
+                (this.buffer.width - widget.bounds.width) / 2
+            );
+        }
+        if (widget.bounds.y < 0) {
+            widget.bounds.y = Math.floor(
+                (this.buffer.height - widget.bounds.height) / 2
+            );
+        }
+        const dlg = new Widget.Dialog(this, {
+            width: widget.bounds.width,
+            height: widget.bounds.height,
+            widgets: [widget],
+            x: widget.bounds.x,
+            y: widget.bounds.y,
+        });
+
+        keymap.Escape =
+            keymap.Escape ||
+            (() => {
+                dlg.close(false);
+            });
+        dlg.setEventHandlers(keymap);
+
+        return await dlg.show();
+    }
+
     // assumes you are in a dialog and give the buffer for that dialog
     async getInputAt(
         x: number,
         y: number,
         maxLength: number,
         opts: Widget.InputOptions = {}
-    ) {
+    ): Promise<string> {
         opts.width = maxLength;
         opts.x = x;
         opts.y = y;
         const widget = new Widget.Input('INPUT', opts);
 
-        const buffer = this.startLayer();
-
-        await this.loop.run({
-            Enter: () => {
-                return true; // done
+        return this.showWidget(widget, {
+            INPUT(_e, dlg) {
+                dlg.close(widget.text);
             },
-            Escape: () => {
-                widget.text = '';
-                return true; // done
-            },
-            keypress: (e) => {
-                widget.keypress(e, this);
-            },
-            draw() {
-                widget.draw(buffer);
-                buffer.render();
+            Escape(_e, dlg) {
+                dlg.close('');
             },
         });
-
-        this.finishLayer();
-
-        return widget.text;
     }
 
     async inputBox(opts: InputBoxOptions, prompt: string, args?: any) {
-        const padX = opts.padX || opts.pad || 1;
-        const padY = opts.padY || opts.pad || 1;
-
         if (args) {
             prompt = GWU.text.apply(prompt, args);
         }
+
+        const padX = opts.padX || opts.pad || 1;
+        const padY = opts.padY || opts.pad || 1;
 
         opts.width =
             opts.width ||
             Math.min(
                 Math.floor(this.buffer.width / 2),
-                GWU.text.length(prompt) + padX * 2
+                GWU.text.length(prompt) + 2 * padX
             );
-        let promptWidth = opts.width - padX * 2;
+        let promptWidth = opts.width - 2 * padX;
 
         const promptOpts: Widget.TextOptions = {
             fg: opts.fg,
             text: prompt,
             wrap: promptWidth,
+            x: padX,
+            y: (opts.title ? 1 : 0) + padY,
         };
         const promptWidget = new Widget.Text('TEXT', promptOpts);
 
-        opts.height = promptWidget.bounds.height + 2 * padY + 4;
+        opts.height =
+            (opts.title ? 1 : 0) +
+            padY +
+            promptWidget.bounds.height +
+            3 +
+            1 +
+            padY;
         opts.allowCancel = opts.allowCancel !== false;
         opts.buttons = Object.assign(
             {
@@ -329,6 +361,8 @@ export class UI implements UICore {
         opts.input.width = opts.input.width || promptWidth;
         opts.input.bg = opts.input.bg || opts.fg;
         opts.input.fg = opts.input.fg || opts.bg;
+        opts.input.x = padX;
+        opts.input.y = opts.height - 1 - padY - 2;
 
         const inputWidget = new Widget.Input('INPUT', opts.input || {});
         const builder = Widget.buildDialog(this, opts)
@@ -342,19 +376,17 @@ export class UI implements UICore {
 
         const dlg: Widget.Dialog = builder.center().done();
 
-        dlg.setClickHandlers({
+        dlg.setEventHandlers({
             OK() {
                 dlg.close(inputWidget.text);
             },
             CANCEL() {
                 dlg.close('');
             },
-        });
-        dlg.setKeyHandlers({
             Escape() {
                 dlg.close('');
             },
-            Enter() {
+            INPUT() {
                 dlg.close(inputWidget.text);
             },
         });

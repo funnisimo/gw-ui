@@ -21,10 +21,18 @@ import * as Widget from './widget';
 export interface AlertOptions extends Widget.DialogOptions {
     duration?: number;
     waitForAck?: boolean;
+
+    pad?: number;
+    padX?: number;
+    padY?: number;
 }
 
 export interface ConfirmOptions extends Widget.DialogOptions {
     allowCancel?: boolean;
+
+    pad?: number;
+    padX?: number;
+    padY?: number;
 
     buttons?: Widget.ButtonOptions;
     ok?: string | Widget.ButtonOptions;

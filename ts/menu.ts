@@ -5,17 +5,21 @@ import * as Widget from './widget';
 export type ActionFn = (
     e: GWU.io.Event,
     ui: UICore,
-    button: Button
+    button: MenuButton
 ) => boolean | Promise<boolean>;
+
+// Menu has buttons that are either dropdowns or actions.
+// Dropdowns are keys with an object of other buttons.
+// actions are keys with a string of the action name.
 
 interface Rec<T> {
     [keys: string]: T;
 }
 type DropdownConfig = Rec<ButtonConfig>;
-type ActionConfig = ActionFn | string;
+type ActionConfig = string;
 type ButtonConfig = ActionConfig | DropdownConfig;
 
-export class Button {
+export class MenuButton {
     text: string;
     hovered = false;
     x = 999;
@@ -29,22 +33,18 @@ export class Button {
     }
 }
 
-export class ActionButton extends Button {
-    fn: ActionFn;
+export class ActionButton extends MenuButton {
+    action: string;
 
-    constructor(text: string, fn: ActionFn) {
+    constructor(text: string, action: string) {
         super(text);
-        this.fn = fn;
-    }
-
-    activate(e: GWU.io.Event, ui: UICore): any {
-        return this.fn(e, ui, this);
+        this.action = action;
     }
 }
 
-export class DropDownButton extends Button {
+export class DropDownButton extends MenuButton {
     bounds: GWU.xy.Bounds;
-    buttons: Button[] = [];
+    buttons: MenuButton[] = [];
     menu: Menu;
     parent: DropDownButton | null = null;
 
@@ -69,17 +69,9 @@ export class DropDownButton extends Button {
         // if (this.buttons.length >= this.menu.bounds.height - 1) {
         //     throw new Error('Too many menu options.');
         // }
-        let button: Button;
-        if (typeof config === 'function') {
+        let button: MenuButton;
+        if (typeof config === 'string') {
             button = new ActionButton(text, config);
-        } else if (typeof config === 'string') {
-            button = new ActionButton(text, () => {
-                const r = this.menu.parent.fireAction(config, this.menu);
-                if (r && r.then) {
-                    return r.then(() => true);
-                }
-                return true;
-            });
         } else {
             button = new DropDownButton(this.menu, this, text, config);
         }
@@ -126,7 +118,7 @@ export class DropDownButton extends Button {
         return this.bounds.contains(e);
     }
 
-    buttonAt(e: GWU.io.Event): Button | null {
+    buttonAt(e: GWU.io.Event): MenuButton | null {
         const index = e.y - this.bounds.y;
         return this.buttons[index] || null;
     }
@@ -158,17 +150,59 @@ export class DropDownButton extends Button {
 }
 
 export async function showDropDown(
+    dialog: Widget.WidgetRunner,
     menu: Menu,
-    button: DropDownButton,
-    ui: UICore
+    button: DropDownButton
 ) {
     // Start dialog
-    const dialog = ui.startLayer();
+    const ui = dialog.ui;
+    const buffer = ui.startLayer();
+
+    button.buttons.forEach((b) => (b.hovered = false));
+    button.buttons[0].hovered = true;
 
     let activeButton: DropDownButton | null = button;
     await ui.loop.run({
         Escape() {
             return true;
+        },
+
+        // TODO - Tab
+        Tab() {
+            menu.activeIndex = (menu.activeIndex + 1) % menu.buttons.length;
+
+            const button = menu.buttons[menu.activeIndex];
+            if (button) {
+                button.hovered = true;
+            }
+            if (activeButton && button instanceof DropDownButton) {
+                activeButton.hovered = false;
+                activeButton = button;
+            } else {
+                activeButton = null; // done.
+            }
+
+            dialog.requestRedraw();
+            return !activeButton;
+        },
+        // TODO - TAB
+        TAB() {
+            menu.activeIndex =
+                (menu.buttons.length + menu.activeIndex - 1) %
+                menu.buttons.length;
+
+            const button = menu.buttons[menu.activeIndex];
+            if (button) {
+                button.hovered = true;
+            }
+            if (activeButton && button instanceof DropDownButton) {
+                activeButton.hovered = false;
+                activeButton = button;
+            } else {
+                activeButton = null; // done.
+            }
+            dialog.requestRedraw();
+            return !activeButton;
         },
 
         mousemove: (e: GWU.io.Event) => {
@@ -191,6 +225,8 @@ export async function showDropDown(
                         selected.buttons.forEach((b) => {
                             b.hovered = false;
                         });
+                        selected.buttons[0].hovered = true;
+
                         selected.setBounds(
                             ui.buffer,
                             activeButton.bounds.x,
@@ -202,16 +238,19 @@ export async function showDropDown(
                 }
             } else {
                 if (menu.contains(e)) {
-                    if (menu.parent) menu.parent.requestRedraw();
+                    if (dialog) dialog.requestRedraw();
                     const button = menu.getButtonAt(e.x, e.y);
+                    if (button) {
+                        button.hovered = true;
+                        menu.activeIndex = menu.buttons.indexOf(button);
+                    }
                     if (button instanceof DropDownButton) {
                         activeButton.hovered = false;
                         activeButton = button;
-                        activeButton.hovered = true;
                     } else {
                         activeButton = null; // done.
-                        if (button) button.hovered = true;
                     }
+                    if (dialog) dialog.requestRedraw();
                 }
             }
 
@@ -232,16 +271,20 @@ export async function showDropDown(
             }
 
             if (actionButton instanceof ActionButton) {
-                return actionButton.activate(e, ui); // actions return true if they want to close the menu (otherwise the menu stays open)
+                menu.actionButton = actionButton;
+                await dialog.fireAction(actionButton.action, menu);
+                return true;
             }
+
+            return false;
         },
 
         draw: () => {
             if (!activeButton) return;
-            ui.resetLayerBuffer(dialog);
-            activeButton.draw(dialog);
-            menu.draw(dialog);
-            dialog.render();
+            ui.resetLayerBuffer(buffer);
+            activeButton.draw(buffer);
+            menu.draw(buffer);
+            buffer.render();
         },
     });
 
@@ -260,7 +303,7 @@ export interface MenuOptions extends Widget.WidgetOptions {
 }
 
 export class Menu extends Widget.Widget {
-    buttons!: Button[];
+    buttons!: MenuButton[];
 
     separator!: string;
     lead!: string;
@@ -268,14 +311,19 @@ export class Menu extends Widget.Widget {
     dropFg!: GWU.color.Color;
     dropBg!: GWU.color.Color;
 
+    activeIndex = -1;
+    actionButton: ActionButton | null = null;
+
     constructor(id: string, opts?: MenuOptions) {
         super(id, opts);
     }
 
     init(opts: MenuOptions) {
-        opts.fg = opts.fg ?? 'black';
-        opts.bg = opts.bg ?? 'light_gray';
+        opts.fg = GWU.first(opts.fg, 'black');
+        opts.bg = GWU.first(opts.bg, 'light_gray');
         opts.height = opts.height || 1;
+
+        opts.tabStop = GWU.first(opts.tabStop, true);
 
         super.init(opts);
 
@@ -298,17 +346,30 @@ export class Menu extends Widget.Widget {
         }
     }
 
-    mousemove(e: GWU.io.Event): boolean {
+    activate(reverse = false) {
+        super.activate(reverse);
+        if (this.activeIndex < 0)
+            this.activeIndex = reverse ? this.buttons.length - 1 : 0;
+    }
+
+    deactivate() {
+        super.deactivate();
+        this.activeIndex = -1;
+    }
+
+    mousemove(e: GWU.io.Event, dialog: Widget.WidgetRunner): boolean {
         // turn off all the hovers
-        this.buttons.forEach((b: Button) => {
+        this.buttons.forEach((b: MenuButton) => {
             if (b.hovered) {
                 b.hovered = false;
             }
         });
 
+        if (!super.mousemove(e, dialog)) return false;
+
         // highlight one of them...
         if (this.bounds.contains(e)) {
-            let hovered: Button | null = null;
+            let hovered: MenuButton | null = null;
             this.buttons.forEach((b) => {
                 b.hovered = false;
                 if (b.x < e.x) {
@@ -319,8 +380,9 @@ export class Menu extends Widget.Widget {
             if (hovered) {
                 // @ts-ignore
                 hovered.hovered = true;
+                this.activeIndex = this.buttons.indexOf(hovered);
             }
-            if (this.parent) this.parent.requestRedraw();
+            if (dialog) dialog.requestRedraw();
             return true; // we handled the message
         }
 
@@ -331,28 +393,66 @@ export class Menu extends Widget.Widget {
         this.buttons.forEach((b) => {
             b.hovered = false;
         });
-        if (this.parent) this.parent.requestRedraw();
     }
 
-    getButtonAt(x: number, _y: number): Button | null {
+    getButtonAt(x: number, _y: number): MenuButton | null {
         return GWU.arrayFindRight(this.buttons, (b) => b.x < x) || null;
     }
 
-    async click(e: GWU.io.Event, ui: UICore): Promise<boolean> {
+    async click(
+        e: GWU.io.Event,
+        dialog: Widget.WidgetRunner
+    ): Promise<boolean> {
         if (this.bounds.contains(e)) {
             // get active button
             let activeButton = this.getButtonAt(e.x, e.y);
             if (!activeButton) return false;
 
+            this.activeIndex = this.buttons.indexOf(activeButton);
+
             if (activeButton instanceof DropDownButton) {
-                await showDropDown(this, activeButton, ui);
+                await showDropDown(dialog, this, activeButton);
             } else if (activeButton instanceof ActionButton) {
-                await activeButton.activate(e, ui);
+                this.actionButton = activeButton;
+                await dialog.fireAction(activeButton.action, this);
             }
 
             return true;
         }
         return false;
+    }
+
+    async keypress(
+        e: GWU.io.Event,
+        dialog: Widget.WidgetRunner
+    ): Promise<boolean> {
+        if (this.active) {
+            if (e.key === 'Tab') {
+                ++this.activeIndex;
+                if (this.activeIndex >= this.buttons.length) {
+                    this.deactivate();
+                    return false; // tabbing away from me, need to process in dialog
+                }
+                return true;
+            } else if (e.key === 'TAB') {
+                --this.activeIndex;
+                if (this.activeIndex < 0) {
+                    this.deactivate();
+                    return false; // shift tabbing away from me, need to process in dialog
+                }
+                return true;
+            } else if (e.key === 'Enter') {
+                const activeButton = this.buttons[this.activeIndex];
+                if (activeButton instanceof DropDownButton) {
+                    await showDropDown(dialog, this, activeButton);
+                } else if (activeButton instanceof ActionButton) {
+                    this.actionButton = activeButton;
+                    await dialog.fireAction(activeButton.action, this);
+                }
+                return true;
+            }
+        }
+        return super.keypress(e, dialog);
     }
 
     protected _addButton(text: string, config: ButtonConfig) {
@@ -364,8 +464,8 @@ export class Menu extends Widget.Widget {
             throw new Error('Button makes menu too wide :' + text);
         }
 
-        let button: Button;
-        if (typeof config === 'function') {
+        let button: MenuButton;
+        if (typeof config === 'string') {
             button = new ActionButton(text, config);
         } else {
             const dropdown = new DropDownButton(this, null, text, config);
@@ -382,26 +482,30 @@ export class Menu extends Widget.Widget {
     }
 
     draw(buffer: GWU.canvas.DataBuffer): boolean {
+        const bg = this.active ? this.activeBg : this.bg;
+        const fg = this.active ? this.activeFg : this.fg;
+
         buffer.fillRect(
             this.bounds.x,
             this.bounds.y,
             this.bounds.width,
             1,
             0,
-            0,
-            this.bg
+            bg,
+            bg
         );
 
         let x = this.bounds.x;
         const y = this.bounds.y;
-        buffer.drawText(x, y, this.lead, this.fg);
+        buffer.drawText(x, y, this.lead, fg);
 
-        this.buttons.forEach((b) => {
-            const color = b.hovered ? this.activeFg : this.fg;
-            const bgColor = b.hovered ? this.activeBg : this.bg;
+        this.buttons.forEach((b, i) => {
+            const hovered = i === this.activeIndex;
+            const color = hovered ? this.hoverFg : fg;
+            const bgColor = hovered ? this.hoverBg : bg;
             buffer.drawText(b.x, y, b.text, color, bgColor);
             x = b.x + b.text.length;
-            buffer.drawText(x, y, this.separator, this.fg);
+            buffer.drawText(x, y, this.separator, fg);
         });
 
         return true;

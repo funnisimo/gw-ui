@@ -31,16 +31,15 @@ const messages = new GWI.Messages('MSG', {
     bg: 'red',
     fg: 'yellow',
 });
-
-LOOP.run({
-    async click(e) {
-        await messages.click(e, ui);
-    },
-    draw() {
-        messages.draw(ui.buffer);
-        ui.render();
-    },
+const dialog = new GWI.Dialog(ui, {
+    width: canvas.width,
+    height: canvas.height,
+    x: 0,
+    y: 0,
+    widgets: [messages],
 });
+
+dialog.show();
 ```
 
 ## Positioning
@@ -61,13 +60,13 @@ const messages = new GWI.Messages('MSG', {
     fg: 'black',
 });
 
-LOOP.run({
-    async click(e) {
-        await messages.click(e, ui);
-    },
-    draw() {
-        messages.draw(ui.buffer);
-        ui.render();
-    },
+const dialog = new GWI.Dialog(ui, {
+    width: canvas.width,
+    height: canvas.height,
+    x: 0,
+    y: 0,
+    widgets: [messages],
 });
+
+dialog.show();
 ```

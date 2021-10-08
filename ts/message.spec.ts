@@ -6,9 +6,11 @@ import { UICore } from './types';
 
 describe('Message', () => {
     let ui: UICore;
+    let dialog: UTILS.MockWidgetRunner;
 
     beforeEach(() => {
         ui = UTILS.mockUI(100, 40);
+        dialog = UTILS.mockDialog(ui);
     });
 
     test('basic - on top', () => {
@@ -50,12 +52,6 @@ describe('Message', () => {
     });
 
     test('show archive - top', async () => {
-        const container = {
-            fireAction: jest.fn(),
-            requestRedraw: jest.fn(),
-            ui,
-        };
-
         // @ts-ignore -- turn off automatic TICK events
         ui.loop._startTicks.mockReturnValue(true);
 
@@ -63,7 +59,6 @@ describe('Message', () => {
             width: 80,
             height: 4,
         });
-        widget.parent = container;
 
         expect(widget.bounds.x).toEqual(0);
         expect(widget.bounds.y).toEqual(0);
@@ -81,7 +76,7 @@ describe('Message', () => {
 
         jest.spyOn(widget, 'showArchive');
 
-        const p = widget.click(UTILS.click(1, 1), ui);
+        const p = widget.click(UTILS.click(1, 1), dialog);
 
         expect(widget.showArchive).toHaveBeenCalled();
 
@@ -127,18 +122,11 @@ describe('Message', () => {
     });
 
     test('show archive - bottom', async () => {
-        const container = {
-            fireAction: jest.fn(),
-            requestRedraw: jest.fn(),
-            ui,
-        };
-
         const widget = new Message.Messages('MSG', {
             width: 80,
             height: 4,
             y: 36,
         });
-        widget.parent = container;
 
         expect(widget.bounds.x).toEqual(0);
         expect(widget.bounds.y).toEqual(36);
@@ -156,7 +144,7 @@ describe('Message', () => {
 
         jest.spyOn(widget, 'showArchive');
 
-        const p = widget.click(UTILS.click(1, 38), ui);
+        const p = widget.click(UTILS.click(1, 38), dialog);
 
         expect(widget.showArchive).toHaveBeenCalled();
 

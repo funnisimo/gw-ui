@@ -2,7 +2,7 @@ import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 import * as Widget from './widget';
 
-import { UISubject, UICore } from './types';
+import { UISubject } from './types';
 
 GWU.color.install('blueBar', 15, 10, 50);
 GWU.color.install('redBar', 45, 10, 15);
@@ -121,8 +121,11 @@ export class Sidebar extends Widget.Widget {
         );
     }
 
-    mousemove(e: GWU.io.Event, ui: UICore): boolean | Promise<boolean> {
-        super.mousemove(e, ui);
+    mousemove(
+        e: GWU.io.Event,
+        dialog: Widget.WidgetRunner
+    ): boolean | Promise<boolean> {
+        super.mousemove(e, dialog);
         if (this.contains(e)) {
             return this.highlightRow(e.y);
         }
@@ -138,14 +141,12 @@ export class Sidebar extends Widget.Widget {
                 this.highlight = e;
             }
         });
-        if (this.parent) this.parent.requestRedraw();
         return this.highlight !== last;
     }
 
     clearHighlight() {
         const result = !!this.highlight;
         this.highlight = null;
-        if (this.parent) this.parent.requestRedraw();
         return result;
     }
 
@@ -339,7 +340,6 @@ export class Sidebar extends Widget.Widget {
     ): boolean {
         this.updateCellCache(map);
         this.findEntries(map, cx, cy, fov);
-        if (this.parent) this.parent.requestRedraw();
         return true;
     }
 

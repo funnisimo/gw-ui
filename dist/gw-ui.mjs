@@ -15,7 +15,7 @@ class Widget {
         this.text = '';
         this.align = 'left';
         this.valign = 'middle';
-        this.bounds = new GWU.xy.Bounds(0, 0, 0, 0);
+        this.bounds = new GWU.xy.Bounds(-1, -1, -1, -1); // nothing set
         this.id = id;
         if (opts)
             this.init(opts);
@@ -32,11 +32,13 @@ class Widget {
             this.bounds.height = opts.height;
         if (opts.text) {
             this.text = opts.text;
-            if (!this.bounds.width)
+            if (this.bounds.width <= 0)
                 this.bounds.width = opts.text.length;
-            if (!this.bounds.height)
+            if (this.bounds.height <= 0)
                 this.bounds.height = 1;
         }
+        if (this.bounds.height <= 0)
+            this.bounds.height = 1;
         if (opts.fg !== undefined) {
             this.fg = opts.fg;
             this.activeFg = opts.fg;
@@ -64,25 +66,37 @@ class Widget {
         this.action = opts.action || this.id;
     }
     reset() { }
+    activate(_reverse = false) {
+        this.active = true;
+    }
+    deactivate() {
+        this.active = false;
+    }
     contains(x, y) {
         if (arguments.length == 1)
             return this.bounds.contains(x);
         return this.bounds.contains(x, y);
     }
+    // EVENTS
     // returns true if mouse is over this widget
-    mousemove(e, _ui) {
+    mousemove(e, _dialog) {
         this.hovered = this.contains(e);
         return this.hovered;
     }
-    tick(_e, _ui) { }
+    tick(_e, _dialog) { }
     // returns true if click is handled by this widget (stopPropagation)
-    click(_e, _ui) {
+    click(_e, _dialog) {
         return false;
     }
     // returns true if key is used by widget and you want to stopPropagation
-    keypress(_e, _ui) {
+    keypress(_e, _dialog) {
         return false;
     }
+    // returns true if key is used by widget and you want to stopPropagation
+    dir(_e, _dialog) {
+        return false;
+    }
+    // DRAW
     draw(buffer) {
         const fg = this.active
             ? this.activeFg
@@ -129,6 +143,7 @@ class Text extends Widget {
         //     );
         this.text = opts.text || '';
         if (opts.wrap) {
+            this.wrap = true;
             opts.width = opts.wrap;
             this.lines = GWU.text.splitIntoLines(this.text, 
             // @ts-ignore
@@ -145,6 +160,19 @@ class Text extends Widget {
         opts.height = Math.max(this.lines.length, opts.height || 1);
         super.init(opts);
     }
+    setText(text) {
+        this.text = text;
+        if (this.wrap) {
+            this.lines = GWU.text.splitIntoLines(this.text, this.bounds.width);
+        }
+        else {
+            const textLen = GWU.text.length(this.text);
+            if (textLen > this.bounds.width) {
+                this.text = GWU.text.truncate(this.text, this.bounds.width);
+            }
+            this.lines = [this.text];
+        }
+    }
     // TODO - get text() {}, set text(v:string) { // do lines stuff }
     draw(buffer) {
         const fg = this.active ? this.activeFg : this.fg;
@@ -155,41 +183,27 @@ class Text extends Widget {
     }
 }
 
-class Button$1 extends Widget {
+class Button extends Widget {
     constructor(id, opts) {
         super(id, opts);
     }
     init(opts) {
-        var _a;
-        this.actionFn = null;
         if (!opts.text)
             throw new Error('Must have text value in config for Button widget - ' + this.id);
-        opts.tabStop = (_a = opts.tabStop) !== null && _a !== void 0 ? _a : true; // Can receive input (Enter)
+        opts.tabStop = GWU.first(opts.tabStop, true); // Can receive input (Enter)
         super.init(opts);
-        if (opts.actionFn)
-            this.actionFn = opts.actionFn;
     }
-    click(ev) {
+    async click(ev, dialog) {
         if (!this.contains(ev))
             return false;
-        let r;
-        if (this.actionFn) {
-            r = this.actionFn(ev, this);
-        }
-        else {
-            r = this.parent.fireAction(this.action, this);
-        }
-        if (r)
-            return r.then(() => true);
+        await dialog.fireAction(this.action, this);
         return true;
     }
-    keypress(ev) {
+    async keypress(ev, dialog) {
         if (!ev.key)
             return false;
         if (ev.key === 'Enter') {
-            const r = this.parent.fireAction(this.action, this);
-            if (r)
-                return r.then(() => true);
+            await dialog.fireAction(this.action, this);
             return true;
         }
         return false;
@@ -201,27 +215,26 @@ class Input extends Widget {
         super(id, opts);
     }
     init(opts) {
-        var _a, _b, _c;
         this.minLength = opts.minLength || 1;
         if (!opts.width) {
             opts.width = Math.max(this.minLength, 10);
         }
-        opts.tabStop = (_a = opts.tabStop) !== null && _a !== void 0 ? _a : true; // Need to receive input
+        opts.tabStop = GWU.first(opts.tabStop, true); // Need to receive input
         super.init(opts);
         this.default = opts.default || '';
         this.errorFg = opts.errorFg || this.fg;
         this.hint = opts.hint || '';
         this.hintFg = opts.hintFg || this.errorFg;
         this.numbersOnly = opts.numbersOnly || false;
-        this.min = (_b = opts.min) !== null && _b !== void 0 ? _b : Number.MIN_SAFE_INTEGER;
-        this.max = (_c = opts.max) !== null && _c !== void 0 ? _c : Number.MAX_SAFE_INTEGER;
-        if (!this.bounds.width) {
+        this.min = GWU.first(opts.min, Number.MIN_SAFE_INTEGER);
+        this.max = GWU.first(opts.max, Number.MAX_SAFE_INTEGER);
+        if (this.bounds.width <= 0) {
             if (this.hint)
                 this.bounds.width = this.hint.length;
             if (this.default)
                 this.bounds.width = this.default.length;
         }
-        if (!this.bounds.height) {
+        if (this.bounds.height <= 0) {
             this.bounds.height = 1;
         }
         this.reset();
@@ -245,12 +258,12 @@ class Input extends Widget {
             return Number.parseInt(this.text);
         return this.text;
     }
-    keypress(ev, _ui) {
+    keypress(ev, dialog) {
         const textEntryBounds = this.numbersOnly ? ['0', '9'] : [' ', '~'];
         if (!ev.key)
             return false;
         if (ev.key === 'Enter' && this.isValid()) {
-            const r = this.parent.fireAction(this.action, this);
+            const r = dialog.fireAction(this.action, this);
             if (r)
                 return r.then(() => true);
             return true;
@@ -298,6 +311,277 @@ class Input extends Widget {
     }
 }
 
+class Column {
+    constructor(opts) {
+        this.active = false;
+        this.hovered = false;
+        this.fg = null;
+        this.bg = null;
+        this.activeFg = null;
+        this.activeBg = null;
+        this.hoverFg = null;
+        this.hoverBg = null;
+        this.header = '';
+        this.empty = '';
+        this._value = GWU.IDENTITY;
+        // align: Widget.Align = 'left';
+        // valign: Widget.VAlign = 'middle';
+        // hover: HoverType = 'cell';
+        this.x = -1;
+        this.width = -1;
+        this.index = -1;
+        GWU.object.assignOmitting('value', this, opts);
+        if (this.width <= 0) {
+            this.width = this.header.length || 1;
+        }
+        if (typeof opts.value === 'string') {
+            this._value = GWU.text.compile(opts.value);
+        }
+        else {
+            this._value = opts.value;
+        }
+    }
+    value(data, index) {
+        const v = this._value(data, index);
+        return GWU.text.truncate(v, this.width);
+    }
+}
+class Table extends Widget {
+    constructor(id, opts) {
+        super(id, opts);
+        this.data = null;
+        this.selectedColumn = null;
+        this.selectedIndex = -1;
+    }
+    init(opts) {
+        if (!opts.height)
+            throw new Error('Height is required.');
+        if (!opts.columns || opts.columns.length == 0)
+            throw new Error('Must have at least 1 column.');
+        opts.tabStop = GWU.first(opts.tabStop, true);
+        super.init(opts);
+        this.headers = GWU.first(opts.headers, true);
+        this.letters = GWU.first(opts.letters, true);
+        this.columns = [];
+        this.hoverType = opts.hover || 'row';
+        this.wrapColumns = GWU.first(opts.wrapColumns, opts.wrap, true);
+        this.wrapRows = GWU.first(opts.wrapRows, opts.wrap, true);
+        this.headerFg = opts.headerFg || this.fg;
+        this.headerBg = opts.headerBg || this.bg;
+        let columnWidth = 0;
+        if (opts.letters) {
+            this.columns.push(new Column({
+                width: 2,
+                value: (_data, index) => {
+                    const letter = String.fromCharCode(97 + index);
+                    return letter + ')';
+                },
+            }));
+            columnWidth += 2;
+        }
+        if (opts.columns) {
+            opts.columns.forEach((c) => {
+                const col = new Column(c);
+                this.columns.push(col);
+                columnWidth += col.width;
+            });
+        }
+        this.columns.forEach((c, i) => (c.index = i));
+        // scrolling?  paging?  fixed columns/headers?
+        this.bounds.width =
+            this.bounds.width > 0 ? this.bounds.width : columnWidth;
+    }
+    setData(data) {
+        this.data = data;
+        this.selectedIndex = -1;
+    }
+    selectRow(index) {
+        if (!this.data)
+            return false;
+        const len = Array.isArray(this.data)
+            ? this.data.length
+            : GWU.list.length(this.data);
+        if (index >= len)
+            return false;
+        if (index < -1)
+            return false;
+        this.selectedIndex = index;
+        return true;
+    }
+    selectNextRow(wrap = true) {
+        if (!this.data)
+            return -1;
+        const len = Array.isArray(this.data)
+            ? this.data.length
+            : GWU.list.length(this.data);
+        this.selectedIndex = GWU.nextIndex(this.selectedIndex, len, wrap);
+        if (this.selectedIndex > -1 && !this.selectedColumn) {
+            this.selectedColumn = this.columns[0];
+        }
+        return this.selectedIndex;
+    }
+    selectPrevRow(wrap = true) {
+        if (!this.data)
+            return -1;
+        const len = Array.isArray(this.data)
+            ? this.data.length
+            : GWU.list.length(this.data);
+        this.selectedIndex = GWU.prevIndex(this.selectedIndex, len, wrap);
+        if (this.selectedIndex > -1 && !this.selectedColumn) {
+            this.selectedColumn = this.columns[0];
+        }
+        return this.selectedIndex;
+    }
+    selectNextColumn(wrap = true) {
+        if (!this.selectedColumn) {
+            this.selectedColumn = this.columns[0];
+        }
+        else {
+            let index = GWU.nextIndex(this.selectedColumn.index, this.columns.length, wrap);
+            this.selectedColumn = this.columns[index] || null;
+        }
+        if (this.selectedColumn && this.selectedIndex < 0 && this.data) {
+            this.selectedIndex = 0;
+        }
+        return this.selectedColumn;
+    }
+    selectPrevColumn(wrap = true) {
+        if (!this.selectedColumn) {
+            this.selectedColumn = this.columns[this.columns.length - 1]; // last column
+        }
+        else {
+            let index = GWU.prevIndex(this.selectedColumn.index, this.columns.length, wrap);
+            this.selectedColumn = this.columns[index] || null;
+        }
+        if (this.selectedColumn && this.selectedIndex < 0 && this.data) {
+            this.selectedIndex = 0;
+        }
+        return this.selectedColumn;
+    }
+    get selectedData() {
+        if (!this.data)
+            return null;
+        if (Array.isArray(this.data)) {
+            return this.data[this.selectedIndex] || null;
+        }
+        else {
+            return GWU.list.at(this.data, this.selectedIndex);
+        }
+    }
+    draw(buffer) {
+        const b = this.bounds;
+        buffer.fillRect(b.x, b.y, b.width, b.height, ' ', this.bg, this.bg);
+        let x = b.x;
+        this.columns.forEach((col) => {
+            this.drawColumn(buffer, col, x);
+            x += col.width;
+        });
+    }
+    drawColumn(buffer, column, x) {
+        let y = this.bounds.y;
+        if (column.header) {
+            buffer.fillRect(x, y, column.width, 1, ' ', this.headerFg, this.headerBg);
+            buffer.drawText(x, y, column.header, this.headerFg, this.headerBg, column.width);
+            ++y;
+        }
+        if (!this.data)
+            return;
+        if (Array.isArray(this.data)) {
+            this.data.forEach((item, index) => {
+                this.drawCell(buffer, column, item, index, x, y);
+                ++y;
+            });
+        }
+        else {
+            GWU.list.forEach(this.data, (item, index) => {
+                this.drawCell(buffer, column, item, index, x, y);
+                ++y;
+            });
+        }
+    }
+    drawCell(buffer, column, data, index, x, y) {
+        if (y > this.bounds.bottom)
+            return;
+        let text = column._value(data, index);
+        if (text.length == 0) {
+            text = column.empty;
+        }
+        // pick color...
+        let fg = this.fg;
+        let bg = this.bg;
+        if (this.hoverType === 'row') {
+            if (index === this.selectedIndex) {
+                fg = this.hoverFg;
+                bg = this.hoverBg;
+            }
+        }
+        else if (this.hoverType === 'column') {
+            if (column === this.selectedColumn) {
+                fg = this.hoverFg;
+                bg = this.hoverBg;
+            }
+        }
+        else if (this.hoverType === 'cell') {
+            if (column === this.selectedColumn &&
+                index === this.selectedIndex) {
+                fg = this.hoverFg;
+                bg = this.hoverBg;
+            }
+        }
+        buffer.fillRect(x, y, column.width, 1, ' ', bg, bg);
+        buffer.drawText(x, y, text, fg, bg, column.width);
+    }
+    async mousemove(e, dialog) {
+        if (!super.mousemove(e, dialog)) {
+            return false;
+        }
+        const oldColumn = this.selectedColumn;
+        const oldIndex = this.selectedIndex;
+        let x = e.x - this.bounds.x;
+        const column = (this.selectedColumn =
+            this.columns.find((c) => {
+                if (c.width >= x)
+                    return true;
+                x -= c.width;
+                return false;
+            }) || null);
+        let index = -1;
+        if (this.data) {
+            index = e.y - this.bounds.y - (this.headers ? 1 : 0);
+            if (Array.isArray(this.data)) {
+                if (index >= this.data.length)
+                    index = -1;
+            }
+        }
+        this.selectedIndex = index;
+        if (oldColumn !== column || oldIndex !== index) {
+            dialog.fireAction(this.id + '_HOVER', this);
+            dialog.requestRedraw();
+        }
+        return true;
+    }
+    dir(e) {
+        if (!e.dir)
+            return false;
+        if (e.dir[0] > 0) {
+            this.selectNextColumn(this.wrapColumns);
+        }
+        else if (e.dir[0] < 0) {
+            this.selectPrevColumn(this.wrapColumns);
+        }
+        if (e.dir[1] > 0) {
+            this.selectNextRow(this.wrapRows);
+        }
+        else if (e.dir[1] < 0) {
+            this.selectPrevRow(this.wrapRows);
+        }
+        return true;
+    }
+}
+function makeTable(id, opts) {
+    return new Table(id, opts);
+}
+
 class Dialog {
     constructor(ui, opts) {
         this.title = '';
@@ -305,9 +589,7 @@ class Dialog {
         this.bg = 0x999;
         this.borderBg = 0x999;
         this.widgets = [];
-        this.actionHandlers = {};
-        this.keypressHandlers = {};
-        this.clickHandlers = {};
+        this.eventHandlers = {};
         this._activeWidget = null;
         this.result = null;
         this.done = false;
@@ -341,17 +623,22 @@ class Dialog {
         if (opts.borderBg) {
             this.borderBg = opts.borderBg;
         }
+        if (opts.widgets) {
+            opts.widgets.forEach((w) => this.widgets.push(w));
+        }
     }
     get activeWidget() {
         return this._activeWidget;
     }
-    set activeWidget(w) {
+    setActiveWidget(w, reverse = false) {
+        if (w === this._activeWidget)
+            return;
         if (this._activeWidget) {
-            this._activeWidget.active = false;
+            this._activeWidget.deactivate();
         }
         this._activeWidget = w;
         if (this._activeWidget) {
-            this._activeWidget.active = true;
+            this._activeWidget.activate(reverse);
         }
     }
     contains(e) {
@@ -366,32 +653,28 @@ class Dialog {
     clearTimeout(action) {
         delete this.timers[action];
     }
-    fireAction(action, widget) {
-        const handler = this.actionHandlers[action];
+    async fireAction(action, widget) {
+        const handler = this.eventHandlers[action];
         if (handler) {
-            return handler(action, widget, this);
+            await handler(action, this, widget);
         }
     }
-    setActionHandlers(map) {
-        this.actionHandlers = map;
-    }
-    setKeyHandlers(map) {
-        this.keypressHandlers = map;
-    }
-    setClickHandlers(map) {
-        this.clickHandlers = map;
+    // Multiple calls result in adding more handlers
+    setEventHandlers(map) {
+        Object.assign(this.eventHandlers, map);
     }
     async show() {
         this.done = false;
         // reset any temp data...
         this.widgets.forEach((w) => w.reset());
         // first tabStop is the starting active Widget
-        this.activeWidget = this.widgets.find((w) => w.tabStop) || null;
+        this.setActiveWidget(this.widgets.find((w) => w.tabStop) || null);
         // start dialog
         const buffer = this.ui.startLayer();
         // run input loop
         await this.ui.loop.run({
             keypress: this.keypress.bind(this),
+            dir: this.dir.bind(this),
             mousemove: this.mousemove.bind(this),
             click: this.click.bind(this),
             tick: this.tick.bind(this),
@@ -416,49 +699,43 @@ class Dialog {
     }
     nextTabstop() {
         if (!this.activeWidget) {
-            this.activeWidget = this.widgets.find((w) => w.tabStop) || null;
+            this.setActiveWidget(this.widgets.find((w) => w.tabStop) || null);
             return !!this.activeWidget;
         }
         const next = GWU.arrayNext(this.widgets, this.activeWidget, (w) => w.tabStop);
         if (next) {
-            this.activeWidget = next;
+            this.setActiveWidget(next);
             return true;
         }
         return false;
     }
     prevTabstop() {
         if (!this.activeWidget) {
-            this.activeWidget = this.widgets.find((w) => w.tabStop) || null;
+            this.setActiveWidget(this.widgets.find((w) => w.tabStop) || null);
             return !!this.activeWidget;
         }
         const prev = GWU.arrayPrev(this.widgets, this.activeWidget, (w) => w.tabStop);
         if (prev) {
-            this.activeWidget = prev;
+            this.setActiveWidget(prev, true);
             return true;
         }
         return false;
     }
-    tick(e) {
+    async tick(e) {
         const dt = e.dt;
         let promises = [];
         Object.entries(this.timers).forEach(([action, time]) => {
             time -= dt;
             if (time <= 0) {
                 delete this.timers[action];
-                const r = this.fireAction(action, null);
-                if (r && r.then) {
-                    promises.push(r);
-                }
+                promises.push(this.fireAction(action, null));
             }
             else {
                 this.timers[action] = time;
             }
         });
         for (let w of this.widgets) {
-            const r = w.tick(e, this.ui);
-            if (r && r.then) {
-                promises.push(r);
-            }
+            promises.push(w.tick(e, this));
         }
         if (promises.length) {
             return Promise.all(promises).then(() => this.done);
@@ -466,68 +743,72 @@ class Dialog {
         return this.done;
     }
     // TODO - async - to allow animations or events on mouseover?
-    mousemove(e) {
-        // this.activeWidget = null;
-        this.widgets.forEach((w) => {
-            w.mousemove(e, this.ui);
+    async mousemove(e) {
+        // this.setActiveWidget(null);
+        await Promise.all(this.widgets.map(async (w) => {
+            await w.mousemove(e, this);
             if (w.hovered && w.tabStop) {
-                this.activeWidget = w;
+                this.setActiveWidget(w);
             }
-        });
+        }));
         return this.done;
     }
-    click(e) {
-        this.mousemove(e); // make sure activeWidget is set correctly
+    async click(e) {
+        // this.mousemove(e); // make sure activeWidget is set correctly
+        // if (!this.contains(e)) {
+        //     return false;
+        // }
+        const widget = this.widgetAt(e.x, e.y);
         let fn = null;
-        if (this.activeWidget) {
-            fn = this.clickHandlers[this.activeWidget.id];
+        if (widget) {
+            if (await widget.click(e, this)) {
+                return this.done;
+            }
+            fn = this.eventHandlers[widget.id];
         }
-        if (!fn && this.contains(e)) {
-            fn = this.clickHandlers[this.id];
-        }
-        if (!fn) {
-            fn = this.clickHandlers.click;
-        }
+        fn = fn || this.eventHandlers[this.id] || this.eventHandlers.click;
         if (fn) {
-            const r = fn(e, this.activeWidget, this);
-            if (r && r.then) {
-                return r.then(() => this.done);
-            }
-        }
-        else if (this.activeWidget) {
-            const r = this.activeWidget.click(e, this.ui);
-            if (typeof r !== 'boolean') {
-                return r.then(() => this.done);
-            }
+            await fn(e, this, this.activeWidget);
         }
         return this.done;
     }
-    keypress(e) {
+    async keypress(e) {
         if (!e.key)
             return false;
-        const fn = this.keypressHandlers[e.key] ||
-            (e.code && this.keypressHandlers[e.code]) ||
-            this.keypressHandlers.keypress;
-        if (fn) {
-            const r = fn(e, this.activeWidget, this);
-            if (r && r.then) {
-                return r.then(() => this.done);
-            }
-            return this.done;
-        }
         if (this.activeWidget) {
-            const r = this.activeWidget.keypress(e, this.ui);
-            if (typeof r !== 'boolean') {
-                return r.then(() => this.done);
+            if (await this.activeWidget.keypress(e, this)) {
+                return this.done;
             }
-            if (e.key === 'Tab') {
-                // Next widget
-                this.nextTabstop();
+        }
+        const fn = this.eventHandlers[e.key] ||
+            this.eventHandlers[e.code] ||
+            this.eventHandlers.keypress;
+        if (fn) {
+            if (await fn(e, this, this.activeWidget)) {
+                return this.done;
             }
-            else if (e.key === 'TAB') {
-                // Prev Widget
-                this.prevTabstop();
+        }
+        if (e.key === 'Tab') {
+            // Next widget
+            this.nextTabstop();
+            return false; // not done
+        }
+        else if (e.key === 'TAB') {
+            // Prev Widget
+            this.prevTabstop();
+            return false; // not done
+        }
+        return this.done;
+    }
+    async dir(e) {
+        if (this.activeWidget) {
+            if (await this.activeWidget.dir(e, this)) {
+                return this.done;
             }
+        }
+        const fn = this.eventHandlers.dir || this.eventHandlers.keypress;
+        if (fn) {
+            await fn(e, this, this.activeWidget);
         }
         return this.done;
     }
@@ -553,35 +834,15 @@ class Dialog {
 class DialogBuilder {
     constructor(ui, opts = {}) {
         this.nextY = 0;
-        this.padY = 1;
-        this.padX = 1;
-        this.padX = opts.padX || opts.pad || 1;
-        this.padY = opts.padY || opts.pad || 1;
-        this.nextY = this.padY;
+        this.nextY = 1;
         this.dialog = new Dialog(ui, opts);
     }
     with(widget) {
         // widget bounds are set relative to the dialog top left,
         // if we don't get any, help them out
-        let y = widget.bounds.y;
-        if (y >= 0 && y < this.padY) {
-            y = this.nextY;
-        }
-        else if (y < 0 && y > -this.padY) {
-            y = -this.padY;
-        }
-        widget.bounds.y = y;
-        let x = widget.bounds.x;
-        if (x >= 0 && x < this.padX) {
-            x = this.padX;
-        }
-        else if (x < 0 && x > -this.padX) {
-            x = -this.padX;
-        }
-        widget.bounds.x = x;
         // TODO - Get rid of x, y
         this.addWidget(widget);
-        this.nextY = Math.max(this.nextY, widget.bounds.bottom + 1 + this.padY);
+        this.nextY = Math.max(this.nextY, widget.bounds.bottom + 1);
         return this;
     }
     center() {
@@ -598,6 +859,14 @@ class DialogBuilder {
         return this;
     }
     done() {
+        if (this.dialog.bounds.x < 0)
+            this.dialog.bounds.x = 0;
+        if (this.dialog.bounds.y < 0)
+            this.dialog.bounds.y = 0;
+        if (this.dialog.bounds.right > this.dialog.ui.buffer.width)
+            throw new Error('Dialog is off screen!');
+        if (this.dialog.bounds.bottom > this.dialog.ui.buffer.height)
+            throw new Error('Dialog is off screen!');
         // lock in locations
         this.dialog.widgets.forEach((w) => {
             w.bounds.x += this.dialog.bounds.x;
@@ -606,20 +875,19 @@ class DialogBuilder {
         return this.dialog;
     }
     addWidget(widget) {
-        widget.parent = this.dialog;
         const dlgBounds = this.dialog.bounds;
         const x = widget.bounds.x;
         const y = widget.bounds.y;
         if (x >= 0) {
-            dlgBounds.width = Math.max(dlgBounds.width, widget.bounds.width + x + this.padX);
+            dlgBounds.width = Math.max(dlgBounds.width, widget.bounds.width + x);
         }
-        else {
+        else if (x < 0) {
             widget.bounds.x = dlgBounds.width - widget.bounds.width + x;
         }
         if (y >= 0) {
-            dlgBounds.height = Math.max(dlgBounds.height, widget.bounds.height + y + this.padY);
+            dlgBounds.height = Math.max(dlgBounds.height, widget.bounds.height + y);
         }
-        else {
+        else if (y < 0) {
             widget.bounds.y = dlgBounds.height - widget.bounds.height + y;
         }
         this.dialog.widgets.push(widget);
@@ -701,7 +969,7 @@ class UI {
         }
         const padX = opts.padX || opts.pad || 1;
         const padY = opts.padY || opts.pad || 1;
-        opts.width = opts.width || GWU.text.length(text) + padX * 2;
+        opts.width = opts.width || GWU.text.length(text) + 2 * padX;
         const textOpts = {
             fg: opts.fg,
             text,
@@ -711,13 +979,18 @@ class UI {
         };
         textOpts.text = text;
         textOpts.wrap = opts.width;
+        const textWidget = new Text('TEXT', textOpts);
+        opts.height =
+            (opts.title ? 1 : 0) + padY + textWidget.bounds.height + padY;
         const dlg = buildDialog(this, opts)
-            .with(new Text('TEXT', textOpts))
+            .with(textWidget)
             .center()
             .done();
-        dlg.setClickHandlers({ click: () => dlg.close(true) }); // any click
-        dlg.setKeyHandlers({ keypress: () => dlg.close(true) }); // any key
-        dlg.setActionHandlers({ TIMEOUT: () => dlg.close(false) });
+        dlg.setEventHandlers({
+            click: () => dlg.close(true),
+            keypress: () => dlg.close(true),
+            TIMEOUT: () => dlg.close(false),
+        });
         if (!opts.waitForAck) {
             dlg.setTimeout('TIMEOUT', opts.duration || 3000);
         }
@@ -744,15 +1017,18 @@ class UI {
         const padY = opts.padY || opts.pad || 1;
         opts.width =
             opts.width ||
-                Math.min(Math.floor(this.buffer.width / 2), GWU.text.length(text) + padX * 2);
-        let textWidth = opts.width - padX * 2;
+                Math.min(Math.floor(this.buffer.width / 2), GWU.text.length(text) + 2 * padX);
+        let textWidth = opts.width - 2 * padX;
         const textOpts = {
             fg: opts.fg,
             text,
             wrap: textWidth,
+            y: opts.title ? 2 : 1,
+            x: padX,
         };
         const textWidget = new Text('TEXT', textOpts);
-        opts.height = textWidget.bounds.height + 2 * padY + 2;
+        opts.height =
+            (opts.title ? 1 : 0) + padY + textWidget.bounds.height + 2 + padY;
         opts.allowCancel = opts.allowCancel !== false;
         opts.buttons = Object.assign({
             fg: 'white',
@@ -772,20 +1048,18 @@ class UI {
         const cancelOpts = Object.assign({}, opts.buttons, { text: 'CANCEL', y: -padY, x: -padX }, opts.cancel);
         const builder = buildDialog(this, opts)
             .with(textWidget)
-            .with(new Button$1('OK', okOpts));
+            .with(new Button('OK', okOpts));
         if (opts.allowCancel) {
-            builder.with(new Button$1('CANCEL', cancelOpts));
+            builder.with(new Button('CANCEL', cancelOpts));
         }
         const dlg = builder.center().done();
-        dlg.setClickHandlers({
+        dlg.setEventHandlers({
             OK() {
                 dlg.close(true);
             },
             CANCEL() {
                 dlg.close(false);
             },
-        });
-        dlg.setKeyHandlers({
             Escape() {
                 dlg.close(false);
             },
@@ -795,49 +1069,68 @@ class UI {
         });
         return await dlg.show();
     }
+    async showWidget(widget, keymap = {}) {
+        if (widget.bounds.x < 0) {
+            widget.bounds.x = Math.floor((this.buffer.width - widget.bounds.width) / 2);
+        }
+        if (widget.bounds.y < 0) {
+            widget.bounds.y = Math.floor((this.buffer.height - widget.bounds.height) / 2);
+        }
+        const dlg = new Dialog(this, {
+            width: widget.bounds.width,
+            height: widget.bounds.height,
+            widgets: [widget],
+            x: widget.bounds.x,
+            y: widget.bounds.y,
+        });
+        keymap.Escape =
+            keymap.Escape ||
+                (() => {
+                    dlg.close(false);
+                });
+        dlg.setEventHandlers(keymap);
+        return await dlg.show();
+    }
     // assumes you are in a dialog and give the buffer for that dialog
     async getInputAt(x, y, maxLength, opts = {}) {
         opts.width = maxLength;
         opts.x = x;
         opts.y = y;
         const widget = new Input('INPUT', opts);
-        const buffer = this.startLayer();
-        await this.loop.run({
-            Enter: () => {
-                return true; // done
+        return this.showWidget(widget, {
+            INPUT(_e, dlg) {
+                dlg.close(widget.text);
             },
-            Escape: () => {
-                widget.text = '';
-                return true; // done
-            },
-            keypress: (e) => {
-                widget.keypress(e, this);
-            },
-            draw() {
-                widget.draw(buffer);
-                buffer.render();
+            Escape(_e, dlg) {
+                dlg.close('');
             },
         });
-        this.finishLayer();
-        return widget.text;
     }
     async inputBox(opts, prompt, args) {
-        const padX = opts.padX || opts.pad || 1;
-        const padY = opts.padY || opts.pad || 1;
         if (args) {
             prompt = GWU.text.apply(prompt, args);
         }
+        const padX = opts.padX || opts.pad || 1;
+        const padY = opts.padY || opts.pad || 1;
         opts.width =
             opts.width ||
-                Math.min(Math.floor(this.buffer.width / 2), GWU.text.length(prompt) + padX * 2);
-        let promptWidth = opts.width - padX * 2;
+                Math.min(Math.floor(this.buffer.width / 2), GWU.text.length(prompt) + 2 * padX);
+        let promptWidth = opts.width - 2 * padX;
         const promptOpts = {
             fg: opts.fg,
             text: prompt,
             wrap: promptWidth,
+            x: padX,
+            y: (opts.title ? 1 : 0) + padY,
         };
         const promptWidget = new Text('TEXT', promptOpts);
-        opts.height = promptWidget.bounds.height + 2 * padY + 4;
+        opts.height =
+            (opts.title ? 1 : 0) +
+                padY +
+                promptWidget.bounds.height +
+                3 +
+                1 +
+                padY;
         opts.allowCancel = opts.allowCancel !== false;
         opts.buttons = Object.assign({
             fg: 'white',
@@ -859,28 +1152,28 @@ class UI {
         opts.input.width = opts.input.width || promptWidth;
         opts.input.bg = opts.input.bg || opts.fg;
         opts.input.fg = opts.input.fg || opts.bg;
+        opts.input.x = padX;
+        opts.input.y = opts.height - 1 - padY - 2;
         const inputWidget = new Input('INPUT', opts.input || {});
         const builder = buildDialog(this, opts)
             .with(promptWidget)
             .with(inputWidget)
-            .with(new Button$1('OK', okOpts));
+            .with(new Button('OK', okOpts));
         if (opts.allowCancel) {
-            builder.with(new Button$1('CANCEL', cancelOpts));
+            builder.with(new Button('CANCEL', cancelOpts));
         }
         const dlg = builder.center().done();
-        dlg.setClickHandlers({
+        dlg.setEventHandlers({
             OK() {
                 dlg.close(inputWidget.text);
             },
             CANCEL() {
                 dlg.close('');
             },
-        });
-        dlg.setKeyHandlers({
             Escape() {
                 dlg.close('');
             },
-            Enter() {
+            INPUT() {
                 dlg.close(inputWidget.text);
             },
         });
@@ -893,6 +1186,8 @@ class Messages extends Widget {
         super(id, opts);
     }
     init(opts) {
+        opts.x = opts.x || 0;
+        opts.y = opts.y || 0;
         super.init(opts);
         if (!this.bounds.height)
             throw new Error('Must provde a height for messages widget.');
@@ -900,16 +1195,14 @@ class Messages extends Widget {
             width: this.bounds.width,
             length: opts.length || 40,
             match: (_x, _y) => {
-                if (this.parent)
-                    this.parent.requestRedraw();
                 return true;
             },
         });
     }
-    click(e, ui) {
+    click(e, dialog) {
         if (!this.contains(e))
             return false;
-        return this.showArchive(ui).then(() => true);
+        return this.showArchive(dialog).then(() => true);
     }
     draw(buffer) {
         const isOnTop = this.bounds.y < 10;
@@ -927,9 +1220,10 @@ class Messages extends Widget {
         });
         return true;
     }
-    async showArchive(ui) {
+    async showArchive(dialog) {
         let reverse, fadePercent = 0;
         let fastForward;
+        const ui = dialog.ui;
         // Count the number of lines in the archive.
         let totalMessageCount = this.cache.length;
         if (totalMessageCount <= this.bounds.height)
@@ -994,8 +1288,7 @@ class Messages extends Widget {
         }
         ui.finishLayer();
         this.cache.confirmAll();
-        if (this.parent)
-            this.parent.requestRedraw(); // everything is confirmed
+        dialog.requestRedraw(); // everything is confirmed
         return true;
     }
 }
@@ -1009,6 +1302,8 @@ class Viewport extends Widget {
     }
     init(opts) {
         opts.bg = opts.bg || 'black';
+        opts.x = opts.x || 0;
+        opts.y = opts.y || 0;
         super.init(opts);
         this.snap = opts.snap || false;
         this.center = opts.center || false;
@@ -1036,8 +1331,6 @@ class Viewport extends Widget {
             this.offsetY = subject.y - this.halfHeight();
         }
         this._subject = subject;
-        if (this.parent)
-            this.parent.requestRedraw();
     }
     set lock(v) {
         this.lockX = v;
@@ -1193,15 +1486,11 @@ class Flavor extends Text {
             this.lines = [this.text];
         }
         this.isPrompt = false;
-        if (this.parent)
-            this.parent.requestRedraw();
     }
     clear() {
         this.text = '';
         this.lines = [''];
         this.isPrompt = false;
-        if (this.parent)
-            this.parent.requestRedraw();
     }
     showPrompt(text) {
         this.showText(text);
@@ -1385,8 +1674,8 @@ class Sidebar extends Widget {
             return entry.sidebarY <= e.y && entry.sidebarY !== -1;
         }) || null);
     }
-    mousemove(e, ui) {
-        super.mousemove(e, ui);
+    mousemove(e, dialog) {
+        super.mousemove(e, dialog);
         if (this.contains(e)) {
             return this.highlightRow(e.y);
         }
@@ -1401,15 +1690,11 @@ class Sidebar extends Widget {
                 this.highlight = e;
             }
         });
-        if (this.parent)
-            this.parent.requestRedraw();
         return this.highlight !== last;
     }
     clearHighlight() {
         const result = !!this.highlight;
         this.highlight = null;
-        if (this.parent)
-            this.parent.requestRedraw();
         return result;
     }
     updateCellCache(map) {
@@ -1543,8 +1828,6 @@ class Sidebar extends Widget {
     updateAt(map, cx, cy, fov) {
         this.updateCellCache(map);
         this.findEntries(map, cx, cy, fov);
-        if (this.parent)
-            this.parent.requestRedraw();
         return true;
     }
     draw(buffer) {
@@ -1570,7 +1853,7 @@ class Sidebar extends Widget {
     }
 }
 
-class Button {
+class MenuButton {
     constructor(text) {
         this.hovered = false;
         this.x = 999;
@@ -1580,16 +1863,13 @@ class Button {
         return this.text.length;
     }
 }
-class ActionButton extends Button {
-    constructor(text, fn) {
+class ActionButton extends MenuButton {
+    constructor(text, action) {
         super(text);
-        this.fn = fn;
-    }
-    activate(e, ui) {
-        return this.fn(e, ui, this);
+        this.action = action;
     }
 }
-class DropDownButton extends Button {
+class DropDownButton extends MenuButton {
     constructor(menu, parent, text, buttons) {
         super(text);
         this.buttons = [];
@@ -1607,17 +1887,8 @@ class DropDownButton extends Button {
         //     throw new Error('Too many menu options.');
         // }
         let button;
-        if (typeof config === 'function') {
+        if (typeof config === 'string') {
             button = new ActionButton(text, config);
-        }
-        else if (typeof config === 'string') {
-            button = new ActionButton(text, () => {
-                const r = this.menu.parent.fireAction(config, this.menu);
-                if (r && r.then) {
-                    return r.then(() => true);
-                }
-                return true;
-            });
         }
         else {
             button = new DropDownButton(this.menu, this, text, config);
@@ -1678,13 +1949,52 @@ class DropDownButton extends Button {
         }
     }
 }
-async function showDropDown(menu, button, ui) {
+async function showDropDown(dialog, menu, button) {
     // Start dialog
-    const dialog = ui.startLayer();
+    const ui = dialog.ui;
+    const buffer = ui.startLayer();
+    button.buttons.forEach((b) => (b.hovered = false));
+    button.buttons[0].hovered = true;
     let activeButton = button;
     await ui.loop.run({
         Escape() {
             return true;
+        },
+        // TODO - Tab
+        Tab() {
+            menu.activeIndex = (menu.activeIndex + 1) % menu.buttons.length;
+            const button = menu.buttons[menu.activeIndex];
+            if (button) {
+                button.hovered = true;
+            }
+            if (activeButton && button instanceof DropDownButton) {
+                activeButton.hovered = false;
+                activeButton = button;
+            }
+            else {
+                activeButton = null; // done.
+            }
+            dialog.requestRedraw();
+            return !activeButton;
+        },
+        // TODO - TAB
+        TAB() {
+            menu.activeIndex =
+                (menu.buttons.length + menu.activeIndex - 1) %
+                    menu.buttons.length;
+            const button = menu.buttons[menu.activeIndex];
+            if (button) {
+                button.hovered = true;
+            }
+            if (activeButton && button instanceof DropDownButton) {
+                activeButton.hovered = false;
+                activeButton = button;
+            }
+            else {
+                activeButton = null; // done.
+            }
+            dialog.requestRedraw();
+            return !activeButton;
         },
         mousemove: (e) => {
             if (!activeButton)
@@ -1705,6 +2015,7 @@ async function showDropDown(menu, button, ui) {
                         selected.buttons.forEach((b) => {
                             b.hovered = false;
                         });
+                        selected.buttons[0].hovered = true;
                         selected.setBounds(ui.buffer, activeButton.bounds.x, e.y, activeButton.bounds.width);
                         activeButton = selected;
                     }
@@ -1712,19 +2023,22 @@ async function showDropDown(menu, button, ui) {
             }
             else {
                 if (menu.contains(e)) {
-                    if (menu.parent)
-                        menu.parent.requestRedraw();
+                    if (dialog)
+                        dialog.requestRedraw();
                     const button = menu.getButtonAt(e.x, e.y);
+                    if (button) {
+                        button.hovered = true;
+                        menu.activeIndex = menu.buttons.indexOf(button);
+                    }
                     if (button instanceof DropDownButton) {
                         activeButton.hovered = false;
                         activeButton = button;
-                        activeButton.hovered = true;
                     }
                     else {
                         activeButton = null; // done.
-                        if (button)
-                            button.hovered = true;
                     }
+                    if (dialog)
+                        dialog.requestRedraw();
                 }
             }
             return !activeButton; // if no active button we are done (should not happen)
@@ -1741,16 +2055,19 @@ async function showDropDown(menu, button, ui) {
                 return true; // weird, but we are done.
             }
             if (actionButton instanceof ActionButton) {
-                return actionButton.activate(e, ui); // actions return true if they want to close the menu (otherwise the menu stays open)
+                menu.actionButton = actionButton;
+                await dialog.fireAction(actionButton.action, menu);
+                return true;
             }
+            return false;
         },
         draw: () => {
             if (!activeButton)
                 return;
-            ui.resetLayerBuffer(dialog);
-            activeButton.draw(dialog);
-            menu.draw(dialog);
-            dialog.render();
+            ui.resetLayerBuffer(buffer);
+            activeButton.draw(buffer);
+            menu.draw(buffer);
+            buffer.render();
         },
     });
     ui.finishLayer();
@@ -1759,12 +2076,14 @@ async function showDropDown(menu, button, ui) {
 class Menu extends Widget {
     constructor(id, opts) {
         super(id, opts);
+        this.activeIndex = -1;
+        this.actionButton = null;
     }
     init(opts) {
-        var _a, _b;
-        opts.fg = (_a = opts.fg) !== null && _a !== void 0 ? _a : 'black';
-        opts.bg = (_b = opts.bg) !== null && _b !== void 0 ? _b : 'light_gray';
+        opts.fg = GWU.first(opts.fg, 'black');
+        opts.bg = GWU.first(opts.bg, 'light_gray');
         opts.height = opts.height || 1;
+        opts.tabStop = GWU.first(opts.tabStop, true);
         super.init(opts);
         this.dropFg = GWU.color.from(opts.dropFg || this.fg);
         this.dropBg = GWU.color.from(opts.dropBg || this.bg);
@@ -1781,13 +2100,24 @@ class Menu extends Widget {
             this.lead = opts.lead ? opts.lead : '';
         }
     }
-    mousemove(e) {
+    activate(reverse = false) {
+        super.activate(reverse);
+        if (this.activeIndex < 0)
+            this.activeIndex = reverse ? this.buttons.length - 1 : 0;
+    }
+    deactivate() {
+        super.deactivate();
+        this.activeIndex = -1;
+    }
+    mousemove(e, dialog) {
         // turn off all the hovers
         this.buttons.forEach((b) => {
             if (b.hovered) {
                 b.hovered = false;
             }
         });
+        if (!super.mousemove(e, dialog))
+            return false;
         // highlight one of them...
         if (this.bounds.contains(e)) {
             let hovered = null;
@@ -1800,9 +2130,10 @@ class Menu extends Widget {
             if (hovered) {
                 // @ts-ignore
                 hovered.hovered = true;
+                this.activeIndex = this.buttons.indexOf(hovered);
             }
-            if (this.parent)
-                this.parent.requestRedraw();
+            if (dialog)
+                dialog.requestRedraw();
             return true; // we handled the message
         }
         return false;
@@ -1811,27 +2142,59 @@ class Menu extends Widget {
         this.buttons.forEach((b) => {
             b.hovered = false;
         });
-        if (this.parent)
-            this.parent.requestRedraw();
     }
     getButtonAt(x, _y) {
         return GWU.arrayFindRight(this.buttons, (b) => b.x < x) || null;
     }
-    async click(e, ui) {
+    async click(e, dialog) {
         if (this.bounds.contains(e)) {
             // get active button
             let activeButton = this.getButtonAt(e.x, e.y);
             if (!activeButton)
                 return false;
+            this.activeIndex = this.buttons.indexOf(activeButton);
             if (activeButton instanceof DropDownButton) {
-                await showDropDown(this, activeButton, ui);
+                await showDropDown(dialog, this, activeButton);
             }
             else if (activeButton instanceof ActionButton) {
-                await activeButton.activate(e, ui);
+                this.actionButton = activeButton;
+                await dialog.fireAction(activeButton.action, this);
             }
             return true;
         }
         return false;
+    }
+    async keypress(e, dialog) {
+        if (this.active) {
+            if (e.key === 'Tab') {
+                ++this.activeIndex;
+                if (this.activeIndex >= this.buttons.length) {
+                    this.deactivate();
+                    return false; // tabbing away from me, need to process in dialog
+                }
+                return true;
+            }
+            else if (e.key === 'TAB') {
+                --this.activeIndex;
+                if (this.activeIndex < 0) {
+                    this.deactivate();
+                    return false; // shift tabbing away from me, need to process in dialog
+                }
+                return true;
+            }
+            else if (e.key === 'Enter') {
+                const activeButton = this.buttons[this.activeIndex];
+                if (activeButton instanceof DropDownButton) {
+                    await showDropDown(dialog, this, activeButton);
+                }
+                else if (activeButton instanceof ActionButton) {
+                    this.actionButton = activeButton;
+                    await dialog.fireAction(activeButton.action, this);
+                }
+                return true;
+            }
+        }
+        return super.keypress(e, dialog);
     }
     _addButton(text, config) {
         const x = this.buttons.reduce((len, button) => len + button.text.length + this.separator.length, this.lead.length + this.bounds.x);
@@ -1839,7 +2202,7 @@ class Menu extends Widget {
             throw new Error('Button makes menu too wide :' + text);
         }
         let button;
-        if (typeof config === 'function') {
+        if (typeof config === 'string') {
             button = new ActionButton(text, config);
         }
         else {
@@ -1857,19 +2220,22 @@ class Menu extends Widget {
         this.buttons.push(button);
     }
     draw(buffer) {
-        buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, 1, 0, 0, this.bg);
+        const bg = this.active ? this.activeBg : this.bg;
+        const fg = this.active ? this.activeFg : this.fg;
+        buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, 1, 0, bg, bg);
         let x = this.bounds.x;
         const y = this.bounds.y;
-        buffer.drawText(x, y, this.lead, this.fg);
-        this.buttons.forEach((b) => {
-            const color = b.hovered ? this.activeFg : this.fg;
-            const bgColor = b.hovered ? this.activeBg : this.bg;
+        buffer.drawText(x, y, this.lead, fg);
+        this.buttons.forEach((b, i) => {
+            const hovered = i === this.activeIndex;
+            const color = hovered ? this.hoverFg : fg;
+            const bgColor = hovered ? this.hoverBg : bg;
             buffer.drawText(b.x, y, b.text, color, bgColor);
             x = b.x + b.text.length;
-            buffer.drawText(x, y, this.separator, this.fg);
+            buffer.drawText(x, y, this.separator, fg);
         });
         return true;
     }
 }
 
-export { ActionButton, ActorEntry, Button, CellEntry, DropDownButton, EntryBase, Flavor, ItemEntry, Menu, Messages, Sidebar, UI, Viewport, showDropDown };
+export { ActionButton, ActorEntry, Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input, ItemEntry, Menu, MenuButton, Messages, Sidebar, Table, Text, UI, Viewport, Widget, buildDialog, makeTable, showDropDown };

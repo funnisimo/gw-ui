@@ -11,6 +11,8 @@ describe('Text Widget', () => {
         expect(widget.text).toEqual('Testing a long message.');
         expect(widget.bounds.width).toEqual(23);
         expect(widget.bounds.height).toEqual(1);
+        expect(widget.bounds.x).toEqual(-1);
+        expect(widget.bounds.y).toEqual(-1);
 
         // Truncates
         widget = new Widget.Text('TEST', {
@@ -20,15 +22,22 @@ describe('Text Widget', () => {
         expect(widget.text).toEqual('Testing a long messa');
         expect(widget.bounds.width).toEqual(20);
         expect(widget.bounds.height).toEqual(1);
+        expect(widget.bounds.x).toEqual(-1);
+        expect(widget.bounds.y).toEqual(-1);
 
         // Wraps
         widget = new Widget.Text('TEST', {
             text: 'Testing a long message.',
             wrap: 20,
+            x: 0,
+            y: 0,
         });
         expect(widget.text).toEqual('Testing a long message.');
         expect(widget.bounds.width).toEqual(20);
         expect(widget.bounds.height).toEqual(2);
+        expect(widget.bounds.x).toEqual(0);
+        expect(widget.bounds.y).toEqual(0);
+
         expect(widget.lines).toEqual(['Testing a long', 'message.']);
 
         const buffer = new GWU.canvas.DataBuffer(100, 40);
@@ -39,7 +48,12 @@ describe('Text Widget', () => {
     });
 
     test('draw', () => {
-        const widget = new Widget.Text('TEST', { text: 'Test', fg: 'red' });
+        const widget = new Widget.Text('TEST', {
+            text: 'Test',
+            fg: 'red',
+            x: 0,
+            y: 0,
+        });
         expect(widget.text).toEqual('Test');
         expect(widget.lines).toEqual(['Test']);
         expect(widget.bounds.x).toEqual(0);

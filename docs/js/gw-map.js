@@ -3627,7 +3627,7 @@
                 actor.fov = new GWU__namespace.fov.FovSystem(map);
                 actor.fov.follow = actor;
                 if (actor.memory) {
-                    actor.fov.onFovChange = actor.memory;
+                    actor.fov.callback = actor.memory;
                 }
             }
         }

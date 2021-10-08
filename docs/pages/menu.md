@@ -6,37 +6,32 @@ A menu is a horizontal menu like the file menu in desktop applications. It allow
 const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
 SHOW(canvas.node);
 
-function clickHandler(e, ui, button) {
-    ui.baseBuffer.fillRect(40, 15, 20, 5, 0, 0, 0);
-    const text = GWU.text.center(button.text, 16);
-    ui.baseBuffer.drawText(42, 17, text, 'white');
-    return true;
-}
-
 const ui = new GWI.UI({ canvas, loop: LOOP });
 const topMenu = new GWI.Menu('TOP_MENU', {
     x: 0,
     y: 0,
     width: 80,
-    bg: 'red',
     fg: 'yellow',
+    bg: 'red',
     activeFg: 'white',
     activeBg: 'dark_red',
+    hoverFg: 'teal',
+    hoverBg: 'blue',
     buttons: {
-        File: clickHandler,
+        File: 'PRINT',
         Insert: {
-            Apple: clickHandler,
+            Apple: 'PRINT',
             Banana: {
-                Sliced: clickHandler,
-                'Chocolate Covered': clickHandler,
-                Whole: clickHandler,
+                Sliced: 'PRINT',
+                'Chocolate Covered': 'PRINT',
+                Whole: 'PRINT',
             },
-            Carrot: clickHandler,
+            Carrot: 'PRINT',
         },
         Window: {
-            Automobile: clickHandler,
-            Biplane: clickHandler,
-            ChooChoo: clickHandler,
+            Automobile: 'PRINT',
+            Biplane: 'PRINT',
+            ChooChoo: 'PRINT',
         },
     },
 });
@@ -48,43 +43,51 @@ const bottomMenu = new GWI.Menu('BOTTOM_MENU', {
     bg: 'blue',
     fg: 'white',
     activeFg: 'gold',
+    hoverFg: 'teal',
+    hoverBg: 'blue',
+
     buttons: {
-        Add: clickHandler,
+        Add: 'PRINT',
         Remove: {
-            Airplane: clickHandler,
-            Bicycle: clickHandler,
-            Car: clickHandler,
+            Airplane: 'PRINT',
+            Bicycle: 'PRINT',
+            Car: 'PRINT',
         },
         Test: {
-            Automobile: clickHandler,
-            Biplane: clickHandler,
-            ChooChoo: clickHandler,
+            Automobile: 'PRINT',
+            Biplane: 'PRINT',
+            ChooChoo: 'PRINT',
         },
     },
 });
 
-let needDraw = true;
-LOOP.run({
-    async click(e) {
-        if (await topMenu.click(e, ui)) {
-            needDraw = true;
-        }
-        if (await bottomMenu.click(e, ui)) {
-            needDraw = true;
-        }
-    },
-    mousemove(e) {
-        // Need to do both so that hover gets cleared correctly
-        let handled = topMenu.mousemove(e, ui);
-        handled = bottomMenu.mousemove(e, ui) || handled;
-        needDraw |= handled;
-    },
-    draw() {
-        needDraw = topMenu.draw(ui.buffer) || needDraw;
-        needDraw = bottomMenu.draw(ui.buffer) || needDraw;
-        if (needDraw) {
-            ui.render();
-        }
+const text = new GWI.Text('OUTPUT', {
+    x: 20,
+    y: 10,
+    wrap: 60,
+    height: 18,
+    text: 'Try out the menu!',
+    valign: 'middle',
+    align: 'center',
+});
+
+const builder = GWI.buildDialog(ui, {
+    width: canvas.width,
+    height: canvas.height,
+});
+builder.with(topMenu);
+builder.with(text);
+builder.with(bottomMenu);
+const dialog = builder.done();
+
+dialog.setEventHandlers({
+    PRINT: (action, dialog, menu) => {
+        const button = menu.actionButton;
+        text.setText(button.text);
+        dialog.requestRedraw();
+        return true;
     },
 });
+
+dialog.show();
 ```

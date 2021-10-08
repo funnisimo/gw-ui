@@ -1,8 +1,7 @@
 import * as GWU from 'gw-utils';
-import { UICore } from '..';
 import * as Widget from './widget';
 
-export interface InputOptions extends Widget.WidgetOptions {
+export interface InputOptions extends Omit<Widget.WidgetOptions, 'text'> {
     errorFg?: GWU.color.ColorBase;
 
     hint?: string;
@@ -36,7 +35,7 @@ export class Input extends Widget.Widget {
         if (!opts.width) {
             opts.width = Math.max(this.minLength, 10);
         }
-        opts.tabStop = opts.tabStop ?? true; // Need to receive input
+        opts.tabStop = GWU.first(opts.tabStop, true); // Need to receive input
         super.init(opts);
 
         this.default = opts.default || '';
@@ -46,14 +45,14 @@ export class Input extends Widget.Widget {
         this.hintFg = opts.hintFg || this.errorFg;
 
         this.numbersOnly = opts.numbersOnly || false;
-        this.min = opts.min ?? Number.MIN_SAFE_INTEGER;
-        this.max = opts.max ?? Number.MAX_SAFE_INTEGER;
+        this.min = GWU.first(opts.min, Number.MIN_SAFE_INTEGER);
+        this.max = GWU.first(opts.max, Number.MAX_SAFE_INTEGER);
 
-        if (!this.bounds.width) {
+        if (this.bounds.width <= 0) {
             if (this.hint) this.bounds.width = this.hint.length;
             if (this.default) this.bounds.width = this.default.length;
         }
-        if (!this.bounds.height) {
+        if (this.bounds.height <= 0) {
             this.bounds.height = 1;
         }
 
@@ -79,13 +78,16 @@ export class Input extends Widget.Widget {
         return this.text;
     }
 
-    keypress(ev: GWU.io.Event, _ui: UICore): boolean | Promise<boolean> {
+    keypress(
+        ev: GWU.io.Event,
+        dialog: Widget.WidgetRunner
+    ): boolean | Promise<boolean> {
         const textEntryBounds = this.numbersOnly ? ['0', '9'] : [' ', '~'];
 
         if (!ev.key) return false;
 
         if (ev.key === 'Enter' && this.isValid()) {
-            const r = this.parent.fireAction(this.action, this);
+            const r = dialog.fireAction(this.action, this);
             if (r) return r.then(() => true);
             return true;
         }

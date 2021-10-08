@@ -6,8 +6,8 @@ export interface TextOptions extends Widget.WidgetOptions {
 }
 
 export class Text extends Widget.Widget {
-    // @ts-ignore
-    lines: string[];
+    lines!: string[];
+    wrap!: boolean;
 
     constructor(id: string, opts?: TextOptions) {
         super(id, opts);
@@ -21,6 +21,7 @@ export class Text extends Widget.Widget {
 
         this.text = opts.text || '';
         if (opts.wrap) {
+            this.wrap = true;
             opts.width = opts.wrap;
             this.lines = GWU.text.splitIntoLines(
                 this.text,
@@ -39,6 +40,19 @@ export class Text extends Widget.Widget {
         opts.height = Math.max(this.lines.length, opts.height || 1);
 
         super.init(opts);
+    }
+
+    setText(text: string) {
+        this.text = text;
+        if (this.wrap) {
+            this.lines = GWU.text.splitIntoLines(this.text, this.bounds.width);
+        } else {
+            const textLen = GWU.text.length(this.text);
+            if (textLen > this.bounds.width) {
+                this.text = GWU.text.truncate(this.text, this.bounds.width);
+            }
+            this.lines = [this.text];
+        }
     }
 
     // TODO - get text() {}, set text(v:string) { // do lines stuff }

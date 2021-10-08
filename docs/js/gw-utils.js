@@ -82,7 +82,7 @@
         if (startIndex < 0)
             return undefined;
         const dx = forward ? 1 : -1;
-        let startI = wrap ? (startIndex + dx) % len : startIndex + dx;
+        let startI = wrap ? (len + startIndex + dx) % len : startIndex + dx;
         let endI = wrap ? startIndex : forward ? len : -1;
         for (let index = startI; index !== endI; index = wrap ? (len + index + dx) % len : index + dx) {
             const e = a[index];
@@ -93,6 +93,26 @@
     }
     function arrayPrev(a, current, fn, wrap = true) {
         return arrayNext(a, current, fn, wrap, false);
+    }
+    function nextIndex(index, length, wrap = true) {
+        ++index;
+        if (index >= length) {
+            if (wrap)
+                return index % length;
+            return -1;
+        }
+        return index;
+    }
+    function prevIndex(index, length, wrap = true) {
+        if (index < 0)
+            return length - 1; // start in back
+        --index;
+        if (index < 0) {
+            if (wrap)
+                return length - 1;
+            return -1;
+        }
+        return index;
     }
 
     // DIRS are organized clockwise
@@ -550,6 +570,13 @@
         }
         return count;
     }
+    function at(root, index) {
+        while (root && index) {
+            root = root.next;
+            --index;
+        }
+        return root;
+    }
     function includes(root, entry) {
         while (root && root !== entry) {
             root = root.next;
@@ -655,6 +682,7 @@
     var list = /*#__PURE__*/Object.freeze({
         __proto__: null,
         length: length$1,
+        at: at,
         includes: includes,
         forEach: forEach,
         push: push,
@@ -1968,11 +1996,7 @@
         unite: unite
     });
 
-    var commands = {};
-    function addCommand(id, fn) {
-        commands[id] = fn;
-    }
-    let KEYMAP = {};
+    let IOMAP = {};
     const DEAD_EVENTS = [];
     const KEYPRESS = 'keypress';
     const MOUSEMOVE = 'mousemove';
@@ -1991,43 +2015,45 @@
         'MetaRight',
     ];
     function setKeymap(keymap) {
-        KEYMAP = keymap;
+        IOMAP = keymap;
+    }
+    function handlerFor(ev, km) {
+        let c;
+        if (ev.dir) {
+            c = km.dir || km.keypress;
+        }
+        else if (ev.type === KEYPRESS) {
+            c = km[ev.key] || km[ev.code] || km.keypress;
+        }
+        else if (km[ev.type]) {
+            c = km[ev.type];
+        }
+        if (!c) {
+            c = km.dispatch;
+        }
+        return c || null;
     }
     async function dispatchEvent(ev, km) {
         let result;
-        let command;
-        km = km || KEYMAP;
+        km = km || IOMAP;
         if (ev.type === STOP) {
             recycleEvent(ev);
             return true; // Should stop loops, etc...
         }
-        if (typeof km === 'function') {
-            command = km;
+        const handler = handlerFor(ev, km);
+        if (handler) {
+            // if (typeof c === 'function') {
+            result = await handler.call(km, ev);
+            // } else if (commands[c]) {
+            //     result = await commands[c](ev);
+            // } else {
+            //     Utils.WARN('No command found: ' + c);
+            // }
         }
-        else if (ev.dir) {
-            command = km.dir;
-        }
-        else if (ev.type === KEYPRESS) {
-            // @ts-ignore
-            command = km[ev.key] || km[ev.code] || km.keypress;
-        }
-        else if (km[ev.type]) {
-            command = km[ev.type];
-        }
-        if (command) {
-            if (typeof command === 'function') {
-                result = await command.call(km, ev);
-            }
-            else if (commands[command]) {
-                result = await commands[command](ev);
-            }
-            else {
-                WARN('No command found: ' + command);
-            }
-        }
-        if ('next' in km && km.next === false) {
-            result = false;
-        }
+        // TODO - what is this here for?
+        // if ('next' in km && km.next === false) {
+        //     result = false;
+        // }
         recycleEvent(ev);
         return result;
     }
@@ -2048,8 +2074,8 @@
         ev.altKey = false;
         ev.metaKey = false;
         ev.type = TICK;
-        ev.key = null;
-        ev.code = null;
+        ev.key = '';
+        ev.code = '';
         ev.x = -1;
         ev.y = -1;
         ev.dir = null;
@@ -2121,8 +2147,8 @@
         if (e.buttons && e.type !== 'mouseup') {
             ev.type = CLICK;
         }
-        ev.key = null;
-        ev.code = null;
+        ev.key = '';
+        ev.code = '';
         ev.x = x;
         ev.y = y;
         ev.clientX = e.clientX;
@@ -2382,8 +2408,6 @@
 
     var io = /*#__PURE__*/Object.freeze({
         __proto__: null,
-        commands: commands,
-        addCommand: addCommand,
         KEYPRESS: KEYPRESS,
         MOUSEMOVE: MOUSEMOVE,
         CLICK: CLICK,
@@ -2391,6 +2415,7 @@
         MOUSEUP: MOUSEUP,
         STOP: STOP,
         setKeymap: setKeymap,
+        handlerFor: handlerFor,
         dispatchEvent: dispatchEvent,
         makeStopEvent: makeStopEvent,
         makeTickEvent: makeTickEvent,
@@ -2437,7 +2462,7 @@
         FovFlags[FovFlags["PLAYER"] = FovFlags.IN_FOV] = "PLAYER";
         FovFlags[FovFlags["CLAIRVOYANT"] = FovFlags.CLAIRVOYANT_VISIBLE] = "CLAIRVOYANT";
         FovFlags[FovFlags["TELEPATHIC"] = FovFlags.TELEPATHIC_VISIBLE] = "TELEPATHIC";
-        FovFlags[FovFlags["VIEWPORT_TYPES"] = FovFlags.PLAYER |
+        FovFlags[FovFlags["VIEWPORT_TYPES"] = FovFlags.PLAYER | FovFlags.VISIBLE |
             FovFlags.CLAIRVOYANT |
             FovFlags.TELEPATHIC |
             FovFlags.ITEM_DETECTED |
@@ -2543,7 +2568,9 @@
     // import * as GWU from 'gw-utils';
     class FovSystem {
         constructor(site, opts = {}) {
-            this.onFovChange = { onFovChange: NOOP };
+            // needsUpdate: boolean;
+            this.changed = true;
+            this._callback = NOOP;
             this.follow = null;
             this.site = site;
             let flag = 0;
@@ -2553,27 +2580,40 @@
             if (visible)
                 flag |= FovFlags.VISIBLE;
             this.flags = make$7(site.width, site.height, flag);
-            this.needsUpdate = true;
-            this._changed = true;
-            if (typeof opts.onFovChange === 'function') {
-                this.onFovChange.onFovChange = opts.onFovChange;
-            }
-            else if (opts.onFovChange) {
-                this.onFovChange = opts.onFovChange;
+            // this.needsUpdate = true;
+            if (opts.callback) {
+                this.callback = opts.callback;
             }
             this.fov = new FOV({
-                isBlocked(x, y) {
-                    return site.blocksVision(x, y);
+                isBlocked: (x, y) => {
+                    return this.site.blocksVision(x, y);
                 },
-                hasXY(x, y) {
-                    return x >= 0 && y >= 0 && x < site.width && y < site.height;
+                hasXY: (x, y) => {
+                    return (x >= 0 &&
+                        y >= 0 &&
+                        x < this.site.width &&
+                        y < this.site.height);
                 },
             });
             if (opts.alwaysVisible) {
                 this.makeAlwaysVisible();
             }
             if (opts.visible || opts.alwaysVisible) {
-                forRect(site.width, site.height, (x, y) => this.onFovChange.onFovChange(x, y, true));
+                forRect(site.width, site.height, (x, y) => this._callback(x, y, true));
+            }
+        }
+        get callback() {
+            return this._callback;
+        }
+        set callback(v) {
+            if (!v) {
+                this._callback = NOOP;
+            }
+            else if (typeof v === 'function') {
+                this._callback = v;
+            }
+            else {
+                this._callback = v.onFovChange.bind(v);
             }
         }
         getFlag(x, y) {
@@ -2584,6 +2624,12 @@
         }
         isAnyKindOfVisible(x, y) {
             return !!((this.flags.get(x, y) || 0) & FovFlags.ANY_KIND_OF_VISIBLE);
+        }
+        isClairvoyantVisible(x, y) {
+            return !!((this.flags.get(x, y) || 0) & FovFlags.CLAIRVOYANT_VISIBLE);
+        }
+        isTelepathicVisible(x, y) {
+            return !!((this.flags.get(x, y) || 0) & FovFlags.TELEPATHIC_VISIBLE);
         }
         isInFov(x, y) {
             return !!((this.flags.get(x, y) || 0) & FovFlags.IN_FOV);
@@ -2604,6 +2650,9 @@
             const wasVisible = !!(flags & FovFlags.WAS_ANY_KIND_OF_VISIBLE);
             return isVisible !== wasVisible;
         }
+        wasAnyKindOfVisible(x, y) {
+            return !!((this.flags.get(x, y) || 0) & FovFlags.WAS_ANY_KIND_OF_VISIBLE);
+        }
         makeAlwaysVisible() {
             this.flags.update((v) => v |
                 (FovFlags.ALWAYS_VISIBLE | FovFlags.REVEALED | FovFlags.VISIBLE));
@@ -2611,7 +2660,8 @@
             this.changed = true;
         }
         makeCellAlwaysVisible(x, y) {
-            this.flags[x][y] |= FovFlags.ALWAYS_VISIBLE | FovFlags.REVEALED | FovFlags.VISIBLE;
+            this.flags[x][y] |=
+                FovFlags.ALWAYS_VISIBLE | FovFlags.REVEALED | FovFlags.VISIBLE;
             // TODO - onFovChange?
             this.changed = true;
         }
@@ -2645,19 +2695,20 @@
             this.changed = true;
             // TODO - onFovChange?
         }
-        get changed() {
-            return this._changed;
-        }
-        set changed(v) {
-            this._changed = v;
-            this.needsUpdate = this.needsUpdate || v;
-        }
+        // get changed(): boolean {
+        //     return this._changed;
+        // }
+        // set changed(v: boolean) {
+        //     this._changed = v;
+        //     this.needsUpdate = this.needsUpdate || v;
+        // }
         // CURSOR
-        setCursor(x, y, keep = false) {
-            if (!keep) {
-                this.flags.update((f) => f & ~FovFlags.IS_CURSOR);
-            }
+        setCursor(x, y) {
+            // if (!keep) {
+            //     this.flags.update((f) => f & ~FovFlags.IS_CURSOR);
+            // }
             this.flags[x][y] |= FovFlags.IS_CURSOR;
+            this.changed = true;
         }
         clearCursor(x, y) {
             if (x === undefined || y === undefined) {
@@ -2666,16 +2717,18 @@
             else {
                 this.flags[x][y] &= ~FovFlags.IS_CURSOR;
             }
+            this.changed = true;
         }
         isCursor(x, y) {
             return !!(this.flags[x][y] & FovFlags.IS_CURSOR);
         }
         // HIGHLIGHT
-        setHighlight(x, y, keep = false) {
-            if (!keep) {
-                this.flags.update((f) => f & ~FovFlags.IS_HIGHLIGHTED);
-            }
+        setHighlight(x, y) {
+            // if (!keep) {
+            //     this.flags.update((f) => f & ~FovFlags.IS_HIGHLIGHTED);
+            // }
             this.flags[x][y] |= FovFlags.IS_HIGHLIGHTED;
+            this.changed = true;
         }
         clearHighlight(x, y) {
             if (x === undefined || y === undefined) {
@@ -2684,16 +2737,21 @@
             else {
                 this.flags[x][y] &= ~FovFlags.IS_HIGHLIGHTED;
             }
+            this.changed = true;
         }
         isHighlight(x, y) {
             return !!(this.flags[x][y] & FovFlags.IS_HIGHLIGHTED);
         }
         // COPY
-        copy(other) {
-            this.flags.copy(other.flags);
-            this.needsUpdate = other.needsUpdate;
-            this._changed = other._changed;
-        }
+        // copy(other: FovSystem) {
+        //     this.site = other.site;
+        //     this.flags.copy(other.flags);
+        //     this.fov = other.fov;
+        //     this.follow = other.follow;
+        //     this.onFovChange = other.onFovChange;
+        //     // this.needsUpdate = other.needsUpdate;
+        //     // this._changed = other._changed;
+        // }
         //////////////////////////
         // UPDATE
         demoteCellVisibility(flag) {
@@ -2726,11 +2784,11 @@
             else if (isVisible && !wasVisible) {
                 // if the cell became visible this move
                 this.flags[x][y] |= FovFlags.REVEALED;
-                this.onFovChange.onFovChange(x, y, isVisible);
+                this._callback(x, y, isVisible);
             }
             else if (!isVisible && wasVisible) {
                 // if the cell ceased being visible this move
-                this.onFovChange.onFovChange(x, y, isVisible);
+                this._callback(x, y, isVisible);
             }
             return isVisible;
         }
@@ -2740,11 +2798,11 @@
             if (isClairy && wasClairy) ;
             else if (!isClairy && wasClairy) {
                 // ceased being clairvoyantly visible
-                this.onFovChange.onFovChange(x, y, isClairy);
+                this._callback(x, y, isClairy);
             }
             else if (!wasClairy && isClairy) {
                 // became clairvoyantly visible
-                this.onFovChange.onFovChange(x, y, isClairy);
+                this._callback(x, y, isClairy);
             }
             return isClairy;
         }
@@ -2754,27 +2812,41 @@
             if (isTele && wasTele) ;
             else if (!isTele && wasTele) {
                 // ceased being telepathically visible
-                this.onFovChange.onFovChange(x, y, isTele);
+                this._callback(x, y, isTele);
             }
             else if (!wasTele && isTele) {
                 // became telepathically visible
-                this.onFovChange.onFovChange(x, y, isTele);
+                this._callback(x, y, isTele);
             }
             return isTele;
         }
-        updateCellDetect(flag, x, y) {
+        updateActorDetect(flag, x, y) {
             const isMonst = !!(flag & FovFlags.ACTOR_DETECTED);
             const wasMonst = !!(flag & FovFlags.WAS_ACTOR_DETECTED);
             if (isMonst && wasMonst) ;
             else if (!isMonst && wasMonst) {
                 // ceased being detected visible
-                this.onFovChange.onFovChange(x, y, isMonst);
+                this._callback(x, y, isMonst);
             }
             else if (!wasMonst && isMonst) {
                 // became detected visible
-                this.onFovChange.onFovChange(x, y, isMonst);
+                this._callback(x, y, isMonst);
             }
             return isMonst;
+        }
+        updateItemDetect(flag, x, y) {
+            const isItem = !!(flag & FovFlags.ITEM_DETECTED);
+            const wasItem = !!(flag & FovFlags.WAS_ITEM_DETECTED);
+            if (isItem && wasItem) ;
+            else if (!isItem && wasItem) {
+                // ceased being detected visible
+                this._callback(x, y, isItem);
+            }
+            else if (!wasItem && isItem) {
+                // became detected visible
+                this._callback(x, y, isItem);
+            }
+            return isItem;
         }
         promoteCellVisibility(flag, x, y) {
             if (flag & FovFlags.IN_FOV &&
@@ -2789,32 +2861,39 @@
                 return;
             if (this.updateCellTelepathy(flag, x, y))
                 return;
-            if (this.updateCellDetect(flag, x, y))
+            if (this.updateActorDetect(flag, x, y))
+                return;
+            if (this.updateItemDetect(flag, x, y))
                 return;
         }
         updateFor(subject) {
             return this.update(subject.x, subject.y, subject.visionDistance);
         }
         update(cx, cy, cr) {
-            // if (!this.site.usesFov()) return false;
-            if (arguments.length == 0 && this.follow) {
-                return this.updateFor(this.follow);
+            if (cx === undefined) {
+                if (this.follow) {
+                    return this.updateFor(this.follow);
+                }
             }
-            if (!this.needsUpdate &&
-                cx === undefined &&
-                !this.site.lightingChanged()) {
-                return false;
-            }
+            // if (
+            //     // !this.needsUpdate &&
+            //     cx === undefined &&
+            //     !this.site.lightingChanged()
+            // ) {
+            //     return false;
+            // }
             if (cr === undefined) {
                 cr = this.site.width + this.site.height;
             }
-            this.needsUpdate = false;
-            this._changed = false;
+            // this.needsUpdate = false;
+            this.changed = true; // we updated something...
             this.flags.update(this.demoteCellVisibility.bind(this));
             this.site.eachViewport((x, y, radius, type) => {
-                const flag = type & FovFlags.VIEWPORT_TYPES;
+                let flag = type & FovFlags.VIEWPORT_TYPES;
                 if (!flag)
-                    throw new Error('Received invalid viewport type: ' + type);
+                    flag = FovFlags.VISIBLE;
+                // if (!flag)
+                //     throw new Error('Received invalid viewport type: ' + Flag.toString(FovFlags, type));
                 if (radius == 0) {
                     this.flags[x][y] |= flag;
                     return;
@@ -4480,33 +4559,7 @@ void main() {
         defaultFg: null,
         defaultBg: null,
     };
-    // const RE_RGB = /^[a-fA-F0-9]*$/;
-    //
-    // export function parseColor(color:string) {
-    //   if (color.startsWith('#')) {
-    //     color = color.substring(1);
-    //   }
-    //   else if (color.startsWith('0x')) {
-    //     color = color.substring(2);
-    //   }
-    //   if (color.length == 3) {
-    //     if (RE_RGB.test(color)) {
-    //       return Number.parseInt(color, 16);
-    //     }
-    //   }
-    //   if (color.length == 6) {
-    //     if (RE_RGB.test(color)) {
-    //       const v = Number.parseInt(color, 16);
-    //       const r = Math.round( ((v & 0xFF0000) >> 16) / 17);
-    //       const g = Math.round( ((v & 0xFF00) >> 8) / 17);
-    //       const b = Math.round((v & 0xFF) / 17);
-    //       return (r << 8) + (g << 4) + b;
-    //     }
-    //   }
-    //   return 0xFFF;
-    // }
     var helpers = {
-        eachColor: () => { },
         default: (name, _, value) => {
             if (value !== undefined)
                 return `${value}.!!${name}!!`;
@@ -4517,8 +4570,8 @@ void main() {
         helpers[name] = fn;
     }
 
-    function compile(template) {
-        const F = options.field;
+    function compile(template, opts = {}) {
+        const F = opts.field || options.field;
         const parts = template.split(F);
         const sections = parts.map((part, i) => {
             if (i % 2 == 0)
@@ -4528,7 +4581,7 @@ void main() {
             return makeVariable(part);
         });
         return function (args = {}) {
-            return sections.map((f) => f(args)).join("");
+            return sections.map((f) => f(args)).join('');
         };
     }
     function apply(template, args = {}) {
@@ -4541,13 +4594,18 @@ void main() {
     }
     function baseValue(name) {
         return function (args) {
-            const h = helpers[name];
-            if (h)
+            let h = helpers[name];
+            if (h) {
                 return h(name, args);
+            }
             const v = args[name];
             if (v !== undefined)
                 return v;
-            return helpers.default(name, args);
+            h = helpers.default;
+            if (h) {
+                return h(name, args);
+            }
+            return '!!!ERROR!!!';
         };
     }
     function fieldValue(name, source) {
@@ -4570,9 +4628,9 @@ void main() {
     }
     function stringFormat(format, source) {
         const data = /%(-?\d*)s/.exec(format) || [];
-        const length = Number.parseInt(data[1] || "0");
+        const length = Number.parseInt(data[1] || '0');
         return function (args) {
-            let text = "" + source(args);
+            let text = '' + source(args);
             if (length < 0) {
                 text = text.padEnd(-length);
             }
@@ -4583,15 +4641,15 @@ void main() {
         };
     }
     function intFormat(format, source) {
-        const data = /%([\+-]*)(\d*)d/.exec(format) || ["", "", "0"];
-        let length = Number.parseInt(data[2] || "0");
-        const wantSign = data[1].includes("+");
-        const left = data[1].includes("-");
+        const data = /%([\+-]*)(\d*)d/.exec(format) || ['', '', '0'];
+        let length = Number.parseInt(data[2] || '0');
+        const wantSign = data[1].includes('+');
+        const left = data[1].includes('-');
         return function (args) {
             const value = Number.parseInt(source(args) || 0);
-            let text = "" + value;
+            let text = '' + value;
             if (value > 0 && wantSign) {
-                text = "+" + text;
+                text = '+' + text;
             }
             if (length && left) {
                 return text.padEnd(length);
@@ -4603,10 +4661,10 @@ void main() {
         };
     }
     function floatFormat(format, source) {
-        const data = /%([\+-]*)(\d*)(\.(\d+))?f/.exec(format) || ["", "", "0"];
-        let length = Number.parseInt(data[2] || "0");
-        const wantSign = data[1].includes("+");
-        const left = data[1].includes("-");
+        const data = /%([\+-]*)(\d*)(\.(\d+))?f/.exec(format) || ['', '', '0'];
+        let length = Number.parseInt(data[2] || '0');
+        const wantSign = data[1].includes('+');
+        const left = data[1].includes('-');
         const fixed = Number.parseInt(data[4]) || 0;
         return function (args) {
             const value = Number.parseFloat(source(args) || 0);
@@ -4615,10 +4673,10 @@ void main() {
                 text = value.toFixed(fixed);
             }
             else {
-                text = "" + value;
+                text = '' + value;
             }
             if (value > 0 && wantSign) {
-                text = "+" + text;
+                text = '+' + text;
             }
             if (length && left) {
                 return text.padEnd(length);
@@ -4643,10 +4701,10 @@ void main() {
             result = helperValue(helper, result);
         }
         if (format && format.length) {
-            if (format.endsWith("s")) {
+            if (format.endsWith('s')) {
                 result = stringFormat(format, result);
             }
-            else if (format.endsWith("d")) {
+            else if (format.endsWith('d')) {
                 result = intFormat(format, result);
             }
             else {
@@ -4656,26 +4714,24 @@ void main() {
         return result;
     }
 
-    function eachChar(text, fn, fg, bg) {
+    function eachChar(text, fn, opts = {}) {
         if (text === null || text === undefined)
             return;
         if (!fn)
             return;
-        text = "" + text; // force string
+        text = '' + text; // force string
         if (!text.length)
             return;
         const colors = [];
-        const colorFn = helpers.eachColor;
-        if (fg === undefined)
-            fg = options.defaultFg;
-        if (bg === undefined)
-            bg = options.defaultBg;
+        const colorFn = opts.eachColor || NOOP;
+        let fg = opts.fg || options.defaultFg;
+        let bg = opts.bg || options.defaultBg;
         const ctx = {
             fg,
             bg,
         };
-        const CS = options.colorStart;
-        const CE = options.colorEnd;
+        const CS = opts.colorStart || options.colorStart;
+        const CE = opts.colorEnd || options.colorEnd;
         colorFn(ctx);
         let n = 0;
         for (let i = 0; i < text.length; ++i) {
@@ -4696,7 +4752,7 @@ void main() {
                 else {
                     colors.push([ctx.fg, ctx.bg]);
                     const color = text.substring(i + 1, j);
-                    const newColors = color.split("|");
+                    const newColors = color.split('|');
                     ctx.fg = newColors[0] || ctx.fg;
                     ctx.bg = newColors[1] || ctx.bg;
                     colorFn(ctx);
@@ -5238,15 +5294,11 @@ void main() {
             if (typeof bg !== 'number')
                 bg = from$2(bg);
             maxWidth = maxWidth || this.width;
-            const len = length(text);
-            if (len > maxWidth) {
-                text = truncate(text, len);
-            }
             eachChar(text, (ch, fg0, bg0, i) => {
-                if (x + i >= this.width || i > maxWidth)
+                if (x + i >= this.width || i >= maxWidth)
                     return;
                 this.draw(i + x, y, ch, fg0, bg0);
-            }, fg, bg);
+            }, { fg, bg });
             return 1; // used 1 line
         }
         wrapText(x, y, width, text, fg = 0xfff, bg = -1, indent = 0) {
@@ -5268,7 +5320,7 @@ void main() {
                     return;
                 }
                 this.draw(xi++, y + lineCount, ch, fg0, bg0);
-            }, fg, bg);
+            }, { fg, bg });
             while (xi < x + width) {
                 this.draw(xi++, y + lineCount, 0, 0x000, bg);
             }
@@ -6823,8 +6875,10 @@ void main() {
     exports.list = list;
     exports.loop = loop;
     exports.message = message;
+    exports.nextIndex = nextIndex;
     exports.object = object;
     exports.path = path;
+    exports.prevIndex = prevIndex;
     exports.range = range;
     exports.rng = rng;
     exports.scheduler = scheduler;

@@ -8,28 +8,32 @@ import { UICore } from '..';
 
 describe('Input Widget', () => {
     let ui: UICore;
+    let dialog: UTILS.MockWidgetRunner;
 
     beforeEach(() => {
         ui = UTILS.mockUI(50, 50);
+        dialog = UTILS.mockDialog(ui);
     });
 
     test('create', () => {
         const widget = new Widget.Input('ID', { default: 'Test' });
 
-        expect(widget.bounds.x).toEqual(0);
-        expect(widget.bounds.y).toEqual(0);
+        expect(widget.bounds.x).toEqual(-1);
+        expect(widget.bounds.y).toEqual(-1);
         expect(widget.bounds.width).toEqual(10); // default
         expect(widget.bounds.height).toEqual(1);
         expect(widget.text).toEqual('Test');
+
+        widget.bounds.x = widget.bounds.y = 0;
 
         const buffer = new GWU.canvas.DataBuffer(40, 40);
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Test'); // default
 
         widget.text = '';
-        widget.keypress(UTILS.keypress('e'), ui);
-        widget.keypress(UTILS.keypress('a'), ui);
-        widget.keypress(UTILS.keypress('t'), ui);
+        widget.keypress(UTILS.keypress('e'), dialog);
+        widget.keypress(UTILS.keypress('a'), dialog);
+        widget.keypress(UTILS.keypress('t'), dialog);
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('eat');
         expect(widget.text).toEqual('eat');
@@ -37,7 +41,12 @@ describe('Input Widget', () => {
     });
 
     test('backspace + delete', () => {
-        const widget = new Widget.Input('ID', { width: 15, default: 'Test' });
+        const widget = new Widget.Input('ID', {
+            width: 15,
+            default: 'Test',
+            x: 0,
+            y: 0,
+        });
 
         expect(widget.bounds.x).toEqual(0);
         expect(widget.bounds.y).toEqual(0);
@@ -49,12 +58,12 @@ describe('Input Widget', () => {
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Test'); // default
 
-        widget.keypress(UTILS.keypress('Backspace'), ui);
-        widget.keypress(UTILS.keypress('Delete'), ui);
-        widget.keypress(UTILS.keypress('Backspace'), ui);
-        widget.keypress(UTILS.keypress('a'), ui);
-        widget.keypress(UTILS.keypress('c'), ui);
-        widget.keypress(UTILS.keypress('o'), ui);
+        widget.keypress(UTILS.keypress('Backspace'), dialog);
+        widget.keypress(UTILS.keypress('Delete'), dialog);
+        widget.keypress(UTILS.keypress('Backspace'), dialog);
+        widget.keypress(UTILS.keypress('a'), dialog);
+        widget.keypress(UTILS.keypress('c'), dialog);
+        widget.keypress(UTILS.keypress('o'), dialog);
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Taco');
         expect(widget.text).toEqual('Taco');
@@ -62,39 +71,36 @@ describe('Input Widget', () => {
     });
 
     test('Enter', async () => {
-        const container = {
-            fireAction: jest.fn(),
-            requestRedraw: jest.fn(),
-            ui: UTILS.mockUI(100, 40),
-        };
-
         let widget = new Widget.Input('ID', { width: 10, default: 'Test' });
-        widget.parent = container;
+        expect(widget.action).toEqual('ID');
 
-        expect(widget.keypress(UTILS.keypress('Enter'), ui)).toBeTruthy();
-        expect(container.fireAction).toHaveBeenCalledWith('ID', widget);
+        expect(
+            await widget.keypress(UTILS.keypress('Enter'), dialog)
+        ).toBeTruthy();
+        expect(dialog.fireAction).toHaveBeenCalledWith('ID', widget);
 
-        container.fireAction.mockClear();
-        container.fireAction.mockResolvedValue(void 0);
+        dialog.fireAction.mockClear();
+        dialog.fireAction.mockResolvedValue(void 0);
 
-        const r = widget.keypress(UTILS.keypress('Enter'), ui);
-        // @ts-ignore
+        const r = widget.keypress(
+            UTILS.keypress('Enter'),
+            dialog
+        ) as Promise<boolean>;
         expect(r.then).toBeDefined(); // function
-        expect(container.fireAction).toHaveBeenCalledWith('ID', widget);
+        expect(dialog.fireAction).toHaveBeenCalledWith('ID', widget);
 
         expect(await r).toBeTruthy();
 
-        container.fireAction.mockClear();
-        container.fireAction.mockReturnValue(void 0);
+        dialog.fireAction.mockClear();
+        dialog.fireAction.mockReturnValue(void 0);
 
         widget = new Widget.Input('ID', {
             width: 10,
             default: 'Test',
             action: 'DONE',
         });
-        widget.parent = container;
 
-        expect(widget.keypress(UTILS.keypress('Enter'), ui)).toBeTruthy();
-        expect(container.fireAction).toHaveBeenCalledWith('DONE', widget);
+        expect(widget.keypress(UTILS.keypress('Enter'), dialog)).toBeTruthy();
+        expect(dialog.fireAction).toHaveBeenCalledWith('DONE', widget);
     });
 });

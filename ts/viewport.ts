@@ -35,6 +35,8 @@ export class Viewport extends Widget.Widget {
 
     init(opts: ViewportOptions) {
         opts.bg = opts.bg || 'black';
+        opts.x = opts.x || 0;
+        opts.y = opts.y || 0;
 
         super.init(opts);
         this.snap = opts.snap || false;
@@ -63,7 +65,6 @@ export class Viewport extends Widget.Widget {
             this.offsetY = subject.y - this.halfHeight();
         }
         this._subject = subject;
-        if (this.parent) this.parent.requestRedraw();
     }
 
     set lock(v: boolean) {

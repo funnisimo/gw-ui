@@ -5,9 +5,11 @@ import { UICore } from '../types';
 
 describe('Button Widget', () => {
     let ui: UICore;
+    let dialog: UTILS.MockWidgetRunner;
 
     beforeEach(() => {
         ui = UTILS.mockUI(100, 40);
+        dialog = UTILS.mockDialog(ui);
     });
 
     test('create - text required', () => {
@@ -16,11 +18,13 @@ describe('Button Widget', () => {
 
     test('create', () => {
         let widget = new Widget.Button('ID', { text: 'Button' });
-        expect(widget.bounds.x).toEqual(0);
-        expect(widget.bounds.y).toEqual(0);
+        expect(widget.bounds.x).toEqual(-1);
+        expect(widget.bounds.y).toEqual(-1);
         expect(widget.bounds.width).toEqual(6);
         expect(widget.bounds.height).toEqual(1);
         expect(widget.text).toEqual('Button');
+
+        widget.bounds.x = widget.bounds.y = 0;
 
         const buffer = new GWU.canvas.DataBuffer(40, 40);
         widget.draw(buffer);
@@ -36,6 +40,8 @@ describe('Button Widget', () => {
             bg: 'gray',
             activeFg: 'blue',
             activeBg: 'light_gray',
+            x: 0,
+            y: 0,
         });
         expect(widget.bounds.x).toEqual(0);
         expect(widget.bounds.y).toEqual(0);
@@ -48,14 +54,14 @@ describe('Button Widget', () => {
         expect(buffer.get(0, 0).fg).toEqual(GWU.color.colors.red);
         expect(buffer.get(0, 0).bg).toEqual(GWU.color.colors.gray);
 
-        widget.mousemove(UTILS.mousemove(0, 0), ui);
+        widget.mousemove(UTILS.mousemove(0, 0), dialog);
         expect(widget.hovered).toBeTruthy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
         expect(buffer.get(0, 0).fg).toEqual(GWU.color.colors.blue);
         expect(buffer.get(0, 0).bg).toEqual(GWU.color.colors.light_gray);
 
-        widget.mousemove(UTILS.mousemove(10, 10), ui);
+        widget.mousemove(UTILS.mousemove(10, 10), dialog);
         expect(widget.hovered).toBeFalsy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
@@ -72,6 +78,8 @@ describe('Button Widget', () => {
             activeBg: 'light_gray',
             width: 10,
             height: 2,
+            x: 0,
+            y: 0,
         });
 
         const buffer = new GWU.canvas.DataBuffer(40, 40);
@@ -80,14 +88,14 @@ describe('Button Widget', () => {
         expect(buffer.get(0, 1).fg).toEqual(GWU.color.colors.red);
         expect(buffer.get(0, 1).bg).toEqual(GWU.color.colors.gray);
 
-        widget.mousemove(UTILS.mousemove(0, 0), ui);
+        widget.mousemove(UTILS.mousemove(0, 0), dialog);
         expect(widget.hovered).toBeTruthy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 1, 10)).toEqual('Button');
         expect(buffer.get(0, 1).fg).toEqual(GWU.color.colors.blue);
         expect(buffer.get(0, 1).bg).toEqual(GWU.color.colors.light_gray);
 
-        widget.mousemove(UTILS.mousemove(10, 10), ui);
+        widget.mousemove(UTILS.mousemove(10, 10), dialog);
         expect(widget.hovered).toBeFalsy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 1, 10)).toEqual('Button');
@@ -96,76 +104,72 @@ describe('Button Widget', () => {
     });
 
     test('Enter', async () => {
-        const container = {
-            fireAction: jest.fn(),
-            requestRedraw: jest.fn(),
-            ui,
-        };
+        let widget = new Widget.Button('ID', {
+            width: 10,
+            text: 'Test',
+            x: 0,
+            y: 0,
+        });
 
-        let widget = new Widget.Button('ID', { width: 10, text: 'Test' });
-        widget.parent = container;
+        expect(widget.keypress(UTILS.keypress('Enter'), dialog)).toBeTruthy();
+        expect(dialog.fireAction).toHaveBeenCalledWith('ID', widget);
 
-        expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
-        expect(container.fireAction).toHaveBeenCalledWith('ID', widget);
+        dialog.fireAction.mockClear();
+        dialog.fireAction.mockResolvedValue(void 0);
 
-        container.fireAction.mockClear();
-        container.fireAction.mockResolvedValue(void 0);
-
-        const r = widget.keypress(UTILS.keypress('Enter'));
+        const r = widget.keypress(UTILS.keypress('Enter'), dialog);
         // @ts-ignore
         expect(r.then).toBeDefined(); // function
-        expect(container.fireAction).toHaveBeenCalledWith('ID', widget);
+        expect(dialog.fireAction).toHaveBeenCalledWith('ID', widget);
 
         expect(await r).toBeTruthy();
 
-        container.fireAction.mockClear();
-        container.fireAction.mockReturnValue(void 0);
+        dialog.fireAction.mockClear();
+        dialog.fireAction.mockReturnValue(void 0);
 
         widget = new Widget.Button('ID', {
             width: 10,
             text: 'Test',
             action: 'DONE',
         });
-        widget.parent = container;
 
-        expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
-        expect(container.fireAction).toHaveBeenCalledWith('DONE', widget);
+        expect(widget.keypress(UTILS.keypress('Enter'), dialog)).toBeTruthy();
+        expect(dialog.fireAction).toHaveBeenCalledWith('DONE', widget);
     });
 
     test('Click', async () => {
-        const container = {
-            fireAction: jest.fn(),
-            requestRedraw: jest.fn(),
-            ui,
-        };
+        let widget = new Widget.Button('ID', {
+            width: 10,
+            text: 'Test',
+            x: 0,
+            y: 0,
+        });
 
-        let widget = new Widget.Button('ID', { width: 10, text: 'Test' });
-        widget.parent = container;
+        expect(widget.keypress(UTILS.keypress('Enter'), dialog)).toBeTruthy();
+        expect(dialog.fireAction).toHaveBeenCalledWith('ID', widget);
 
-        expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
-        expect(container.fireAction).toHaveBeenCalledWith('ID', widget);
+        dialog.fireAction.mockClear();
+        dialog.fireAction.mockResolvedValue(void 0);
 
-        container.fireAction.mockClear();
-        container.fireAction.mockResolvedValue(void 0);
-
-        const r = widget.click(UTILS.click(0, 0));
+        const r = widget.click(UTILS.click(0, 0), dialog);
         // @ts-ignore
         expect(r.then).toBeDefined(); // function
-        expect(container.fireAction).toHaveBeenCalledWith('ID', widget);
+        expect(dialog.fireAction).toHaveBeenCalledWith('ID', widget);
 
         expect(await r).toBeTruthy();
 
-        container.fireAction.mockClear();
-        container.fireAction.mockReturnValue(void 0);
+        dialog.fireAction.mockClear();
+        dialog.fireAction.mockReturnValue(void 0);
 
         widget = new Widget.Button('ID', {
             width: 10,
             text: 'Test',
             action: 'DONE',
+            x: 0,
+            y: 0,
         });
-        widget.parent = container;
 
-        expect(widget.click(UTILS.click(0, 0))).toBeTruthy();
-        expect(container.fireAction).toHaveBeenCalledWith('DONE', widget);
+        expect(widget.click(UTILS.click(0, 0), dialog)).toBeTruthy();
+        expect(dialog.fireAction).toHaveBeenCalledWith('DONE', widget);
     });
 });

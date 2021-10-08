@@ -4,7 +4,7 @@ import { UICore } from '../types';
 export type Align = 'left' | 'center' | 'right';
 export type VAlign = 'top' | 'middle' | 'bottom';
 
-export interface WidgetContainer {
+export interface WidgetRunner {
     readonly ui: UICore;
     fireAction(action: string, widget: Widget): void | Promise<void>;
     requestRedraw(): void;
@@ -55,11 +55,11 @@ export abstract class Widget {
     align: Align = 'left';
     valign: VAlign = 'middle';
 
-    parent!: WidgetContainer;
+    // parent!: WidgetContainer;
     action!: string;
 
     constructor(id: string, opts?: WidgetOptions) {
-        this.bounds = new GWU.xy.Bounds(0, 0, 0, 0);
+        this.bounds = new GWU.xy.Bounds(-1, -1, -1, -1); // nothing set
         this.id = id;
         if (opts) this.init(opts);
         this.reset();
@@ -73,9 +73,10 @@ export abstract class Widget {
 
         if (opts.text) {
             this.text = opts.text;
-            if (!this.bounds.width) this.bounds.width = opts.text.length;
-            if (!this.bounds.height) this.bounds.height = 1;
+            if (this.bounds.width <= 0) this.bounds.width = opts.text.length;
+            if (this.bounds.height <= 0) this.bounds.height = 1;
         }
+        if (this.bounds.height <= 0) this.bounds.height = 1;
         if (opts.fg !== undefined) {
             this.fg = opts.fg;
             this.activeFg = opts.fg;
@@ -103,6 +104,13 @@ export abstract class Widget {
 
     reset() {}
 
+    activate(_reverse = false) {
+        this.active = true;
+    }
+    deactivate() {
+        this.active = false;
+    }
+
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
     contains(x: GWU.xy.XY | number, y?: number): boolean {
@@ -110,23 +118,38 @@ export abstract class Widget {
         return this.bounds.contains(x as number, y!);
     }
 
+    // EVENTS
+
     // returns true if mouse is over this widget
-    mousemove(e: GWU.io.Event, _ui: UICore): boolean | Promise<boolean> {
+    mousemove(
+        e: GWU.io.Event,
+        _dialog: WidgetRunner
+    ): boolean | Promise<boolean> {
         this.hovered = this.contains(e);
         return this.hovered;
     }
 
-    tick(_e: GWU.io.Event, _ui: UICore): void | Promise<void> {}
+    tick(_e: GWU.io.Event, _dialog: WidgetRunner): void | Promise<void> {}
 
     // returns true if click is handled by this widget (stopPropagation)
-    click(_e: GWU.io.Event, _ui: UICore): boolean | Promise<boolean> {
+    click(_e: GWU.io.Event, _dialog: WidgetRunner): boolean | Promise<boolean> {
         return false;
     }
 
     // returns true if key is used by widget and you want to stopPropagation
-    keypress(_e: GWU.io.Event, _ui: UICore): boolean | Promise<boolean> {
+    keypress(
+        _e: GWU.io.Event,
+        _dialog: WidgetRunner
+    ): boolean | Promise<boolean> {
         return false;
     }
+
+    // returns true if key is used by widget and you want to stopPropagation
+    dir(_e: GWU.io.Event, _dialog: WidgetRunner): boolean | Promise<boolean> {
+        return false;
+    }
+
+    // DRAW
 
     draw(buffer: GWU.canvas.DataBuffer): void {
         const fg = this.active

@@ -45,14 +45,12 @@ export class Flavor extends Widget.Text {
             this.lines = [this.text];
         }
         this.isPrompt = false;
-        if (this.parent) this.parent.requestRedraw();
     }
 
     clear() {
         this.text = '';
         this.lines = [''];
         this.isPrompt = false;
-        if (this.parent) this.parent.requestRedraw();
     }
 
     showPrompt(text: string) {

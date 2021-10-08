@@ -3,7 +3,7 @@ import * as UTILS from '../test/utils';
 import * as GWM from 'gw-map';
 import * as GWU from 'gw-utils';
 import * as Sidebar from './sidebar';
-// import { UICore } from './types';
+import { UICore } from './types';
 
 describe('Sidebar', () => {
     let sidebar: Sidebar.Sidebar;
@@ -23,6 +23,14 @@ describe('Sidebar', () => {
             width: 20,
             height: 38,
         });
+    });
+
+    let ui: UICore;
+    let dialog: UTILS.MockWidgetRunner;
+
+    beforeEach(() => {
+        ui = UTILS.mockUI(100, 40);
+        dialog = UTILS.mockDialog(ui);
     });
 
     test('gather cells - everything is visible', () => {
@@ -59,7 +67,7 @@ describe('Sidebar', () => {
         });
         const memory = new GWM.memory.Memory(map);
         const fov = new GWU.fov.FovSystem(map, {
-            onFovChange: memory,
+            callback: memory,
         });
 
         map.setTile(10, 10, 'SIGN');
@@ -117,10 +125,9 @@ describe('Sidebar', () => {
         });
         const memory = new GWM.memory.Memory(map);
         const fov = new GWU.fov.FovSystem(map, {
-            onFovChange: memory,
+            callback: memory,
             visible: true,
         });
-        const ui = UTILS.mockUI();
 
         // These will be visible...
         map.setTile(2, 2, 'SIGN');
@@ -165,13 +172,13 @@ describe('Sidebar', () => {
         expect(sidebar.entries).toHaveLength(6); // visible sign + actor + item, revealed sign + actor + item
 
         expect(sidebar.highlight).toBeNull();
-        sidebar.mousemove(UTILS.mousemove(1, 1), ui);
+        sidebar.mousemove(UTILS.mousemove(1, 1), dialog);
         expect(sidebar.highlight).toBeNull(); // not drawn yet -- no y information on entries
 
         const buffer = new GWU.canvas.DataBuffer(100, 40);
         sidebar.draw(buffer);
 
-        sidebar.mousemove(UTILS.mousemove(1, 1), ui);
+        sidebar.mousemove(UTILS.mousemove(1, 1), dialog);
         expect(sidebar.highlight).not.toBeNull();
         expect(sidebar.highlight).toBe(sidebar.entries[0]);
 
@@ -180,7 +187,7 @@ describe('Sidebar', () => {
         expect(sidebar._isDim(sidebar.entries[2])).toBeTruthy();
         expect(sidebar._isDim(sidebar.entries[3])).toBeTruthy();
 
-        sidebar.mousemove(UTILS.mousemove(5, 4), ui);
+        sidebar.mousemove(UTILS.mousemove(5, 4), dialog);
         expect(sidebar.highlight).not.toBeNull();
         expect(sidebar.highlight).toBe(sidebar.entries[2]);
 
@@ -189,7 +196,7 @@ describe('Sidebar', () => {
         expect(sidebar._isDim(sidebar.entries[2])).toBeFalsy();
         expect(sidebar._isDim(sidebar.entries[3])).toBeTruthy();
 
-        sidebar.mousemove(UTILS.mousemove(50, 14), ui);
+        sidebar.mousemove(UTILS.mousemove(50, 14), dialog);
         expect(sidebar.highlight).toBeNull();
 
         expect(sidebar._isDim(sidebar.entries[0])).toBeFalsy();

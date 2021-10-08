@@ -46,7 +46,7 @@ describe('Dialog', () => {
             .center()
             .done();
 
-        dlg.setActionHandlers({
+        dlg.setEventHandlers({
             OK: () => {
                 dlg.close(true);
             },
@@ -118,7 +118,7 @@ describe('Dialog', () => {
             .center()
             .done();
 
-        dlg.setActionHandlers({
+        dlg.setEventHandlers({
             OK: () => {
                 dlg.close(true);
             },
@@ -188,12 +188,10 @@ describe('Dialog', () => {
             .center()
             .done();
 
-        dlg.setActionHandlers({
+        dlg.setEventHandlers({
             DONE: () => {
                 dlg.close(false);
             }, // not interrupted
-        });
-        dlg.setKeyHandlers({
             keypress: () => {
                 dlg.close(true);
             }, // interrupted
@@ -212,7 +210,7 @@ describe('Dialog', () => {
         expect(await result).toBeTruthy(); // interrupted
     });
 
-    test('input box - confirm or cancel', async () => {
+    test.only('input box - confirm or cancel', async () => {
         const dlg = buildDialog(ui, {
             width: 50,
             height: 7,
@@ -252,7 +250,7 @@ describe('Dialog', () => {
             )
             .with(
                 new Widget.Button('CANCEL', {
-                    x: -2, // 12 from right
+                    x: -2, // 2 from right
                     y: 6,
                     text: 'CANCEL',
                     fg: 'green',
@@ -266,15 +264,13 @@ describe('Dialog', () => {
 
         const input = dlg.getWidget('INPUT') as Widget.Input;
 
-        dlg.setKeyHandlers({
-            Enter: () => {
+        dlg.setEventHandlers({
+            INPUT: () => {
                 if (input.isValid()) dlg.close(input.value);
             },
             Escape: () => {
                 dlg.close(null);
             },
-        });
-        dlg.setActionHandlers({
             OK: () => {
                 if (input.isValid()) dlg.close(input.value);
             },
@@ -368,7 +364,7 @@ describe('Dialog', () => {
         expect(dlg.bounds.width).toEqual(42);
     });
 
-    test.only('build - negative x, y, pad=1', () => {
+    test('build - negative x, y, pad=1', () => {
         const builder = Widget.buildDialog(ui, { height: 5, width: 42 });
 
         builder.with(
@@ -376,7 +372,7 @@ describe('Dialog', () => {
                 text: 'This is a simple example.',
             })
         );
-        builder.with(new Widget.Button('OK', { text: 'OK', y: -1 }));
+        builder.with(new Widget.Button('OK', { text: 'OK', x: 1, y: -1 }));
         builder.with(
             new Widget.Button('CANCEL', { text: 'CANCEL', x: -1, y: -1 })
         );

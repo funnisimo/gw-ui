@@ -8,9 +8,11 @@ import { UICore } from '.';
 
 describe('Menu', () => {
     let ui: UICore;
+    let dialog: UTILS.MockWidgetRunner;
 
     beforeEach(() => {
         ui = UTILS.mockUI(100, 40);
+        dialog = UTILS.mockDialog(ui);
     });
 
     test('empty', () => {
@@ -29,7 +31,7 @@ describe('Menu', () => {
         expect(UTILS.getBufferText(ui.buffer, 0, 0, 20)).toEqual('');
     });
 
-    test('action buttons', () => {
+    test('action buttons', async () => {
         const widget = new Menu.Menu('MENU', {
             width: 80,
             height: 1,
@@ -39,7 +41,7 @@ describe('Menu', () => {
             fg: 'blue',
             buttons: {
                 Apple: 'APPLE',
-                Banana: () => true,
+                Banana: 'BANANA',
                 Carrot: 'CARROT',
             },
         });
@@ -51,5 +53,43 @@ describe('Menu', () => {
         expect(UTILS.getBufferText(ui.buffer, 0, 0, 40)).toEqual(
             'Apple | Banana | Carrot |'
         );
+
+        widget.activate();
+        expect(widget.active).toBeTruthy();
+        expect(widget.activeIndex).toEqual(0);
+        expect(
+            await widget.keypress(UTILS.keypress('Tab'), dialog)
+        ).toBeTruthy(); // eat it
+        expect(widget.active).toBeTruthy();
+        expect(widget.activeIndex).toEqual(1);
+        expect(
+            await widget.keypress(UTILS.keypress('Tab'), dialog)
+        ).toBeTruthy(); // eat it
+        expect(widget.active).toBeTruthy();
+        expect(widget.activeIndex).toEqual(2);
+        expect(
+            await widget.keypress(UTILS.keypress('Tab'), dialog)
+        ).toBeFalsy(); // Not me anymore
+        expect(widget.active).toBeFalsy();
+        expect(widget.activeIndex).toEqual(-1);
+
+        widget.activate(true);
+        expect(widget.active).toBeTruthy();
+        expect(widget.activeIndex).toEqual(2);
+        expect(
+            await widget.keypress(UTILS.keypress('TAB'), dialog)
+        ).toBeTruthy(); // eat it
+        expect(widget.active).toBeTruthy();
+        expect(widget.activeIndex).toEqual(1);
+        expect(
+            await widget.keypress(UTILS.keypress('TAB'), dialog)
+        ).toBeTruthy(); // eat it
+        expect(widget.active).toBeTruthy();
+        expect(widget.activeIndex).toEqual(0);
+        expect(
+            await widget.keypress(UTILS.keypress('TAB'), dialog)
+        ).toBeFalsy(); // Not me anymore
+        expect(widget.active).toBeFalsy();
+        expect(widget.activeIndex).toEqual(-1);
     });
 });

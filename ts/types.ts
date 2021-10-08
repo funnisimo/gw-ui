@@ -51,7 +51,7 @@ export interface UICore {
     render(): void;
 
     startLayer(): GWU.canvas.Buffer;
-    resetLayerBuffer(dest: GWU.canvas.Buffer): void;
+    resetLayerBuffer(dest: GWU.canvas.DataBuffer): void;
     finishLayer(): void;
 
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;

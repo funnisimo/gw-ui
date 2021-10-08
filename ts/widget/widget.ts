@@ -1,7 +1,6 @@
 import * as GWU from 'gw-utils';
 import { UICore } from '../types';
 
-export type Align = 'left' | 'center' | 'right';
 export type VAlign = 'top' | 'middle' | 'bottom';
 
 export interface WidgetRunner {
@@ -27,7 +26,7 @@ export interface WidgetOptions {
 
     text?: string;
 
-    align?: Align;
+    align?: GWU.canvas.TextAlign;
     valign?: VAlign;
 
     tabStop?: boolean;
@@ -52,7 +51,7 @@ export abstract class Widget {
     id: string;
     text: string = '';
 
-    align: Align = 'left';
+    align: GWU.canvas.TextAlign = 'left';
     valign: VAlign = 'middle';
 
     // parent!: WidgetContainer;

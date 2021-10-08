@@ -321,6 +321,7 @@ class Column {
         this.activeBg = null;
         this.hoverFg = null;
         this.hoverBg = null;
+        this.align = 'left';
         this.header = '';
         this.empty = '';
         this._value = GWU.IDENTITY;
@@ -338,8 +339,10 @@ class Column {
             this._value = GWU.text.compile(opts.value);
         }
         else {
-            this._value = opts.value;
+            this._value = opts.value || GWU.IDENTITY;
         }
+        if (opts.align)
+            this.align = opts.align;
     }
     value(data, index) {
         const v = this._value(data, index);
@@ -481,7 +484,7 @@ class Table extends Widget {
         let y = this.bounds.y;
         if (column.header) {
             buffer.fillRect(x, y, column.width, 1, ' ', this.headerFg, this.headerBg);
-            buffer.drawText(x, y, column.header, this.headerFg, this.headerBg, column.width);
+            buffer.drawText(x, y, column.header, this.headerFg, this.headerBg, column.width, column.align);
             ++y;
         }
         if (!this.data)
@@ -529,7 +532,7 @@ class Table extends Widget {
             }
         }
         buffer.fillRect(x, y, column.width, 1, ' ', bg, bg);
-        buffer.drawText(x, y, text, fg, bg, column.width);
+        buffer.drawText(x, y, text, fg, bg, column.width, column.align);
     }
     async mousemove(e, dialog) {
         if (!super.mousemove(e, dialog)) {
@@ -580,6 +583,19 @@ class Table extends Widget {
 }
 function makeTable(id, opts) {
     return new Table(id, opts);
+}
+
+class List extends Table {
+    constructor(id, opts) {
+        super(id, (() => {
+            // @ts-ignore
+            const tableOpts = opts;
+            tableOpts.columns = [opts];
+            tableOpts.headers = opts.header ? true : false;
+            tableOpts.hover = opts.hover === false ? 'none' : 'row';
+            return tableOpts;
+        })());
+    }
 }
 
 class Dialog {
@@ -815,6 +831,7 @@ class Dialog {
     draw(buffer, force = false) {
         if (!this.needsRedraw && !force)
             return;
+        this.ui.resetLayerBuffer(buffer);
         // Draw dialog
         if (this.borderBg) {
             buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.borderBg, this.borderBg);
@@ -1082,6 +1099,7 @@ class UI {
             widgets: [widget],
             x: widget.bounds.x,
             y: widget.bounds.y,
+            bg: -1,
         });
         keymap.Escape =
             keymap.Escape ||
@@ -2238,4 +2256,4 @@ class Menu extends Widget {
     }
 }
 
-export { ActionButton, ActorEntry, Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input, ItemEntry, Menu, MenuButton, Messages, Sidebar, Table, Text, UI, Viewport, Widget, buildDialog, makeTable, showDropDown };
+export { ActionButton, ActorEntry, Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input, ItemEntry, List, Menu, MenuButton, Messages, Sidebar, Table, Text, UI, Viewport, Widget, buildDialog, makeTable, showDropDown };

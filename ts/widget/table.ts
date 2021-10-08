@@ -9,6 +9,7 @@ export interface ColumnOptions {
 
     header?: string;
     empty?: string;
+    align?: GWU.canvas.TextAlign;
 
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
@@ -57,6 +58,7 @@ export class Column {
 
     hoverFg: ColorOption = null;
     hoverBg: ColorOption = null;
+    align: GWU.canvas.TextAlign = 'left';
 
     header: string = '';
     empty: string = '';
@@ -78,8 +80,9 @@ export class Column {
         if (typeof opts.value === 'string') {
             this._value = GWU.text.compile(opts.value);
         } else {
-            this._value = opts.value;
+            this._value = opts.value || GWU.IDENTITY;
         }
+        if (opts.align) this.align = opts.align;
     }
 
     value(data: any, index: number): string {
@@ -274,7 +277,8 @@ export class Table extends Widget.Widget {
                 column.header,
                 this.headerFg,
                 this.headerBg,
-                column.width
+                column.width,
+                column.align
             );
             ++y;
         }
@@ -331,7 +335,7 @@ export class Table extends Widget.Widget {
         }
 
         buffer.fillRect(x, y, column.width, 1, ' ', bg, bg);
-        buffer.drawText(x, y, text, fg, bg, column.width);
+        buffer.drawText(x, y, text, fg, bg, column.width, column.align);
     }
 
     async mousemove(

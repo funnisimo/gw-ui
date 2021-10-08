@@ -47,7 +47,7 @@ export class UI implements UICore {
         return this.buffer;
     }
 
-    resetLayerBuffer(dest: GWU.canvas.Buffer): void {
+    resetLayerBuffer(dest: GWU.canvas.DataBuffer): void {
         const base = this.layers[this.layers.length - 1] || this.canvas.buffer;
         dest.copy(base);
     }
@@ -259,6 +259,7 @@ export class UI implements UICore {
             widgets: [widget],
             x: widget.bounds.x,
             y: widget.bounds.y,
+            bg: -1,
         });
 
         keymap.Escape =

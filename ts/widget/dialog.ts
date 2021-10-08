@@ -315,6 +315,8 @@ export class Dialog implements Widget.WidgetRunner {
     draw(buffer: GWU.canvas.DataBuffer, force = false) {
         if (!this.needsRedraw && !force) return;
 
+        this.ui.resetLayerBuffer(buffer);
+
         // Draw dialog
         if (this.borderBg) {
             buffer.fillRect(

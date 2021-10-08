@@ -1,7 +1,6 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 
-declare type Align = 'left' | 'center' | 'right';
 declare type VAlign = 'top' | 'middle' | 'bottom';
 interface WidgetRunner {
     readonly ui: UICore;
@@ -20,7 +19,7 @@ interface WidgetOptions {
     hoverFg?: GWU.color.ColorBase;
     hoverBg?: GWU.color.ColorBase;
     text?: string;
-    align?: Align;
+    align?: GWU.canvas.TextAlign;
     valign?: VAlign;
     tabStop?: boolean;
     action?: string;
@@ -38,7 +37,7 @@ declare abstract class Widget {
     hoverBg: GWU.color.ColorBase;
     id: string;
     text: string;
-    align: Align;
+    align: GWU.canvas.TextAlign;
     valign: VAlign;
     action: string;
     constructor(id: string, opts?: WidgetOptions);
@@ -111,6 +110,7 @@ interface ColumnOptions {
     value: string | ValueFn;
     header?: string;
     empty?: string;
+    align?: GWU.canvas.TextAlign;
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
     activeFg?: GWU.color.ColorBase;
@@ -146,6 +146,7 @@ declare class Column {
     activeBg: ColorOption;
     hoverFg: ColorOption;
     hoverBg: ColorOption;
+    align: GWU.canvas.TextAlign;
     header: string;
     empty: string;
     _value: ValueFn;
@@ -183,6 +184,17 @@ declare class Table extends Widget {
     dir(e: GWU.io.Event): boolean;
 }
 declare function makeTable(id: string, opts: TableOptions): Table;
+
+interface ListOptions extends ColumnOptions {
+    height: number;
+    hover?: boolean;
+    headerFg?: GWU.color.ColorBase;
+    headerBg?: GWU.color.ColorBase;
+    wrap?: boolean;
+}
+declare class List extends Table {
+    constructor(id: string, opts: ListOptions);
+}
 
 interface DialogOptions extends WidgetOptions {
     id?: string;
@@ -273,7 +285,7 @@ interface UICore {
     loop: GWU.io.Loop;
     render(): void;
     startLayer(): GWU.canvas.Buffer;
-    resetLayerBuffer(dest: GWU.canvas.Buffer): void;
+    resetLayerBuffer(dest: GWU.canvas.DataBuffer): void;
     finishLayer(): void;
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
     getInputAt(x: number, y: number, maxLength: number, opts?: InputOptions): Promise<string>;
@@ -303,7 +315,7 @@ declare class UI implements UICore {
     get baseBuffer(): GWU.canvas.Buffer;
     get canvasBuffer(): GWU.canvas.Buffer;
     startLayer(): GWU.canvas.Buffer;
-    resetLayerBuffer(dest: GWU.canvas.Buffer): void;
+    resetLayerBuffer(dest: GWU.canvas.DataBuffer): void;
     finishLayer(): void;
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
     alert(opts: number | AlertOptions, text: string, args: any): Promise<any>;
@@ -501,4 +513,4 @@ declare class Menu extends Widget {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Align, Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList, DataType, Dialog, DialogBuilder, DialogOptions, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input, InputBoxOptions, InputOptions, ItemEntry, Menu, MenuButton, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text, TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, makeTable, showDropDown };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList, DataType, Dialog, DialogBuilder, DialogOptions, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text, TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, makeTable, showDropDown };

@@ -347,6 +347,7 @@
             this.activeBg = null;
             this.hoverFg = null;
             this.hoverBg = null;
+            this.align = 'left';
             this.header = '';
             this.empty = '';
             this._value = GWU__namespace.IDENTITY;
@@ -364,8 +365,10 @@
                 this._value = GWU__namespace.text.compile(opts.value);
             }
             else {
-                this._value = opts.value;
+                this._value = opts.value || GWU__namespace.IDENTITY;
             }
+            if (opts.align)
+                this.align = opts.align;
         }
         value(data, index) {
             const v = this._value(data, index);
@@ -507,7 +510,7 @@
             let y = this.bounds.y;
             if (column.header) {
                 buffer.fillRect(x, y, column.width, 1, ' ', this.headerFg, this.headerBg);
-                buffer.drawText(x, y, column.header, this.headerFg, this.headerBg, column.width);
+                buffer.drawText(x, y, column.header, this.headerFg, this.headerBg, column.width, column.align);
                 ++y;
             }
             if (!this.data)
@@ -555,7 +558,7 @@
                 }
             }
             buffer.fillRect(x, y, column.width, 1, ' ', bg, bg);
-            buffer.drawText(x, y, text, fg, bg, column.width);
+            buffer.drawText(x, y, text, fg, bg, column.width, column.align);
         }
         async mousemove(e, dialog) {
             if (!super.mousemove(e, dialog)) {
@@ -606,6 +609,19 @@
     }
     function makeTable(id, opts) {
         return new Table(id, opts);
+    }
+
+    class List extends Table {
+        constructor(id, opts) {
+            super(id, (() => {
+                // @ts-ignore
+                const tableOpts = opts;
+                tableOpts.columns = [opts];
+                tableOpts.headers = opts.header ? true : false;
+                tableOpts.hover = opts.hover === false ? 'none' : 'row';
+                return tableOpts;
+            })());
+        }
     }
 
     class Dialog {
@@ -841,6 +857,7 @@
         draw(buffer, force = false) {
             if (!this.needsRedraw && !force)
                 return;
+            this.ui.resetLayerBuffer(buffer);
             // Draw dialog
             if (this.borderBg) {
                 buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.borderBg, this.borderBg);
@@ -1108,6 +1125,7 @@
                 widgets: [widget],
                 x: widget.bounds.x,
                 y: widget.bounds.y,
+                bg: -1,
             });
             keymap.Escape =
                 keymap.Escape ||
@@ -2276,6 +2294,7 @@
     exports.Flavor = Flavor;
     exports.Input = Input;
     exports.ItemEntry = ItemEntry;
+    exports.List = List;
     exports.Menu = Menu;
     exports.MenuButton = MenuButton;
     exports.Messages = Messages;

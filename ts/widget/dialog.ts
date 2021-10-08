@@ -72,6 +72,8 @@ export class Dialog implements Widget.WidgetRunner {
         if (opts.widgets) {
             opts.widgets.forEach((w) => this.widgets.push(w));
         }
+
+        this.widgets.sort((a, b) => (a.depth < b.depth ? -1 : 1));
     }
 
     get activeWidget(): Widget.Widget | null {

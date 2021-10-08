@@ -23,12 +23,14 @@ interface WidgetOptions {
     valign?: VAlign;
     tabStop?: boolean;
     action?: string;
+    depth?: number;
 }
 declare abstract class Widget {
     bounds: GWU.xy.Bounds;
     active: boolean;
     hovered: boolean;
     tabStop: boolean;
+    depth: number;
     fg: GWU.color.ColorBase;
     bg: GWU.color.ColorBase;
     activeFg: GWU.color.ColorBase;
@@ -194,6 +196,18 @@ interface ListOptions extends ColumnOptions {
 }
 declare class List extends Table {
     constructor(id: string, opts: ListOptions);
+}
+
+interface BoxOptions extends Omit<WidgetOptions, 'text'> {
+    title?: string;
+    borderBg?: GWU.color.ColorBase;
+}
+declare abstract class Box extends Widget {
+    borderBg: GWU.color.ColorBase | null;
+    constructor(id: string, opts?: BoxOptions);
+    init(opts: BoxOptions): void;
+    mousemove(_e: GWU.io.Event, _dialog: WidgetRunner): boolean | Promise<boolean>;
+    draw(buffer: GWU.canvas.DataBuffer): void;
 }
 
 interface DialogOptions extends WidgetOptions {
@@ -513,4 +527,4 @@ declare class Menu extends Widget {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList, DataType, Dialog, DialogBuilder, DialogOptions, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text, TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, makeTable, showDropDown };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList, DataType, Dialog, DialogBuilder, DialogOptions, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text, TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, makeTable, showDropDown };

@@ -31,6 +31,7 @@ export interface WidgetOptions {
 
     tabStop?: boolean;
     action?: string;
+    depth?: number;
 }
 
 export abstract class Widget {
@@ -38,6 +39,8 @@ export abstract class Widget {
     active = false;
     hovered = false;
     tabStop = false;
+
+    depth = 0;
 
     fg: GWU.color.ColorBase = 0xfff;
     bg: GWU.color.ColorBase = -1;
@@ -69,6 +72,7 @@ export abstract class Widget {
         if (opts.y !== undefined) this.bounds.y = opts.y;
         if (opts.width !== undefined) this.bounds.width = opts.width;
         if (opts.height !== undefined) this.bounds.height = opts.height;
+        if (opts.depth !== undefined) this.depth = opts.depth;
 
         if (opts.text) {
             this.text = opts.text;

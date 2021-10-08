@@ -6,6 +6,7 @@ class Widget {
         this.active = false;
         this.hovered = false;
         this.tabStop = false;
+        this.depth = 0;
         this.fg = 0xfff;
         this.bg = -1;
         this.activeFg = 0xfff;
@@ -30,6 +31,8 @@ class Widget {
             this.bounds.width = opts.width;
         if (opts.height !== undefined)
             this.bounds.height = opts.height;
+        if (opts.depth !== undefined)
+            this.depth = opts.depth;
         if (opts.text) {
             this.text = opts.text;
             if (this.bounds.width <= 0)
@@ -598,6 +601,53 @@ class List extends Table {
     }
 }
 
+class Box extends Widget {
+    constructor(id, opts) {
+        super(id, (() => {
+            if (!opts)
+                return opts;
+            if (opts.depth === undefined)
+                opts.depth = -1; // hid behind other widgets
+            if (opts.title)
+                opts.text = opts.title;
+            return opts;
+        })());
+    }
+    init(opts) {
+        super.init(opts);
+        this.borderBg = opts.borderBg || null;
+    }
+    // EVENTS
+    // box is completely idle
+    mousemove(_e, _dialog) {
+        return false;
+    }
+    // DRAW
+    draw(buffer) {
+        const fg = this.active
+            ? this.activeFg
+            : this.hovered
+                ? this.hoverFg
+                : this.fg;
+        const bg = this.active
+            ? this.activeBg
+            : this.hovered
+                ? this.hoverBg
+                : this.bg;
+        // Draw dialog
+        if (this.borderBg) {
+            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.borderBg, this.borderBg);
+            buffer.fillRect(this.bounds.x + 1, this.bounds.y + 1, this.bounds.width - 2, this.bounds.height - 2, ' ', bg, bg);
+        }
+        else {
+            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', bg, bg);
+        }
+        if (this.text) {
+            buffer.drawText(this.bounds.x, this.bounds.y, this.text, fg, -1, this.bounds.width, 'center');
+        }
+    }
+}
+
 class Dialog {
     constructor(ui, opts) {
         this.title = '';
@@ -642,6 +692,7 @@ class Dialog {
         if (opts.widgets) {
             opts.widgets.forEach((w) => this.widgets.push(w));
         }
+        this.widgets.sort((a, b) => (a.depth < b.depth ? -1 : 1));
     }
     get activeWidget() {
         return this._activeWidget;
@@ -2256,4 +2307,4 @@ class Menu extends Widget {
     }
 }
 
-export { ActionButton, ActorEntry, Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input, ItemEntry, List, Menu, MenuButton, Messages, Sidebar, Table, Text, UI, Viewport, Widget, buildDialog, makeTable, showDropDown };
+export { ActionButton, ActorEntry, Box, Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input, ItemEntry, List, Menu, MenuButton, Messages, Sidebar, Table, Text, UI, Viewport, Widget, buildDialog, makeTable, showDropDown };

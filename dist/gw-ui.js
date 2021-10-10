@@ -633,9 +633,10 @@
                 if (!opts)
                     return opts;
                 if (opts.depth === undefined)
-                    opts.depth = -1; // hid behind other widgets
+                    opts.depth = -10; // hide behind other widgets
                 if (opts.title)
                     opts.text = opts.title;
+                opts.bg = opts.bg || 'gray';
                 return opts;
             })());
         }
@@ -675,11 +676,8 @@
     }
 
     class Dialog {
-        constructor(ui, opts) {
-            this.title = '';
-            this.titleFg = 0xfff;
-            this.bg = 0x999;
-            this.borderBg = 0x999;
+        constructor(ui, id) {
+            // bounds: GWU.xy.Bounds;
             this.widgets = [];
             this.eventHandlers = {};
             this._activeWidget = null;
@@ -688,36 +686,35 @@
             this.timers = {};
             this.needsRedraw = true;
             this.ui = ui;
-            this.id = 'DIALOG';
-            this.bounds = new GWU__namespace.xy.Bounds(-1, -1, 0, 0);
-            if (opts)
-                this.init(opts);
+            this.id = id || 'DIALOG';
+            // this.bounds = new GWU.xy.Bounds(-1, -1, 0, 0);
+            // if (opts) this.init(opts);
         }
-        init(opts) {
-            if (opts.id)
-                this.id = opts.id;
-            if (opts.x !== undefined)
-                this.bounds.x = opts.x;
-            if (opts.y !== undefined)
-                this.bounds.y = opts.y;
-            if (opts.height !== undefined)
-                this.bounds.height = opts.height;
-            if (opts.width !== undefined)
-                this.bounds.width = opts.width;
-            if (opts.title)
-                this.title = opts.title;
-            if (opts.titleFg)
-                this.titleFg = opts.titleFg;
-            if (opts.bg) {
-                this.bg = opts.bg;
-                this.borderBg = opts.bg;
-            }
-            if (opts.borderBg) {
-                this.borderBg = opts.borderBg;
-            }
-            if (opts.widgets) {
-                opts.widgets.forEach((w) => this.widgets.push(w));
-            }
+        init() {
+            // if (opts.id) this.id = opts.id;
+            // if (opts.x !== undefined) this.bounds.x = opts.x;
+            // if (opts.y !== undefined) this.bounds.y = opts.y;
+            // if (opts.height !== undefined) this.bounds.height = opts.height;
+            // if (opts.width !== undefined) this.bounds.width = opts.width;
+            // if (opts.box) {
+            //     let boxOpts: Box.BoxOptions = {
+            //         fg: 'white',
+            //         bg: 'gray',
+            //         borderBg: 'dark_gray',
+            //         width: this.bounds.width,
+            //         height: this.bounds.height,
+            //         x: this.bounds.x,
+            //         y: this.bounds.y,
+            //     };
+            //     if (opts.box !== true) {
+            //         Object.assign(boxOpts, opts.box);
+            //     }
+            //     const box = new Box.Box(this.id + '_BOX', boxOpts);
+            //     this.widgets.push(box);
+            // }
+            // if (opts.widgets) {
+            //     opts.widgets.forEach((w) => this.widgets.push(w));
+            // }
             this.widgets.sort((a, b) => (a.depth < b.depth ? -1 : 1));
         }
         get activeWidget() {
@@ -734,9 +731,9 @@
                 this._activeWidget.activate(reverse);
             }
         }
-        contains(e) {
-            return this.bounds.contains(e);
-        }
+        // contains(e: GWU.xy.XY): boolean {
+        //     return this.bounds.contains(e);
+        // }
         requestRedraw() {
             this.needsRedraw = true;
         }
@@ -785,7 +782,7 @@
             this.done = true;
         }
         widgetAt(x, y) {
-            return this.widgets.find((w) => w.contains(x, y)) || null;
+            return (this.widgets.find((w) => w.contains(x, y) && w.depth >= 0) || null);
         }
         getWidget(id) {
             return this.widgets.find((w) => w.id === id) || null;
@@ -908,88 +905,99 @@
         draw(buffer, force = false) {
             if (!this.needsRedraw && !force)
                 return;
-            this.ui.resetLayerBuffer(buffer);
-            // Draw dialog
-            if (this.borderBg) {
-                buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.borderBg, this.borderBg);
-                buffer.fillRect(this.bounds.x + 1, this.bounds.y + 1, this.bounds.width - 2, this.bounds.height - 2, ' ', this.bg, this.bg);
-            }
-            else {
-                buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.bg, this.bg);
-            }
-            if (this.title) {
-                const x = this.bounds.x +
-                    Math.floor((this.bounds.width - GWU__namespace.text.length(this.title)) / 2);
-                buffer.drawText(x, this.bounds.y, this.title, this.titleFg);
-            }
+            this.ui.resetLayerBuffer();
             this.widgets.forEach((w) => w.draw(buffer));
         }
     }
     class DialogBuilder {
-        constructor(ui, opts = {}) {
+        constructor(ui, width, height) {
             this.nextY = 0;
+            this.box = null;
             this.nextY = 1;
-            this.dialog = new Dialog(ui, opts);
+            this.dialog = new Dialog(ui);
+            this.bounds = new GWU__namespace.xy.Bounds(-1, -1, width, height);
         }
-        with(widget) {
+        with(widget, at) {
             // widget bounds are set relative to the dialog top left,
             // if we don't get any, help them out
             // TODO - Get rid of x, y
-            this.addWidget(widget);
+            const bounds = this.bounds;
+            if (at) {
+                if (at.right !== undefined) {
+                    bounds.width = Math.max(bounds.width, widget.bounds.width + at.right);
+                    widget.bounds.right = bounds.width - at.right - 1;
+                }
+                else {
+                    widget.bounds.x = at.x || 0;
+                    bounds.width = Math.max(bounds.width, widget.bounds.width + widget.bounds.x);
+                }
+                if (at.bottom !== undefined) {
+                    bounds.height = Math.max(bounds.height, widget.bounds.height + at.bottom);
+                    widget.bounds.bottom = bounds.height - at.bottom - 1;
+                }
+                else {
+                    widget.bounds.y = at.y || 0;
+                    bounds.height = Math.max(bounds.height, widget.bounds.height + widget.bounds.y);
+                }
+            }
+            else {
+                bounds.width = Math.max(bounds.width, widget.bounds.right);
+                bounds.height = Math.max(bounds.height, widget.bounds.bottom);
+            }
+            this.dialog.widgets.push(widget);
             this.nextY = Math.max(this.nextY, widget.bounds.bottom + 1);
             return this;
         }
         center() {
             const size = this.dialog.ui.buffer;
-            const bounds = this.dialog.bounds;
+            const bounds = this.bounds;
             bounds.x = Math.floor((size.width - bounds.width) / 2);
             bounds.y = Math.floor((size.height - bounds.height) / 2);
             return this;
         }
         place(x, y) {
-            const bounds = this.dialog.bounds;
+            const bounds = this.bounds;
             bounds.x = x;
             bounds.y = y;
             return this;
         }
+        addBox(opts) {
+            this.box = opts || {};
+            return this;
+        }
         done() {
-            if (this.dialog.bounds.x < 0)
-                this.dialog.bounds.x = 0;
-            if (this.dialog.bounds.y < 0)
-                this.dialog.bounds.y = 0;
-            if (this.dialog.bounds.right > this.dialog.ui.buffer.width)
+            if (this.bounds.x < 0)
+                this.bounds.x = 0;
+            if (this.bounds.y < 0)
+                this.bounds.y = 0;
+            if (this.bounds.right > this.dialog.ui.buffer.width)
                 throw new Error('Dialog is off screen!');
-            if (this.dialog.bounds.bottom > this.dialog.ui.buffer.height)
+            if (this.bounds.bottom > this.dialog.ui.buffer.height)
                 throw new Error('Dialog is off screen!');
+            if (this.box) {
+                const padX = this.box.padX || this.box.pad || 1;
+                const padY = this.box.padY || this.box.pad || 1;
+                this.box.x = 0;
+                this.box.y = 0;
+                this.box.width = this.bounds.width + 2 * padX;
+                this.box.height = this.bounds.height + 2 * padY;
+                const widget = new Box(this.dialog.id + '_BOX', this.box);
+                this.dialog.widgets.forEach((w) => {
+                    w.bounds.x += padX;
+                    w.bounds.y += padY;
+                });
+                this.dialog.widgets.unshift(widget);
+            }
             // lock in locations
             this.dialog.widgets.forEach((w) => {
-                w.bounds.x += this.dialog.bounds.x;
-                w.bounds.y += this.dialog.bounds.y;
+                w.bounds.x += this.bounds.x;
+                w.bounds.y += this.bounds.y;
             });
             return this.dialog;
         }
-        addWidget(widget) {
-            const dlgBounds = this.dialog.bounds;
-            const x = widget.bounds.x;
-            const y = widget.bounds.y;
-            if (x >= 0) {
-                dlgBounds.width = Math.max(dlgBounds.width, widget.bounds.width + x);
-            }
-            else if (x < 0) {
-                widget.bounds.x = dlgBounds.width - widget.bounds.width + x;
-            }
-            if (y >= 0) {
-                dlgBounds.height = Math.max(dlgBounds.height, widget.bounds.height + y);
-            }
-            else if (y < 0) {
-                widget.bounds.y = dlgBounds.height - widget.bounds.height + y;
-            }
-            this.dialog.widgets.push(widget);
-            return widget;
-        }
     }
-    function buildDialog(ui, opts = {}) {
-        return new DialogBuilder(ui, opts);
+    function buildDialog(ui, width = 0, height = 0) {
+        return new DialogBuilder(ui, width, height);
     }
 
     class UI {
@@ -1016,15 +1024,16 @@
             this.inDialog = true;
             const base = this.buffer || this.canvas.buffer;
             this.layers.push(base);
-            this.buffer =
-                this.freeBuffers.pop() || new GWU__namespace.canvas.Buffer(this.canvas);
+            this.buffer = this.freeBuffers.pop() || this.canvas.buffer.clone();
             // UI_OVERLAY._data.forEach( (c) => c.opacity = 0 );
             this.buffer.copy(base);
+            this.buffer.changed = false;
             return this.buffer;
         }
-        resetLayerBuffer(dest) {
-            const base = this.layers[this.layers.length - 1] || this.canvas.buffer;
-            dest.copy(base);
+        resetLayerBuffer() {
+            const base = this.baseBuffer;
+            this.buffer.copy(base);
+            this.buffer.changed = false; // So you have to draw something to make the canvas render...
         }
         finishLayer() {
             if (!this.inDialog)
@@ -1033,6 +1042,7 @@
                 this.freeBuffers.push(this.buffer);
             }
             this.buffer = this.layers.pop() || this.canvas.buffer;
+            this.buffer.changed = true;
             this.buffer.render();
             this.inDialog = this.layers.length > 0;
         }
@@ -1048,7 +1058,7 @@
                     elapsed = duration;
                 }
                 pct = Math.floor((100 * elapsed) / duration);
-                this.resetLayerBuffer(buffer);
+                this.resetLayerBuffer();
                 buffer.mix(color, pct);
                 buffer.render();
             }
@@ -1061,23 +1071,21 @@
             if (args) {
                 text = GWU__namespace.text.apply(text, args);
             }
-            const padX = opts.padX || opts.pad || 1;
-            const padY = opts.padY || opts.pad || 1;
-            opts.width = opts.width || GWU__namespace.text.length(text) + 2 * padX;
+            const width = opts.width || GWU__namespace.text.length(text);
+            opts.box = opts.box || { bg: opts.bg };
+            // opts.box.bg = opts.box.bg || 'gray';
             const textOpts = {
                 fg: opts.fg,
                 text,
-                x: padX,
-                y: padY,
-                wrap: opts.width - 2 * padX,
+                x: 0,
+                y: 0,
+                wrap: width,
             };
-            textOpts.text = text;
-            textOpts.wrap = opts.width;
             const textWidget = new Text('TEXT', textOpts);
-            opts.height =
-                (opts.title ? 1 : 0) + padY + textWidget.bounds.height + padY;
-            const dlg = buildDialog(this, opts)
-                .with(textWidget)
+            const height = textWidget.bounds.height;
+            const dlg = buildDialog(this, width, height)
+                .with(textWidget, { x: 0, y: 0 })
+                .addBox(opts.box)
                 .center()
                 .done();
             dlg.setEventHandlers({
@@ -1107,22 +1115,15 @@
             if (textArgs) {
                 text = GWU__namespace.text.apply(text, textArgs);
             }
-            const padX = opts.padX || opts.pad || 1;
-            const padY = opts.padY || opts.pad || 1;
-            opts.width =
-                opts.width ||
-                    Math.min(Math.floor(this.buffer.width / 2), GWU__namespace.text.length(text) + 2 * padX);
-            let textWidth = opts.width - 2 * padX;
+            const width = opts.width ||
+                Math.min(Math.floor(this.buffer.width / 2), GWU__namespace.text.length(text));
             const textOpts = {
                 fg: opts.fg,
                 text,
-                wrap: textWidth,
-                y: opts.title ? 2 : 1,
-                x: padX,
+                wrap: width,
             };
             const textWidget = new Text('TEXT', textOpts);
-            opts.height =
-                (opts.title ? 1 : 0) + padY + textWidget.bounds.height + 2 + padY;
+            const height = textWidget.bounds.height + 2;
             opts.allowCancel = opts.allowCancel !== false;
             opts.buttons = Object.assign({
                 fg: 'white',
@@ -1138,15 +1139,18 @@
             }
             opts.ok = opts.ok || {};
             opts.cancel = opts.cancel || {};
-            const okOpts = Object.assign({}, opts.buttons, { text: 'OK', y: -padY, x: padX }, opts.ok);
-            const cancelOpts = Object.assign({}, opts.buttons, { text: 'CANCEL', y: -padY, x: -padX }, opts.cancel);
-            const builder = buildDialog(this, opts)
-                .with(textWidget)
-                .with(new Button('OK', okOpts));
+            const okOpts = Object.assign({}, opts.buttons, { text: 'OK' }, opts.ok);
+            const cancelOpts = Object.assign({}, opts.buttons, { text: 'CANCEL' }, opts.cancel);
+            const builder = buildDialog(this, width, height)
+                .with(textWidget, { x: 0, y: 0 })
+                .with(new Button('OK', okOpts), { x: 0, bottom: 0 });
             if (opts.allowCancel) {
-                builder.with(new Button('CANCEL', cancelOpts));
+                builder.with(new Button('CANCEL', cancelOpts), {
+                    right: 0,
+                    bottom: 0,
+                });
             }
-            const dlg = builder.center().done();
+            const dlg = builder.center().addBox(opts.box).done();
             dlg.setEventHandlers({
                 OK() {
                     dlg.close(true);
@@ -1164,20 +1168,16 @@
             return await dlg.show();
         }
         async showWidget(widget, keymap = {}) {
-            if (widget.bounds.x < 0) {
-                widget.bounds.x = Math.floor((this.buffer.width - widget.bounds.width) / 2);
+            const center = widget.bounds.x < 0 || widget.bounds.y < 0;
+            const place = { x: widget.bounds.x, y: widget.bounds.y };
+            const builder = buildDialog(this).with(widget, { x: 0, y: 0 });
+            if (center) {
+                builder.center();
             }
-            if (widget.bounds.y < 0) {
-                widget.bounds.y = Math.floor((this.buffer.height - widget.bounds.height) / 2);
+            else {
+                builder.place(place.x, place.y);
             }
-            const dlg = new Dialog(this, {
-                width: widget.bounds.width,
-                height: widget.bounds.height,
-                widgets: [widget],
-                x: widget.bounds.x,
-                y: widget.bounds.y,
-                bg: -1,
-            });
+            const dlg = builder.done();
             keymap.Escape =
                 keymap.Escape ||
                     (() => {
@@ -1205,27 +1205,17 @@
             if (args) {
                 prompt = GWU__namespace.text.apply(prompt, args);
             }
-            const padX = opts.padX || opts.pad || 1;
-            const padY = opts.padY || opts.pad || 1;
-            opts.width =
-                opts.width ||
-                    Math.min(Math.floor(this.buffer.width / 2), GWU__namespace.text.length(prompt) + 2 * padX);
-            let promptWidth = opts.width - 2 * padX;
+            const width = opts.width ||
+                Math.min(Math.floor(this.buffer.width / 2), GWU__namespace.text.length(prompt));
             const promptOpts = {
                 fg: opts.fg,
                 text: prompt,
-                wrap: promptWidth,
-                x: padX,
-                y: (opts.title ? 1 : 0) + padY,
+                wrap: width,
             };
             const promptWidget = new Text('TEXT', promptOpts);
-            opts.height =
-                (opts.title ? 1 : 0) +
-                    padY +
-                    promptWidget.bounds.height +
-                    3 +
-                    1 +
-                    padY;
+            const height = promptWidget.bounds.height +
+                2 + // skip + input
+                2; // skip + ok/cancel
             opts.allowCancel = opts.allowCancel !== false;
             opts.buttons = Object.assign({
                 fg: 'white',
@@ -1241,21 +1231,23 @@
             }
             opts.ok = opts.ok || {};
             opts.cancel = opts.cancel || {};
-            const okOpts = Object.assign({}, opts.buttons, { text: 'OK', y: -padY, x: padX }, opts.ok);
-            const cancelOpts = Object.assign({}, opts.buttons, { text: 'CANCEL', y: -padY, x: -padX }, opts.cancel);
+            const okOpts = Object.assign({}, opts.buttons, { text: 'OK' }, opts.ok);
+            const cancelOpts = Object.assign({}, opts.buttons, { text: 'CANCEL' }, opts.cancel);
             opts.input = opts.input || {};
-            opts.input.width = opts.input.width || promptWidth;
+            opts.input.width = opts.input.width || width;
             opts.input.bg = opts.input.bg || opts.fg;
             opts.input.fg = opts.input.fg || opts.bg;
-            opts.input.x = padX;
-            opts.input.y = opts.height - 1 - padY - 2;
             const inputWidget = new Input('INPUT', opts.input || {});
-            const builder = buildDialog(this, opts)
-                .with(promptWidget)
-                .with(inputWidget)
-                .with(new Button('OK', okOpts));
+            const builder = buildDialog(this, width, height)
+                .with(promptWidget, { x: 0, y: 0 })
+                .with(inputWidget, { bottom: 2, x: 0 })
+                .with(new Button('OK', okOpts), { bottom: 0, x: 0 })
+                .addBox(opts.box);
             if (opts.allowCancel) {
-                builder.with(new Button('CANCEL', cancelOpts));
+                builder.with(new Button('CANCEL', cancelOpts), {
+                    bottom: 0,
+                    right: 0,
+                });
             }
             const dlg = builder.center().done();
             dlg.setEventHandlers({
@@ -1344,7 +1336,7 @@
                         : this.bounds.bottom - currentM + 1;
                     const endY = isOnTop ? this.bounds.y : this.bounds.bottom;
                     const dy = isOnTop ? -1 : 1;
-                    ui.resetLayerBuffer(dbuf);
+                    ui.resetLayerBuffer();
                     // console.log(
                     //     `draw archive - count=${i}, startY=${startY}, endY=${endY}, dy=${dy}`
                     // );
@@ -2049,7 +2041,7 @@
         const ui = dialog.ui;
         const buffer = ui.startLayer();
         button.buttons.forEach((b) => (b.hovered = false));
-        button.buttons[0].hovered = true;
+        // button.buttons[0].hovered = true;
         let activeButton = button;
         await ui.loop.run({
             Escape() {
@@ -2156,10 +2148,34 @@
                 }
                 return false;
             },
+            dir: async (e) => {
+                if (!activeButton)
+                    return true; // should not happen
+                if (!e.dir)
+                    return;
+                if (e.dir[1]) {
+                    const current = activeButton.buttons.findIndex((b) => b.hovered);
+                    if (current < 1 && e.dir[1] < 0) {
+                        activeButton.buttons.forEach((b) => (b.hovered = false));
+                        return true; // close me!
+                    }
+                    const index = GWU__namespace.clamp(current + e.dir[1], 0, activeButton.buttons.length - 1);
+                    activeButton.buttons.forEach((b, i) => (b.hovered = i === index));
+                    const selected = activeButton.buttons[index];
+                    if (selected instanceof DropDownButton) {
+                        selected.buttons.forEach((b) => {
+                            b.hovered = false;
+                        });
+                        selected.buttons[0].hovered = true;
+                        selected.setBounds(ui.buffer, activeButton.bounds.x, e.y, activeButton.bounds.width);
+                        activeButton = selected;
+                    }
+                }
+            },
             draw: () => {
                 if (!activeButton)
                     return;
-                ui.resetLayerBuffer(buffer);
+                ui.resetLayerBuffer();
                 activeButton.draw(buffer);
                 menu.draw(buffer);
                 buffer.render();
@@ -2194,6 +2210,20 @@
             if (opts.lead !== undefined) {
                 this.lead = opts.lead ? opts.lead : '';
             }
+        }
+        reset() {
+            super.reset();
+            const onTop = this.bounds.y <= 10;
+            this.buttons.forEach((b) => {
+                if (b instanceof DropDownButton) {
+                    if (onTop) {
+                        b.bounds.top = this.bounds.bottom + 1;
+                    }
+                    else {
+                        b.bounds.bottom = this.bounds.top - 1;
+                    }
+                }
+            });
         }
         activate(reverse = false) {
             super.activate(reverse);
@@ -2293,7 +2323,7 @@
         }
         _addButton(text, config) {
             const x = this.buttons.reduce((len, button) => len + button.text.length + this.separator.length, this.lead.length + this.bounds.x);
-            if (x + text.length + 2 > this.bounds.width) {
+            if (x + text.length + this.separator.length > this.bounds.width) {
                 throw new Error('Button makes menu too wide :' + text);
             }
             let button;
@@ -2302,13 +2332,7 @@
             }
             else {
                 const dropdown = new DropDownButton(this, null, text, config);
-                dropdown.bounds.x = x;
-                if (this.bounds.y) {
-                    dropdown.bounds.y = this.bounds.y - dropdown.bounds.height;
-                }
-                else {
-                    dropdown.bounds.y = this.bounds.y + 1;
-                }
+                dropdown.bounds.x = x - 1; // Hmmm...
                 button = dropdown;
             }
             button.x = x;

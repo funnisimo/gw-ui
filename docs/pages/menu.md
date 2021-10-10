@@ -8,8 +8,6 @@ SHOW(canvas.node);
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
 const topMenu = new GWI.Menu('TOP_MENU', {
-    x: 0,
-    y: 0,
     width: 80,
     fg: 'yellow',
     bg: 'red',
@@ -37,8 +35,6 @@ const topMenu = new GWI.Menu('TOP_MENU', {
 });
 
 const bottomMenu = new GWI.Menu('BOTTOM_MENU', {
-    x: 0,
-    y: canvas.height - 1,
     width: 80,
     bg: 'blue',
     fg: 'white',
@@ -62,8 +58,6 @@ const bottomMenu = new GWI.Menu('BOTTOM_MENU', {
 });
 
 const text = new GWI.Text('OUTPUT', {
-    x: 20,
-    y: 10,
     wrap: 60,
     height: 18,
     text: 'Try out the menu!',
@@ -71,13 +65,10 @@ const text = new GWI.Text('OUTPUT', {
     align: 'center',
 });
 
-const builder = GWI.buildDialog(ui, {
-    width: canvas.width,
-    height: canvas.height,
-});
-builder.with(topMenu);
-builder.with(text);
-builder.with(bottomMenu);
+const builder = GWI.buildDialog(ui, canvas.width, canvas.height);
+builder.with(topMenu, { x: 0, y: 0 });
+builder.with(text, { x: 20, y: 10 });
+builder.with(bottomMenu, { x: 0, bottom: 0 });
 const dialog = builder.done();
 
 dialog.setEventHandlers({

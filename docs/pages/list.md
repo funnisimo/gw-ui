@@ -12,7 +12,7 @@ const list = new GWI.List('LIST', {
     // y: 5,
     width: 20,
     height: 28,
-    bg: -1,
+    bg: 'dark_gray',
     fg: 'white',
     headerBg: 'light_blue',
     headerFg: 'white',

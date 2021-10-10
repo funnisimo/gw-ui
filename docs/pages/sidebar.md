@@ -151,7 +151,6 @@ viewport.draw(ui.buffer);
 sidebar.draw(ui.buffer);
 ui.render();
 
-let needsDraw = true;
 LOOP.run({
     dir(e) {
         sidebar.clearHighlight();
@@ -162,7 +161,6 @@ LOOP.run({
             map.addActor(newX, newY, player);
             fov.update();
             sidebar.update();
-            needsDraw = true;
         }
     },
     mousemove(e) {
@@ -172,12 +170,9 @@ LOOP.run({
             } else {
                 fov.clearCursor();
             }
-            needsDraw = true;
         }
     },
     draw() {
-        if (!needsDraw) return;
-        needsDraw = false;
         viewport.draw(ui.buffer);
         sidebar.draw(ui.buffer);
         ui.render();

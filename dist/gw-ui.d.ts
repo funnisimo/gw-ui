@@ -2,6 +2,12 @@ import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 
 declare type VAlign = 'top' | 'middle' | 'bottom';
+interface PosOptions {
+    x?: number;
+    y?: number;
+    right?: number;
+    bottom?: number;
+}
 interface WidgetRunner {
     readonly ui: UICore;
     fireAction(action: string, widget: Widget): void | Promise<void>;
@@ -201,8 +207,11 @@ declare class List extends Table {
 interface BoxOptions extends Omit<WidgetOptions, 'text'> {
     title?: string;
     borderBg?: GWU.color.ColorBase;
+    pad?: number;
+    padX?: number;
+    padY?: number;
 }
-declare abstract class Box extends Widget {
+declare class Box extends Widget {
     borderBg: GWU.color.ColorBase | null;
     constructor(id: string, opts?: BoxOptions);
     init(opts: BoxOptions): void;
@@ -210,28 +219,11 @@ declare abstract class Box extends Widget {
     draw(buffer: GWU.canvas.DataBuffer): void;
 }
 
-interface DialogOptions extends WidgetOptions {
-    id?: string;
-    x?: number;
-    y?: number;
-    width?: number;
-    height?: number;
-    title?: string;
-    titleFg?: string;
-    bg?: GWU.color.ColorBase;
-    borderBg?: GWU.color.ColorBase;
-    widgets?: Widget[];
-}
 declare type EventCallback = (ev: GWU.io.Event | string, dialog: Dialog, widget: Widget | null) => any | Promise<any>;
 declare type EventHandlers = Record<string, EventCallback>;
 declare class Dialog implements WidgetRunner {
     ui: UICore;
     id: string;
-    bounds: GWU.xy.Bounds;
-    title: string;
-    titleFg: GWU.color.ColorBase;
-    bg: GWU.color.ColorBase;
-    borderBg: GWU.color.ColorBase;
     widgets: Widget[];
     eventHandlers: EventHandlers;
     _activeWidget: Widget | null;
@@ -239,11 +231,10 @@ declare class Dialog implements WidgetRunner {
     done: boolean;
     timers: Record<string, number>;
     needsRedraw: boolean;
-    constructor(ui: UICore, opts?: DialogOptions);
-    init(opts: DialogOptions): void;
+    constructor(ui: UICore, id?: string);
+    init(): void;
     get activeWidget(): Widget | null;
     setActiveWidget(w: Widget | null, reverse?: boolean): void;
-    contains(e: GWU.xy.XY): boolean;
     requestRedraw(): void;
     setTimeout(action: string, time: number): void;
     clearTimeout(action: string): void;
@@ -264,24 +255,27 @@ declare class Dialog implements WidgetRunner {
 }
 declare class DialogBuilder {
     dialog: Dialog;
+    bounds: GWU.xy.Bounds;
     nextY: number;
-    constructor(ui: UICore, opts?: DialogOptions);
-    with(widget: Widget): this;
+    box: BoxOptions | null;
+    constructor(ui: UICore, width: number, height: number);
+    with(widget: Widget, at?: PosOptions): this;
     center(): this;
     place(x: number, y: number): this;
+    addBox(opts?: BoxOptions): this;
     done(): Dialog;
-    protected addWidget<T extends Widget>(widget: T): T;
 }
-declare function buildDialog(ui: UICore, opts?: DialogOptions): DialogBuilder;
+declare function buildDialog(ui: UICore, width?: number, height?: number): DialogBuilder;
 
-interface AlertOptions extends DialogOptions {
+interface AlertOptions extends WidgetOptions {
     duration?: number;
     waitForAck?: boolean;
     pad?: number;
     padX?: number;
     padY?: number;
+    box?: BoxOptions;
 }
-interface ConfirmOptions extends DialogOptions {
+interface ConfirmOptions extends WidgetOptions {
     allowCancel?: boolean;
     pad?: number;
     padX?: number;
@@ -289,6 +283,7 @@ interface ConfirmOptions extends DialogOptions {
     buttons?: ButtonOptions;
     ok?: string | ButtonOptions;
     cancel?: string | ButtonOptions;
+    box?: BoxOptions;
 }
 interface InputBoxOptions extends ConfirmOptions {
     prompt?: string | TextOptions;
@@ -299,7 +294,7 @@ interface UICore {
     loop: GWU.io.Loop;
     render(): void;
     startLayer(): GWU.canvas.Buffer;
-    resetLayerBuffer(dest: GWU.canvas.DataBuffer): void;
+    resetLayerBuffer(): void;
     finishLayer(): void;
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
     getInputAt(x: number, y: number, maxLength: number, opts?: InputOptions): Promise<string>;
@@ -329,7 +324,7 @@ declare class UI implements UICore {
     get baseBuffer(): GWU.canvas.Buffer;
     get canvasBuffer(): GWU.canvas.Buffer;
     startLayer(): GWU.canvas.Buffer;
-    resetLayerBuffer(dest: GWU.canvas.DataBuffer): void;
+    resetLayerBuffer(): void;
     finishLayer(): void;
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
     alert(opts: number | AlertOptions, text: string, args: any): Promise<any>;
@@ -516,6 +511,7 @@ declare class Menu extends Widget {
     actionButton: ActionButton | null;
     constructor(id: string, opts?: MenuOptions);
     init(opts: MenuOptions): void;
+    reset(): void;
     activate(reverse?: boolean): void;
     deactivate(): void;
     mousemove(e: GWU.io.Event, dialog: WidgetRunner): boolean;
@@ -527,4 +523,4 @@ declare class Menu extends Widget {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList, DataType, Dialog, DialogBuilder, DialogOptions, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text, TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, makeTable, showDropDown };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList, DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text, TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, makeTable, showDropDown };

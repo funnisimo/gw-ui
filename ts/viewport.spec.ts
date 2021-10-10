@@ -23,7 +23,7 @@ describe('Viewport', () => {
         expect(widget.bg).toEqual('red');
 
         widget.draw(ui.buffer);
-        expect(ui.buffer.get(0, 0)).toEqual({
+        expect(ui.buffer.info(0, 0)).toEqual({
             glyph: 0,
             fg: 0xf00,
             bg: 0xf00,

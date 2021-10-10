@@ -29,8 +29,8 @@ describe('Button Widget', () => {
         const buffer = new GWU.canvas.DataBuffer(40, 40);
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
-        expect(buffer.get(0, 0).fg).toEqual(GWU.color.colors.white);
-        expect(buffer.get(0, 0).bg).toEqual(GWU.color.colors.black);
+        expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.white);
+        expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.black);
     });
 
     test('hover', () => {
@@ -51,22 +51,22 @@ describe('Button Widget', () => {
         const buffer = new GWU.canvas.DataBuffer(40, 40);
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
-        expect(buffer.get(0, 0).fg).toEqual(GWU.color.colors.red);
-        expect(buffer.get(0, 0).bg).toEqual(GWU.color.colors.gray);
+        expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.red);
+        expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.gray);
 
         widget.mousemove(UTILS.mousemove(0, 0), dialog);
         expect(widget.hovered).toBeTruthy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
-        expect(buffer.get(0, 0).fg).toEqual(GWU.color.colors.blue);
-        expect(buffer.get(0, 0).bg).toEqual(GWU.color.colors.light_gray);
+        expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.blue);
+        expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.light_gray);
 
         widget.mousemove(UTILS.mousemove(10, 10), dialog);
         expect(widget.hovered).toBeFalsy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
-        expect(buffer.get(0, 0).fg).toEqual(GWU.color.colors.red);
-        expect(buffer.get(0, 0).bg).toEqual(GWU.color.colors.gray);
+        expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.red);
+        expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.gray);
     });
 
     test('hover - wide + tall', () => {
@@ -85,22 +85,22 @@ describe('Button Widget', () => {
         const buffer = new GWU.canvas.DataBuffer(40, 40);
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 1, 10)).toEqual('Button');
-        expect(buffer.get(0, 1).fg).toEqual(GWU.color.colors.red);
-        expect(buffer.get(0, 1).bg).toEqual(GWU.color.colors.gray);
+        expect(buffer.info(0, 1).fg).toEqual(GWU.color.colors.red);
+        expect(buffer.info(0, 1).bg).toEqual(GWU.color.colors.gray);
 
         widget.mousemove(UTILS.mousemove(0, 0), dialog);
         expect(widget.hovered).toBeTruthy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 1, 10)).toEqual('Button');
-        expect(buffer.get(0, 1).fg).toEqual(GWU.color.colors.blue);
-        expect(buffer.get(0, 1).bg).toEqual(GWU.color.colors.light_gray);
+        expect(buffer.info(0, 1).fg).toEqual(GWU.color.colors.blue);
+        expect(buffer.info(0, 1).bg).toEqual(GWU.color.colors.light_gray);
 
         widget.mousemove(UTILS.mousemove(10, 10), dialog);
         expect(widget.hovered).toBeFalsy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 1, 10)).toEqual('Button');
-        expect(buffer.get(0, 1).fg).toEqual(GWU.color.colors.red);
-        expect(buffer.get(0, 1).bg).toEqual(GWU.color.colors.gray);
+        expect(buffer.info(0, 1).fg).toEqual(GWU.color.colors.red);
+        expect(buffer.info(0, 1).bg).toEqual(GWU.color.colors.gray);
     });
 
     test('Enter', async () => {

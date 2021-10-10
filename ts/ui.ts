@@ -40,16 +40,17 @@ export class UI implements UICore {
         this.inDialog = true;
         const base = this.buffer || this.canvas.buffer;
         this.layers.push(base);
-        this.buffer =
-            this.freeBuffers.pop() || new GWU.canvas.Buffer(this.canvas);
+        this.buffer = this.freeBuffers.pop() || this.canvas.buffer.clone();
         // UI_OVERLAY._data.forEach( (c) => c.opacity = 0 );
         this.buffer.copy(base);
+        this.buffer.changed = false;
         return this.buffer;
     }
 
-    resetLayerBuffer(dest: GWU.canvas.DataBuffer): void {
-        const base = this.layers[this.layers.length - 1] || this.canvas.buffer;
-        dest.copy(base);
+    resetLayerBuffer(): void {
+        const base = this.baseBuffer;
+        this.buffer.copy(base);
+        this.buffer.changed = false; // So you have to draw something to make the canvas render...
     }
 
     finishLayer(): void {
@@ -59,6 +60,7 @@ export class UI implements UICore {
             this.freeBuffers.push(this.buffer);
         }
         this.buffer = this.layers.pop() || this.canvas.buffer;
+        this.buffer.changed = true;
         this.buffer.render();
 
         this.inDialog = this.layers.length > 0;
@@ -81,7 +83,7 @@ export class UI implements UICore {
 
             pct = Math.floor((100 * elapsed) / duration);
 
-            this.resetLayerBuffer(buffer);
+            this.resetLayerBuffer();
             buffer.mix(color, pct);
             buffer.render();
         }
@@ -98,28 +100,24 @@ export class UI implements UICore {
             text = GWU.text.apply(text, args);
         }
 
-        const padX = opts.padX || opts.pad || 1;
-        const padY = opts.padY || opts.pad || 1;
-
-        opts.width = opts.width || GWU.text.length(text) + 2 * padX;
+        const width = opts.width || GWU.text.length(text);
+        opts.box = opts.box || { bg: opts.bg };
+        // opts.box.bg = opts.box.bg || 'gray';
 
         const textOpts: Widget.TextOptions = {
             fg: opts.fg,
             text,
-            x: padX,
-            y: padY,
-            wrap: opts.width - 2 * padX,
+            x: 0,
+            y: 0,
+            wrap: width,
         };
-        textOpts.text = text;
-        textOpts.wrap = opts.width;
-
         const textWidget = new Widget.Text('TEXT', textOpts);
 
-        opts.height =
-            (opts.title ? 1 : 0) + padY + textWidget.bounds.height + padY;
+        const height = textWidget.bounds.height;
 
-        const dlg: Widget.Dialog = Widget.buildDialog(this, opts)
-            .with(textWidget)
+        const dlg: Widget.Dialog = Widget.buildDialog(this, width, height)
+            .with(textWidget, { x: 0, y: 0 })
+            .addBox(opts.box)
             .center()
             .done();
 
@@ -160,28 +158,19 @@ export class UI implements UICore {
             text = GWU.text.apply(text, textArgs);
         }
 
-        const padX = opts.padX || opts.pad || 1;
-        const padY = opts.padY || opts.pad || 1;
-
-        opts.width =
+        const width =
             opts.width ||
-            Math.min(
-                Math.floor(this.buffer.width / 2),
-                GWU.text.length(text) + 2 * padX
-            );
-        let textWidth = opts.width - 2 * padX;
+            Math.min(Math.floor(this.buffer.width / 2), GWU.text.length(text));
 
         const textOpts: Widget.TextOptions = {
             fg: opts.fg,
             text,
-            wrap: textWidth,
-            y: opts.title ? 2 : 1,
-            x: padX,
+            wrap: width,
         };
         const textWidget = new Widget.Text('TEXT', textOpts);
 
-        opts.height =
-            (opts.title ? 1 : 0) + padY + textWidget.bounds.height + 2 + padY;
+        const height = textWidget.bounds.height + 2;
+
         opts.allowCancel = opts.allowCancel !== false;
         opts.buttons = Object.assign(
             {
@@ -201,28 +190,26 @@ export class UI implements UICore {
         opts.ok = opts.ok || {};
         opts.cancel = opts.cancel || {};
 
-        const okOpts = Object.assign(
-            {},
-            opts.buttons,
-            { text: 'OK', y: -padY, x: padX },
-            opts.ok
-        );
+        const okOpts = Object.assign({}, opts.buttons, { text: 'OK' }, opts.ok);
         const cancelOpts = Object.assign(
             {},
             opts.buttons,
-            { text: 'CANCEL', y: -padY, x: -padX },
+            { text: 'CANCEL' },
             opts.cancel
         );
 
-        const builder = Widget.buildDialog(this, opts)
-            .with(textWidget)
-            .with(new Widget.Button('OK', okOpts));
+        const builder = Widget.buildDialog(this, width, height)
+            .with(textWidget, { x: 0, y: 0 })
+            .with(new Widget.Button('OK', okOpts), { x: 0, bottom: 0 });
 
         if (opts.allowCancel) {
-            builder.with(new Widget.Button('CANCEL', cancelOpts));
+            builder.with(new Widget.Button('CANCEL', cancelOpts), {
+                right: 0,
+                bottom: 0,
+            });
         }
 
-        const dlg: Widget.Dialog = builder.center().done();
+        const dlg: Widget.Dialog = builder.center().addBox(opts.box).done();
 
         dlg.setEventHandlers({
             OK() {
@@ -243,24 +230,16 @@ export class UI implements UICore {
     }
 
     async showWidget(widget: Widget.Widget, keymap: Widget.EventHandlers = {}) {
-        if (widget.bounds.x < 0) {
-            widget.bounds.x = Math.floor(
-                (this.buffer.width - widget.bounds.width) / 2
-            );
+        const center = widget.bounds.x < 0 || widget.bounds.y < 0;
+
+        const place = { x: widget.bounds.x, y: widget.bounds.y };
+        const builder = Widget.buildDialog(this).with(widget, { x: 0, y: 0 });
+        if (center) {
+            builder.center();
+        } else {
+            builder.place(place.x, place.y);
         }
-        if (widget.bounds.y < 0) {
-            widget.bounds.y = Math.floor(
-                (this.buffer.height - widget.bounds.height) / 2
-            );
-        }
-        const dlg = new Widget.Dialog(this, {
-            width: widget.bounds.width,
-            height: widget.bounds.height,
-            widgets: [widget],
-            x: widget.bounds.x,
-            y: widget.bounds.y,
-            bg: -1,
-        });
+        const dlg = builder.done();
 
         keymap.Escape =
             keymap.Escape ||
@@ -299,33 +278,24 @@ export class UI implements UICore {
             prompt = GWU.text.apply(prompt, args);
         }
 
-        const padX = opts.padX || opts.pad || 1;
-        const padY = opts.padY || opts.pad || 1;
-
-        opts.width =
+        const width =
             opts.width ||
             Math.min(
                 Math.floor(this.buffer.width / 2),
-                GWU.text.length(prompt) + 2 * padX
+                GWU.text.length(prompt)
             );
-        let promptWidth = opts.width - 2 * padX;
 
         const promptOpts: Widget.TextOptions = {
             fg: opts.fg,
             text: prompt,
-            wrap: promptWidth,
-            x: padX,
-            y: (opts.title ? 1 : 0) + padY,
+            wrap: width,
         };
         const promptWidget = new Widget.Text('TEXT', promptOpts);
 
-        opts.height =
-            (opts.title ? 1 : 0) +
-            padY +
+        const height =
             promptWidget.bounds.height +
-            3 +
-            1 +
-            padY;
+            2 + // skip + input
+            2; // skip + ok/cancel
         opts.allowCancel = opts.allowCancel !== false;
         opts.buttons = Object.assign(
             {
@@ -345,34 +315,31 @@ export class UI implements UICore {
         opts.ok = opts.ok || {};
         opts.cancel = opts.cancel || {};
 
-        const okOpts = Object.assign(
-            {},
-            opts.buttons,
-            { text: 'OK', y: -padY, x: padX },
-            opts.ok
-        );
+        const okOpts = Object.assign({}, opts.buttons, { text: 'OK' }, opts.ok);
         const cancelOpts = Object.assign(
             {},
             opts.buttons,
-            { text: 'CANCEL', y: -padY, x: -padX },
+            { text: 'CANCEL' },
             opts.cancel
         );
 
         opts.input = opts.input || {};
-        opts.input.width = opts.input.width || promptWidth;
+        opts.input.width = opts.input.width || width;
         opts.input.bg = opts.input.bg || opts.fg;
         opts.input.fg = opts.input.fg || opts.bg;
-        opts.input.x = padX;
-        opts.input.y = opts.height - 1 - padY - 2;
 
         const inputWidget = new Widget.Input('INPUT', opts.input || {});
-        const builder = Widget.buildDialog(this, opts)
-            .with(promptWidget)
-            .with(inputWidget)
-            .with(new Widget.Button('OK', okOpts));
+        const builder = Widget.buildDialog(this, width, height)
+            .with(promptWidget, { x: 0, y: 0 })
+            .with(inputWidget, { bottom: 2, x: 0 })
+            .with(new Widget.Button('OK', okOpts), { bottom: 0, x: 0 })
+            .addBox(opts.box);
 
         if (opts.allowCancel) {
-            builder.with(new Widget.Button('CANCEL', cancelOpts));
+            builder.with(new Widget.Button('CANCEL', cancelOpts), {
+                bottom: 0,
+                right: 0,
+            });
         }
 
         const dlg: Widget.Dialog = builder.center().done();

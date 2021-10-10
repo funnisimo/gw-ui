@@ -1,23 +1,7 @@
 import * as GWU from 'gw-utils';
 import * as Widget from './widget';
 import { UICore } from '../types';
-
-export interface DialogOptions extends Widget.WidgetOptions {
-    id?: string;
-
-    x?: number;
-    y?: number;
-    width?: number;
-    height?: number;
-
-    title?: string;
-    titleFg?: string;
-
-    bg?: GWU.color.ColorBase;
-    borderBg?: GWU.color.ColorBase;
-
-    widgets?: Widget.Widget[];
-}
+import * as Box from './box';
 
 export type EventCallback = (
     ev: GWU.io.Event | string,
@@ -29,13 +13,7 @@ export type EventHandlers = Record<string, EventCallback>;
 export class Dialog implements Widget.WidgetRunner {
     ui: UICore;
     id: string;
-    bounds: GWU.xy.Bounds;
-
-    title = '';
-    titleFg: GWU.color.ColorBase = 0xfff;
-
-    bg: GWU.color.ColorBase = 0x999;
-    borderBg: GWU.color.ColorBase = 0x999;
+    // bounds: GWU.xy.Bounds;
 
     widgets: Widget.Widget[] = [];
     eventHandlers: EventHandlers = {};
@@ -47,31 +25,40 @@ export class Dialog implements Widget.WidgetRunner {
     timers: Record<string, number> = {};
     needsRedraw = true;
 
-    constructor(ui: UICore, opts?: DialogOptions) {
+    constructor(ui: UICore, id?: string) {
         this.ui = ui;
-        this.id = 'DIALOG';
-        this.bounds = new GWU.xy.Bounds(-1, -1, 0, 0);
-        if (opts) this.init(opts);
+        this.id = id || 'DIALOG';
+        // this.bounds = new GWU.xy.Bounds(-1, -1, 0, 0);
+        // if (opts) this.init(opts);
     }
 
-    init(opts: DialogOptions) {
-        if (opts.id) this.id = opts.id;
-        if (opts.x !== undefined) this.bounds.x = opts.x;
-        if (opts.y !== undefined) this.bounds.y = opts.y;
-        if (opts.height !== undefined) this.bounds.height = opts.height;
-        if (opts.width !== undefined) this.bounds.width = opts.width;
-        if (opts.title) this.title = opts.title;
-        if (opts.titleFg) this.titleFg = opts.titleFg;
-        if (opts.bg) {
-            this.bg = opts.bg;
-            this.borderBg = opts.bg;
-        }
-        if (opts.borderBg) {
-            this.borderBg = opts.borderBg;
-        }
-        if (opts.widgets) {
-            opts.widgets.forEach((w) => this.widgets.push(w));
-        }
+    init() {
+        // if (opts.id) this.id = opts.id;
+        // if (opts.x !== undefined) this.bounds.x = opts.x;
+        // if (opts.y !== undefined) this.bounds.y = opts.y;
+        // if (opts.height !== undefined) this.bounds.height = opts.height;
+        // if (opts.width !== undefined) this.bounds.width = opts.width;
+
+        // if (opts.box) {
+        //     let boxOpts: Box.BoxOptions = {
+        //         fg: 'white',
+        //         bg: 'gray',
+        //         borderBg: 'dark_gray',
+        //         width: this.bounds.width,
+        //         height: this.bounds.height,
+        //         x: this.bounds.x,
+        //         y: this.bounds.y,
+        //     };
+        //     if (opts.box !== true) {
+        //         Object.assign(boxOpts, opts.box);
+        //     }
+        //     const box = new Box.Box(this.id + '_BOX', boxOpts);
+        //     this.widgets.push(box);
+        // }
+
+        // if (opts.widgets) {
+        //     opts.widgets.forEach((w) => this.widgets.push(w));
+        // }
 
         this.widgets.sort((a, b) => (a.depth < b.depth ? -1 : 1));
     }
@@ -92,9 +79,9 @@ export class Dialog implements Widget.WidgetRunner {
         }
     }
 
-    contains(e: GWU.xy.XY): boolean {
-        return this.bounds.contains(e);
-    }
+    // contains(e: GWU.xy.XY): boolean {
+    //     return this.bounds.contains(e);
+    // }
 
     requestRedraw() {
         this.needsRedraw = true;
@@ -163,7 +150,9 @@ export class Dialog implements Widget.WidgetRunner {
     }
 
     widgetAt(x: number, y: number): Widget.Widget | null {
-        return this.widgets.find((w) => w.contains(x, y)) || null;
+        return (
+            this.widgets.find((w) => w.contains(x, y) && w.depth >= 0) || null
+        );
     }
 
     getWidget(id: string): Widget.Widget | null {
@@ -317,70 +306,63 @@ export class Dialog implements Widget.WidgetRunner {
     draw(buffer: GWU.canvas.DataBuffer, force = false) {
         if (!this.needsRedraw && !force) return;
 
-        this.ui.resetLayerBuffer(buffer);
-
-        // Draw dialog
-        if (this.borderBg) {
-            buffer.fillRect(
-                this.bounds.x,
-                this.bounds.y,
-                this.bounds.width,
-                this.bounds.height,
-                ' ',
-                this.borderBg,
-                this.borderBg
-            );
-            buffer.fillRect(
-                this.bounds.x + 1,
-                this.bounds.y + 1,
-                this.bounds.width - 2,
-                this.bounds.height - 2,
-                ' ',
-                this.bg,
-                this.bg
-            );
-        } else {
-            buffer.fillRect(
-                this.bounds.x,
-                this.bounds.y,
-                this.bounds.width,
-                this.bounds.height,
-                ' ',
-                this.bg,
-                this.bg
-            );
-        }
-
-        if (this.title) {
-            const x =
-                this.bounds.x +
-                Math.floor(
-                    (this.bounds.width - GWU.text.length(this.title)) / 2
-                );
-            buffer.drawText(x, this.bounds.y, this.title, this.titleFg);
-        }
-
+        this.ui.resetLayerBuffer();
         this.widgets.forEach((w) => w.draw(buffer));
     }
 }
 
 export class DialogBuilder {
     dialog: Dialog;
+    bounds: GWU.xy.Bounds;
     nextY = 0;
+    box: Box.BoxOptions | null = null;
 
-    constructor(ui: UICore, opts: DialogOptions = {}) {
+    constructor(ui: UICore, width: number, height: number) {
         this.nextY = 1;
-
-        this.dialog = new Dialog(ui, opts);
+        this.dialog = new Dialog(ui);
+        this.bounds = new GWU.xy.Bounds(-1, -1, width, height);
     }
 
-    with(widget: Widget.Widget): this {
+    with(widget: Widget.Widget, at?: Widget.PosOptions): this {
         // widget bounds are set relative to the dialog top left,
         // if we don't get any, help them out
 
         // TODO - Get rid of x, y
-        this.addWidget(widget);
+        const bounds = this.bounds;
 
+        if (at) {
+            if (at.right !== undefined) {
+                bounds.width = Math.max(
+                    bounds.width,
+                    widget.bounds.width + at.right
+                );
+                widget.bounds.right = bounds.width - at.right - 1;
+            } else {
+                widget.bounds.x = at.x || 0;
+                bounds.width = Math.max(
+                    bounds.width,
+                    widget.bounds.width + widget.bounds.x
+                );
+            }
+            if (at.bottom !== undefined) {
+                bounds.height = Math.max(
+                    bounds.height,
+                    widget.bounds.height + at.bottom
+                );
+                widget.bounds.bottom = bounds.height - at.bottom - 1;
+            } else {
+                widget.bounds.y = at.y || 0;
+                bounds.height = Math.max(
+                    bounds.height,
+                    widget.bounds.height + widget.bounds.y
+                );
+            }
+        } else {
+            bounds.width = Math.max(bounds.width, widget.bounds.right);
+            bounds.height = Math.max(bounds.height, widget.bounds.bottom);
+        }
+
+        this.dialog.widgets.push(widget);
         this.nextY = Math.max(this.nextY, widget.bounds.bottom + 1);
 
         return this;
@@ -388,67 +370,60 @@ export class DialogBuilder {
 
     center(): this {
         const size = this.dialog.ui.buffer;
-        const bounds = this.dialog.bounds;
+        const bounds = this.bounds;
         bounds.x = Math.floor((size.width - bounds.width) / 2);
         bounds.y = Math.floor((size.height - bounds.height) / 2);
         return this;
     }
 
     place(x: number, y: number): this {
-        const bounds = this.dialog.bounds;
+        const bounds = this.bounds;
         bounds.x = x;
         bounds.y = y;
         return this;
     }
 
+    addBox(opts?: Box.BoxOptions): this {
+        this.box = opts || {};
+        return this;
+    }
+
     done(): Dialog {
-        if (this.dialog.bounds.x < 0) this.dialog.bounds.x = 0;
-        if (this.dialog.bounds.y < 0) this.dialog.bounds.y = 0;
-        if (this.dialog.bounds.right > this.dialog.ui.buffer.width)
+        if (this.bounds.x < 0) this.bounds.x = 0;
+        if (this.bounds.y < 0) this.bounds.y = 0;
+        if (this.bounds.right > this.dialog.ui.buffer.width)
             throw new Error('Dialog is off screen!');
-        if (this.dialog.bounds.bottom > this.dialog.ui.buffer.height)
+        if (this.bounds.bottom > this.dialog.ui.buffer.height)
             throw new Error('Dialog is off screen!');
+
+        if (this.box) {
+            const padX = this.box.padX || this.box.pad || 1;
+            const padY = this.box.padY || this.box.pad || 1;
+            this.box.x = 0;
+            this.box.y = 0;
+            this.box.width = this.bounds.width + 2 * padX;
+            this.box.height = this.bounds.height + 2 * padY;
+
+            const widget = new Box.Box(this.dialog.id + '_BOX', this.box);
+
+            this.dialog.widgets.forEach((w) => {
+                w.bounds.x += padX;
+                w.bounds.y += padY;
+            });
+
+            this.dialog.widgets.unshift(widget);
+        }
 
         // lock in locations
         this.dialog.widgets.forEach((w) => {
-            w.bounds.x += this.dialog.bounds.x;
-            w.bounds.y += this.dialog.bounds.y;
+            w.bounds.x += this.bounds.x;
+            w.bounds.y += this.bounds.y;
         });
 
         return this.dialog;
     }
-
-    protected addWidget<T extends Widget.Widget>(widget: T): T {
-        const dlgBounds = this.dialog.bounds;
-        const x = widget.bounds.x;
-        const y = widget.bounds.y;
-
-        if (x >= 0) {
-            dlgBounds.width = Math.max(
-                dlgBounds.width,
-                widget.bounds.width + x
-            );
-        } else if (x < 0) {
-            widget.bounds.x = dlgBounds.width - widget.bounds.width + x;
-        }
-
-        if (y >= 0) {
-            dlgBounds.height = Math.max(
-                dlgBounds.height,
-                widget.bounds.height + y
-            );
-        } else if (y < 0) {
-            widget.bounds.y = dlgBounds.height - widget.bounds.height + y;
-        }
-
-        this.dialog.widgets.push(widget);
-        return widget;
-    }
 }
 
-export function buildDialog(
-    ui: UICore,
-    opts: DialogOptions = {}
-): DialogBuilder {
-    return new DialogBuilder(ui, opts);
+export function buildDialog(ui: UICore, width = 0, height = 0): DialogBuilder {
+    return new DialogBuilder(ui, width, height);
 }

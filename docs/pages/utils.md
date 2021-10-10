@@ -54,13 +54,15 @@ LOOP.run({
         await ui.alert(
             {
                 duration: 3000,
+                box: {
+                    bg: 'darkest_teal',
+                    borderBg: 'dark_gray',
+                    padX: 2,
+                    padY: 2,
+                    title: 'My Alert',
+                    titleFg: 'dark_yellow',
+                },
                 fg: 'green',
-                bg: 'darkest_teal',
-                borderBg: 'dark_gray',
-                padX: 2,
-                padY: 2,
-                title: 'My Alert',
-                titleFg: 'dark_yellow',
                 width: 50,
             },
             'This is a custom alert that ΩredΩspans∆ many Ωlightest_blueΩlines of text∆ and has ΩtealΩcolors∆.\n\nIt is capable of showing lots of information.\n\nEven newlines are allowed.'
@@ -96,11 +98,13 @@ LOOP.run({
         await ui.confirm(
             {
                 width: 20,
-                bg: 'white',
-                borderBg: 'light_gray',
+                box: {
+                    bg: 'white',
+                    borderBg: 'light_gray',
+                    pad: 2,
+                    title: 'TACOS!',
+                },
                 fg: 'blue',
-                pad: 2,
-                title: 'TACOS!',
             },
             'This is a much more complex confirmation dialog.  It can include text that spans more than one line.  It can also include ΩredΩcolors∆!'
         );

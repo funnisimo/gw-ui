@@ -160,7 +160,7 @@ export function getBufferText(
 ): string {
     let text = '';
     for (let i = 0; i < width; ++i) {
-        const data = buffer.get(x + i, y);
+        const data = buffer.info(x + i, y);
         if (!data.glyph) data.glyph = 32;
         text += String.fromCharCode(data.glyph);
     }
@@ -172,7 +172,7 @@ export function getBufferFg(
     x: number,
     y: number
 ): number {
-    const data = buffer.get(x, y);
+    const data = buffer.info(x, y);
     return data.fg;
 }
 
@@ -181,7 +181,7 @@ export function getBufferBg(
     x: number,
     y: number
 ): number {
-    const data = buffer.get(x, y);
+    const data = buffer.info(x, y);
     return data.bg;
 }
 
@@ -199,6 +199,13 @@ export function keypress(key: string): GWU.io.Event {
     return GWU.io.makeKeyEvent({
         key,
         code: 'KEY_' + key.toUpperCase(),
+    } as KeyboardEvent);
+}
+
+export function dir(name: 'up' | 'down' | 'left' | 'right'): GWU.io.Event {
+    return GWU.io.makeKeyEvent({
+        key: 'arrow' + name,
+        code: 'ARROW' + name.toUpperCase(),
     } as KeyboardEvent);
 }
 

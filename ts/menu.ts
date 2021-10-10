@@ -159,7 +159,7 @@ export async function showDropDown(
     const buffer = ui.startLayer();
 
     button.buttons.forEach((b) => (b.hovered = false));
-    button.buttons[0].hovered = true;
+    // button.buttons[0].hovered = true;
 
     let activeButton: DropDownButton | null = button;
     await ui.loop.run({
@@ -279,9 +279,49 @@ export async function showDropDown(
             return false;
         },
 
+        dir: async (e: GWU.io.Event) => {
+            if (!activeButton) return true; // should not happen
+            if (!e.dir) return;
+            if (e.dir[1]) {
+                const current = activeButton.buttons.findIndex(
+                    (b) => b.hovered
+                );
+
+                if (current < 1 && e.dir[1] < 0) {
+                    activeButton.buttons.forEach((b) => (b.hovered = false));
+                    return true; // close me!
+                }
+
+                const index = GWU.clamp(
+                    current + e.dir[1],
+                    0,
+                    activeButton.buttons.length - 1
+                );
+                activeButton.buttons.forEach(
+                    (b, i) => (b.hovered = i === index)
+                );
+
+                const selected = activeButton.buttons[index];
+                if (selected instanceof DropDownButton) {
+                    selected.buttons.forEach((b) => {
+                        b.hovered = false;
+                    });
+                    selected.buttons[0].hovered = true;
+
+                    selected.setBounds(
+                        ui.buffer,
+                        activeButton.bounds.x,
+                        e.y,
+                        activeButton.bounds.width
+                    );
+                    activeButton = selected;
+                }
+            }
+        },
+
         draw: () => {
             if (!activeButton) return;
-            ui.resetLayerBuffer(buffer);
+            ui.resetLayerBuffer();
             activeButton.draw(buffer);
             menu.draw(buffer);
             buffer.render();
@@ -344,6 +384,20 @@ export class Menu extends Widget.Widget {
         if (opts.lead !== undefined) {
             this.lead = opts.lead ? opts.lead : '';
         }
+    }
+
+    reset() {
+        super.reset();
+        const onTop = this.bounds.y <= 10;
+        this.buttons.forEach((b) => {
+            if (b instanceof DropDownButton) {
+                if (onTop) {
+                    b.bounds.top = this.bounds.bottom + 1;
+                } else {
+                    b.bounds.bottom = this.bounds.top - 1;
+                }
+            }
+        });
     }
 
     activate(reverse = false) {
@@ -460,7 +514,7 @@ export class Menu extends Widget.Widget {
             (len, button) => len + button.text.length + this.separator.length,
             this.lead.length + this.bounds.x
         );
-        if (x + text.length + 2 > this.bounds.width) {
+        if (x + text.length + this.separator.length > this.bounds.width) {
             throw new Error('Button makes menu too wide :' + text);
         }
 
@@ -469,12 +523,7 @@ export class Menu extends Widget.Widget {
             button = new ActionButton(text, config);
         } else {
             const dropdown = new DropDownButton(this, null, text, config);
-            dropdown.bounds.x = x;
-            if (this.bounds.y) {
-                dropdown.bounds.y = this.bounds.y - dropdown.bounds.height;
-            } else {
-                dropdown.bounds.y = this.bounds.y + 1;
-            }
+            dropdown.bounds.x = x - 1; // Hmmm...
             button = dropdown;
         }
         button.x = x;

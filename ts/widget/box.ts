@@ -4,9 +4,13 @@ import * as Widget from './widget';
 export interface BoxOptions extends Omit<Widget.WidgetOptions, 'text'> {
     title?: string;
     borderBg?: GWU.color.ColorBase;
+
+    pad?: number;
+    padX?: number;
+    padY?: number;
 }
 
-export abstract class Box extends Widget.Widget {
+export class Box extends Widget.Widget {
     borderBg!: GWU.color.ColorBase | null;
 
     constructor(id: string, opts?: BoxOptions) {
@@ -14,8 +18,9 @@ export abstract class Box extends Widget.Widget {
             id,
             (() => {
                 if (!opts) return opts;
-                if (opts.depth === undefined) opts.depth = -1; // hid behind other widgets
+                if (opts.depth === undefined) opts.depth = -10; // hide behind other widgets
                 if (opts.title) (<Widget.WidgetOptions>opts).text = opts.title;
+                opts.bg = opts.bg || 'gray';
                 return opts;
             })()
         );

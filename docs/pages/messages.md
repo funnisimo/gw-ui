@@ -31,14 +31,8 @@ const messages = new GWI.Messages('MSG', {
     bg: 'red',
     fg: 'yellow',
 });
-const dialog = new GWI.Dialog(ui, {
-    width: canvas.width,
-    height: canvas.height,
-    x: 0,
-    y: 0,
-    widgets: [messages],
-});
-
+const dialog = new GWI.Dialog(ui);
+dialog.widgets.push(messages);
 dialog.show();
 ```
 
@@ -60,13 +54,7 @@ const messages = new GWI.Messages('MSG', {
     fg: 'black',
 });
 
-const dialog = new GWI.Dialog(ui, {
-    width: canvas.width,
-    height: canvas.height,
-    x: 0,
-    y: 0,
-    widgets: [messages],
-});
-
+const dialog = new GWI.Dialog(ui);
+dialog.widgets.push(messages);
 dialog.show();
 ```

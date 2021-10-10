@@ -65,10 +65,10 @@ describe('Text Widget', () => {
         widget.draw(buffer);
         // buffer.dump();
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Test');
-        expect(buffer.get(0, 0).fg).toEqual(GWU.color.colors.red);
-        expect(buffer.get(1, 0).fg).toEqual(GWU.color.colors.red);
-        expect(buffer.get(2, 0).fg).toEqual(GWU.color.colors.red);
-        expect(buffer.get(3, 0).fg).toEqual(GWU.color.colors.red);
-        expect(buffer.get(4, 0).fg).toEqual(GWU.color.colors.black);
+        expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.red);
+        expect(buffer.info(1, 0).fg).toEqual(GWU.color.colors.red);
+        expect(buffer.info(2, 0).fg).toEqual(GWU.color.colors.red);
+        expect(buffer.info(3, 0).fg).toEqual(GWU.color.colors.red);
+        expect(buffer.info(4, 0).fg).toEqual(GWU.color.colors.black);
     });
 });

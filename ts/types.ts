@@ -18,16 +18,18 @@ import * as Widget from './widget';
 //     max?: number;
 // }
 
-export interface AlertOptions extends Widget.DialogOptions {
+export interface AlertOptions extends Widget.WidgetOptions {
     duration?: number;
     waitForAck?: boolean;
 
     pad?: number;
     padX?: number;
     padY?: number;
+
+    box?: Widget.BoxOptions;
 }
 
-export interface ConfirmOptions extends Widget.DialogOptions {
+export interface ConfirmOptions extends Widget.WidgetOptions {
     allowCancel?: boolean;
 
     pad?: number;
@@ -37,6 +39,8 @@ export interface ConfirmOptions extends Widget.DialogOptions {
     buttons?: Widget.ButtonOptions;
     ok?: string | Widget.ButtonOptions;
     cancel?: string | Widget.ButtonOptions;
+
+    box?: Widget.BoxOptions;
 }
 
 export interface InputBoxOptions extends ConfirmOptions {
@@ -51,7 +55,7 @@ export interface UICore {
     render(): void;
 
     startLayer(): GWU.canvas.Buffer;
-    resetLayerBuffer(dest: GWU.canvas.DataBuffer): void;
+    resetLayerBuffer(): void;
     finishLayer(): void;
 
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;

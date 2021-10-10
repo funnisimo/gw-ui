@@ -3,6 +3,13 @@ import { UICore } from '../types';
 
 export type VAlign = 'top' | 'middle' | 'bottom';
 
+export interface PosOptions {
+    x?: number;
+    y?: number;
+    right?: number;
+    bottom?: number;
+}
+
 export interface WidgetRunner {
     readonly ui: UICore;
     fireAction(action: string, widget: Widget): void | Promise<void>;
@@ -36,6 +43,7 @@ export interface WidgetOptions {
 
 export abstract class Widget {
     bounds: GWU.xy.Bounds;
+
     active = false;
     hovered = false;
     tabStop = false;

@@ -106,7 +106,7 @@ export class Messages extends Widget.Widget {
                     : this.bounds.bottom - currentM + 1;
                 const endY = isOnTop ? this.bounds.y : this.bounds.bottom;
                 const dy = isOnTop ? -1 : 1;
-                ui.resetLayerBuffer(dbuf);
+                ui.resetLayerBuffer();
 
                 // console.log(
                 //     `draw archive - count=${i}, startY=${startY}, endY=${endY}, dy=${dy}`

@@ -2448,7 +2448,7 @@
         }
         return true;
     }
-    const MATCH = /^(\*|\#\w+|\$|\w+)(\.(\w+))?(\:(\w+))?$/;
+    const MATCH = /^(\*|\#\w+|\$|\w+)(\.(\w[\w-]*))?(\:(\w+))?$/;
     class Selector {
         constructor(text) {
             this.tag = '';
@@ -3089,23 +3089,38 @@
             return this._usedStyle.get(id);
         }
         addClass(id) {
-            if (this.classes.includes(id))
-                return this;
-            this.classes.push(id);
-            this._usedStyle.dirty = true; // It needs to get styles for this class
+            const items = id.split(' ');
+            items.forEach((cls) => {
+                if (cls.length == 0)
+                    return;
+                if (this.classes.includes(cls))
+                    return;
+                this._usedStyle.dirty = true; // It needs to get styles for this class
+                this.classes.push(cls);
+            });
             return this;
         }
         removeClass(id) {
-            if (!GWU__namespace.arrayDelete(this.classes, id))
-                return this;
-            this._usedStyle.dirty = true; // It may need to remove some styles
+            const items = id.split(' ');
+            items.forEach((cls) => {
+                if (cls.length == 0)
+                    return;
+                if (!GWU__namespace.arrayDelete(this.classes, cls))
+                    return;
+                this._usedStyle.dirty = true; // It may need to remove some styles
+            });
             return this;
         }
         toggleClass(id) {
-            if (!GWU__namespace.arrayDelete(this.classes, id)) {
-                this.classes.push(id);
-            }
-            this._usedStyle.dirty = true;
+            const items = id.split(' ');
+            items.forEach((cls) => {
+                if (cls.length == 0)
+                    return;
+                if (!GWU__namespace.arrayDelete(this.classes, cls)) {
+                    this.classes.push(cls);
+                }
+                this._usedStyle.dirty = true;
+            });
             return this;
         }
         pos(...args) {

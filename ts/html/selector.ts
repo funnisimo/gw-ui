@@ -13,7 +13,7 @@ export interface Selectable {
     props: Record<string, any>;
 }
 
-const MATCH = /^(\*|\#\w+|\$|\w+)(\.(\w+))?(\:(\w+))?$/;
+const MATCH = /^(\*|\#\w+|\$|\w+)(\.(\w[\w-]*))?(\:(\w+))?$/;
 
 export class Selector {
     tag = '';

@@ -1,6 +1,6 @@
 import 'jest-extended';
 // import * as GWU from 'gw-utils';
-import * as Widget from './widget';
+import * as Widget from './element';
 
 describe('Widget', () => {
     let root: Widget.Widget;

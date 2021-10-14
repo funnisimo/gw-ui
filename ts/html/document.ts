@@ -3,7 +3,7 @@ import * as GWU from 'gw-utils';
 import { UICore } from '../types';
 import { Selector } from './selector';
 import * as Style from './style';
-import { Widget } from './widget';
+import { Widget } from './element';
 
 // return true if you want to stop the event from propagating
 export type EventCb = (

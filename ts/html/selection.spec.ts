@@ -1,7 +1,7 @@
 import * as UTILS from '../../test/utils';
 import { UICore } from '../types';
 import * as Document from './document';
-import * as Widget from './widget';
+import * as Widget from './element';
 
 describe('body', () => {
     let ui: UICore;

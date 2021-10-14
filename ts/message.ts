@@ -83,7 +83,7 @@ export class Messages extends Widget.Widget {
 
         totalMessageCount = Math.min(
             totalMessageCount,
-            isOnTop ? dbuf.height - this.bounds.top : this.bounds.bottom + 1
+            isOnTop ? dbuf.height - this.bounds.top : this.bounds.bottom
         );
 
         // Pull-down/pull-up animation:
@@ -103,7 +103,7 @@ export class Messages extends Widget.Widget {
             for (let currentM = startM; currentM != endM; currentM += dM) {
                 const startY = isOnTop
                     ? this.bounds.y + currentM - 1
-                    : this.bounds.bottom - currentM + 1;
+                    : this.bounds.bottom - currentM;
                 const endY = isOnTop ? this.bounds.y : this.bounds.bottom;
                 const dy = isOnTop ? -1 : 1;
                 ui.resetLayerBuffer();

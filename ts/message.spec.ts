@@ -128,6 +128,10 @@ describe('Message', () => {
             y: 36,
         });
 
+        // @ts-ignore
+        ui.loop._stopTicks();
+        // ui.buffer.dump();
+
         expect(widget.bounds.x).toEqual(0);
         expect(widget.bounds.y).toEqual(36);
 
@@ -142,18 +146,14 @@ describe('Message', () => {
         expect(UTILS.getBufferText(ui.buffer, 0, 38, 20)).toEqual('Testing 47');
         expect(UTILS.getBufferText(ui.buffer, 0, 39, 20)).toEqual('Testing 46');
 
+        // ui.buffer.dump();
+
         jest.spyOn(widget, 'showArchive');
 
         const p = widget.click(UTILS.click(1, 38), dialog);
-
         expect(widget.showArchive).toHaveBeenCalled();
 
-        // @ts-ignore
-        ui.loop._stopTicks();
-        // @ts-ignore
-        expect(ui.loop.interval).toEqual(0);
-        // @ts-ignore
-        expect(ui.loop.intervalCount).toEqual(0);
+        // ui.buffer.dump();
 
         for (let i = 0; i < 5; ++i) {
             await UTILS.pushEvent(ui.loop, UTILS.tick(50)); // expand 1 row

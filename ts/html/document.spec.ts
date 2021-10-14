@@ -1,6 +1,6 @@
 import * as UTILS from '../../test/utils';
 import { UICore } from '../types';
-import * as Layer from './layer';
+import * as Layer from './document';
 
 describe('Layer', () => {
     let ui: UICore;

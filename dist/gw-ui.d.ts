@@ -765,7 +765,8 @@ declare class Document {
     constructor(ui: UICore, rootTag?: string);
     $(id?: SelectType): Selection;
     select(id?: SelectType): Selection;
-    create(tag: string): Element;
+    createElement(tag: string): Element;
+    create(tag: string): Selection;
     rule(info: Record<string, StyleOptions>): this;
     rule(rule: string): Style;
     rule(rule: string, style: StyleOptions): this;

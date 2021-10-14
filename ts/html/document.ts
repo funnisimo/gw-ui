@@ -57,10 +57,14 @@ export class Document {
             return id;
         } else if (typeof id === 'string') {
             if (id.startsWith('<')) {
-                selected = [this.create(id)];
+                selected = [this.createElement(id)];
             } else {
-                const s = new Selector(id);
-                selected = this.children.filter((w) => s.matches(w));
+                if (id === 'document') {
+                    selected = [this.body]; // convenience
+                } else {
+                    const s = new Selector(id);
+                    selected = this.children.filter((w) => s.matches(w));
+                }
             }
         } else if (Array.isArray(id)) {
             selected = id;
@@ -70,13 +74,17 @@ export class Document {
         return new Selection(this, selected);
     }
 
-    create(tag: string): Element {
+    createElement(tag: string): Element {
         if (tag.startsWith('<')) {
             if (!tag.endsWith('>'))
                 throw new Error('Need brackets around new tag - e.g. "<tag>"');
             tag = tag.substring(1, tag.length - 1);
         }
         return new Element(tag, this.stylesheet);
+    }
+
+    create(tag: string): Selection {
+        return this.select(this.createElement(tag));
     }
 
     rule(info: Record<string, Style.StyleOptions>): this;

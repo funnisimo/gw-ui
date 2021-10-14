@@ -1,7 +1,7 @@
 import * as UTILS from '../../test/utils';
 import { UICore } from '../types';
 import * as Document from './document';
-import * as Widget from './element';
+import * as Element from './element';
 
 describe('body', () => {
     let ui: UICore;
@@ -23,7 +23,7 @@ describe('body', () => {
     test('new widget', () => {
         const s = document.$('<text>');
         expect(s.selected).toHaveLength(1);
-        expect(s.get(0)).toBeInstanceOf(Widget.Widget);
+        expect(s.get(0)).toBeInstanceOf(Element.Element);
         expect(s.get(0).tag).toEqual('text');
         expect(s.get(0)._attached).toBeFalsy();
     });

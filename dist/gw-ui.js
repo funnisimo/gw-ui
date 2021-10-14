@@ -27,7 +27,7 @@
     var GWU__namespace = /*#__PURE__*/_interopNamespace(GWU);
     var GWM__namespace = /*#__PURE__*/_interopNamespace(GWM);
 
-    class Widget$1 {
+    class Widget {
         constructor(id, opts) {
             this.active = false;
             this.hovered = false;
@@ -161,7 +161,7 @@
         }
     }
 
-    class Text extends Widget$1 {
+    class Text extends Widget {
         constructor(id, opts) {
             super(id, opts);
         }
@@ -212,7 +212,7 @@
         }
     }
 
-    class Button extends Widget$1 {
+    class Button extends Widget {
         constructor(id, opts) {
             super(id, opts);
         }
@@ -239,7 +239,7 @@
         }
     }
 
-    class Input extends Widget$1 {
+    class Input extends Widget {
         constructor(id, opts) {
             super(id, opts);
         }
@@ -378,7 +378,7 @@
             return GWU__namespace.text.truncate(v, this.width);
         }
     }
-    class Table extends Widget$1 {
+    class Table extends Widget {
         constructor(id, opts) {
             super(id, opts);
             this.data = null;
@@ -627,7 +627,7 @@
         }
     }
 
-    class Box extends Widget$1 {
+    class Box extends Widget {
         constructor(id, opts) {
             super(id, (() => {
                 if (!opts)
@@ -1268,7 +1268,7 @@
         }
     }
 
-    class Messages extends Widget$1 {
+    class Messages extends Widget {
         constructor(id, opts) {
             super(id, opts);
         }
@@ -1380,7 +1380,7 @@
         }
     }
 
-    class Viewport extends Widget$1 {
+    class Viewport extends Widget {
         constructor(id, opts) {
             super(id, opts);
             this.offsetX = 0;
@@ -1734,7 +1734,7 @@
             return this.cell.drawStatus(buffer, bounds);
         }
     }
-    class Sidebar extends Widget$1 {
+    class Sidebar extends Widget {
         constructor(id, opts) {
             super(id, opts);
             this.cellCache = [];
@@ -2184,7 +2184,7 @@
         ui.finishLayer();
         menu.clearHighlight();
     }
-    class Menu extends Widget$1 {
+    class Menu extends Widget {
         constructor(id, opts) {
             super(id, opts);
             this.activeIndex = -1;
@@ -2757,7 +2757,7 @@
         }
     }
 
-    class Widget {
+    class Element {
         // hovered: Style.Style = {};
         // active: Style.Style = {};
         constructor(tag, styles) {
@@ -2812,7 +2812,7 @@
             if (child.parent) {
                 if (child.parent === this)
                     return this; // ok
-                throw new Error('Cannot add a currently attached child to another Widget.  Detach it first.');
+                throw new Error('Cannot add a currently attached child to another element.  Detach it first.');
             }
             if (beforeIndex == 0) {
                 this.children.unshift(child);
@@ -3195,7 +3195,7 @@
         constructor(ui, rootTag = 'body') {
             this.ui = ui;
             this.stylesheet = new Sheet();
-            this.body = new Widget(rootTag);
+            this.body = new Element(rootTag);
             this.body.style({
                 width: ui.buffer.width,
                 maxWidth: ui.buffer.width,
@@ -3242,7 +3242,7 @@
                     throw new Error('Need brackets around new tag - e.g. "<tag>"');
                 tag = tag.substring(1, tag.length - 1);
             }
-            return new Widget(tag, this.stylesheet);
+            return new Element(tag, this.stylesheet);
         }
         rule(rule, style) {
             if (typeof rule === 'string') {
@@ -3288,22 +3288,6 @@
             w.children.forEach((c) => this._detach(c));
             return this;
         }
-        // add(id: SelectType): Selector {
-        //     let s: Selector;
-        //     if (id instanceof Selector) {
-        //         s = id;
-        //     } else {
-        //         s = this.$(id);
-        //     }
-        //     s.selected.forEach((w) => {
-        //         if (!this.allWidgets.includes(w)) {
-        //             w.parent = this.root;
-        //             w._attached = true;
-        //             this.allWidgets.push(w);
-        //         }
-        //     });
-        //     return s;
-        // }
         computeStyles() {
             this.children.forEach((w) => {
                 if (w.used().dirty || this.stylesheet.dirty) {
@@ -3440,7 +3424,7 @@
                     if (!w.parent)
                         throw new Error('Cannot detach root widget.');
                     w.parent.removeChild(w);
-                    // remove from allWidgets
+                    // remove from document.children
                     this.layer._detach(w);
                 }
             });
@@ -3651,7 +3635,7 @@
         Style: Style,
         ComputedStyle: ComputedStyle,
         Sheet: Sheet,
-        Widget: Widget,
+        Element: Element,
         Document: Document,
         Selection: Selection
     });
@@ -3678,7 +3662,7 @@
     exports.Text = Text;
     exports.UI = UI;
     exports.Viewport = Viewport;
-    exports.Widget = Widget$1;
+    exports.Widget = Widget;
     exports.buildDialog = buildDialog;
     exports.html = index;
     exports.makeTable = makeTable;

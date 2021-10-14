@@ -1,12 +1,12 @@
 import 'jest-extended';
 // import * as GWU from 'gw-utils';
-import * as Widget from './element';
+import * as Element from './element';
 
-describe('Widget', () => {
-    let root: Widget.Widget;
+describe('Element', () => {
+    let root: Element.Element;
 
     beforeEach(() => {
-        root = new Widget.Widget('root').style({
+        root = new Element.Element('root').style({
             width: 50,
             height: 30,
             position: 'fixed',
@@ -15,7 +15,7 @@ describe('Widget', () => {
     });
 
     test('create', () => {
-        const w = new Widget.Widget('text');
+        const w = new Element.Element('text');
         expect(w.tag).toEqual('text');
         expect(w.style().dirty).toBeFalsy();
         expect(w.used('left')).toBeUndefined();
@@ -36,8 +36,8 @@ describe('Widget', () => {
     // CLONE
 
     test('clone', () => {
-        const a = new Widget.Widget('text');
-        const b = new Widget.Widget('text');
+        const a = new Element.Element('text');
+        const b = new Element.Element('text');
         a.dirty = false;
         b.dirty = false;
         expect(a.dirty).toBeFalsy();
@@ -60,8 +60,8 @@ describe('Widget', () => {
     // CHILDREN
 
     test('addChild', () => {
-        const a = new Widget.Widget('text');
-        const b = new Widget.Widget('text');
+        const a = new Element.Element('text');
+        const b = new Element.Element('text');
         a.dirty = false;
         b.dirty = false;
         expect(a.dirty).toBeFalsy();
@@ -81,8 +81,8 @@ describe('Widget', () => {
     });
 
     test('removeChild', () => {
-        const a = new Widget.Widget('text');
-        const b = new Widget.Widget('text');
+        const a = new Element.Element('text');
+        const b = new Element.Element('text');
 
         a.addChild(b);
         expect(b.parent).toBe(a);
@@ -109,7 +109,7 @@ describe('Widget', () => {
     // POSITION
 
     test('left', () => {
-        const w = new Widget.Widget('text');
+        const w = new Element.Element('text');
         expect(w.style('left')).toBeUndefined();
         expect(w.bounds.x).toEqual(0);
 
@@ -125,7 +125,7 @@ describe('Widget', () => {
     });
 
     test('right', () => {
-        const w = new Widget.Widget('text');
+        const w = new Element.Element('text');
         root.addChild(w);
 
         expect(w.used('right')).toBeUndefined();
@@ -161,7 +161,7 @@ describe('Widget', () => {
     });
 
     test('top', () => {
-        const w = new Widget.Widget('text');
+        const w = new Element.Element('text');
         expect(w.used('position')).toBeUndefined();
         expect(w.used('top')).toBeUndefined();
         expect(w.bounds.y).toEqual(0);
@@ -179,7 +179,7 @@ describe('Widget', () => {
     });
 
     test('bottom', () => {
-        const w = new Widget.Widget('text');
+        const w = new Element.Element('text');
         expect(w.used('position')).toBeUndefined();
         expect(w.used('bottom')).toBeUndefined();
 
@@ -198,7 +198,7 @@ describe('Widget', () => {
     });
 
     test('pos', () => {
-        const w = new Widget.Widget('text');
+        const w = new Element.Element('text');
         w.pos({ left: 4, bottom: 2 });
         expect(w.used('left')).toEqual(4);
         expect(w.used('bottom')).toEqual(2);
@@ -214,7 +214,7 @@ describe('Widget', () => {
     // SIZE
 
     test('size', () => {
-        const w = new Widget.Widget('text');
+        const w = new Element.Element('text');
 
         w.size({ width: 9, minHeight: 4 });
         expect(w.used('minWidth')).toBeUndefined();
@@ -232,7 +232,7 @@ describe('Widget', () => {
     });
 
     test('width', () => {
-        const w = new Widget.Widget('text');
+        const w = new Element.Element('text');
 
         w.style('width', 9);
         expect(w.dirty).toBeTruthy();
@@ -265,7 +265,7 @@ describe('Widget', () => {
     });
 
     test('minWidth', () => {
-        const w = new Widget.Widget('text');
+        const w = new Element.Element('text');
         w.style('minWidth', 10);
         expect(w.used('minWidth')).toEqual(10);
         expect(w.used('width')).toBeUndefined();
@@ -304,7 +304,7 @@ describe('Widget', () => {
     });
 
     test('maxWidth', () => {
-        const w = new Widget.Widget('text');
+        const w = new Element.Element('text');
         w.style('maxWidth', 15);
         expect(w.used('minWidth')).toBeUndefined();
         expect(w.used('maxWidth')).toEqual(15);
@@ -349,7 +349,7 @@ describe('Widget', () => {
     });
 
     test('height', () => {
-        const w = new Widget.Widget('text');
+        const w = new Element.Element('text');
         expect(w.used('minHeight')).toBeUndefined();
         expect(w.used('maxHeight')).toBeUndefined();
         expect(w.used('height')).toBeUndefined();
@@ -373,7 +373,7 @@ describe('Widget', () => {
     });
 
     test('minHeight', () => {
-        const w = new Widget.Widget('text');
+        const w = new Element.Element('text');
         expect(w.style('minHeight')).toBeUndefined();
         expect(w.style('maxHeight')).toBeUndefined();
         expect(w.style('height')).toBeUndefined();
@@ -424,7 +424,7 @@ describe('Widget', () => {
     });
 
     test('maxHeight', () => {
-        const w = new Widget.Widget('text');
+        const w = new Element.Element('text');
         expect(w.used('minHeight')).toBeUndefined();
         expect(w.used('maxHeight')).toBeUndefined();
         expect(w.used('height')).toBeUndefined();

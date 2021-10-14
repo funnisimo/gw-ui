@@ -1,7 +1,7 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 
-class Widget$1 {
+class Widget {
     constructor(id, opts) {
         this.active = false;
         this.hovered = false;
@@ -135,7 +135,7 @@ class Widget$1 {
     }
 }
 
-class Text extends Widget$1 {
+class Text extends Widget {
     constructor(id, opts) {
         super(id, opts);
     }
@@ -186,7 +186,7 @@ class Text extends Widget$1 {
     }
 }
 
-class Button extends Widget$1 {
+class Button extends Widget {
     constructor(id, opts) {
         super(id, opts);
     }
@@ -213,7 +213,7 @@ class Button extends Widget$1 {
     }
 }
 
-class Input extends Widget$1 {
+class Input extends Widget {
     constructor(id, opts) {
         super(id, opts);
     }
@@ -352,7 +352,7 @@ class Column {
         return GWU.text.truncate(v, this.width);
     }
 }
-class Table extends Widget$1 {
+class Table extends Widget {
     constructor(id, opts) {
         super(id, opts);
         this.data = null;
@@ -601,7 +601,7 @@ class List extends Table {
     }
 }
 
-class Box extends Widget$1 {
+class Box extends Widget {
     constructor(id, opts) {
         super(id, (() => {
             if (!opts)
@@ -1242,7 +1242,7 @@ class UI {
     }
 }
 
-class Messages extends Widget$1 {
+class Messages extends Widget {
     constructor(id, opts) {
         super(id, opts);
     }
@@ -1354,7 +1354,7 @@ class Messages extends Widget$1 {
     }
 }
 
-class Viewport extends Widget$1 {
+class Viewport extends Widget {
     constructor(id, opts) {
         super(id, opts);
         this.offsetX = 0;
@@ -1708,7 +1708,7 @@ class CellEntry extends EntryBase {
         return this.cell.drawStatus(buffer, bounds);
     }
 }
-class Sidebar extends Widget$1 {
+class Sidebar extends Widget {
     constructor(id, opts) {
         super(id, opts);
         this.cellCache = [];
@@ -2158,7 +2158,7 @@ async function showDropDown(dialog, menu, button) {
     ui.finishLayer();
     menu.clearHighlight();
 }
-class Menu extends Widget$1 {
+class Menu extends Widget {
     constructor(id, opts) {
         super(id, opts);
         this.activeIndex = -1;
@@ -2731,7 +2731,7 @@ class Sheet {
     }
 }
 
-class Widget {
+class Element {
     // hovered: Style.Style = {};
     // active: Style.Style = {};
     constructor(tag, styles) {
@@ -2786,7 +2786,7 @@ class Widget {
         if (child.parent) {
             if (child.parent === this)
                 return this; // ok
-            throw new Error('Cannot add a currently attached child to another Widget.  Detach it first.');
+            throw new Error('Cannot add a currently attached child to another element.  Detach it first.');
         }
         if (beforeIndex == 0) {
             this.children.unshift(child);
@@ -3169,7 +3169,7 @@ class Document {
     constructor(ui, rootTag = 'body') {
         this.ui = ui;
         this.stylesheet = new Sheet();
-        this.body = new Widget(rootTag);
+        this.body = new Element(rootTag);
         this.body.style({
             width: ui.buffer.width,
             maxWidth: ui.buffer.width,
@@ -3216,7 +3216,7 @@ class Document {
                 throw new Error('Need brackets around new tag - e.g. "<tag>"');
             tag = tag.substring(1, tag.length - 1);
         }
-        return new Widget(tag, this.stylesheet);
+        return new Element(tag, this.stylesheet);
     }
     rule(rule, style) {
         if (typeof rule === 'string') {
@@ -3262,22 +3262,6 @@ class Document {
         w.children.forEach((c) => this._detach(c));
         return this;
     }
-    // add(id: SelectType): Selector {
-    //     let s: Selector;
-    //     if (id instanceof Selector) {
-    //         s = id;
-    //     } else {
-    //         s = this.$(id);
-    //     }
-    //     s.selected.forEach((w) => {
-    //         if (!this.allWidgets.includes(w)) {
-    //             w.parent = this.root;
-    //             w._attached = true;
-    //             this.allWidgets.push(w);
-    //         }
-    //     });
-    //     return s;
-    // }
     computeStyles() {
         this.children.forEach((w) => {
             if (w.used().dirty || this.stylesheet.dirty) {
@@ -3414,7 +3398,7 @@ class Selection {
                 if (!w.parent)
                     throw new Error('Cannot detach root widget.');
                 w.parent.removeChild(w);
-                // remove from allWidgets
+                // remove from document.children
                 this.layer._detach(w);
             }
         });
@@ -3625,9 +3609,9 @@ var index = /*#__PURE__*/Object.freeze({
     Style: Style,
     ComputedStyle: ComputedStyle,
     Sheet: Sheet,
-    Widget: Widget,
+    Element: Element,
     Document: Document,
     Selection: Selection
 });
 
-export { ActionButton, ActorEntry, Box, Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input, ItemEntry, List, Menu, MenuButton, Messages, Sidebar, Table, Text, UI, Viewport, Widget$1 as Widget, buildDialog, index as html, makeTable, showDropDown };
+export { ActionButton, ActorEntry, Box, Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input, ItemEntry, List, Menu, MenuButton, Messages, Sidebar, Table, Text, UI, Viewport, Widget, buildDialog, index as html, makeTable, showDropDown };

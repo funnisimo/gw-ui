@@ -3,34 +3,34 @@ import * as GWU from 'gw-utils';
 import { UICore } from '../types';
 import { Selector } from './selector';
 import * as Style from './style';
-import { Widget } from './element';
+import { Element } from './element';
 
 // return true if you want to stop the event from propagating
 export type EventCb = (
     e: GWU.io.Event,
     layer: Document,
-    widget: Widget
+    widget: Element
 ) => boolean | Promise<boolean>;
 
 // TODO - fix
 export type FxFn = () => void | Promise<void>;
 export type Fx = number;
 
-export type WidgetCb = (widget: Widget) => any;
+export type ElementCb = (element: Element) => any;
 
-export type SelectType = string | Widget | Widget[] | Selection;
+export type SelectType = string | Element | Element[] | Selection;
 
 export class Document {
     ui: UICore;
-    body: Widget;
-    children: Widget[];
+    body: Element;
+    children: Element[];
     stylesheet: Style.Sheet;
 
     constructor(ui: UICore, rootTag = 'body') {
         this.ui = ui;
         this.stylesheet = new Style.Sheet();
 
-        this.body = new Widget(rootTag);
+        this.body = new Element(rootTag);
         this.body.style({
             width: ui.buffer.width,
             maxWidth: ui.buffer.width,
@@ -50,7 +50,7 @@ export class Document {
     }
 
     select(id?: SelectType): Selection {
-        let selected: Widget[];
+        let selected: Element[];
         if (id === undefined) {
             selected = [this.body];
         } else if (id instanceof Selection) {
@@ -70,13 +70,13 @@ export class Document {
         return new Selection(this, selected);
     }
 
-    create(tag: string): Widget {
+    create(tag: string): Element {
         if (tag.startsWith('<')) {
             if (!tag.endsWith('>'))
                 throw new Error('Need brackets around new tag - e.g. "<tag>"');
             tag = tag.substring(1, tag.length - 1);
         }
-        return new Widget(tag, this.stylesheet);
+        return new Element(tag, this.stylesheet);
     }
 
     rule(info: Record<string, Style.StyleOptions>): this;
@@ -109,7 +109,7 @@ export class Document {
         return this;
     }
 
-    _attach(w: Widget | Widget[]): this {
+    _attach(w: Element | Element[]): this {
         if (Array.isArray(w)) {
             w.forEach((x) => this._attach(x));
             return this;
@@ -121,7 +121,7 @@ export class Document {
         return this;
     }
 
-    _detach(w: Widget | Widget[]): this {
+    _detach(w: Element | Element[]): this {
         if (Array.isArray(w)) {
             w.forEach((x) => this._detach(x));
             return this;
@@ -134,23 +134,6 @@ export class Document {
         return this;
     }
 
-    // add(id: SelectType): Selector {
-    //     let s: Selector;
-    //     if (id instanceof Selector) {
-    //         s = id;
-    //     } else {
-    //         s = this.$(id);
-    //     }
-    //     s.selected.forEach((w) => {
-    //         if (!this.allWidgets.includes(w)) {
-    //             w.parent = this.root;
-    //             w._attached = true;
-    //             this.allWidgets.push(w);
-    //         }
-    //     });
-    //     return s;
-    // }
-
     computeStyles() {
         this.children.forEach((w) => {
             if (w.used().dirty || this.stylesheet.dirty) {
@@ -161,7 +144,7 @@ export class Document {
         this.stylesheet.dirty = false;
     }
 
-    updateLayout(widget?: Widget) {
+    updateLayout(widget?: Element) {
         widget = widget || this.body;
         widget.updateLayout();
     }
@@ -177,14 +160,14 @@ export class Document {
 
 export class Selection {
     layer: Document;
-    selected: Widget[];
+    selected: Element[];
 
-    constructor(layer: Document, widgets: Widget[] = []) {
+    constructor(layer: Document, widgets: Element[] = []) {
         this.layer = layer;
         this.selected = widgets.slice();
     }
 
-    get(index: number): Widget {
+    get(index: number): Element {
         return this.selected[index];
     }
 
@@ -211,7 +194,7 @@ export class Selection {
     }
 
     // async ???
-    forEach(cb: WidgetCb): this {
+    forEach(cb: ElementCb): this {
         this.selected.forEach(cb);
         return this;
     }
@@ -320,7 +303,7 @@ export class Selection {
                 if (!w.parent) throw new Error('Cannot detach root widget.');
                 w.parent.removeChild(w);
 
-                // remove from allWidgets
+                // remove from document.children
                 this.layer._detach(w);
             }
         });

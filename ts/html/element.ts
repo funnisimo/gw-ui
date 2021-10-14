@@ -25,13 +25,13 @@ export interface SizeOptions {
     maxHeight?: number;
 }
 
-export class Widget implements Selectable {
+export class Element implements Selectable {
     id = '';
     tag: string;
-    parent: Widget | null = null;
+    parent: Element | null = null;
     props: Record<string, any> = {};
     classes: string[] = [];
-    children: Widget[] = [];
+    children: Element[] = [];
 
     _bounds: GWU.xy.Bounds = new GWU.xy.Bounds(0, 0, 0, 0);
     _text: string = '';
@@ -92,12 +92,12 @@ export class Widget implements Selectable {
 
     // CHILDREN
 
-    addChild(child: Widget, beforeIndex = -1): this {
+    addChild(child: Element, beforeIndex = -1): this {
         if (child.parent) {
             if (child.parent === this) return this; // ok
 
             throw new Error(
-                'Cannot add a currently attached child to another Widget.  Detach it first.'
+                'Cannot add a currently attached child to another element.  Detach it first.'
             );
         }
         if (beforeIndex == 0) {
@@ -113,7 +113,7 @@ export class Widget implements Selectable {
         return this;
     }
 
-    removeChild(child: Widget): this {
+    removeChild(child: Element): this {
         if (!child.parent) return this; // not attached, silently ignore
         if (child.parent !== this) {
             throw new Error(
@@ -129,7 +129,7 @@ export class Widget implements Selectable {
         return this;
     }
 
-    empty(): Widget[] {
+    empty(): Element[] {
         this.text(''); // clear the text
 
         // clear the children
@@ -145,15 +145,15 @@ export class Widget implements Selectable {
         return old;
     }
 
-    root(): Widget | null {
-        let current: Widget = this;
+    root(): Element | null {
+        let current: Element = this;
         while (current.parent) {
             current = current.parent;
         }
         return current !== this ? current : null;
     }
 
-    positionedParent(): Widget | null {
+    positionedParent(): Element | null {
         let parent = this.parent;
         if (parent) {
             // for absolute position, position is relative to closest ancestor that is positioned
@@ -323,7 +323,7 @@ export class Widget implements Selectable {
         const used = this._usedStyle;
         const position = used.position || 'static';
         if (position !== 'static') {
-            let parent: Widget | null = this;
+            let parent: Element | null = this;
             if (used.position === 'fixed') {
                 const root = this.root();
                 if (root) parent = root;

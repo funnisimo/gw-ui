@@ -3,7 +3,7 @@ import * as GWU from 'gw-utils';
 import { UICore } from '../types';
 import { Selector } from './selector';
 import * as Style from './style';
-import { Element } from './element';
+import { Element, PosOptions } from './element';
 
 // return true if you want to stop the event from propagating
 export type EventCb = (
@@ -414,9 +414,21 @@ export class Selection {
     text(t: string): this;
     text(t?: string): this | string {
         if (!t) {
-            return this.selected[0]?.text();
+            return this.selected.length ? this.selected[0].text() : '';
         }
         this.selected.forEach((w) => w.text(t));
+        return this;
+    }
+
+    id(): string;
+    id(t: string): this;
+    id(t?: string): this | string {
+        if (!t) {
+            return this.selected[0] ? this.selected[0].text() : '';
+        }
+        if (this.selected.length) {
+            this.selected[0].id = t;
+        }
         return this;
     }
 
@@ -472,6 +484,24 @@ export class Selection {
 
     removeStyle(name: keyof Style.Style): this {
         this.selected.forEach((w) => w.removeStyle(name));
+        return this;
+    }
+
+    pos(): GWU.xy.XY;
+    pos(
+        left: number,
+        top: number,
+        position?: Omit<Style.Position, 'static'>
+    ): this;
+    pos(xy: PosOptions, position?: Omit<Style.Position, 'static'>): this;
+    pos(...args: any[]): this | GWU.xy.XY {
+        if (this.selected.length == 0) return this;
+
+        if (args.length == 0) {
+            return this.selected[0].pos();
+        }
+
+        this.selected.forEach((w) => w.pos(args[0], args[1], args[2]));
         return this;
     }
 

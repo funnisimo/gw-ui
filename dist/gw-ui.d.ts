@@ -741,8 +741,9 @@ declare class Element implements Selectable {
     removeClass(id: string): this;
     toggleClass(id: string): this;
     pos(): GWU.xy.XY;
-    pos(left: number, top: number): this;
-    pos(xy: PosOptions): this;
+    pos(left: number, top: number, position?: Omit<Position, 'static'>): this;
+    pos(xy: PosOptions, position?: Omit<Position, 'static'>): this;
+    isPositioned(): boolean;
     size(): Size;
     size(width: number, height: number): this;
     size(size: SizeOptions): this;
@@ -801,6 +802,8 @@ declare class Selection {
     replaceWith(content: SelectType): this;
     text(): string;
     text(t: string): this;
+    id(): string;
+    id(t: string): this;
     addClass(id: string): this;
     hasClass(id: string): boolean;
     removeClass(id: string): this;
@@ -810,6 +813,9 @@ declare class Selection {
     style(name: keyof Style): any;
     style(name: keyof StyleOptions, value: any): this;
     removeStyle(name: keyof Style): this;
+    pos(): GWU.xy.XY;
+    pos(left: number, top: number, position?: Omit<Position, 'static'>): this;
+    pos(xy: PosOptions, position?: Omit<Position, 'static'>): this;
     animate(_props: any, _ms: number): this;
     clearQueue(_name?: string): this;
     delay(_ms: number, _name?: string): this;

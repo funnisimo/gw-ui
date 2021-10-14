@@ -2865,8 +2865,7 @@
             let parent = this.parent;
             if (parent) {
                 // for absolute position, position is relative to closest ancestor that is positioned
-                while (parent &&
-                    !['absolute', 'fixed', 'relative'].includes(parent.used('position'))) {
+                while (parent && !parent.isPositioned()) {
                     parent = parent.parent;
                 }
             }
@@ -2931,6 +2930,8 @@
                     (used.padLeft || 0) -
                     (used.padRight || 0));
                 width = this.contentWidth() || GWU__namespace.text.length(this._text);
+                width += used.padLeft || 0;
+                width += used.padRight || 0;
             }
             const maxW = used.maxWidth || width;
             const minW = used.minWidth || width;
@@ -2974,7 +2975,10 @@
             // update children...
             this.children.forEach((c) => {
                 c.updateLayout();
-                bounds.height += c.bounds.height;
+                const cpos = c.used('position');
+                if (!['absolute', 'fixed'].includes(cpos)) {
+                    bounds.height += c.bounds.height;
+                }
             });
             // add padding
             bounds.height += used.padBottom || 0;
@@ -3030,20 +3034,46 @@
         _updateLayoutFixed() {
             const parent = this.root();
             this._updateWidth(0); // width comes from content
-            this._updateLeft(parent ? parent.innerLeft : 0);
-            this._updateTop(parent ? parent.bounds.bottom : 0);
             this._updateHeight();
-            this.applyLayoutOffset();
+            this.bounds.left = 0;
+            if (this._usedStyle.left !== undefined) {
+                this.bounds.left = this._usedStyle.left;
+            }
+            else if (this._usedStyle.right && parent) {
+                this.bounds.right = parent.bounds.right - this._usedStyle.right;
+            }
+            this.bounds.top = 0;
+            if (this._usedStyle.top !== undefined) {
+                this.bounds.top = this._usedStyle.top;
+            }
+            else if (this._usedStyle.bottom && parent) {
+                this.bounds.bottom =
+                    parent.bounds.height - this._usedStyle.bottom - 1;
+            }
             this.dirty = false;
             return this;
         }
         _updateLayoutAbsolute() {
             let parent = this.positionedParent();
             this._updateWidth(0); // width comes from content
-            this._updateLeft(parent ? parent.innerLeft : 0);
-            this._updateTop(parent ? parent.bounds.bottom : 0);
             this._updateHeight();
-            this.applyLayoutOffset();
+            this.bounds.left = 0;
+            if (this._usedStyle.left !== undefined) {
+                this.bounds.left =
+                    this._usedStyle.left + (parent ? parent.bounds.left : 0);
+            }
+            else if (this._usedStyle.right && parent) {
+                this.bounds.right = parent.bounds.right - this._usedStyle.right;
+            }
+            this.bounds.top = 0;
+            if (this._usedStyle.top !== undefined) {
+                this.bounds.top =
+                    this._usedStyle.top + (parent ? parent.bounds.top : 0);
+            }
+            else if (this._usedStyle.bottom && parent) {
+                this.bounds.bottom =
+                    parent.bounds.height - this._usedStyle.bottom - 1;
+            }
             this.dirty = false;
             return this;
         }
@@ -3127,11 +3157,20 @@
             if (args.length === 0)
                 return this.bounds;
             let pos;
-            if (args.length == 2) {
-                pos = { left: args[0], top: args[1] };
+            let wantStyle = 'fixed';
+            if (typeof args[0] === 'number') {
+                pos = { left: args.shift(), top: args.shift() };
             }
             else {
-                pos = args[0];
+                pos = args.shift();
+            }
+            // update style if necessary
+            if (args[0] && args[0].length) {
+                wantStyle = args[0];
+                this.style('position', wantStyle);
+            }
+            else if (!this.isPositioned()) {
+                this.style('position', 'fixed'); // convert to fixed
             }
             if (pos.right !== undefined) {
                 this.style('right', pos.right);
@@ -3146,6 +3185,10 @@
                 this.style('bottom', pos.bottom);
             }
             return this;
+        }
+        isPositioned() {
+            const pos = this._usedStyle.position;
+            return !!pos && pos !== 'static';
         }
         size(size, height) {
             if (size === undefined)
@@ -3190,7 +3233,15 @@
             const bounds = this.bounds;
             buffer.fillRect(bounds.x, bounds.y, bounds.width, bounds.height, ' ', bg, bg);
             if (this.children.length) {
-                this.children.forEach((c) => c.draw(buffer));
+                // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
+                this.children.forEach((c) => {
+                    if (!c.isPositioned())
+                        c.draw(buffer);
+                });
+                this.children.forEach((c) => {
+                    if (c.isPositioned())
+                        c.draw(buffer);
+                });
             }
             else if (this._lines.length) {
                 const fg = this.used('fg') || 'white';
@@ -3523,11 +3574,19 @@
             return this;
         }
         text(t) {
-            var _a;
             if (!t) {
-                return (_a = this.selected[0]) === null || _a === void 0 ? void 0 : _a.text();
+                return this.selected.length ? this.selected[0].text() : '';
             }
             this.selected.forEach((w) => w.text(t));
+            return this;
+        }
+        id(t) {
+            if (!t) {
+                return this.selected[0] ? this.selected[0].text() : '';
+            }
+            if (this.selected.length) {
+                this.selected[0].id = t;
+            }
             return this;
         }
         // STYLE
@@ -3568,6 +3627,15 @@
         }
         removeStyle(name) {
             this.selected.forEach((w) => w.removeStyle(name));
+            return this;
+        }
+        pos(...args) {
+            if (this.selected.length == 0)
+                return this;
+            if (args.length == 0) {
+                return this.selected[0].pos();
+            }
+            this.selected.forEach((w) => w.pos(args[0], args[1], args[2]));
             return this;
         }
         // ANIMATION

@@ -4879,6 +4879,9 @@
         get height() {
             return this._height;
         }
+        hasXY(x, y) {
+            return x >= 0 && y >= 0 && x < this.width && y < this.height;
+        }
         clone() {
             const other = new DataBuffer(this._width, this._height);
             other.copy(this);
@@ -4901,6 +4904,8 @@
             return y * this.width + x;
         }
         get(x, y) {
+            if (!this.hasXY(x, y))
+                return 0;
             let index = this._index(x, y);
             return this._data[index] || 0;
         }
@@ -4912,6 +4917,8 @@
             return { glyph, fg, bg };
         }
         set(x, y, style) {
+            if (!this.hasXY(x, y))
+                return;
             let index = this._index(x, y);
             const current = this._data[index];
             if (current !== style) {
@@ -4930,6 +4937,8 @@
         draw(x, y, glyph = -1, fg = -1, // TODO - White?
         bg = -1 // TODO - Black?
         ) {
+            if (!this.hasXY(x, y))
+                return this;
             const current = this.get(x, y);
             if (typeof glyph !== 'number') {
                 glyph = this.toGlyph(glyph);
@@ -5000,11 +5009,13 @@
             return this;
         }
         drawText(x, y, text, fg = 0xfff, bg = -1, maxWidth = 0, align = 'left') {
+            if (!this.hasXY(x, y))
+                return 0;
             if (typeof fg !== 'number')
                 fg = from$2(fg);
             if (typeof bg !== 'number')
                 bg = from$2(bg);
-            maxWidth = maxWidth || this.width;
+            maxWidth = Math.min(maxWidth || this.width, this.width - x);
             if (align == 'right') {
                 const len = length(text);
                 x += maxWidth - len;
@@ -5021,6 +5032,8 @@
             return 1; // used 1 line
         }
         wrapText(x, y, width, text, fg = 0xfff, bg = -1, indent = 0) {
+            if (!this.hasXY(x, y))
+                return 0;
             if (typeof fg !== 'number')
                 fg = from$2(fg);
             if (typeof bg !== 'number')
@@ -5054,8 +5067,10 @@
                 fg = from$2(fg).toInt();
             if (typeof bg !== 'number')
                 bg = from$2(bg).toInt();
-            for (let i = x; i < x + w; ++i) {
-                for (let j = y; j < y + h; ++j) {
+            const xw = Math.min(x + w, this.width);
+            const yh = Math.min(y + h, this.height);
+            for (let i = x; i < xw; ++i) {
+                for (let j = y; j < yh; ++j) {
                     this.draw(i, j, ch, fg, bg);
                 }
             }
@@ -5067,6 +5082,8 @@
             return this.fillRect(x, y, w, h, 0, bg, bg);
         }
         highlight(x, y, color, strength) {
+            if (!this.hasXY(x, y))
+                return this;
             if (typeof color !== 'number') {
                 color = from$2(color);
             }
@@ -5081,12 +5098,12 @@
         mix(color, percent, x = 0, y = 0, width = 0, height = 0) {
             color = from$2(color);
             const mixer = new Mixer();
-            if (x && !width)
-                width = 1;
-            if (y && !height)
-                height = 1;
-            const endX = width ? width + x : this.width;
-            const endY = height ? height + y : this.height;
+            if (!width)
+                width = x ? 1 : this.width;
+            if (!height)
+                height = y ? 1 : this.height;
+            const endX = Math.min(width + x, this.width);
+            const endY = Math.min(height + y, this.height);
             for (let i = x; i < endX; ++i) {
                 for (let j = y; j < endY; ++j) {
                     const data = this.info(i, j);

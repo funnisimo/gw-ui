@@ -200,4 +200,69 @@ describe('Document', () => {
         expect(b.bounds).toMatchObject({ x: 1, y: 4, width: 48, height: 3 });
         expect(c.bounds).toMatchObject({ x: 1, y: 7, width: 48, height: 3 });
     });
+
+    test('updateLayout - fixed elements take no height', () => {
+        document.body.style('padding', 1);
+
+        document.create('<text>').id('a').text('static').appendTo('body');
+        document
+            .create('<text>')
+            .id('b')
+            .text('fixed')
+            .pos(5, 5, 'fixed')
+            .appendTo('body');
+        document.create('<text>').id('c').text('static').appendTo('body');
+
+        document.computeStyles();
+        document.updateLayout();
+
+        const root = document.body;
+        const [a, b, c] = root.children;
+
+        expect(a.id).toEqual('a');
+        expect(a.used('position')).toEqual('static');
+        expect(b.id).toEqual('b');
+        expect(b.used('position')).toEqual('fixed');
+        expect(b.used('left')).toEqual(5);
+        expect(b.used('top')).toEqual(5);
+        expect(c.id).toEqual('c');
+        expect(c.used('position')).toEqual('static');
+
+        expect(root.bounds).toMatchObject({
+            x: 0,
+            y: 0,
+            width: 50,
+            height: 30, // so that it will fill the screen (unique to root widget)
+        });
+        expect(root.used('padLeft')).toEqual(1);
+        expect(root.used('padRight')).toEqual(1);
+        expect(root.used('padTop')).toEqual(1);
+        expect(root.used('padBottom')).toEqual(1);
+
+        expect(a.bounds).toMatchObject({ x: 1, y: 1, width: 48, height: 1 });
+        expect(b.bounds).toMatchObject({ x: 5, y: 5, width: 5, height: 1 });
+        expect(c.bounds).toMatchObject({ x: 1, y: 2, width: 48, height: 1 });
+    });
+
+    test('updateLayout - fixed elements take no height', () => {
+        document.body.style('padding', 1);
+
+        const a = document
+            .create('<div>')
+            .text('12345678901234567890')
+            .style({
+                position: 'fixed',
+                left: 5,
+                top: 10,
+                bg: 'red',
+                fg: 'white',
+                padding: 1,
+            })
+            .appendTo('body')
+            .get(0);
+
+        document.updateLayout();
+
+        expect(a.bounds).toMatchObject({ x: 5, y: 10, width: 22, height: 3 });
+    });
 });

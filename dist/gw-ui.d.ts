@@ -25,7 +25,7 @@ interface WidgetOptions {
     hoverFg?: GWU.color.ColorBase;
     hoverBg?: GWU.color.ColorBase;
     text?: string;
-    align?: GWU.canvas.TextAlign;
+    align?: GWU.text.Align;
     valign?: VAlign;
     tabStop?: boolean;
     action?: string;
@@ -45,7 +45,7 @@ declare abstract class Widget {
     hoverBg: GWU.color.ColorBase;
     id: string;
     text: string;
-    align: GWU.canvas.TextAlign;
+    align: GWU.text.Align;
     valign: VAlign;
     action: string;
     constructor(id: string, opts?: WidgetOptions);
@@ -118,7 +118,7 @@ interface ColumnOptions {
     value: string | ValueFn;
     header?: string;
     empty?: string;
-    align?: GWU.canvas.TextAlign;
+    align?: GWU.text.Align;
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
     activeFg?: GWU.color.ColorBase;
@@ -154,7 +154,7 @@ declare class Column {
     activeBg: ColorOption;
     hoverFg: ColorOption;
     hoverBg: ColorOption;
-    align: GWU.canvas.TextAlign;
+    align: GWU.text.Align;
     header: string;
     empty: string;
     _value: ValueFn;

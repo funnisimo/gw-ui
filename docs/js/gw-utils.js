@@ -167,7 +167,7 @@
         return x >= 0 && y >= 0 && x < size.width && y < size.height;
     }
     class Bounds {
-        constructor(x, y, w, h) {
+        constructor(x = 0, y = 0, w = 0, h = 0) {
             this.x = x;
             this.y = y;
             this.width = w;
@@ -180,10 +180,10 @@
             this.x = v;
         }
         get right() {
-            return this.x + this.width - 1;
+            return this.x + this.width;
         }
         set right(v) {
-            this.x = v - this.width + 1;
+            this.x = v - this.width;
         }
         get top() {
             return this.y;
@@ -192,10 +192,10 @@
             this.y = v;
         }
         get bottom() {
-            return this.y + this.height - 1;
+            return this.y + this.height;
         }
         set bottom(v) {
-            this.y = v - this.height + 1;
+            this.y = v - this.height;
         }
         clone() {
             return new Bounds(this.x, this.y, this.width, this.height);
@@ -4643,17 +4643,17 @@
         let count = true;
         while (i < text.length) {
             const ch = text[i];
-            if (ch == " ") {
-                while (text[i + 1] == " ") {
+            if (ch == ' ') {
+                while (text[i + 1] == ' ') {
                     ++i;
                     ++l; // need to count the extra spaces as part of the word
                 }
                 return [i, l];
             }
-            if (ch == "-") {
+            if (ch == '-') {
                 return [i, l];
             }
-            if (ch == "\n") {
+            if (ch == '\n') {
                 return [i, l];
             }
             if (ch == CS) {
@@ -4679,34 +4679,44 @@
         }
         return [i, l];
     }
-    function splice(text, start, len, add = "") {
+    function splice(text, start, len, add = '') {
         return text.substring(0, start) + add + text.substring(start + len);
     }
-    function hyphenate(text, width, start, end, wordWidth, spaceLeftOnLine) {
-        // do not need to hyphenate
-        if (spaceLeftOnLine >= wordWidth)
-            return [text, end];
-        // do not have a strategy for this right now...
-        if (wordWidth + 1 > width * 2) {
-            throw new Error("Cannot hyphenate - word length > 2 * width");
+    function hyphenate(text, lineWidth, start, end, wordWidth, spaceLeftOnLine) {
+        while (start < end) {
+            // do not need to hyphenate
+            if (spaceLeftOnLine >= wordWidth)
+                return [text, end];
+            // not much room left and word fits on next line
+            if (spaceLeftOnLine < 4 && wordWidth <= lineWidth) {
+                text = splice(text, start - 1, 1, '\n');
+                return [text, end + 1];
+            }
+            // if will fit on this line and next...
+            if (wordWidth < spaceLeftOnLine + lineWidth) {
+                const w = advanceChars(text, start, spaceLeftOnLine - 1);
+                text = splice(text, w, 0, '-\n');
+                return [text, end + 2];
+            }
+            if (spaceLeftOnLine < 5) {
+                text = splice(text, start - 1, 1, '\n');
+                spaceLeftOnLine = lineWidth;
+                continue;
+            }
+            // one hyphen will work...
+            // if (spaceLeftOnLine + width > wordWidth) {
+            const hyphenAt = Math.min(spaceLeftOnLine - 1, Math.floor(wordWidth / 2));
+            const w = advanceChars(text, start, hyphenAt);
+            text = splice(text, w, 0, '-\n');
+            start = w + 2;
+            end += 2;
+            wordWidth -= hyphenAt;
         }
-        // not much room left and word fits on next line
-        if (spaceLeftOnLine < 4 && wordWidth <= width) {
-            text = splice(text, start - 1, 1, "\n");
-            return [text, end + 1];
-        }
-        // will not fit on this line + next, but will fit on next 2 lines...
-        // so end this line and reset for placing on next 2 lines.
-        if (spaceLeftOnLine + width <= wordWidth) {
-            text = splice(text, start - 1, 1, "\n");
-            spaceLeftOnLine = width;
-        }
-        // one hyphen will work...
-        // if (spaceLeftOnLine + width > wordWidth) {
-        const hyphenAt = Math.min(Math.floor(wordWidth / 2), spaceLeftOnLine - 1);
-        const w = advanceChars(text, start, hyphenAt);
-        text = splice(text, w, 0, "-\n");
-        return [text, end + 2];
+        return [text, end];
+        // // do not have a strategy for this right now...
+        // if (wordWidth + 1 > width * 2) {
+        //     throw new Error('Cannot hyphenate - word length > 2 * width');
+        // }
         // }
         // if (width >= wordWidth) {
         //     return [text, end];
@@ -4723,17 +4733,17 @@
     }
     function wordWrap(text, width, indent = 0) {
         if (!width)
-            throw new Error("Need string and width");
+            throw new Error('Need string and width');
         if (text.length < width)
             return text;
         if (length(text) < width)
             return text;
-        if (text.indexOf("\n") == -1) {
+        if (text.indexOf('\n') == -1) {
             return wrapLine(text, width, indent);
         }
-        const lines = text.split("\n");
+        const lines = text.split('\n');
         const split = lines.map((line, i) => wrapLine(line, width, i ? indent : 0));
-        return split.join("\n");
+        return split.join('\n');
     }
     // Returns the number of lines, including the newlines already in the text.
     // Puts the output in "to" only if we receive a "to" -- can make it null and just get a line count.
@@ -4754,7 +4764,7 @@
             // w indicates the position of the space or newline or null terminator that terminates the word.
             let [w, wordWidth] = nextBreak(printString, i + (removeSpace ? 1 : 0));
             let hyphen = false;
-            if (printString[w] == "-") {
+            if (printString[w] == '-') {
                 w++;
                 wordWidth++;
                 hyphen = true;
@@ -4764,7 +4774,7 @@
                 [printString, w] = hyphenate(printString, width, i + 1, w, wordWidth, spaceLeftOnLine);
             }
             else if (wordWidth == spaceLeftOnLine) {
-                const nl = w < printString.length ? "\n" : "";
+                const nl = w < printString.length ? '\n' : '';
                 const remove = hyphen ? 0 : 1;
                 printString = splice(printString, w, remove, nl); // [i] = '\n';
                 w += 1 - remove; // if we change the length we need to advance our pointer
@@ -4772,7 +4782,7 @@
             }
             else if (wordWidth > spaceLeftOnLine) {
                 const remove = removeSpace ? 1 : 0;
-                printString = splice(printString, i, remove, "\n"); // [i] = '\n';
+                printString = splice(printString, i, remove, '\n'); // [i] = '\n';
                 w += 1 - remove; // if we change the length we need to advance our pointer
                 const extra = hyphen ? 0 : 1;
                 spaceLeftOnLine = width - wordWidth - extra; // line width minus the width of the word we just wrapped and the space
@@ -4789,7 +4799,7 @@
     }
     // Returns the number of lines, including the newlines already in the text.
     // Puts the output in "to" only if we receive a "to" -- can make it null and just get a line count.
-    function splitIntoLines(source, width, indent = 0) {
+    function splitIntoLines(source, width = 200, indent = 0) {
         const CS = options.colorStart;
         const output = [];
         let text = wordWrap(source, width, indent);
@@ -4797,16 +4807,20 @@
         let fg0 = null;
         let bg0 = null;
         eachChar(text, (ch, fg, bg, _, n) => {
-            if (ch == "\n") {
-                let color = fg0 || bg0 ? `${CS}${fg0 ? fg0 : ""}${bg0 ? "|" + bg0 : ""}${CS}` : "";
+            if (ch == '\n') {
+                let color = fg0 || bg0
+                    ? `${CS}${fg0 ? fg0 : ''}${bg0 ? '|' + bg0 : ''}${CS}`
+                    : '';
                 output.push(color + text.substring(start, n));
                 start = n + 1;
                 fg0 = fg;
                 bg0 = bg;
             }
         });
-        let color = fg0 || bg0 ? `${CS}${fg0 ? fg0 : ""}${bg0 ? "|" + bg0 : ""}${CS}` : "";
-        output.push(color + text.substring(start));
+        let color = fg0 || bg0 ? `${CS}${fg0 ? fg0 : ''}${bg0 ? '|' + bg0 : ''}${CS}` : '';
+        if (start < text.length - 1) {
+            output.push(color + text.substring(start));
+        }
         return output;
     }
 

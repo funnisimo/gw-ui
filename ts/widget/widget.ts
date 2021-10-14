@@ -33,7 +33,7 @@ export interface WidgetOptions {
 
     text?: string;
 
-    align?: GWU.canvas.TextAlign;
+    align?: GWU.text.Align;
     valign?: VAlign;
 
     tabStop?: boolean;
@@ -62,7 +62,7 @@ export abstract class Widget {
     id: string;
     text: string = '';
 
-    align: GWU.canvas.TextAlign = 'left';
+    align: GWU.text.Align = 'left';
     valign: VAlign = 'middle';
 
     // parent!: WidgetContainer;

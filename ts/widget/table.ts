@@ -9,7 +9,7 @@ export interface ColumnOptions {
 
     header?: string;
     empty?: string;
-    align?: GWU.canvas.TextAlign;
+    align?: GWU.text.Align;
 
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
@@ -58,7 +58,7 @@ export class Column {
 
     hoverFg: ColorOption = null;
     hoverBg: ColorOption = null;
-    align: GWU.canvas.TextAlign = 'left';
+    align: GWU.text.Align = 'left';
 
     header: string = '';
     empty: string = '';

@@ -129,4 +129,37 @@ describe('Layer', () => {
         expect(b.bounds).toMatchObject({ x: 1, y: 2, width: 48, height: 1 });
         expect(c.bounds).toMatchObject({ x: 1, y: 3, width: 48, height: 1 });
     });
+
+    test('updateLayout - root + widgets with padding', () => {
+        layer
+            .$('<text>')
+            .add('<text>')
+            .add('<text>')
+            .text('test')
+            .style('padding', 1)
+            .appendTo('layer');
+
+        layer.$().style('padding', 1);
+
+        layer.computeStyles();
+        layer.updateLayout();
+
+        const root = layer.root;
+        const [a, b, c] = root.children;
+
+        expect(root.bounds).toMatchObject({
+            x: 0,
+            y: 0,
+            width: 50,
+            height: 30, // so that it will fill the screen (unique to root widget)
+        });
+        expect(root.used('padLeft')).toEqual(1);
+        expect(root.used('padRight')).toEqual(1);
+        expect(root.used('padTop')).toEqual(1);
+        expect(root.used('padBottom')).toEqual(1);
+
+        expect(a.bounds).toMatchObject({ x: 1, y: 1, width: 48, height: 3 });
+        expect(b.bounds).toMatchObject({ x: 1, y: 4, width: 48, height: 3 });
+        expect(c.bounds).toMatchObject({ x: 1, y: 7, width: 48, height: 3 });
+    });
 });

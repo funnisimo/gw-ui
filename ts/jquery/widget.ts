@@ -159,7 +159,9 @@ export class Widget implements Selectable {
             // for absolute position, position is relative to closest ancestor that is positioned
             while (
                 parent &&
-                !['absolute', 'fixed'].includes(parent.used('position'))
+                !['absolute', 'fixed', 'relative'].includes(
+                    parent.used('position')
+                )
             ) {
                 parent = parent.parent;
             }

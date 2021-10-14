@@ -166,8 +166,12 @@ export class Layer {
         widget.updateLayout();
     }
 
-    draw(buffer: GWU.canvas.DataBuffer) {
+    draw(buffer?: GWU.canvas.Buffer) {
+        this.computeStyles();
+        this.updateLayout();
+        buffer = buffer || this.ui.buffer;
         this.root.draw(buffer);
+        buffer.render();
     }
 }
 
@@ -448,19 +452,30 @@ export class Selection {
     }
 
     style(): Style.Style;
+    style(style: Style.StyleOptions): this;
     style(name: keyof Style.Style): any;
     style(name: keyof Style.StyleOptions, value: any): this;
     style(
-        name?: keyof Style.StyleOptions | keyof Style.Style,
+        name?:
+            | keyof Style.StyleOptions
+            | keyof Style.Style
+            | Style.StyleOptions,
         value?: any
     ): this | Style.Style | any {
         if (!name) return this.selected[0].style();
-        if (value === undefined)
-            return this.selected[0].style(name as keyof Style.Style);
+        if (value === undefined) {
+            if (typeof name === 'string') {
+                return this.selected[0].style(name as keyof Style.Style);
+            }
+        }
 
-        this.selected.forEach((w) =>
-            w.style(name as keyof Style.StyleOptions, value)
-        );
+        this.selected.forEach((w) => {
+            if (typeof name === 'string') {
+                w.style(name as keyof Style.StyleOptions, value);
+            } else {
+                w.style(name as Style.StyleOptions);
+            }
+        });
         return this;
     }
 

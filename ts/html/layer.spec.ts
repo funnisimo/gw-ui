@@ -47,6 +47,44 @@ describe('Layer', () => {
         expect(layer.root.style('height')).toEqual(30);
     });
 
+    test('updateLayout - simple text box', () => {
+        layer.$('<text>').text('test').appendTo('layer');
+
+        layer.draw();
+
+        const root = layer.root;
+        const [a] = root.children;
+
+        expect(root.bounds).toMatchObject({
+            x: 0,
+            y: 0,
+            width: 50,
+            height: 30, // so that it will fill the screen (unique to root widget)
+        });
+        expect(a.bounds).toMatchObject({ x: 0, y: 0, width: 50, height: 1 });
+    });
+
+    test('updateLayout - simple text box with style', () => {
+        layer
+            .$('<text>')
+            .text('test')
+            .style({ fg: 'red', bg: 'white' })
+            .appendTo('layer');
+
+        layer.draw();
+
+        const root = layer.root;
+        const [a] = root.children;
+
+        expect(root.bounds).toMatchObject({
+            x: 0,
+            y: 0,
+            width: 50,
+            height: 30, // so that it will fill the screen (unique to root widget)
+        });
+        expect(a.bounds).toMatchObject({ x: 0, y: 0, width: 50, height: 1 });
+    });
+
     test('updateLayout - 3 simple text boxes', () => {
         layer
             .$('<text>')

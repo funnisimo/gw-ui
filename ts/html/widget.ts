@@ -239,7 +239,9 @@ export class Widget implements Selectable {
         if (!width) {
             this._lines = GWU.text.splitIntoLines(
                 this._text,
-                used.maxWidth || 999
+                (used.maxWidth || 999) -
+                    (used.padLeft || 0) -
+                    (used.padRight || 0)
             );
             width = this.contentWidth() || GWU.text.length(this._text);
         }
@@ -250,7 +252,10 @@ export class Widget implements Selectable {
 
         if (this._text.length) {
             if (bounds.width) {
-                this._lines = GWU.text.splitIntoLines(this._text, bounds.width);
+                this._lines = GWU.text.splitIntoLines(
+                    this._text,
+                    bounds.width - (used.padLeft || 0) - (used.padRight || 0)
+                );
             } else if (GWU.text.length(this._text)) {
                 this._lines = [this._text];
             }
@@ -534,7 +539,33 @@ export class Widget implements Selectable {
 
     // DRAWING
 
-    draw(_buffer: GWU.canvas.DataBuffer): boolean {
-        return false;
+    draw(buffer: GWU.canvas.DataBuffer): boolean {
+        const bg = this.used('bg');
+        const bounds = this.bounds;
+
+        buffer.fillRect(
+            bounds.x,
+            bounds.y,
+            bounds.width,
+            bounds.height,
+            ' ',
+            bg,
+            bg
+        );
+
+        if (this.children.length) {
+            this.children.forEach((c) => c.draw(buffer));
+        } else if (this._lines.length) {
+            const fg = this.used('fg') || 'white';
+            const top = this.innerTop;
+            const width = this.innerWidth;
+            const left = this.innerLeft;
+            const align = this.used('align');
+            this._lines.forEach((line, i) => {
+                buffer.drawText(left, top + i, line, fg, -1, width, align);
+            });
+        }
+
+        return true;
     }
 }

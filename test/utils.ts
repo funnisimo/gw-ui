@@ -111,7 +111,7 @@ export function mockUI(width = 100, height = 38): UICore {
     jest.spyOn(loop, '_startTicks');
 
     return {
-        buffer,
+        buffer: buffer as GWU.canvas.Buffer,
         loop, // GWU.loop
         render: jest.fn(),
         startLayer: jest.fn().mockReturnValue(buffer),

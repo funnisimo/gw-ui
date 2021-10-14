@@ -27,7 +27,7 @@
     var GWU__namespace = /*#__PURE__*/_interopNamespace(GWU);
     var GWM__namespace = /*#__PURE__*/_interopNamespace(GWM);
 
-    class Widget {
+    class Widget$1 {
         constructor(id, opts) {
             this.active = false;
             this.hovered = false;
@@ -161,7 +161,7 @@
         }
     }
 
-    class Text extends Widget {
+    class Text extends Widget$1 {
         constructor(id, opts) {
             super(id, opts);
         }
@@ -212,7 +212,7 @@
         }
     }
 
-    class Button extends Widget {
+    class Button extends Widget$1 {
         constructor(id, opts) {
             super(id, opts);
         }
@@ -239,7 +239,7 @@
         }
     }
 
-    class Input extends Widget {
+    class Input extends Widget$1 {
         constructor(id, opts) {
             super(id, opts);
         }
@@ -378,7 +378,7 @@
             return GWU__namespace.text.truncate(v, this.width);
         }
     }
-    class Table extends Widget {
+    class Table extends Widget$1 {
         constructor(id, opts) {
             super(id, opts);
             this.data = null;
@@ -627,7 +627,7 @@
         }
     }
 
-    class Box extends Widget {
+    class Box extends Widget$1 {
         constructor(id, opts) {
             super(id, (() => {
                 if (!opts)
@@ -1268,7 +1268,7 @@
         }
     }
 
-    class Messages extends Widget {
+    class Messages extends Widget$1 {
         constructor(id, opts) {
             super(id, opts);
         }
@@ -1380,7 +1380,7 @@
         }
     }
 
-    class Viewport extends Widget {
+    class Viewport extends Widget$1 {
         constructor(id, opts) {
             super(id, opts);
             this.offsetX = 0;
@@ -1734,7 +1734,7 @@
             return this.cell.drawStatus(buffer, bounds);
         }
     }
-    class Sidebar extends Widget {
+    class Sidebar extends Widget$1 {
         constructor(id, opts) {
             super(id, opts);
             this.cellCache = [];
@@ -2184,7 +2184,7 @@
         ui.finishLayer();
         menu.clearHighlight();
     }
-    class Menu extends Widget {
+    class Menu extends Widget$1 {
         constructor(id, opts) {
             super(id, opts);
             this.activeIndex = -1;
@@ -2357,6 +2357,1305 @@
         }
     }
 
+    class Callbacks {
+        constructor(flags) {
+            this._items = [];
+            this._disabled = false;
+            this._fired = false;
+            this._once = false;
+            // _memory = false;
+            this._stopOnFalse = false;
+            this._unique = false;
+            const f = flags.split(' ');
+            this._once = f.includes('once');
+            // this._memory = f.includes('memory');
+            this._stopOnFalse = f.includes('stopOnFalse');
+            this._unique = f.includes('unique');
+        }
+        add(cb) {
+            if (Array.isArray(cb)) {
+                cb.forEach((c) => this.add(c));
+            }
+            else {
+                if (!this._unique || !this._items.includes(cb)) {
+                    this._items.push(cb);
+                }
+            }
+            return this;
+        }
+        disable() {
+            this._disabled = true;
+            return this;
+        }
+        disabled() {
+            return !this._disabled;
+        }
+        empty() {
+            this._items.length = 0;
+            return this;
+        }
+        async fire(...args) {
+            if (this._disabled)
+                return this;
+            if (this._once && this._fired)
+                return this;
+            this._fired = true;
+            for (let cb of this._items) {
+                const r = await cb(...args);
+                if (this._stopOnFalse && r === false) {
+                    break;
+                }
+            }
+            return this;
+        }
+        fired() {
+            return this._fired;
+        }
+        async fireWith(obj, args) {
+            if (this._disabled)
+                return this;
+            if (this._once && this._fired)
+                return this;
+            this._fired = true;
+            for (let cb of this._items) {
+                const r = await cb.apply(obj, args);
+                if (this._stopOnFalse && r === false) {
+                    break;
+                }
+            }
+            return this;
+        }
+        has(cb) {
+            return this._items.includes(cb);
+        }
+        // lock - I am not sure what this does or why it is there
+        // locked
+        remove(cb) {
+            const index = this._items.indexOf(cb);
+            if (index >= 0) {
+                this._items.splice(index, 1);
+            }
+            return this;
+        }
+    }
+
+    function isTruthy(v) {
+        if (!v)
+            return false;
+        if (typeof v === 'string') {
+            if (v === 'false' || v === '0')
+                return false;
+        }
+        return true;
+    }
+    const MATCH = /^(\*|\#\w+|\$|\w+)(\.(\w+))?(\:(\w+))?$/;
+    class Selector {
+        constructor(text) {
+            this.tag = '';
+            this.id = '';
+            this.class = '';
+            this.prop = '';
+            this.priority = 0;
+            if (text.startsWith(':') || text.startsWith('.')) {
+                text = '*' + text;
+            }
+            const info = text.match(MATCH);
+            if (!info)
+                throw new Error('Invalid selector - ' + text);
+            this.text = text;
+            if (info[1] === '*') ;
+            else if (info[1] === '$') {
+                this.priority += 10000;
+            }
+            else if (info[1].startsWith('#')) {
+                this.priority += 1000;
+                this.id = info[1].substring(1);
+            }
+            else {
+                this.tag = info[1];
+                this.priority += 10;
+            }
+            if (info[3]) {
+                this.class = info[3];
+                this.priority += 100;
+            }
+            if (info[5]) {
+                this.prop = info[5];
+                this.priority += 1;
+            }
+        }
+        matches(obj) {
+            if (this.tag.length && obj.tag !== this.tag)
+                return false;
+            if (this.id.length && obj.id !== this.id)
+                return false;
+            if (this.class.length && !obj.classes.includes(this.class))
+                return false;
+            if (this.prop.length) {
+                const v = obj.props[this.prop] || false;
+                if (!isTruthy(v))
+                    return false;
+            }
+            return true;
+        }
+    }
+    function selector(text) {
+        return new Selector(text);
+    }
+
+    class Style {
+        constructor(selector = '$', init) {
+            this._dirty = false;
+            this.selector = new Selector(selector);
+            if (init) {
+                this.set(init);
+            }
+            this._dirty = false;
+        }
+        get dirty() {
+            return this._dirty;
+        }
+        set dirty(v) {
+            this._dirty = v;
+        }
+        get fg() {
+            return this._fg;
+        }
+        get bg() {
+            return this._bg;
+        }
+        get depth() {
+            return this._depth;
+        }
+        get align() {
+            return this._align;
+        }
+        get valign() {
+            return this._valign;
+        }
+        get position() {
+            return this._position;
+        }
+        get minWidth() {
+            return this._minWidth;
+        }
+        get maxWidth() {
+            return this._maxWidth;
+        }
+        get width() {
+            return this._width;
+        }
+        get minHeight() {
+            return this._minHeight;
+        }
+        get maxHeight() {
+            return this._maxHeight;
+        }
+        get height() {
+            return this._height;
+        }
+        get x() {
+            return this._x;
+        }
+        get left() {
+            return this._left;
+        }
+        get right() {
+            return this._right;
+        }
+        get y() {
+            return this._y;
+        }
+        get top() {
+            return this._top;
+        }
+        get bottom() {
+            return this._bottom;
+        }
+        get padLeft() {
+            return this._padLeft;
+        }
+        get padRight() {
+            return this._padRight;
+        }
+        get padTop() {
+            return this._padTop;
+        }
+        get padBottom() {
+            return this._padBottom;
+        }
+        get(key) {
+            const id = ('_' + key);
+            return this[id];
+        }
+        set(key, value, setDirty = true) {
+            if (typeof key === 'string') {
+                if (key === 'padding') {
+                    if (typeof value === 'number') {
+                        value = [value];
+                    }
+                    else if (typeof value === 'string') {
+                        value = value.split(' ').map((v) => Number.parseInt(v));
+                    }
+                    if (value.length == 1) {
+                        this._padLeft =
+                            this._padRight =
+                                this._padTop =
+                                    this._padBottom =
+                                        value[0];
+                    }
+                    else if (value.length == 2) {
+                        this._padLeft = this._padRight = value[0];
+                        this._padTop = this._padBottom = value[1];
+                    }
+                    else if (value.length == 4) {
+                        this._padTop = value[0];
+                        this._padRight = value[1];
+                        this._padBottom = value[2];
+                        this._padLeft = value[3];
+                    }
+                }
+                else {
+                    const field = '_' + key;
+                    this[field] = value;
+                }
+            }
+            else if (key instanceof Style) {
+                setDirty = value || value === undefined ? true : false;
+                Object.entries(key).forEach(([name, value]) => {
+                    if (name === 'selector' || name === '_dirty')
+                        return;
+                    if (value) {
+                        this[name] = value;
+                    }
+                    else if (value === null) {
+                        this.unset(name);
+                    }
+                });
+            }
+            else {
+                setDirty = value || value === undefined ? true : false;
+                Object.entries(key).forEach(([name, value]) => {
+                    if (value === null) {
+                        this.unset(name);
+                    }
+                    else {
+                        this.set(name, value, setDirty);
+                    }
+                });
+            }
+            this.dirty || (this.dirty = setDirty);
+            return this;
+        }
+        unset(key) {
+            const field = key.startsWith('_') ? key : '_' + key;
+            delete this[field];
+            this.dirty = true;
+            return this;
+        }
+        clone() {
+            const other = new this.constructor();
+            other.copy(this);
+            return other;
+        }
+        copy(other) {
+            Object.assign(this, other);
+            return this;
+        }
+    }
+    class ComputedStyle extends Style {
+        // constructor(source: Stylable, sources?: Style[]) {
+        constructor(sources) {
+            super();
+            // obj: Stylable;
+            this.sources = [];
+            // this.obj = source;
+            if (sources) {
+                // sort low to high priority (highest should be this.obj._style, lowest = global default:'*')
+                sources.sort((a, b) => a.selector.priority - b.selector.priority);
+                this.sources = sources;
+            }
+            this.sources.forEach((s) => super.set(s));
+            this._dirty = false; // As far as I know I reflect all of the current source values.
+        }
+        get dirty() {
+            return this._dirty || this.sources.some((s) => s.dirty);
+        }
+        set dirty(v) {
+            this._dirty = v;
+        }
+    }
+    class Sheet {
+        constructor(parentSheet) {
+            this.rules = [];
+            this._dirty = true;
+            if (parentSheet) {
+                this.rules = parentSheet.rules.slice();
+            }
+            else {
+                this.rules.push(new Style('*', {
+                    fg: 'white',
+                    bg: 'black',
+                    align: 'left',
+                    valign: 'top',
+                    position: 'static',
+                }));
+            }
+        }
+        get dirty() {
+            return this._dirty;
+        }
+        set dirty(v) {
+            this._dirty = v;
+            if (!this._dirty) {
+                this.rules.forEach((r) => (r.dirty = false));
+            }
+        }
+        add(selector, props) {
+            if (selector.includes(' '))
+                throw new Error('Hierarchical selectors not supported.');
+            // if 2 '.' - Error('Only single class rules supported.')
+            // if '&' - Error('Not supported.')
+            if (selector === '*')
+                throw new Error('Cannot re-install global style.');
+            const rule = new Style(selector, props);
+            const existing = this.rules.findIndex((s) => s.selector.text === rule.selector.text);
+            if (existing > -1) {
+                if (selector === '*') {
+                    const current = this.rules[existing];
+                    current.set(rule);
+                }
+                else {
+                    this.rules[existing] = rule;
+                }
+            }
+            else {
+                this.rules.push(rule);
+            }
+            // rulesChanged = true;
+            this.dirty = true;
+            return rule;
+        }
+        get(selector) {
+            return this.rules.find((s) => s.selector.text === selector) || null;
+        }
+        remove(selector) {
+            const existing = this.rules.findIndex((s) => s.selector.text === selector);
+            if (existing > -1) {
+                this.rules.splice(existing, 1);
+                this.dirty = true;
+            }
+        }
+        computeFor(widget) {
+            const sources = this.rules.filter((r) => r.selector.matches(widget));
+            const widgetStyle = widget.style();
+            if (widgetStyle) {
+                sources.push(widgetStyle);
+            }
+            widgetStyle.dirty = false;
+            return new ComputedStyle(sources);
+        }
+    }
+
+    class Widget {
+        // hovered: Style.Style = {};
+        // active: Style.Style = {};
+        constructor(tag, styles) {
+            this.id = '';
+            this.parent = null;
+            this.props = {};
+            this.classes = [];
+            this.children = [];
+            this._bounds = new GWU__namespace.xy.Bounds(0, 0, 0, 0);
+            this._text = '';
+            this._lines = [];
+            this._dirty = false;
+            this._attached = false;
+            this._style = null;
+            this.tag = tag;
+            this._usedStyle = styles
+                ? styles.computeFor(this)
+                : new ComputedStyle();
+        }
+        clone() {
+            if (this._attached && !this.parent)
+                throw new Error('Cannot clone a root widget.');
+            const other = new this.constructor(this.tag);
+            Object.assign(other.props, this.props);
+            other.classes = this.classes.slice();
+            other._text = this._text;
+            if (this._style) {
+                other._style = this._style.clone();
+            }
+            other.parent = null; // The root cloned widget will not have a parent anymore
+            other._attached = false;
+            other.dirty = true;
+            // First we clone the children, then we set their parent to us
+            other.children = this.children.map((c) => c.clone());
+            other.children.forEach((c) => (c.parent = other));
+            return other;
+        }
+        get dirty() {
+            return this._dirty || this._usedStyle.dirty;
+        }
+        set dirty(v) {
+            this._dirty = v;
+            if (this.parent) {
+                const position = this.used('position');
+                if (position === 'static' || position === 'relative') {
+                    this.parent.dirty = true;
+                }
+            }
+        }
+        // CHILDREN
+        addChild(child, beforeIndex = -1) {
+            if (child.parent) {
+                if (child.parent === this)
+                    return this; // ok
+                throw new Error('Cannot add a currently attached child to another Widget.  Detach it first.');
+            }
+            if (beforeIndex == 0) {
+                this.children.unshift(child);
+            }
+            else if (beforeIndex > 0 && beforeIndex <= this.children.length - 1) {
+                this.children.splice(beforeIndex, 0, child);
+            }
+            else {
+                this.children.push(child);
+            }
+            child.parent = this;
+            child.dirty = true;
+            this.dirty = true;
+            return this;
+        }
+        removeChild(child) {
+            if (!child.parent)
+                return this; // not attached, silently ignore
+            if (child.parent !== this) {
+                throw new Error('Cannot remove child that is not attached to this widget.');
+            }
+            if (GWU__namespace.arrayDelete(this.children, child)) {
+                child.parent = null;
+                child.dirty = true;
+                this.dirty = true;
+            }
+            return this;
+        }
+        empty() {
+            this.text(''); // clear the text
+            // clear the children
+            const old = this.children;
+            this.children = []; // no more children
+            old.forEach((c) => {
+                c.parent = null;
+                c.dirty = true;
+            });
+            this.dirty = true;
+            // return the children for cleanup
+            return old;
+        }
+        root() {
+            let current = this;
+            while (current.parent) {
+                current = current.parent;
+            }
+            return current !== this ? current : null;
+        }
+        positionedParent() {
+            let parent = this.parent;
+            if (parent) {
+                // for absolute position, position is relative to closest ancestor that is positioned
+                while (parent &&
+                    !['absolute', 'fixed', 'relative'].includes(parent.used('position'))) {
+                    parent = parent.parent;
+                }
+            }
+            if (!parent) {
+                return this.root(); // no positioned parent so we act fixed.
+            }
+            return parent;
+        }
+        // BOUNDS
+        get bounds() {
+            // this._update();
+            return this._bounds;
+        }
+        get innerLeft() {
+            return this._bounds.left + (this._usedStyle.padLeft || 0);
+        }
+        get innerRight() {
+            return this._bounds.right - (this._usedStyle.padRight || 0);
+        }
+        get innerWidth() {
+            return (this._bounds.width -
+                (this._usedStyle.padLeft || 0) -
+                (this._usedStyle.padRight || 0));
+        }
+        get innerHeight() {
+            return (this._bounds.height -
+                (this._usedStyle.padTop || 0) -
+                (this._usedStyle.padBottom || 0));
+        }
+        get innerTop() {
+            return this._bounds.top + (this._usedStyle.padTop || 0);
+        }
+        get innerBottom() {
+            return this._bounds.bottom + (this._usedStyle.padBottom || 0);
+        }
+        updateLayout() {
+            if (!this.dirty) {
+                this.children.forEach((c) => c.updateLayout());
+                return this;
+            }
+            const position = this._usedStyle.position || 'static';
+            if (position === 'fixed') {
+                this._updateLayoutFixed();
+            }
+            else if (position === 'relative') {
+                this._updateLayoutRelative();
+            }
+            else if (position === 'absolute') {
+                this._updateLayoutAbsolute();
+            }
+            else {
+                this._updateLayoutStatic();
+            }
+            return this;
+        }
+        _updateWidth(parentWidth = 0) {
+            const used = this.used();
+            const bounds = this.bounds;
+            let width = used.width || parentWidth;
+            if (!width) {
+                this._lines = GWU__namespace.text.splitIntoLines(this._text, (used.maxWidth || 999) -
+                    (used.padLeft || 0) -
+                    (used.padRight || 0));
+                width = this.contentWidth() || GWU__namespace.text.length(this._text);
+            }
+            const maxW = used.maxWidth || width;
+            const minW = used.minWidth || width;
+            bounds.width = GWU__namespace.clamp(width, minW, maxW);
+            if (this._text.length) {
+                if (bounds.width) {
+                    this._lines = GWU__namespace.text.splitIntoLines(this._text, bounds.width - (used.padLeft || 0) - (used.padRight || 0));
+                }
+                else if (GWU__namespace.text.length(this._text)) {
+                    this._lines = [this._text];
+                }
+            }
+            else {
+                this._lines = [];
+            }
+            return this;
+        }
+        _updateLeft(parentLeft = 0, parentWidth = 0) {
+            const used = this._usedStyle;
+            let left = parentLeft;
+            if (used.position !== 'static') {
+                if (used.left) {
+                    left += used.left;
+                }
+                else if (used.right) {
+                    const parentRight = parentLeft + parentWidth;
+                    left = parentRight - used.right - this.bounds.width;
+                }
+            }
+            this.bounds.left = left;
+            return this;
+        }
+        _updateTop(parentBottom = 0) {
+            this.bounds.top = parentBottom;
+            return this;
+        }
+        _updateHeight() {
+            const used = this._usedStyle;
+            const bounds = this.bounds;
+            bounds.height = this._lines.length + (used.padTop || 0);
+            // update children...
+            this.children.forEach((c) => {
+                c.updateLayout();
+                bounds.height += c.bounds.height;
+            });
+            // add padding
+            bounds.height += used.padBottom || 0;
+            if (used.height) {
+                bounds.height = used.height;
+            }
+            const maxH = used.maxHeight || bounds.height;
+            const minH = used.minHeight || bounds.height;
+            bounds.height = GWU__namespace.clamp(bounds.height, minH, maxH);
+            if (bounds.height < this._lines.length) {
+                this._lines.length = bounds.height;
+            }
+            return this;
+        }
+        applyLayoutOffset() {
+            const used = this._usedStyle;
+            const position = used.position || 'static';
+            if (position !== 'static') {
+                let parent = this;
+                if (used.position === 'fixed') {
+                    const root = this.root();
+                    if (root)
+                        parent = root;
+                }
+                else if (used.position === 'absolute') {
+                    const pos = this.positionedParent();
+                    if (pos)
+                        parent = pos;
+                }
+                if (used.top) {
+                    this.bounds.top = parent.innerTop + used.top;
+                }
+                else if (used.bottom) {
+                    this.bounds.bottom = parent.innerBottom - used.bottom;
+                }
+            }
+            this.children.forEach((c) => c.applyLayoutOffset());
+            return this;
+        }
+        _updateLayoutStatic() {
+            const parent = this.parent;
+            this._updateWidth(parent ? parent.innerWidth : 0);
+            this._updateLeft(parent ? parent.innerLeft : 0, parent ? parent.innerWidth : 0);
+            this._updateTop(parent ? parent.bounds.bottom : 0);
+            this._updateHeight();
+            this.dirty = false;
+            return this;
+        }
+        _updateLayoutRelative() {
+            this._updateLayoutStatic();
+            this.applyLayoutOffset();
+        }
+        _updateLayoutFixed() {
+            const parent = this.root();
+            this._updateWidth(0); // width comes from content
+            this._updateLeft(parent ? parent.innerLeft : 0);
+            this._updateTop(parent ? parent.bounds.bottom : 0);
+            this._updateHeight();
+            this.applyLayoutOffset();
+            this.dirty = false;
+            return this;
+        }
+        _updateLayoutAbsolute() {
+            let parent = this.positionedParent();
+            this._updateWidth(0); // width comes from content
+            this._updateLeft(parent ? parent.innerLeft : 0);
+            this._updateTop(parent ? parent.bounds.bottom : 0);
+            this._updateHeight();
+            this.applyLayoutOffset();
+            this.dirty = false;
+            return this;
+        }
+        style(...args) {
+            if (!this._style) {
+                this._style = new Style();
+            }
+            if (args.length === 0)
+                return this._style;
+            if (args.length === 1) {
+                const v = args[0];
+                if (typeof v === 'string') {
+                    return this._style.get(v);
+                }
+                else {
+                    this._style.set(args[0], false); // do not set the dirty flag
+                    this._usedStyle.set(args[0], false); // do not set the dirty flag
+                    this.dirty = true; // Need layout update
+                }
+            }
+            else {
+                this._style.set(args[0], args[1], false); // do not set dirty flag
+                this._usedStyle.set(args[0], args[1], false); // do not set dirty flag
+                this.dirty = true; // Need layout update
+            }
+            return this;
+        }
+        removeStyle(id) {
+            if (!this._style)
+                return this;
+            this._style.unset(id);
+            this._usedStyle.dirty = true;
+            return this;
+        }
+        used(id) {
+            if (!id)
+                return this._usedStyle;
+            if (id instanceof ComputedStyle) {
+                this._usedStyle = id;
+                this.dirty = true;
+                return this;
+            }
+            return this._usedStyle.get(id);
+        }
+        addClass(id) {
+            if (this.classes.includes(id))
+                return this;
+            this.classes.push(id);
+            this._usedStyle.dirty = true; // It needs to get styles for this class
+            return this;
+        }
+        removeClass(id) {
+            if (!GWU__namespace.arrayDelete(this.classes, id))
+                return this;
+            this._usedStyle.dirty = true; // It may need to remove some styles
+            return this;
+        }
+        toggleClass(id) {
+            if (!GWU__namespace.arrayDelete(this.classes, id)) {
+                this.classes.push(id);
+            }
+            this._usedStyle.dirty = true;
+            return this;
+        }
+        pos(...args) {
+            if (args.length === 0)
+                return this.bounds;
+            let pos;
+            if (args.length == 2) {
+                pos = { left: args[0], top: args[1] };
+            }
+            else {
+                pos = args[0];
+            }
+            if (pos.right !== undefined) {
+                this.style('right', pos.right);
+            }
+            if (pos.left !== undefined) {
+                this.style('left', pos.left);
+            }
+            if (pos.top !== undefined) {
+                this.style('top', pos.top);
+            }
+            if (pos.bottom !== undefined) {
+                this.style('bottom', pos.bottom);
+            }
+            return this;
+        }
+        size(size, height) {
+            if (size === undefined)
+                return this.bounds;
+            if (typeof size === 'number') {
+                size = { width: size, height };
+            }
+            if (size.minWidth !== undefined)
+                this.style('minWidth', size.minWidth);
+            if (size.minHeight !== undefined)
+                this.style('minHeight', size.minHeight);
+            if (size.maxWidth !== undefined)
+                this.style('maxWidth', size.maxWidth);
+            if (size.maxHeight !== undefined)
+                this.style('maxHeight', size.maxHeight);
+            if (size.width !== undefined)
+                this.style('width', size.width);
+            if (size.height !== undefined)
+                this.style('height', size.height);
+            // this._update();
+            return this;
+        }
+        text(v) {
+            if (v === undefined)
+                return this._text;
+            this._text = v;
+            // if (this.bounds.width) {
+            //     this._lines = GWU.text.splitIntoLines(v, this.bounds.width);
+            // } else {
+            //     this._lines = GWU.text.splitIntoLines(v);
+            //     this.bounds.width = this.contentWidth();
+            // }
+            this.dirty = true;
+            return this;
+        }
+        contentWidth() {
+            return this._lines.reduce((out, line) => Math.max(out, line.length), 0);
+        }
+        // DRAWING
+        draw(buffer) {
+            const bg = this.used('bg');
+            const bounds = this.bounds;
+            buffer.fillRect(bounds.x, bounds.y, bounds.width, bounds.height, ' ', bg, bg);
+            if (this.children.length) {
+                this.children.forEach((c) => c.draw(buffer));
+            }
+            else if (this._lines.length) {
+                const fg = this.used('fg') || 'white';
+                const top = this.innerTop;
+                const width = this.innerWidth;
+                const left = this.innerLeft;
+                const align = this.used('align');
+                this._lines.forEach((line, i) => {
+                    buffer.drawText(left, top + i, line, fg, -1, width, align);
+                });
+            }
+            return true;
+        }
+    }
+
+    class Layer {
+        constructor(ui, rootTag = 'layer') {
+            this.ui = ui;
+            this.styles = new Sheet();
+            this.root = new Widget(rootTag);
+            this.root.style({
+                width: ui.buffer.width,
+                maxWidth: ui.buffer.width,
+                height: ui.buffer.height,
+                maxHeight: ui.buffer.height,
+                position: 'fixed',
+                top: 0,
+                left: 0,
+            });
+            this.root._attached = true; // attached as the root of the layer
+            this.allWidgets = [this.root];
+        }
+        $(id) {
+            return this.select(id);
+        }
+        select(id) {
+            let selected;
+            if (id === undefined) {
+                selected = [this.root];
+            }
+            else if (id instanceof Selection) {
+                return id;
+            }
+            else if (typeof id === 'string') {
+                if (id.startsWith('<')) {
+                    selected = [this.create(id)];
+                }
+                else {
+                    const s = new Selector(id);
+                    selected = this.allWidgets.filter((w) => s.matches(w));
+                }
+            }
+            else if (Array.isArray(id)) {
+                selected = id;
+            }
+            else {
+                selected = [id];
+            }
+            return new Selection(this, selected);
+        }
+        create(tag) {
+            if (tag.startsWith('<')) {
+                if (!tag.endsWith('>'))
+                    throw new Error('Need brackets around new tag - e.g. "<tag>"');
+                tag = tag.substring(1, tag.length - 1);
+            }
+            return new Widget(tag, this.styles);
+        }
+        rule(rule, style) {
+            if (typeof rule === 'string') {
+                if (style) {
+                    this.styles.add(rule, style);
+                    return this;
+                }
+                let out = this.styles.get(rule);
+                if (out)
+                    return out;
+                return this.styles.add(rule, {});
+            }
+            Object.entries(rule).forEach(([name, value]) => {
+                this.styles.add(name, value);
+            });
+            return this;
+        }
+        removeRule(rule) {
+            this.styles.remove(rule);
+            return this;
+        }
+        _attach(w) {
+            if (Array.isArray(w)) {
+                w.forEach((x) => this._attach(x));
+                return this;
+            }
+            if (this.allWidgets.includes(w))
+                return this;
+            this.allWidgets.push(w);
+            w._attached = true;
+            w.children.forEach((c) => this._attach(c));
+            return this;
+        }
+        _detach(w) {
+            if (Array.isArray(w)) {
+                w.forEach((x) => this._detach(x));
+                return this;
+            }
+            if (w === this.root)
+                throw new Error('Cannot detach root widget.');
+            GWU__namespace.arrayDelete(this.allWidgets, w);
+            w._attached = false;
+            w.children.forEach((c) => this._detach(c));
+            return this;
+        }
+        // add(id: SelectType): Selector {
+        //     let s: Selector;
+        //     if (id instanceof Selector) {
+        //         s = id;
+        //     } else {
+        //         s = this.$(id);
+        //     }
+        //     s.selected.forEach((w) => {
+        //         if (!this.allWidgets.includes(w)) {
+        //             w.parent = this.root;
+        //             w._attached = true;
+        //             this.allWidgets.push(w);
+        //         }
+        //     });
+        //     return s;
+        // }
+        computeStyles() {
+            this.allWidgets.forEach((w) => {
+                if (w.used().dirty || this.styles.dirty) {
+                    w.used(this.styles.computeFor(w));
+                }
+            });
+            this.styles.dirty = false;
+        }
+        updateLayout(widget) {
+            widget = widget || this.root;
+            widget.updateLayout();
+        }
+        draw(buffer) {
+            this.computeStyles();
+            this.updateLayout();
+            buffer = buffer || this.ui.buffer;
+            this.root.draw(buffer);
+            buffer.render();
+        }
+    }
+    class Selection {
+        constructor(layer, widgets = []) {
+            this.layer = layer;
+            this.selected = widgets.slice();
+        }
+        get(index) {
+            return this.selected[index];
+        }
+        length() {
+            return this.selected.length;
+        }
+        add(arg) {
+            if (!(arg instanceof Selection)) {
+                arg = this.layer.$(arg);
+            }
+            arg.forEach((w) => {
+                if (!this.selected.includes(w)) {
+                    this.selected.push(w);
+                }
+            });
+            return this;
+        }
+        clone() {
+            this.selected = this.selected.map((w) => w.clone());
+            return this;
+        }
+        // async ???
+        forEach(cb) {
+            this.selected.forEach(cb);
+            return this;
+        }
+        // HIERARCHY
+        after(content) {
+            if (!(content instanceof Selection)) {
+                content = this.layer.$(content);
+            }
+            if (content.length() == 0)
+                return this;
+            content.detach();
+            let current = content;
+            const last = this.selected.length - 1;
+            this.selected.forEach((next, i) => {
+                if (!next.parent)
+                    throw new Error('Cannot add after detached widgets.');
+                current =
+                    i < last ? content.clone() : content;
+                const parent = next.parent;
+                let nextIndex = parent.children.indexOf(next) + 1;
+                current.forEach((toAdd) => {
+                    parent.addChild(toAdd, nextIndex);
+                    if (parent._attached) {
+                        this.layer._attach(toAdd);
+                    }
+                });
+            });
+            return this;
+        }
+        append(content) {
+            if (!(content instanceof Selection)) {
+                content = this.layer.$(content);
+            }
+            if (content.length() == 0)
+                return this;
+            content.detach(); // remove all items to be appended from the tree
+            let current = content;
+            const last = this.selected.length - 1;
+            this.selected.forEach((dest, i) => {
+                current =
+                    i < last ? content.clone() : content;
+                current.forEach((toAppend) => {
+                    dest.addChild(toAppend);
+                    if (dest._attached) {
+                        this.layer._attach(toAppend);
+                    }
+                });
+            });
+            return this;
+        }
+        appendTo(dest) {
+            if (!(dest instanceof Selection)) {
+                dest = this.layer.$(dest);
+            }
+            dest.append(this);
+            return this;
+        }
+        before(content) {
+            if (!(content instanceof Selection)) {
+                content = this.layer.$(content);
+            }
+            if (content.length() == 0)
+                return this;
+            content.detach();
+            let current = content;
+            const last = this.selected.length - 1;
+            this.selected.forEach((next, i) => {
+                if (!next.parent)
+                    throw new Error('Cannot add before detached widgets.');
+                current =
+                    i < last ? content.clone() : content;
+                const parent = next.parent;
+                let nextIndex = parent.children.indexOf(next);
+                current.forEach((toAdd) => {
+                    parent.addChild(toAdd, nextIndex++);
+                    if (parent._attached) {
+                        this.layer._attach(toAdd);
+                    }
+                });
+            });
+            return this;
+        }
+        detach() {
+            this.selected.forEach((w) => {
+                if (w._attached) {
+                    if (!w.parent)
+                        throw new Error('Cannot detach root widget.');
+                    w.parent.removeChild(w);
+                    // remove from allWidgets
+                    this.layer._detach(w);
+                }
+            });
+            return this;
+        }
+        empty() {
+            this.selected.forEach((w) => {
+                const oldChildren = w.empty();
+                this.layer._detach(oldChildren);
+            });
+            return this;
+        }
+        insertAfter(target) {
+            if (!(target instanceof Selection)) {
+                target = this.layer.$(target);
+            }
+            target.after(this);
+            return this;
+        }
+        insertBefore(target) {
+            if (!(target instanceof Selection)) {
+                target = this.layer.$(target);
+            }
+            target.before(this);
+            return this;
+        }
+        prepend(content) {
+            if (!(content instanceof Selection)) {
+                content = this.layer.$(content);
+            }
+            if (content.length() == 0)
+                return this;
+            content.detach(); // remove all items to be prepended from the tree
+            let current = content;
+            const last = this.selected.length - 1;
+            this.selected.forEach((dest, i) => {
+                current =
+                    i < last ? content.clone() : content;
+                current.forEach((toAppend) => {
+                    dest.addChild(toAppend, 0); // before first child
+                    if (dest._attached) {
+                        this.layer._attach(toAppend);
+                    }
+                });
+            });
+            return this;
+        }
+        prependTo(dest) {
+            if (!(dest instanceof Selection)) {
+                dest = this.layer.$(dest);
+            }
+            dest.prepend(this);
+            return this;
+        }
+        remove(_sub) {
+            // TODO - subselector
+            // TODO - remove events
+            return this.detach();
+        }
+        replaceAll(target) {
+            if (!(target instanceof Selection)) {
+                target = this.layer.$(target);
+            }
+            target.before(this);
+            target.detach();
+            return this;
+        }
+        replaceWith(content) {
+            if (!(content instanceof Selection)) {
+                content = this.layer.$(content);
+            }
+            content.replaceAll(this);
+            return this;
+        }
+        text(t) {
+            var _a;
+            if (!t) {
+                return (_a = this.selected[0]) === null || _a === void 0 ? void 0 : _a.text();
+            }
+            this.selected.forEach((w) => w.text(t));
+            return this;
+        }
+        // STYLE
+        addClass(id) {
+            this.selected.forEach((w) => w.addClass(id));
+            return this;
+        }
+        hasClass(id) {
+            if (this.selected.length == 0)
+                return false;
+            return this.selected[0].classes.includes(id);
+        }
+        removeClass(id) {
+            this.selected.forEach((w) => w.removeClass(id));
+            return this;
+        }
+        toggleClass(id) {
+            this.selected.forEach((w) => w.toggleClass(id));
+            return this;
+        }
+        style(name, value) {
+            if (!name)
+                return this.selected[0].style();
+            if (value === undefined) {
+                if (typeof name === 'string') {
+                    return this.selected[0].style(name);
+                }
+            }
+            this.selected.forEach((w) => {
+                if (typeof name === 'string') {
+                    w.style(name, value);
+                }
+                else {
+                    w.style(name);
+                }
+            });
+            return this;
+        }
+        removeStyle(name) {
+            this.selected.forEach((w) => w.removeStyle(name));
+            return this;
+        }
+        // ANIMATION
+        animate(_props, _ms) {
+            return this;
+        }
+        clearQueue(_name) {
+            return this;
+        }
+        delay(_ms, _name) {
+            return this;
+        }
+        dequeue() {
+            return this;
+        }
+        fadeIn(_ms) {
+            return this;
+        }
+        fadeOut(_ms) {
+            return this;
+        }
+        fadeTo(_ms, _opacity) {
+            return this;
+        }
+        fadeToggle(_ms) {
+            return this;
+        }
+        finish(_name) {
+            return this;
+        }
+        hide(_ms) {
+            return this;
+        }
+        queue(..._args) {
+            return [];
+        }
+        show(_ms) {
+            return this;
+        }
+        slideDown(_ms) {
+            return this;
+        }
+        slideToggle(_ms) {
+            return this;
+        }
+        slideUp(_ms) {
+            return this;
+        }
+        stop() {
+            return this;
+        }
+        toggle(_arg) {
+            return this;
+        }
+        // EVENTS
+        on(_event, _cb) {
+            return this;
+        }
+        off(_event) {
+            return this;
+        }
+        click(_arg) {
+            return this;
+        }
+        keypress(_arg) {
+            return this;
+        }
+        dir(_arg) {
+            return this;
+        }
+        mouseenter(_arg) {
+            return this;
+        }
+        mouseleave(_arg) {
+            return this;
+        }
+        mousemove(_arg) {
+            return this;
+        }
+    }
+
+    var index = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        Callbacks: Callbacks,
+        isTruthy: isTruthy,
+        Selector: Selector,
+        selector: selector,
+        Style: Style,
+        ComputedStyle: ComputedStyle,
+        Sheet: Sheet,
+        Widget: Widget,
+        Layer: Layer,
+        Selection: Selection
+    });
+
     exports.ActionButton = ActionButton;
     exports.ActorEntry = ActorEntry;
     exports.Box = Box;
@@ -2379,8 +3678,9 @@
     exports.Text = Text;
     exports.UI = UI;
     exports.Viewport = Viewport;
-    exports.Widget = Widget;
+    exports.Widget = Widget$1;
     exports.buildDialog = buildDialog;
+    exports.html = index;
     exports.makeTable = makeTable;
     exports.showDropDown = showDropDown;
 

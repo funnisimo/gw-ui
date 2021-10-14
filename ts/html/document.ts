@@ -8,7 +8,7 @@ import { Widget } from './widget';
 // return true if you want to stop the event from propagating
 export type EventCb = (
     e: GWU.io.Event,
-    layer: Layer,
+    layer: Document,
     widget: Widget
 ) => boolean | Promise<boolean>;
 
@@ -20,18 +20,18 @@ export type WidgetCb = (widget: Widget) => any;
 
 export type SelectType = string | Widget | Widget[] | Selection;
 
-export class Layer {
+export class Document {
     ui: UICore;
-    root: Widget;
-    allWidgets: Widget[];
-    styles: Style.Sheet;
+    body: Widget;
+    children: Widget[];
+    stylesheet: Style.Sheet;
 
-    constructor(ui: UICore, rootTag = 'layer') {
+    constructor(ui: UICore, rootTag = 'body') {
         this.ui = ui;
-        this.styles = new Style.Sheet();
+        this.stylesheet = new Style.Sheet();
 
-        this.root = new Widget(rootTag);
-        this.root.style({
+        this.body = new Widget(rootTag);
+        this.body.style({
             width: ui.buffer.width,
             maxWidth: ui.buffer.width,
             height: ui.buffer.height,
@@ -40,9 +40,9 @@ export class Layer {
             top: 0,
             left: 0,
         });
-        this.root._attached = true; // attached as the root of the layer
+        this.body._attached = true; // attached as the root of the layer
 
-        this.allWidgets = [this.root];
+        this.children = [this.body];
     }
 
     $(id?: SelectType): Selection {
@@ -52,7 +52,7 @@ export class Layer {
     select(id?: SelectType): Selection {
         let selected: Widget[];
         if (id === undefined) {
-            selected = [this.root];
+            selected = [this.body];
         } else if (id instanceof Selection) {
             return id;
         } else if (typeof id === 'string') {
@@ -60,7 +60,7 @@ export class Layer {
                 selected = [this.create(id)];
             } else {
                 const s = new Selector(id);
-                selected = this.allWidgets.filter((w) => s.matches(w));
+                selected = this.children.filter((w) => s.matches(w));
             }
         } else if (Array.isArray(id)) {
             selected = id;
@@ -76,7 +76,7 @@ export class Layer {
                 throw new Error('Need brackets around new tag - e.g. "<tag>"');
             tag = tag.substring(1, tag.length - 1);
         }
-        return new Widget(tag, this.styles);
+        return new Widget(tag, this.stylesheet);
     }
 
     rule(info: Record<string, Style.StyleOptions>): this;
@@ -88,24 +88,24 @@ export class Layer {
     ): this | Style.Style {
         if (typeof rule === 'string') {
             if (style) {
-                this.styles.add(rule, style);
+                this.stylesheet.add(rule, style);
                 return this;
             }
 
-            let out = this.styles.get(rule);
+            let out = this.stylesheet.get(rule);
             if (out) return out;
 
-            return this.styles.add(rule, {});
+            return this.stylesheet.add(rule, {});
         }
 
         Object.entries(rule).forEach(([name, value]) => {
-            this.styles.add(name, value);
+            this.stylesheet.add(name, value);
         });
         return this;
     }
 
     removeRule(rule: string): this {
-        this.styles.remove(rule);
+        this.stylesheet.remove(rule);
         return this;
     }
 
@@ -114,8 +114,8 @@ export class Layer {
             w.forEach((x) => this._attach(x));
             return this;
         }
-        if (this.allWidgets.includes(w)) return this;
-        this.allWidgets.push(w);
+        if (this.children.includes(w)) return this;
+        this.children.push(w);
         w._attached = true;
         w.children.forEach((c) => this._attach(c));
         return this;
@@ -126,9 +126,9 @@ export class Layer {
             w.forEach((x) => this._detach(x));
             return this;
         }
-        if (w === this.root) throw new Error('Cannot detach root widget.');
+        if (w === this.body) throw new Error('Cannot detach root widget.');
 
-        GWU.arrayDelete(this.allWidgets, w);
+        GWU.arrayDelete(this.children, w);
         w._attached = false;
         w.children.forEach((c) => this._detach(c));
         return this;
@@ -152,17 +152,17 @@ export class Layer {
     // }
 
     computeStyles() {
-        this.allWidgets.forEach((w) => {
-            if (w.used().dirty || this.styles.dirty) {
-                w.used(this.styles.computeFor(w));
+        this.children.forEach((w) => {
+            if (w.used().dirty || this.stylesheet.dirty) {
+                w.used(this.stylesheet.computeFor(w));
             }
         });
 
-        this.styles.dirty = false;
+        this.stylesheet.dirty = false;
     }
 
     updateLayout(widget?: Widget) {
-        widget = widget || this.root;
+        widget = widget || this.body;
         widget.updateLayout();
     }
 
@@ -170,16 +170,16 @@ export class Layer {
         this.computeStyles();
         this.updateLayout();
         buffer = buffer || this.ui.buffer;
-        this.root.draw(buffer);
+        this.body.draw(buffer);
         buffer.render();
     }
 }
 
 export class Selection {
-    layer: Layer;
+    layer: Document;
     selected: Widget[];
 
-    constructor(layer: Layer, widgets: Widget[] = []) {
+    constructor(layer: Document, widgets: Widget[] = []) {
         this.layer = layer;
         this.selected = widgets.slice();
     }

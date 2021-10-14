@@ -1,58 +1,58 @@
 import * as UTILS from '../../test/utils';
 import { UICore } from '../types';
-import * as Layer from './document';
+import * as Document from './document';
 
-describe('Layer', () => {
+describe('Document', () => {
     let ui: UICore;
-    let layer: Layer.Layer;
+    let document: Document.Document;
 
     beforeEach(() => {
         ui = UTILS.mockUI(50, 30);
-        layer = new Layer.Layer(ui);
+        document = new Document.Document(ui);
     });
 
-    test('get root', () => {
-        const s = layer.$('layer');
-        expect(s.selected).toEqual([layer.root]);
+    test('get body', () => {
+        const s = document.$('body');
+        expect(s.selected).toEqual([document.body]);
 
-        const t = layer.$();
-        expect(t.selected).toEqual([layer.root]);
+        const t = document.$();
+        expect(t.selected).toEqual([document.body]);
     });
 
     test('computeStyles', () => {
-        expect(layer.styles.dirty).toBeTruthy();
-        expect(layer.root.style().dirty).toBeFalsy();
-        expect(layer.root.used().dirty).toBeFalsy();
-        expect(layer.root.used('fg')).toBeUndefined();
-        expect(layer.root.used('bg')).toBeUndefined();
-        expect(layer.root.used('width')).toEqual(50);
-        expect(layer.root.used('height')).toEqual(30);
-        expect(layer.root.style('fg')).toBeUndefined();
-        expect(layer.root.style('bg')).toBeUndefined();
-        expect(layer.root.style('width')).toEqual(50);
-        expect(layer.root.style('height')).toEqual(30);
+        expect(document.stylesheet.dirty).toBeTruthy();
+        expect(document.body.style().dirty).toBeFalsy();
+        expect(document.body.used().dirty).toBeFalsy();
+        expect(document.body.used('fg')).toBeUndefined();
+        expect(document.body.used('bg')).toBeUndefined();
+        expect(document.body.used('width')).toEqual(50);
+        expect(document.body.used('height')).toEqual(30);
+        expect(document.body.style('fg')).toBeUndefined();
+        expect(document.body.style('bg')).toBeUndefined();
+        expect(document.body.style('width')).toEqual(50);
+        expect(document.body.style('height')).toEqual(30);
 
-        layer.computeStyles();
-        expect(layer.styles.dirty).toBeFalsy();
-        expect(layer.root.style().dirty).toBeFalsy();
-        expect(layer.root.used().dirty).toBeFalsy();
+        document.computeStyles();
+        expect(document.stylesheet.dirty).toBeFalsy();
+        expect(document.body.style().dirty).toBeFalsy();
+        expect(document.body.used().dirty).toBeFalsy();
 
-        expect(layer.root.used('fg')).toEqual('white');
-        expect(layer.root.used('bg')).toEqual('black');
-        expect(layer.root.used('width')).toEqual(50);
-        expect(layer.root.used('height')).toEqual(30);
-        expect(layer.root.style('fg')).toBeUndefined();
-        expect(layer.root.style('bg')).toBeUndefined();
-        expect(layer.root.style('width')).toEqual(50);
-        expect(layer.root.style('height')).toEqual(30);
+        expect(document.body.used('fg')).toEqual('white');
+        expect(document.body.used('bg')).toEqual('black');
+        expect(document.body.used('width')).toEqual(50);
+        expect(document.body.used('height')).toEqual(30);
+        expect(document.body.style('fg')).toBeUndefined();
+        expect(document.body.style('bg')).toBeUndefined();
+        expect(document.body.style('width')).toEqual(50);
+        expect(document.body.style('height')).toEqual(30);
     });
 
     test('updateLayout - simple text box', () => {
-        layer.$('<text>').text('test').appendTo('layer');
+        document.$('<text>').text('test').appendTo('body');
 
-        layer.draw();
+        document.draw();
 
-        const root = layer.root;
+        const root = document.body;
         const [a] = root.children;
 
         expect(root.bounds).toMatchObject({
@@ -65,15 +65,15 @@ describe('Layer', () => {
     });
 
     test('updateLayout - simple text box with style', () => {
-        layer
+        document
             .$('<text>')
             .text('test')
             .style({ fg: 'red', bg: 'white' })
-            .appendTo('layer');
+            .appendTo('body');
 
-        layer.draw();
+        document.draw();
 
-        const root = layer.root;
+        const root = document.body;
         const [a] = root.children;
 
         expect(root.bounds).toMatchObject({
@@ -86,17 +86,17 @@ describe('Layer', () => {
     });
 
     test('updateLayout - 3 simple text boxes', () => {
-        layer
+        document
             .$('<text>')
             .add('<text>')
             .add('<text>')
             .text('test')
-            .appendTo('layer');
+            .appendTo('body');
 
-        layer.computeStyles();
-        layer.updateLayout();
+        document.computeStyles();
+        document.updateLayout();
 
-        const root = layer.root;
+        const root = document.body;
         const [a, b, c] = root.children;
 
         expect(root.bounds).toMatchObject({
@@ -111,18 +111,18 @@ describe('Layer', () => {
     });
 
     test('updateLayout - boxes with padding', () => {
-        layer
+        document
             .$('<text>')
             .add('<text>')
             .add('<text>')
             .text('test')
             .style('padding', 1)
-            .appendTo('layer');
+            .appendTo('body');
 
-        layer.computeStyles();
-        layer.updateLayout();
+        document.computeStyles();
+        document.updateLayout();
 
-        const root = layer.root;
+        const root = document.body;
         const [a, b, c] = root.children;
 
         expect(root.bounds).toMatchObject({
@@ -137,19 +137,19 @@ describe('Layer', () => {
     });
 
     test('updateLayout - root with padding', () => {
-        layer
+        document
             .$('<text>')
             .add('<text>')
             .add('<text>')
             .text('test')
-            .appendTo('layer');
+            .appendTo('body');
 
-        layer.$().style('padding', 1);
+        document.$().style('padding', 1);
 
-        layer.computeStyles();
-        layer.updateLayout();
+        document.computeStyles();
+        document.updateLayout();
 
-        const root = layer.root;
+        const root = document.body;
         const [a, b, c] = root.children;
 
         expect(root.bounds).toMatchObject({
@@ -169,20 +169,20 @@ describe('Layer', () => {
     });
 
     test('updateLayout - root + widgets with padding', () => {
-        layer
+        document
             .$('<text>')
             .add('<text>')
             .add('<text>')
             .text('test')
             .style('padding', 1)
-            .appendTo('layer');
+            .appendTo('body');
 
-        layer.$().style('padding', 1);
+        document.$().style('padding', 1);
 
-        layer.computeStyles();
-        layer.updateLayout();
+        document.computeStyles();
+        document.updateLayout();
 
-        const root = layer.root;
+        const root = document.body;
         const [a, b, c] = root.children;
 
         expect(root.bounds).toMatchObject({

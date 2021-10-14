@@ -3165,12 +3165,12 @@ class Widget {
     }
 }
 
-class Layer {
-    constructor(ui, rootTag = 'layer') {
+class Document {
+    constructor(ui, rootTag = 'body') {
         this.ui = ui;
-        this.styles = new Sheet();
-        this.root = new Widget(rootTag);
-        this.root.style({
+        this.stylesheet = new Sheet();
+        this.body = new Widget(rootTag);
+        this.body.style({
             width: ui.buffer.width,
             maxWidth: ui.buffer.width,
             height: ui.buffer.height,
@@ -3179,8 +3179,8 @@ class Layer {
             top: 0,
             left: 0,
         });
-        this.root._attached = true; // attached as the root of the layer
-        this.allWidgets = [this.root];
+        this.body._attached = true; // attached as the root of the layer
+        this.children = [this.body];
     }
     $(id) {
         return this.select(id);
@@ -3188,7 +3188,7 @@ class Layer {
     select(id) {
         let selected;
         if (id === undefined) {
-            selected = [this.root];
+            selected = [this.body];
         }
         else if (id instanceof Selection) {
             return id;
@@ -3199,7 +3199,7 @@ class Layer {
             }
             else {
                 const s = new Selector(id);
-                selected = this.allWidgets.filter((w) => s.matches(w));
+                selected = this.children.filter((w) => s.matches(w));
             }
         }
         else if (Array.isArray(id)) {
@@ -3216,26 +3216,26 @@ class Layer {
                 throw new Error('Need brackets around new tag - e.g. "<tag>"');
             tag = tag.substring(1, tag.length - 1);
         }
-        return new Widget(tag, this.styles);
+        return new Widget(tag, this.stylesheet);
     }
     rule(rule, style) {
         if (typeof rule === 'string') {
             if (style) {
-                this.styles.add(rule, style);
+                this.stylesheet.add(rule, style);
                 return this;
             }
-            let out = this.styles.get(rule);
+            let out = this.stylesheet.get(rule);
             if (out)
                 return out;
-            return this.styles.add(rule, {});
+            return this.stylesheet.add(rule, {});
         }
         Object.entries(rule).forEach(([name, value]) => {
-            this.styles.add(name, value);
+            this.stylesheet.add(name, value);
         });
         return this;
     }
     removeRule(rule) {
-        this.styles.remove(rule);
+        this.stylesheet.remove(rule);
         return this;
     }
     _attach(w) {
@@ -3243,9 +3243,9 @@ class Layer {
             w.forEach((x) => this._attach(x));
             return this;
         }
-        if (this.allWidgets.includes(w))
+        if (this.children.includes(w))
             return this;
-        this.allWidgets.push(w);
+        this.children.push(w);
         w._attached = true;
         w.children.forEach((c) => this._attach(c));
         return this;
@@ -3255,9 +3255,9 @@ class Layer {
             w.forEach((x) => this._detach(x));
             return this;
         }
-        if (w === this.root)
+        if (w === this.body)
             throw new Error('Cannot detach root widget.');
-        GWU.arrayDelete(this.allWidgets, w);
+        GWU.arrayDelete(this.children, w);
         w._attached = false;
         w.children.forEach((c) => this._detach(c));
         return this;
@@ -3279,22 +3279,22 @@ class Layer {
     //     return s;
     // }
     computeStyles() {
-        this.allWidgets.forEach((w) => {
-            if (w.used().dirty || this.styles.dirty) {
-                w.used(this.styles.computeFor(w));
+        this.children.forEach((w) => {
+            if (w.used().dirty || this.stylesheet.dirty) {
+                w.used(this.stylesheet.computeFor(w));
             }
         });
-        this.styles.dirty = false;
+        this.stylesheet.dirty = false;
     }
     updateLayout(widget) {
-        widget = widget || this.root;
+        widget = widget || this.body;
         widget.updateLayout();
     }
     draw(buffer) {
         this.computeStyles();
         this.updateLayout();
         buffer = buffer || this.ui.buffer;
-        this.root.draw(buffer);
+        this.body.draw(buffer);
         buffer.render();
     }
 }
@@ -3626,7 +3626,7 @@ var index = /*#__PURE__*/Object.freeze({
     ComputedStyle: ComputedStyle,
     Sheet: Sheet,
     Widget: Widget,
-    Layer: Layer,
+    Document: Document,
     Selection: Selection
 });
 

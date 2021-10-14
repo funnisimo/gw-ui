@@ -752,16 +752,16 @@ declare class Widget implements Selectable {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-declare type EventCb = (e: GWU.io.Event, layer: Layer, widget: Widget) => boolean | Promise<boolean>;
+declare type EventCb = (e: GWU.io.Event, layer: Document, widget: Widget) => boolean | Promise<boolean>;
 declare type FxFn = () => void | Promise<void>;
 declare type Fx = number;
 declare type WidgetCb = (widget: Widget) => any;
 declare type SelectType = string | Widget | Widget[] | Selection;
-declare class Layer {
+declare class Document {
     ui: UICore;
-    root: Widget;
-    allWidgets: Widget[];
-    styles: Sheet;
+    body: Widget;
+    children: Widget[];
+    stylesheet: Sheet;
     constructor(ui: UICore, rootTag?: string);
     $(id?: SelectType): Selection;
     select(id?: SelectType): Selection;
@@ -777,9 +777,9 @@ declare class Layer {
     draw(buffer?: GWU.canvas.Buffer): void;
 }
 declare class Selection {
-    layer: Layer;
+    layer: Document;
     selected: Widget[];
-    constructor(layer: Layer, widgets?: Widget[]);
+    constructor(layer: Document, widgets?: Widget[]);
     get(index: number): Widget;
     length(): number;
     add(arg: SelectType): this;
@@ -874,8 +874,8 @@ type index_d_FxFn = FxFn;
 type index_d_Fx = Fx;
 type index_d_WidgetCb = WidgetCb;
 type index_d_SelectType = SelectType;
-type index_d_Layer = Layer;
-declare const index_d_Layer: typeof Layer;
+type index_d_Document = Document;
+declare const index_d_Document: typeof Document;
 type index_d_Selection = Selection;
 declare const index_d_Selection: typeof Selection;
 declare namespace index_d {
@@ -901,7 +901,7 @@ declare namespace index_d {
     index_d_Fx as Fx,
     index_d_WidgetCb as WidgetCb,
     index_d_SelectType as SelectType,
-    index_d_Layer as Layer,
+    index_d_Document as Document,
     index_d_Selection as Selection,
   };
 }

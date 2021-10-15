@@ -49,6 +49,29 @@ describe('Document', () => {
         expect(document.body.style('height')).toEqual(30);
     });
 
+    test('createElement', () => {
+        const div = document.createElement(
+            '<div id=A style="fg:red;bg:white" hover>'
+        );
+        expect(div.tag).toEqual('div');
+        expect(div.id).toEqual('A');
+        expect(div.style('fg')).toEqual('red');
+        expect(div.style('bg')).toEqual('white');
+        expect(div.prop('hover')).toBeTruthy();
+    });
+
+    test('createElement with text', () => {
+        const div = document.createElement(
+            '<div id=A style="fg:red;bg:white" hover>Text</div>'
+        );
+        expect(div.tag).toEqual('div');
+        expect(div.id).toEqual('A');
+        expect(div.style('fg')).toEqual('red');
+        expect(div.style('bg')).toEqual('white');
+        expect(div.prop('hover')).toBeTruthy();
+        expect(div.text()).toEqual('Text');
+    });
+
     test('updateLayout - simple text box', () => {
         document.$('<text>').text('test').appendTo('body');
 
@@ -319,6 +342,7 @@ describe('Document', () => {
 
     describe('focus', () => {
         test.todo('set focus automatically');
+        test.todo('click to set focus');
         test.todo('tab - next focus');
         test.todo('TAB - prev focus');
         test.todo('element eats tab and TAB');

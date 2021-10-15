@@ -708,3 +708,77 @@ export class Element implements Selectable {
         return result;
     }
 }
+
+// TODO - Look at htmlparser2
+export function makeElement(tag: string, stylesheet?: Style.Sheet): Element {
+    if (tag.startsWith('<')) {
+        if (!tag.endsWith('>'))
+            throw new Error('Need brackets around new tag - e.g. "<tag>"');
+    }
+
+    const fieldRE = /(\w+)( *= *(\'([^\']*)\'|\"([^\"]*)\"|(\w+)))?/;
+    const endRE = / *>/;
+    const textRE = /(.+?)(?=(<\/|$))/;
+
+    const parts: Record<string, string | boolean> = {};
+    const field_re = new RegExp(fieldRE, 'g');
+    const end_re = new RegExp(endRE, 'g');
+    const text_re = new RegExp(textRE, 'g');
+
+    // console.log('PARSE', tag);
+
+    let match = field_re.exec(tag);
+    if (!match) {
+        parts.tag = 'div';
+    } else {
+        parts.tag = match[1];
+        match = field_re.exec(tag);
+        while (match) {
+            // console.log(match);
+            parts[match[1]] = match[4] || match[5] || match[6] || true;
+
+            end_re.lastIndex = field_re.lastIndex;
+            const endM = end_re.exec(tag);
+            if (endM && endM.index == field_re.lastIndex) {
+                // console.log('endM', endM);
+                text_re.lastIndex = end_re.lastIndex;
+                const tm = text_re.exec(tag);
+                // console.log(tm);
+                if (tm) {
+                    parts.text = tm[1];
+                }
+                break;
+            }
+            match = field_re.exec(tag);
+        }
+        // console.log(parts);
+    }
+
+    const e = new Element(parts.tag, stylesheet);
+
+    Object.entries(parts).forEach(([key, value]) => {
+        if (key === 'tag') return;
+        else if (key === 'text') {
+            e.text(value as string);
+        } else if (key === 'id') {
+            e.id = value as string;
+        } else if (key === 'style') {
+            const style = value as string;
+            // console.log('style=', style);
+            style.split(';').forEach((s) => {
+                const parts = s.split('=').map((p) => p.trim());
+                parts.forEach((p) => {
+                    const [k, v] = p.split(':').map((t) => t.trim());
+                    // console.log(' - ', k, v);
+                    if (k && v) {
+                        e.style(k as keyof Style.StyleOptions, v);
+                    }
+                });
+            });
+        } else {
+            e.prop(key, value as boolean);
+        }
+    });
+
+    return e;
+}

@@ -761,6 +761,7 @@ declare class Element implements Selectable {
     off(event: string, cb?: EventCb): this;
     elementFromPoint(x: number, y: number): Element | null;
 }
+declare function makeElement(tag: string, stylesheet?: Sheet): Element;
 
 declare type EventCb = (e: GWU.io.Event, layer: Document, widget: Element) => boolean;
 declare type FxFn = () => void;
@@ -882,6 +883,7 @@ type index_d_Size = Size;
 type index_d_SizeOptions = SizeOptions;
 type index_d_Element = Element;
 declare const index_d_Element: typeof Element;
+declare const index_d_makeElement: typeof makeElement;
 type index_d_EventCb = EventCb;
 type index_d_FxFn = FxFn;
 type index_d_Fx = Fx;
@@ -910,6 +912,7 @@ declare namespace index_d {
     index_d_Size as Size,
     index_d_SizeOptions as SizeOptions,
     index_d_Element as Element,
+    index_d_makeElement as makeElement,
     index_d_EventCb as EventCb,
     index_d_FxFn as FxFn,
     index_d_Fx as Fx,

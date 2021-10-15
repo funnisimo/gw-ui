@@ -330,14 +330,59 @@ describe('Document', () => {
             expect(bodyClick).not.toHaveBeenCalled();
         });
 
-        // mousemove - event
-        // mousemove - hover
+        test('mousemove - basic + hover', () => {
+            const moveFn = jest.fn();
+            const div = document
+                .create('<div id=A>CLICK ME</div>')
+                .on('mousemove', moveFn)
+                .appendTo('body')
+                .get(0);
+            const div2 = document
+                .create('<div id=B>CLICK ME</div>')
+                .on('mousemove', moveFn)
+                .appendTo('body')
+                .get(0);
 
-        // dir
+            document.updateLayout();
 
-        // keypress - keypress
-        // keypress - Enter
-        // keypress - a
+            expect(div.prop('hover')).toBeFalsy();
+            expect(document.body.prop('hover')).toBeFalsy();
+            expect(document.elementFromPoint(0, 0)).toBe(div);
+            expect(div.events.mousemove).toEqual([moveFn]);
+
+            document.mousemove(UTILS.mousemove(0, 0));
+            expect(moveFn).toHaveBeenCalled();
+            moveFn.mockClear();
+            expect(div.prop('hover')).toBeTruthy();
+            expect(document.body.prop('hover')).toBeTruthy();
+            expect(div2.prop('hover')).toBeFalsy(); // not over this element
+
+            document.mousemove(UTILS.mousemove(5, 5));
+            expect(moveFn).not.toHaveBeenCalled();
+            expect(div.prop('hover')).toBeFalsy();
+
+            const bodyMove = jest.fn();
+            document.select('body').on('mousemove', bodyMove);
+            moveFn.mockClear();
+
+            document.mousemove(UTILS.mousemove(0, 0));
+            expect(moveFn).toHaveBeenCalled();
+            expect(bodyMove).toHaveBeenCalled();
+            expect(document.body.prop('hover')).toBeTruthy();
+
+            moveFn.mockClear().mockReturnValueOnce(true); // handled
+            bodyMove.mockClear();
+
+            document.mousemove(UTILS.mousemove(0, 0));
+            expect(moveFn).toHaveBeenCalled();
+            expect(bodyMove).not.toHaveBeenCalled();
+        });
+
+        test.todo('dir - basic');
+
+        test.todo('keypress - keypress');
+        test.todo('keypress - Enter');
+        test.todo('keypress - a');
     });
 
     describe('focus', () => {

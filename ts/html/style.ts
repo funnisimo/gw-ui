@@ -252,9 +252,9 @@ export interface Stylable {
     readonly tag: string;
     readonly id: string;
     readonly classes: string[];
-    readonly props: Record<string, any>;
     readonly dirty: boolean;
     style(): Style;
+    prop(name: string): boolean;
 }
 
 export class ComputedStyle extends Style {

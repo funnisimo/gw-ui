@@ -10,7 +10,7 @@ export interface Selectable {
     tag: string;
     id: string;
     classes: string[];
-    props: Record<string, any>;
+    prop(name: string): boolean;
 }
 
 const MATCH = /^(\*|\#\w+|\$|\w+)(\.(\w[\w-]*))?(\:(\w+))?$/;
@@ -61,7 +61,7 @@ export class Selector {
         if (this.class.length && !obj.classes.includes(this.class))
             return false;
         if (this.prop.length) {
-            const v = obj.props[this.prop] || false;
+            const v = obj.prop(this.prop) || false;
             if (!isTruthy(v)) return false;
         }
         return true;

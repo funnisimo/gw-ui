@@ -2466,7 +2466,7 @@ class Selector {
         if (this.class.length && !obj.classes.includes(this.class))
             return false;
         if (this.prop.length) {
-            const v = obj.props[this.prop] || false;
+            const v = obj.prop(this.prop) || false;
             if (!isTruthy(v))
                 return false;
         }
@@ -2737,9 +2737,10 @@ class Element {
     constructor(tag, styles) {
         this.id = '';
         this.parent = null;
-        this.props = {};
+        this._props = {};
         this.classes = [];
         this.children = [];
+        this.events = {};
         this._bounds = new GWU.xy.Bounds(0, 0, 0, 0);
         this._text = '';
         this._lines = [];
@@ -2751,11 +2752,16 @@ class Element {
             ? styles.computeFor(this)
             : new ComputedStyle();
     }
+    contains(x, y) {
+        if (typeof x === 'number')
+            return this._bounds.contains(x, y);
+        return this._bounds.contains(x);
+    }
     clone() {
         if (this._attached && !this.parent)
             throw new Error('Cannot clone a root widget.');
         const other = new this.constructor(this.tag);
-        Object.assign(other.props, this.props);
+        Object.assign(other._props, this._props);
         other.classes = this.classes.slice();
         other._text = this._text;
         if (this._style) {
@@ -2780,6 +2786,19 @@ class Element {
                 this.parent.dirty = true;
             }
         }
+    }
+    prop(name, value) {
+        if (value === undefined)
+            return this._props[name];
+        this._props[name] = value;
+        this._usedStyle.dirty = true; // Need to reload styles
+        return this;
+    }
+    toggleProp(name) {
+        const v = this._props[name] || false;
+        this._props[name] = !v;
+        this._usedStyle.dirty = true; // Need to reload styles
+        return this;
     }
     // CHILDREN
     addChild(child, beforeIndex = -1) {
@@ -3229,10 +3248,57 @@ class Element {
         }
         return true;
     }
+    // Events
+    on(event, cb) {
+        let handlers = this.events[event];
+        if (!handlers) {
+            handlers = this.events[event] = [];
+        }
+        if (!handlers.includes(cb)) {
+            handlers.push(cb);
+        }
+        return this;
+    }
+    off(event, cb) {
+        let handlers = this.events[event];
+        if (!handlers)
+            return this;
+        if (cb) {
+            GWU.arrayDelete(handlers, cb);
+        }
+        else {
+            handlers.length = 0; // clear all handlers
+        }
+        return this;
+    }
+    elementFromPoint(x, y) {
+        let result = null;
+        // positioned elements
+        for (let w of this.children) {
+            if (w.isPositioned() && w.contains(x, y)) {
+                result = w.elementFromPoint(x, y) || result;
+            }
+        }
+        if (result)
+            return result;
+        // static elements
+        for (let w of this.children) {
+            if (!w.isPositioned() && w.contains(x, y)) {
+                result = w.elementFromPoint(x, y) || result;
+            }
+        }
+        if (result)
+            return result;
+        if (!result && this.contains(x, y)) {
+            result = this;
+        }
+        return result;
+    }
 }
 
 class Document {
     constructor(ui, rootTag = 'body') {
+        this._done = false;
         this.ui = ui;
         this.stylesheet = new Sheet();
         this.body = new Element(rootTag);
@@ -3355,21 +3421,63 @@ class Document {
         this.body.draw(buffer);
         buffer.render();
     }
+    // events
+    // return topmost element under point
+    elementFromPoint(x, y) {
+        return this.body.elementFromPoint(x, y) || this.body;
+    }
+    _bubbleEvent(element, name, e) {
+        let current = element;
+        while (current) {
+            const handlers = current.events[name] || [];
+            let handled = handlers.reduce((out, h) => h(e, this, current) || out, false);
+            if (handled)
+                return true;
+            current = current.parent;
+        }
+        return false;
+    }
+    click(e) {
+        let element = this.elementFromPoint(e.x, e.y);
+        if (!element)
+            return false;
+        if (this._bubbleEvent(element, 'click', e))
+            return this._done;
+        return false;
+    }
+    mousemove(e) {
+        this.children.forEach((w) => w.prop('hover', false));
+        let element = this.elementFromPoint(e.x, e.y);
+        while (element) {
+            element.prop('hover', true);
+            element = element.parent;
+        }
+        if (element && this._bubbleEvent(element, 'mousemove', e))
+            return this._done;
+        return false;
+    }
 }
 class Selection {
-    constructor(layer, widgets = []) {
-        this.layer = layer;
+    constructor(document, widgets = []) {
+        this.document = document;
         this.selected = widgets.slice();
     }
     get(index) {
+        if (index === undefined)
+            return this.selected;
+        if (index < 0)
+            return this.selected[this.selected.length + index];
         return this.selected[index];
     }
     length() {
         return this.selected.length;
     }
+    slice(start, end) {
+        return new Selection(this.document, this.selected.slice(start, end));
+    }
     add(arg) {
         if (!(arg instanceof Selection)) {
-            arg = this.layer.$(arg);
+            arg = this.document.$(arg);
         }
         arg.forEach((w) => {
             if (!this.selected.includes(w)) {
@@ -3390,7 +3498,7 @@ class Selection {
     // HIERARCHY
     after(content) {
         if (!(content instanceof Selection)) {
-            content = this.layer.$(content);
+            content = this.document.$(content);
         }
         if (content.length() == 0)
             return this;
@@ -3407,7 +3515,7 @@ class Selection {
             current.forEach((toAdd) => {
                 parent.addChild(toAdd, nextIndex);
                 if (parent._attached) {
-                    this.layer._attach(toAdd);
+                    this.document._attach(toAdd);
                 }
             });
         });
@@ -3415,7 +3523,7 @@ class Selection {
     }
     append(content) {
         if (!(content instanceof Selection)) {
-            content = this.layer.$(content);
+            content = this.document.$(content);
         }
         if (content.length() == 0)
             return this;
@@ -3428,7 +3536,7 @@ class Selection {
             current.forEach((toAppend) => {
                 dest.addChild(toAppend);
                 if (dest._attached) {
-                    this.layer._attach(toAppend);
+                    this.document._attach(toAppend);
                 }
             });
         });
@@ -3436,14 +3544,14 @@ class Selection {
     }
     appendTo(dest) {
         if (!(dest instanceof Selection)) {
-            dest = this.layer.$(dest);
+            dest = this.document.$(dest);
         }
         dest.append(this);
         return this;
     }
     before(content) {
         if (!(content instanceof Selection)) {
-            content = this.layer.$(content);
+            content = this.document.$(content);
         }
         if (content.length() == 0)
             return this;
@@ -3460,7 +3568,7 @@ class Selection {
             current.forEach((toAdd) => {
                 parent.addChild(toAdd, nextIndex++);
                 if (parent._attached) {
-                    this.layer._attach(toAdd);
+                    this.document._attach(toAdd);
                 }
             });
         });
@@ -3473,7 +3581,7 @@ class Selection {
                     throw new Error('Cannot detach root widget.');
                 w.parent.removeChild(w);
                 // remove from document.children
-                this.layer._detach(w);
+                this.document._detach(w);
             }
         });
         return this;
@@ -3481,27 +3589,27 @@ class Selection {
     empty() {
         this.selected.forEach((w) => {
             const oldChildren = w.empty();
-            this.layer._detach(oldChildren);
+            this.document._detach(oldChildren);
         });
         return this;
     }
     insertAfter(target) {
         if (!(target instanceof Selection)) {
-            target = this.layer.$(target);
+            target = this.document.$(target);
         }
         target.after(this);
         return this;
     }
     insertBefore(target) {
         if (!(target instanceof Selection)) {
-            target = this.layer.$(target);
+            target = this.document.$(target);
         }
         target.before(this);
         return this;
     }
     prepend(content) {
         if (!(content instanceof Selection)) {
-            content = this.layer.$(content);
+            content = this.document.$(content);
         }
         if (content.length() == 0)
             return this;
@@ -3514,7 +3622,7 @@ class Selection {
             current.forEach((toAppend) => {
                 dest.addChild(toAppend, 0); // before first child
                 if (dest._attached) {
-                    this.layer._attach(toAppend);
+                    this.document._attach(toAppend);
                 }
             });
         });
@@ -3522,7 +3630,7 @@ class Selection {
     }
     prependTo(dest) {
         if (!(dest instanceof Selection)) {
-            dest = this.layer.$(dest);
+            dest = this.document.$(dest);
         }
         dest.prepend(this);
         return this;
@@ -3534,7 +3642,7 @@ class Selection {
     }
     replaceAll(target) {
         if (!(target instanceof Selection)) {
-            target = this.layer.$(target);
+            target = this.document.$(target);
         }
         target.before(this);
         target.detach();
@@ -3542,7 +3650,7 @@ class Selection {
     }
     replaceWith(content) {
         if (!(content instanceof Selection)) {
-            content = this.layer.$(content);
+            content = this.document.$(content);
         }
         content.replaceAll(this);
         return this;
@@ -3665,28 +3773,28 @@ class Selection {
         return this;
     }
     // EVENTS
-    on(_event, _cb) {
+    on(event, cb) {
+        this.selected.forEach((w) => {
+            w.on(event, cb);
+        });
         return this;
     }
-    off(_event) {
+    off(event, cb) {
+        this.selected.forEach((w) => {
+            w.off(event, cb);
+        });
         return this;
     }
-    click(_arg) {
-        return this;
-    }
-    keypress(_arg) {
-        return this;
-    }
-    dir(_arg) {
-        return this;
-    }
-    mouseenter(_arg) {
-        return this;
-    }
-    mouseleave(_arg) {
-        return this;
-    }
-    mousemove(_arg) {
+    fire(event, e) {
+        if (!e) {
+            e = GWU.io.makeCustomEvent(event);
+        }
+        this.selected.forEach((w) => {
+            const handlers = w.events[event];
+            if (handlers) {
+                handlers.forEach((cb) => cb(e, this.document, w));
+            }
+        });
         return this;
     }
 }

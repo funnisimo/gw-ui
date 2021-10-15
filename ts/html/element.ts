@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { Position } from '.';
+import { EventCb, Position } from '.';
 import { Selectable } from './selector';
 import * as Style from './style';
 
@@ -30,9 +30,10 @@ export class Element implements Selectable {
     id = '';
     tag: string;
     parent: Element | null = null;
-    props: Record<string, any> = {};
+    _props: Record<string, boolean> = {};
     classes: string[] = [];
     children: Element[] = [];
+    events: Record<string, EventCb[]> = {};
 
     _bounds: GWU.xy.Bounds = new GWU.xy.Bounds(0, 0, 0, 0);
     _text: string = '';
@@ -52,6 +53,13 @@ export class Element implements Selectable {
             : new Style.ComputedStyle();
     }
 
+    contains(xy: GWU.xy.XY): boolean;
+    contains(x: number, y: number): boolean;
+    contains(x: GWU.xy.XY | number, y?: number): boolean {
+        if (typeof x === 'number') return this._bounds.contains(x, y!);
+        return this._bounds.contains(x);
+    }
+
     clone(): this {
         if (this._attached && !this.parent)
             throw new Error('Cannot clone a root widget.');
@@ -59,7 +67,7 @@ export class Element implements Selectable {
         const other = new (<new (tag: string) => this>this.constructor)(
             this.tag
         );
-        Object.assign(other.props, this.props);
+        Object.assign(other._props, this._props);
         other.classes = this.classes.slice();
 
         other._text = this._text;
@@ -89,6 +97,24 @@ export class Element implements Selectable {
                 this.parent.dirty = true;
             }
         }
+    }
+
+    // PROPS
+
+    prop(name: string): boolean;
+    prop(name: string, value: boolean): this;
+    prop(name: string, value?: boolean): this | boolean {
+        if (value === undefined) return this._props[name];
+        this._props[name] = value;
+        this._usedStyle.dirty = true; // Need to reload styles
+        return this;
+    }
+
+    toggleProp(name: string): this {
+        const v = this._props[name] || false;
+        this._props[name] = !v;
+        this._usedStyle.dirty = true; // Need to reload styles
+        return this;
     }
 
     // CHILDREN
@@ -630,5 +656,55 @@ export class Element implements Selectable {
         }
 
         return true;
+    }
+
+    // Events
+
+    on(event: string, cb: EventCb): this {
+        let handlers = this.events[event];
+        if (!handlers) {
+            handlers = this.events[event] = [];
+        }
+        if (!handlers.includes(cb)) {
+            handlers.push(cb);
+        }
+        return this;
+    }
+
+    off(event: string, cb?: EventCb): this {
+        let handlers = this.events[event];
+        if (!handlers) return this;
+        if (cb) {
+            GWU.arrayDelete(handlers, cb);
+        } else {
+            handlers.length = 0; // clear all handlers
+        }
+        return this;
+    }
+
+    elementFromPoint(x: number, y: number): Element | null {
+        let result: Element | null = null;
+
+        // positioned elements
+        for (let w of this.children) {
+            if (w.isPositioned() && w.contains(x, y)) {
+                result = w.elementFromPoint(x, y) || result;
+            }
+        }
+        if (result) return result;
+
+        // static elements
+        for (let w of this.children) {
+            if (!w.isPositioned() && w.contains(x, y)) {
+                result = w.elementFromPoint(x, y) || result;
+            }
+        }
+        if (result) return result;
+
+        if (!result && this.contains(x, y)) {
+            result = this;
+        }
+
+        return result;
     }
 }

@@ -1,13 +1,21 @@
 import * as Selector from './selector';
 
 describe('selector', () => {
-    function mockSelectable(
-        opts: Partial<Selector.Selectable> = {}
-    ): Selector.Selectable {
+    interface SelectableOptions {
+        id?: string;
+        tag?: string;
+        props?: Record<string, boolean>;
+        classes?: string[];
+    }
+
+    function mockSelectable(opts: SelectableOptions = {}) {
         return {
+            props: opts.props || {},
             id: opts.id || 'id',
             tag: opts.tag || 'tag',
-            props: opts.props || {},
+            prop(name: string) {
+                return this.props[name];
+            },
             classes: opts.classes ? opts.classes.slice() : [],
         };
     }
@@ -58,7 +66,7 @@ describe('selector', () => {
         obj.classes = ['a', 'b', 'c'];
         expect(s.matches(obj)).toBeTruthy();
 
-        obj.props = { a: 1, b: 1, c: 1 };
+        obj.props = { a: true, b: true, c: true };
         expect(s.matches(obj)).toBeTruthy();
     });
 
@@ -72,7 +80,7 @@ describe('selector', () => {
         obj.tag = 'text';
         expect(s.matches(obj)).toBeFalsy();
 
-        obj.props = { a: 1, b: 1, c: 1 };
+        obj.props = { a: true, b: true, c: true };
         expect(s.matches(obj)).toBeFalsy();
 
         obj.classes = ['a', 'b', 'c'];
@@ -92,7 +100,7 @@ describe('selector', () => {
         obj.tag = 'text';
         expect(s.matches(obj)).toBeFalsy();
 
-        obj.props = { a: 1, b: 1, c: 1 };
+        obj.props = { a: true, b: true, c: true };
         expect(s.matches(obj)).toBeTruthy();
 
         obj.classes = ['a', 'b', 'c'];
@@ -101,20 +109,8 @@ describe('selector', () => {
         obj.props = { a: false };
         expect(s.matches(obj)).toBeFalsy();
 
-        obj.props = { a: 0 };
+        obj.props = { a: false };
         expect(s.matches(obj)).toBeFalsy();
-
-        obj.props = { a: '0' };
-        expect(s.matches(obj)).toBeFalsy();
-
-        obj.props = { a: 'false' };
-        expect(s.matches(obj)).toBeFalsy();
-
-        obj.props = { a: 'anything' };
-        expect(s.matches(obj)).toBeTruthy();
-
-        obj.props = { a: 3 };
-        expect(s.matches(obj)).toBeTruthy();
 
         obj.props = { a: true };
         expect(s.matches(obj)).toBeTruthy();
@@ -130,7 +126,7 @@ describe('selector', () => {
         obj.tag = 'text';
         expect(s.matches(obj)).toBeFalsy();
 
-        obj.props = { a: 1, b: 1, c: 1 };
+        obj.props = { a: true, b: true, c: true };
         expect(s.matches(obj)).toBeFalsy();
 
         obj.classes = ['a', 'b', 'c'];
@@ -157,7 +153,7 @@ describe('selector', () => {
         obj.id = 'id';
         expect(s.matches(obj)).toBeFalsy();
 
-        obj.props = { a: 1, b: 1, c: 1 };
+        obj.props = { a: true, b: true, c: true };
         expect(s.matches(obj)).toBeFalsy();
 
         obj.classes = ['a', 'b', 'c'];

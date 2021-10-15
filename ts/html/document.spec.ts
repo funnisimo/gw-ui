@@ -1,4 +1,6 @@
 import * as UTILS from '../../test/utils';
+// import * as GWU from 'gw-utils';
+
 import { UICore } from '../types';
 import * as Document from './document';
 
@@ -264,5 +266,62 @@ describe('Document', () => {
         document.updateLayout();
 
         expect(a.bounds).toMatchObject({ x: 5, y: 10, width: 22, height: 3 });
+    });
+
+    describe('events', () => {
+        test('basic click', () => {
+            const clickFn = jest.fn();
+            const div = document
+                .create('<div>')
+                .pos(0, 0)
+                .text('CLICK ME')
+                .on('click', clickFn)
+                .appendTo('body')
+                .get(0);
+
+            document.updateLayout();
+
+            expect(document.elementFromPoint(0, 0)).toBe(div);
+            expect(div.events.click).toEqual([clickFn]);
+
+            document.click(UTILS.click(0, 0));
+            expect(clickFn).toHaveBeenCalled();
+            clickFn.mockClear();
+
+            document.click(UTILS.click(5, 5));
+            expect(clickFn).not.toHaveBeenCalled();
+
+            const bodyClick = jest.fn();
+            document.select('body').on('click', bodyClick);
+            clickFn.mockClear();
+
+            document.click(UTILS.click(0, 0));
+            expect(clickFn).toHaveBeenCalled();
+            expect(bodyClick).toHaveBeenCalled();
+
+            clickFn.mockClear().mockReturnValueOnce(true); // handled
+            bodyClick.mockClear();
+
+            document.click(UTILS.click(0, 0));
+            expect(clickFn).toHaveBeenCalled();
+            expect(bodyClick).not.toHaveBeenCalled();
+        });
+
+        // mousemove - event
+        // mousemove - hover
+
+        // dir
+
+        // keypress - keypress
+        // keypress - Enter
+        // keypress - a
+    });
+
+    describe('focus', () => {
+        test.todo('set focus automatically');
+        test.todo('tab - next focus');
+        test.todo('TAB - prev focus');
+        test.todo('element eats tab and TAB');
+        test.todo('focus event?  blur event?');
     });
 });

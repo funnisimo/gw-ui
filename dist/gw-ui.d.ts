@@ -548,7 +548,7 @@ interface Selectable {
     tag: string;
     id: string;
     classes: string[];
-    props: Record<string, any>;
+    prop(name: string): boolean;
 }
 declare class Selector {
     tag: string;
@@ -647,9 +647,9 @@ interface Stylable {
     readonly tag: string;
     readonly id: string;
     readonly classes: string[];
-    readonly props: Record<string, any>;
     readonly dirty: boolean;
     style(): Style;
+    prop(name: string): boolean;
 }
 declare class ComputedStyle extends Style {
     sources: Style[];
@@ -693,9 +693,10 @@ declare class Element implements Selectable {
     id: string;
     tag: string;
     parent: Element | null;
-    props: Record<string, any>;
+    _props: Record<string, boolean>;
     classes: string[];
     children: Element[];
+    events: Record<string, EventCb[]>;
     _bounds: GWU.xy.Bounds;
     _text: string;
     _lines: string[];
@@ -704,9 +705,14 @@ declare class Element implements Selectable {
     _style: Style | null;
     _usedStyle: ComputedStyle;
     constructor(tag: string, styles?: Sheet);
+    contains(xy: GWU.xy.XY): boolean;
+    contains(x: number, y: number): boolean;
     clone(): this;
     get dirty(): boolean;
     set dirty(v: boolean);
+    prop(name: string): boolean;
+    prop(name: string, value: boolean): this;
+    toggleProp(name: string): this;
     addChild(child: Element, beforeIndex?: number): this;
     removeChild(child: Element): this;
     empty(): Element[];
@@ -751,18 +757,23 @@ declare class Element implements Selectable {
     text(v: string): this;
     contentWidth(): number;
     draw(buffer: GWU.canvas.DataBuffer): boolean;
+    on(event: string, cb: EventCb): this;
+    off(event: string, cb?: EventCb): this;
+    elementFromPoint(x: number, y: number): Element | null;
 }
 
-declare type EventCb = (e: GWU.io.Event, layer: Document, widget: Element) => boolean | Promise<boolean>;
-declare type FxFn = () => void | Promise<void>;
+declare type EventCb = (e: GWU.io.Event, layer: Document, widget: Element) => boolean;
+declare type FxFn = () => void;
 declare type Fx = number;
 declare type ElementCb = (element: Element) => any;
+declare type ElementMatch = (element: Element) => boolean;
 declare type SelectType = string | Element | Element[] | Selection;
 declare class Document {
     ui: UICore;
     body: Element;
     children: Element[];
     stylesheet: Sheet;
+    _done: boolean;
     constructor(ui: UICore, rootTag?: string);
     $(id?: SelectType): Selection;
     select(id?: SelectType): Selection;
@@ -777,13 +788,19 @@ declare class Document {
     computeStyles(): void;
     updateLayout(widget?: Element): void;
     draw(buffer?: GWU.canvas.Buffer): void;
+    elementFromPoint(x: number, y: number): Element;
+    _bubbleEvent(element: Element, name: string, e: GWU.io.Event): boolean;
+    click(e: GWU.io.Event): boolean;
+    mousemove(e: GWU.io.Event): boolean;
 }
 declare class Selection {
-    layer: Document;
+    document: Document;
     selected: Element[];
-    constructor(layer: Document, widgets?: Element[]);
+    constructor(document: Document, widgets?: Element[]);
+    get(): Element[];
     get(index: number): Element;
     length(): number;
+    slice(start: number, end?: number): Selection;
     add(arg: SelectType): this;
     clone(): this;
     forEach(cb: ElementCb): this;
@@ -838,20 +855,9 @@ declare class Selection {
     toggle(): this;
     toggle(ms: number): this;
     toggle(visible: boolean): this;
-    on(_event: string, _cb: EventCb): this;
-    off(_event: string): this;
-    click(cb: EventCb): this;
-    click(e: GWU.io.Event): this;
-    keypress(cb: EventCb): this;
-    keypress(e: GWU.io.Event): this;
-    dir(cb: EventCb): this;
-    dir(e: GWU.io.Event): this;
-    mouseenter(cb: EventCb): this;
-    mouseenter(e: GWU.io.Event): this;
-    mouseleave(cb: EventCb): this;
-    mouseleave(e: GWU.io.Event): this;
-    mousemove(cb: EventCb): this;
-    mousemove(e: GWU.io.Event): this;
+    on(event: string, cb: EventCb): this;
+    off(event: string, cb?: EventCb): this;
+    fire(event: string, e?: GWU.io.Event): this;
 }
 
 type index_d_Cb = Cb;
@@ -880,6 +886,7 @@ type index_d_EventCb = EventCb;
 type index_d_FxFn = FxFn;
 type index_d_Fx = Fx;
 type index_d_ElementCb = ElementCb;
+type index_d_ElementMatch = ElementMatch;
 type index_d_SelectType = SelectType;
 type index_d_Document = Document;
 declare const index_d_Document: typeof Document;
@@ -907,6 +914,7 @@ declare namespace index_d {
     index_d_FxFn as FxFn,
     index_d_Fx as Fx,
     index_d_ElementCb as ElementCb,
+    index_d_ElementMatch as ElementMatch,
     index_d_SelectType as SelectType,
     index_d_Document as Document,
     index_d_Selection as Selection,

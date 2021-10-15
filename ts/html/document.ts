@@ -10,13 +10,14 @@ export type EventCb = (
     e: GWU.io.Event,
     layer: Document,
     widget: Element
-) => boolean | Promise<boolean>;
+) => boolean; // | Promise<boolean>;
 
 // TODO - fix
-export type FxFn = () => void | Promise<void>;
+export type FxFn = () => void; // | Promise<void>;
 export type Fx = number;
 
 export type ElementCb = (element: Element) => any;
+export type ElementMatch = (element: Element) => boolean;
 
 export type SelectType = string | Element | Element[] | Selection;
 
@@ -25,6 +26,7 @@ export class Document {
     body: Element;
     children: Element[];
     stylesheet: Style.Sheet;
+    _done = false;
 
     constructor(ui: UICore, rootTag = 'body') {
         this.ui = ui;
@@ -164,18 +166,67 @@ export class Document {
         this.body.draw(buffer);
         buffer.render();
     }
+
+    // events
+
+    // return topmost element under point
+    elementFromPoint(x: number, y: number): Element {
+        return this.body.elementFromPoint(x, y) || this.body;
+    }
+
+    _bubbleEvent(element: Element, name: string, e: GWU.io.Event): boolean {
+        let current: Element | null = element;
+        while (current) {
+            const handlers = current.events[name] || [];
+            let handled = handlers.reduce(
+                (out, h) => h(e, this, current!) || out,
+                false
+            );
+            if (handled) return true;
+            current = current.parent;
+        }
+        return false;
+    }
+
+    click(e: GWU.io.Event): boolean {
+        let element: Element | null = this.elementFromPoint(e.x, e.y);
+        if (!element) return false;
+
+        if (this._bubbleEvent(element, 'click', e)) return this._done;
+        return false;
+    }
+
+    mousemove(e: GWU.io.Event): boolean {
+        this.children.forEach((w) => w.prop('hover', false));
+        let element: Element | null = this.elementFromPoint(e.x, e.y);
+        while (element) {
+            element.prop('hover', true);
+            element = element.parent;
+        }
+
+        if (element && this._bubbleEvent(element, 'mousemove', e))
+            return this._done;
+        return false;
+    }
+
+    // dir
+    // keypress
 }
 
 export class Selection {
-    layer: Document;
+    document: Document;
     selected: Element[];
 
-    constructor(layer: Document, widgets: Element[] = []) {
-        this.layer = layer;
+    constructor(document: Document, widgets: Element[] = []) {
+        this.document = document;
         this.selected = widgets.slice();
     }
 
-    get(index: number): Element {
+    get(): Element[];
+    get(index: number): Element;
+    get(index?: number): Element | Element[] {
+        if (index === undefined) return this.selected;
+        if (index < 0) return this.selected[this.selected.length + index];
         return this.selected[index];
     }
 
@@ -183,9 +234,13 @@ export class Selection {
         return this.selected.length;
     }
 
+    slice(start: number, end?: number): Selection {
+        return new Selection(this.document, this.selected.slice(start, end));
+    }
+
     add(arg: SelectType): this {
         if (!(arg instanceof Selection)) {
-            arg = this.layer.$(arg);
+            arg = this.document.$(arg);
         }
 
         arg.forEach((w) => {
@@ -211,7 +266,7 @@ export class Selection {
 
     after(content: SelectType): this {
         if (!(content instanceof Selection)) {
-            content = this.layer.$(content);
+            content = this.document.$(content);
         }
 
         if (content.length() == 0) return this;
@@ -232,7 +287,7 @@ export class Selection {
             current.forEach((toAdd) => {
                 parent.addChild(toAdd, nextIndex);
                 if (parent._attached) {
-                    this.layer._attach(toAdd);
+                    this.document._attach(toAdd);
                 }
             });
         });
@@ -242,7 +297,7 @@ export class Selection {
 
     append(content: SelectType): this {
         if (!(content instanceof Selection)) {
-            content = this.layer.$(content);
+            content = this.document.$(content);
         }
 
         if (content.length() == 0) return this;
@@ -257,7 +312,7 @@ export class Selection {
             current.forEach((toAppend) => {
                 dest.addChild(toAppend);
                 if (dest._attached) {
-                    this.layer._attach(toAppend);
+                    this.document._attach(toAppend);
                 }
             });
         });
@@ -267,7 +322,7 @@ export class Selection {
 
     appendTo(dest: SelectType): this {
         if (!(dest instanceof Selection)) {
-            dest = this.layer.$(dest);
+            dest = this.document.$(dest);
         }
 
         dest.append(this);
@@ -276,7 +331,7 @@ export class Selection {
 
     before(content: SelectType): this {
         if (!(content instanceof Selection)) {
-            content = this.layer.$(content);
+            content = this.document.$(content);
         }
 
         if (content.length() == 0) return this;
@@ -297,7 +352,7 @@ export class Selection {
             current.forEach((toAdd) => {
                 parent.addChild(toAdd, nextIndex++);
                 if (parent._attached) {
-                    this.layer._attach(toAdd);
+                    this.document._attach(toAdd);
                 }
             });
         });
@@ -312,7 +367,7 @@ export class Selection {
                 w.parent.removeChild(w);
 
                 // remove from document.children
-                this.layer._detach(w);
+                this.document._detach(w);
             }
         });
         return this;
@@ -321,14 +376,14 @@ export class Selection {
     empty(): this {
         this.selected.forEach((w) => {
             const oldChildren = w.empty();
-            this.layer._detach(oldChildren);
+            this.document._detach(oldChildren);
         });
         return this;
     }
 
     insertAfter(target: SelectType): this {
         if (!(target instanceof Selection)) {
-            target = this.layer.$(target);
+            target = this.document.$(target);
         }
 
         target.after(this);
@@ -337,7 +392,7 @@ export class Selection {
 
     insertBefore(target: SelectType): this {
         if (!(target instanceof Selection)) {
-            target = this.layer.$(target);
+            target = this.document.$(target);
         }
 
         target.before(this);
@@ -346,7 +401,7 @@ export class Selection {
 
     prepend(content: SelectType): this {
         if (!(content instanceof Selection)) {
-            content = this.layer.$(content);
+            content = this.document.$(content);
         }
 
         if (content.length() == 0) return this;
@@ -361,7 +416,7 @@ export class Selection {
             current.forEach((toAppend) => {
                 dest.addChild(toAppend, 0); // before first child
                 if (dest._attached) {
-                    this.layer._attach(toAppend);
+                    this.document._attach(toAppend);
                 }
             });
         });
@@ -371,7 +426,7 @@ export class Selection {
 
     prependTo(dest: SelectType): this {
         if (!(dest instanceof Selection)) {
-            dest = this.layer.$(dest);
+            dest = this.document.$(dest);
         }
 
         dest.prepend(this);
@@ -386,7 +441,7 @@ export class Selection {
 
     replaceAll(target: SelectType): this {
         if (!(target instanceof Selection)) {
-            target = this.layer.$(target);
+            target = this.document.$(target);
         }
 
         target.before(this);
@@ -396,7 +451,7 @@ export class Selection {
 
     replaceWith(content: SelectType): this {
         if (!(content instanceof Selection)) {
-            content = this.layer.$(content);
+            content = this.document.$(content);
         }
 
         content.replaceAll(this);
@@ -576,46 +631,29 @@ export class Selection {
 
     // EVENTS
 
-    on(_event: string, _cb: EventCb): this {
+    on(event: string, cb: EventCb): this {
+        this.selected.forEach((w) => {
+            w.on(event, cb);
+        });
         return this;
     }
-    off(_event: string): this {
-        return this;
-    }
-
-    click(cb: EventCb): this;
-    click(e: GWU.io.Event): this;
-    click(_arg: EventCb | GWU.io.Event): this {
-        return this;
-    }
-
-    keypress(cb: EventCb): this;
-    keypress(e: GWU.io.Event): this;
-    keypress(_arg: EventCb | GWU.io.Event): this {
+    off(event: string, cb?: EventCb): this {
+        this.selected.forEach((w) => {
+            w.off(event, cb);
+        });
         return this;
     }
 
-    dir(cb: EventCb): this;
-    dir(e: GWU.io.Event): this;
-    dir(_arg: EventCb | GWU.io.Event): this {
-        return this;
-    }
-
-    mouseenter(cb: EventCb): this;
-    mouseenter(e: GWU.io.Event): this;
-    mouseenter(_arg: EventCb | GWU.io.Event): this {
-        return this;
-    }
-
-    mouseleave(cb: EventCb): this;
-    mouseleave(e: GWU.io.Event): this;
-    mouseleave(_arg: EventCb | GWU.io.Event): this {
-        return this;
-    }
-
-    mousemove(cb: EventCb): this;
-    mousemove(e: GWU.io.Event): this;
-    mousemove(_arg: EventCb | GWU.io.Event): this {
+    fire(event: string, e?: GWU.io.Event): this {
+        if (!e) {
+            e = GWU.io.makeCustomEvent(event);
+        }
+        this.selected.forEach((w) => {
+            const handlers = w.events[event];
+            if (handlers) {
+                handlers.forEach((cb) => cb(e!, this.document, w));
+            }
+        });
         return this;
     }
 }

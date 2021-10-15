@@ -2062,23 +2062,27 @@
     }
     // STOP
     function makeStopEvent() {
-        const ev = makeTickEvent(0);
-        ev.type = STOP;
-        return ev;
+        return makeCustomEvent(STOP);
     }
-    // TICK
-    function makeTickEvent(dt) {
+    // CUSTOM
+    function makeCustomEvent(type) {
         const ev = DEAD_EVENTS.pop() || {};
         ev.shiftKey = false;
         ev.ctrlKey = false;
         ev.altKey = false;
         ev.metaKey = false;
-        ev.type = TICK;
+        ev.type = type;
         ev.key = '';
         ev.code = '';
         ev.x = -1;
         ev.y = -1;
         ev.dir = null;
+        ev.dt = 0;
+        return ev;
+    }
+    // TICK
+    function makeTickEvent(dt) {
+        const ev = makeCustomEvent(TICK);
         ev.dt = dt;
         return ev;
     }
@@ -2418,6 +2422,7 @@
         handlerFor: handlerFor,
         dispatchEvent: dispatchEvent,
         makeStopEvent: makeStopEvent,
+        makeCustomEvent: makeCustomEvent,
         makeTickEvent: makeTickEvent,
         makeKeyEvent: makeKeyEvent,
         keyCodeDirection: keyCodeDirection,

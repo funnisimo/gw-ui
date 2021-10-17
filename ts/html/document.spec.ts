@@ -386,11 +386,295 @@ describe('Document', () => {
     });
 
     describe('focus', () => {
-        test.todo('set focus automatically');
-        test.todo('click to set focus');
-        test.todo('tab - next focus');
-        test.todo('TAB - prev focus');
-        test.todo('element eats tab and TAB');
-        test.todo('focus event?  blur event?');
+        test('set focus automatically', () => {
+            document.create('<div id=A>A</div>').appendTo('body').get(0);
+
+            const divB = document
+                .create('<div id=B tabindex>B</div>')
+                .appendTo('body')
+                .get(0);
+
+            const divC = document
+                .create('<div id=C tabindex>C</div>')
+                .appendTo('body')
+                .get(0);
+
+            expect(document.activeElement).toBeNull();
+            document.nextTabStop();
+            expect(document.activeElement).toBe(divB);
+            document.nextTabStop();
+            expect(document.activeElement).toBe(divC);
+
+            // wraps
+            document.nextTabStop();
+            expect(document.activeElement).toBe(divB);
+
+            // prev
+            document.prevTabStop();
+            expect(document.activeElement).toBe(divC);
+            document.prevTabStop();
+            expect(document.activeElement).toBe(divB);
+        });
+
+        test('click to set focus', () => {
+            document.create('<div id=A>A div</div>').appendTo('body');
+
+            const divB = document
+                .create('<div id=B tabindex>B DIV</div>')
+                .appendTo('body')
+                .get(0);
+
+            const divC = document
+                .create('<div id=C tabindex>C DIV</div>')
+                .appendTo('body')
+                .get(0);
+
+            // initial value
+            document.updateLayout();
+            expect(document.activeElement).toBeNull();
+            document.nextTabStop();
+            expect(document.activeElement).toBe(divB);
+
+            // click C
+            expect(document.elementFromPoint(2, 2)).toBe(divC);
+            document.click(UTILS.click(2, 2));
+            expect(document.activeElement).toBe(divC);
+
+            // click nothing
+            expect(document.elementFromPoint(5, 5)).toBe(document.body);
+            document.click(UTILS.click(5, 5));
+            expect(document.activeElement).toBe(divC); // does not change
+
+            // click B
+            expect(document.elementFromPoint(2, 1)).toBe(divB);
+            document.click(UTILS.click(2, 1));
+            expect(document.activeElement).toBe(divB);
+        });
+
+        test('tab + TAB - next/prev focus', () => {
+            document.create('<div id=A>A div</div>').appendTo('body');
+
+            const divB = document
+                .create('<div id=B tabindex>B DIV</div>')
+                .appendTo('body')
+                .get(0);
+
+            const divC = document
+                .create('<div id=C tabindex>C DIV</div>')
+                .appendTo('body')
+                .get(0);
+
+            document.create('<div id=D>D DIV</div>').appendTo('body');
+
+            const divE = document
+                .create('<div id=E tabindex>E DIV</div>')
+                .appendTo('body')
+                .get(0);
+
+            // initial value
+            document.updateLayout();
+            expect(document.activeElement).toBeNull();
+            document.nextTabStop();
+            expect(document.activeElement).toBe(divB);
+
+            // tab
+            document.keypress(UTILS.keypress('Tab'));
+            expect(document.activeElement).toBe(divC);
+            document.keypress(UTILS.keypress('Tab'));
+            expect(document.activeElement).toBe(divE);
+            document.keypress(UTILS.keypress('Tab'));
+            expect(document.activeElement).toBe(divB);
+
+            // TAB - reverse
+            document.keypress(UTILS.keypress('TAB'));
+            expect(document.activeElement).toBe(divE);
+            document.keypress(UTILS.keypress('TAB'));
+            expect(document.activeElement).toBe(divC);
+            document.keypress(UTILS.keypress('TAB'));
+            expect(document.activeElement).toBe(divB);
+            document.keypress(UTILS.keypress('TAB'));
+            expect(document.activeElement).toBe(divE);
+        });
+
+        test('element eats tab and TAB to stop change', () => {
+            document.create('<div id=A>A div</div>').appendTo('body');
+
+            const keypressFn = jest.fn().mockReturnValue(true); // We handled this keypress
+            const divB = document
+                .create('<div id=B tabindex>B DIV</div>')
+                .on('keypress', keypressFn)
+                .appendTo('body')
+                .get(0);
+
+            const divC = document
+                .create('<div id=C tabindex>C DIV</div>')
+                .on('keypress', keypressFn)
+                .appendTo('body')
+                .get(0);
+
+            // initial value
+            document.updateLayout();
+            expect(document.activeElement).toBeNull();
+            document.nextTabStop();
+            expect(document.activeElement).toBe(divB);
+
+            // tab
+            document.keypress(UTILS.keypress('Tab'));
+            expect(document.activeElement).toBe(divB);
+            document.keypress(UTILS.keypress('Tab'));
+            expect(document.activeElement).toBe(divB);
+            keypressFn.mockReturnValue(false); // Now we let the key pass
+            document.keypress(UTILS.keypress('Tab'));
+            expect(document.activeElement).toBe(divC);
+
+            // TAB - reverse
+            keypressFn.mockReturnValue(true); // we handle
+            document.keypress(UTILS.keypress('TAB'));
+            expect(document.activeElement).toBe(divC);
+            document.keypress(UTILS.keypress('TAB'));
+            expect(document.activeElement).toBe(divC);
+            keypressFn.mockReturnValue(false);
+            document.keypress(UTILS.keypress('TAB'));
+            expect(document.activeElement).toBe(divB);
+            document.keypress(UTILS.keypress('TAB'));
+            expect(document.activeElement).toBe(divC);
+        });
+
+        test('focus event.  blur event.', () => {
+            document.create('<div id=A>A div</div>').appendTo('body');
+
+            const blurFn = jest.fn();
+            const divB = document
+                .create('<div id=B tabindex>B DIV</div>')
+                .on('blur', blurFn)
+                .appendTo('body')
+                .get(0);
+
+            const focusFn = jest.fn();
+            const divC = document
+                .create('<div id=C tabindex>C DIV</div>')
+                .on('focus', focusFn)
+                .appendTo('body')
+                .get(0);
+
+            // initial value
+            document.updateLayout();
+            expect(document.activeElement).toBeNull();
+            document.nextTabStop();
+            expect(document.activeElement).toBe(divB);
+
+            document.keypress(UTILS.keypress('Tab'));
+            expect(document.activeElement).toBe(divC);
+
+            expect(blurFn).toHaveBeenCalled();
+            expect(focusFn).toHaveBeenCalled();
+        });
+
+        test('blur event cancels', () => {
+            document.create('<div id=A>A div</div>').appendTo('body');
+
+            const blurFn = jest.fn().mockReturnValue(true); // We handled - stop the focus change
+            const divB = document
+                .create('<div id=B tabindex>B DIV</div>')
+                .on('blur', blurFn)
+                .appendTo('body')
+                .get(0);
+
+            const focusFn = jest.fn();
+            document
+                .create('<div id=C tabindex>C DIV</div>')
+                .on('focus', focusFn)
+                .appendTo('body')
+                .get(0);
+
+            // initial value
+            document.updateLayout();
+            expect(document.activeElement).toBeNull();
+            document.nextTabStop();
+            expect(document.activeElement).toBe(divB);
+
+            document.keypress(UTILS.keypress('Tab'));
+            expect(document.activeElement).toBe(divB);
+
+            expect(blurFn).toHaveBeenCalled();
+            expect(focusFn).not.toHaveBeenCalled();
+        });
+
+        test('focus event cancels?', () => {
+            document.create('<div id=A>A div</div>').appendTo('body');
+
+            const blurFn = jest.fn();
+            const divB = document
+                .create('<div id=B tabindex>B DIV</div>')
+                .on('blur', blurFn)
+                .appendTo('body')
+                .get(0);
+
+            const focusFn = jest.fn().mockReturnValue(true); // We handled - stop the focus change
+            document
+                .create('<div id=C tabindex>C DIV</div>')
+                .on('focus', focusFn)
+                .appendTo('body')
+                .get(0);
+
+            // initial value
+            document.updateLayout();
+            expect(document.activeElement).toBeNull();
+            document.nextTabStop();
+            expect(document.activeElement).toBe(divB);
+
+            document.keypress(UTILS.keypress('Tab'));
+            expect(document.activeElement).toBe(divB);
+
+            expect(blurFn).toHaveBeenCalled();
+            expect(focusFn).toHaveBeenCalled();
+        });
+
+        test('disabled elements skipped', () => {
+            document.create('<div id=A>A div</div>').appendTo('body');
+
+            const divB = document
+                .create('<div id=B tabindex>B DIV</div>')
+                .appendTo('body')
+                .get(0);
+
+            const divC = document
+                .create('<div id=C tabindex>C DIV</div>')
+                .prop('disabled', true)
+                .appendTo('body')
+                .get(0);
+
+            document.create('<div id=D>D DIV</div>').appendTo('body');
+
+            const divE = document
+                .create('<div id=E tabindex>E DIV</div>')
+                .appendTo('body')
+                .get(0);
+
+            // initial value
+            document.updateLayout();
+            expect(document.activeElement).toBeNull();
+            document.nextTabStop();
+            expect(document.activeElement).toBe(divB);
+
+            // tab
+            document.keypress(UTILS.keypress('Tab'));
+            expect(document.activeElement).toBe(divE); // Skips C
+
+            // TAB - reverse
+            document.keypress(UTILS.keypress('TAB'));
+            expect(document.activeElement).toBe(divB); // Skips C
+
+            divC.prop('disabled', false);
+            document.keypress(UTILS.keypress('Tab'));
+            expect(document.activeElement).toBe(divC); // Now it is there
+            document.keypress(UTILS.keypress('Tab'));
+            expect(document.activeElement).toBe(divE);
+
+            document.keypress(UTILS.keypress('TAB'));
+            expect(document.activeElement).toBe(divC); // Now it is there
+            document.keypress(UTILS.keypress('TAB'));
+            expect(document.activeElement).toBe(divB);
+        });
     });
 });

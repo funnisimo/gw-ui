@@ -2826,6 +2826,12 @@
             this._usedStyle.dirty = true; // Need to reload styles
             return this;
         }
+        onblur() {
+            this.prop('focus', false);
+        }
+        onfocus(_reverse) {
+            this.prop('focus', true);
+        }
         // CHILDREN
         addChild(child, beforeIndex = -1) {
             if (child.parent) {
@@ -3394,6 +3400,7 @@
 
     class Document {
         constructor(ui, rootTag = 'body') {
+            this._activeElement = null;
             this._done = false;
             this.ui = ui;
             this.stylesheet = new Sheet();
@@ -3512,16 +3519,72 @@
             this.body.draw(buffer);
             buffer.render();
         }
+        // activeElement
+        get activeElement() {
+            return this._activeElement;
+        }
+        setActiveElement(w, reverse = false) {
+            if (w === this._activeElement)
+                return true;
+            const opts = {
+                target: w,
+                dir: [reverse ? -1 : 1, 0],
+            };
+            if (this._activeElement &&
+                this._fireEvent(this._activeElement, 'blur', opts)) {
+                return false;
+            }
+            if (w && this._fireEvent(w, 'focus', opts))
+                return false;
+            if (this._activeElement)
+                this._activeElement.onblur();
+            this._activeElement = w;
+            if (this._activeElement)
+                this._activeElement.onfocus(reverse);
+            return true;
+        }
+        nextTabStop() {
+            if (!this._activeElement) {
+                this.setActiveElement(this.children.find((w) => !w.prop('disabled') && w.prop('tabindex')) || null);
+                return !!this._activeElement;
+            }
+            const next = GWU__namespace.arrayNext(this.children, this._activeElement, (w) => !!w.prop('tabindex') && !w.prop('disabled'));
+            if (next) {
+                this.setActiveElement(next);
+                return true;
+            }
+            return false;
+        }
+        prevTabStop() {
+            if (!this._activeElement) {
+                this.setActiveElement(this.children.find((w) => !w.prop('disabled') && w.prop('tabindex')) || null);
+                return !!this._activeElement;
+            }
+            const prev = GWU__namespace.arrayPrev(this.children, this._activeElement, (w) => !!w.prop('tabindex') && !w.prop('disabled'));
+            if (prev) {
+                this.setActiveElement(prev, true);
+                return true;
+            }
+            return false;
+        }
         // events
         // return topmost element under point
         elementFromPoint(x, y) {
             return this.body.elementFromPoint(x, y) || this.body;
         }
+        _fireEvent(element, name, e) {
+            if (!e || !e.type) {
+                e = GWU__namespace.io.makeCustomEvent(name, e);
+            }
+            const handlers = element.events[name] || [];
+            let handled = handlers.reduce((out, h) => h(this, element, e) || out, false);
+            return handled;
+        }
         _bubbleEvent(element, name, e) {
             let current = element;
             while (current) {
                 const handlers = current.events[name] || [];
-                let handled = handlers.reduce((out, h) => h(e, this, current) || out, false);
+                let handled = handlers.reduce((out, h) => h(this, current, e) || out, false);
                 if (handled)
                     return true;
                 current = current.parent;
@@ -3534,6 +3597,9 @@
                 return false;
             if (this._bubbleEvent(element, 'click', e))
                 return this._done;
+            if (element.prop('tabindex')) {
+                this.setActiveElement(element);
+            }
             return false;
         }
         mousemove(e) {
@@ -3546,6 +3612,20 @@
             }
             if (element && this._bubbleEvent(element, 'mousemove', e))
                 return this._done;
+            return false;
+        }
+        // dir
+        // keypress
+        keypress(e) {
+            const element = this.activeElement || this.body;
+            if (element && this._bubbleEvent(element, 'keypress', e))
+                return this._done;
+            if (e.key === 'Tab') {
+                this.nextTabStop();
+            }
+            else if (e.key === 'TAB') {
+                this.prevTabStop();
+            }
             return false;
         }
     }
@@ -3764,6 +3844,15 @@
             }
             return this;
         }
+        prop(id, value) {
+            if (value === undefined) {
+                if (this.selected.length == 0)
+                    return false;
+                return this.selected[0].prop(id);
+            }
+            this.selected.forEach((e) => e.prop(id, value));
+            return this;
+        }
         // STYLE
         addClass(id) {
             this.selected.forEach((w) => w.addClass(id));
@@ -3885,7 +3974,7 @@
             this.selected.forEach((w) => {
                 const handlers = w.events[event];
                 if (handlers) {
-                    handlers.forEach((cb) => cb(e, this.document, w));
+                    handlers.forEach((cb) => cb(this.document, w, e));
                 }
             });
             return this;

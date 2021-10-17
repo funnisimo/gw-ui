@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { EventCb, Position } from '.';
+import { EventCb } from './document';
 import { Selectable } from './selector';
 import * as Style from './style';
 
@@ -30,7 +30,7 @@ export class Element implements Selectable {
     id = '';
     tag: string;
     parent: Element | null = null;
-    _props: Record<string, boolean> = {};
+    _props: Record<string, boolean | number> = {};
     classes: string[] = [];
     children: Element[] = [];
     events: Record<string, EventCb[]> = {};
@@ -101,9 +101,9 @@ export class Element implements Selectable {
 
     // PROPS
 
-    prop(name: string): boolean;
-    prop(name: string, value: boolean): this;
-    prop(name: string, value?: boolean): this | boolean {
+    prop(name: string): boolean | number;
+    prop(name: string, value: boolean | number): this;
+    prop(name: string, value?: boolean | number): this | boolean | number {
         if (value === undefined) return this._props[name];
         this._props[name] = value;
         this._usedStyle.dirty = true; // Need to reload styles
@@ -115,6 +115,14 @@ export class Element implements Selectable {
         this._props[name] = !v;
         this._usedStyle.dirty = true; // Need to reload styles
         return this;
+    }
+
+    onblur() {
+        this.prop('focus', false);
+    }
+
+    onfocus(_reverse: boolean) {
+        this.prop('focus', true);
     }
 
     // CHILDREN
@@ -536,7 +544,7 @@ export class Element implements Selectable {
         if (args.length === 0) return this.bounds;
 
         let pos: PosOptions;
-        let wantStyle: Position = 'fixed';
+        let wantStyle: Style.Position = 'fixed';
         if (typeof args[0] === 'number') {
             pos = { left: args.shift(), top: args.shift() };
         } else {

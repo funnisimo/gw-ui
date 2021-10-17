@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { Selector } from './selector';
+import { Selectable, Selector } from './selector';
 
 // static - size/pos automatic (ignore TRBL)
 // relative - size automatic, pos = automatic + TRBL
@@ -248,13 +248,9 @@ export class Style {
 //     return !NO_BOUNDS.includes(key);
 // }
 
-export interface Stylable {
-    readonly tag: string;
-    readonly id: string;
-    readonly classes: string[];
-    readonly dirty: boolean;
+export interface Stylable extends Selectable {
     style(): Style;
-    prop(name: string): boolean;
+    prop(name: string): boolean | number;
 }
 
 export class ComputedStyle extends Style {

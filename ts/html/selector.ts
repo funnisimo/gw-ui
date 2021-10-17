@@ -10,7 +10,7 @@ export interface Selectable {
     tag: string;
     id: string;
     classes: string[];
-    prop(name: string): boolean;
+    prop(name: string): boolean | number;
 }
 
 const MATCH = /^(\*|\#\w+|\$|\w+)(\.(\w[\w-]*))?(\:(\w+))?$/;

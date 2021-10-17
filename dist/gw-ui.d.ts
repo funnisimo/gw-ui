@@ -548,7 +548,7 @@ interface Selectable {
     tag: string;
     id: string;
     classes: string[];
-    prop(name: string): boolean;
+    prop(name: string): boolean | number;
 }
 declare class Selector {
     tag: string;
@@ -643,13 +643,9 @@ declare class Style {
     clone(): this;
     copy(other: Style): this;
 }
-interface Stylable {
-    readonly tag: string;
-    readonly id: string;
-    readonly classes: string[];
-    readonly dirty: boolean;
+interface Stylable extends Selectable {
     style(): Style;
-    prop(name: string): boolean;
+    prop(name: string): boolean | number;
 }
 declare class ComputedStyle extends Style {
     sources: Style[];
@@ -667,6 +663,113 @@ declare class Sheet {
     get(selector: string): Style | null;
     remove(selector: string): void;
     computeFor(widget: Stylable): ComputedStyle;
+}
+
+declare type EventCb = (document: Document, element: Element, io?: GWU.io.Event) => boolean;
+declare type FxFn = () => void;
+declare type Fx = number;
+declare type ElementCb = (element: Element) => any;
+declare type ElementMatch = (element: Element) => boolean;
+declare type SelectType = string | Element | Element[] | Selection;
+declare class Document {
+    ui: UICore;
+    body: Element;
+    _activeElement: Element | null;
+    children: Element[];
+    stylesheet: Sheet;
+    _done: boolean;
+    constructor(ui: UICore, rootTag?: string);
+    $(id?: SelectType): Selection;
+    select(id?: SelectType): Selection;
+    createElement(tag: string): Element;
+    create(tag: string): Selection;
+    rule(info: Record<string, StyleOptions>): this;
+    rule(rule: string): Style;
+    rule(rule: string, style: StyleOptions): this;
+    removeRule(rule: string): this;
+    _attach(w: Element | Element[]): this;
+    _detach(w: Element | Element[]): this;
+    computeStyles(): void;
+    updateLayout(widget?: Element): void;
+    draw(buffer?: GWU.canvas.Buffer): void;
+    get activeElement(): Element | null;
+    setActiveElement(w: Element | null, reverse?: boolean): boolean;
+    nextTabStop(): boolean;
+    prevTabStop(): boolean;
+    elementFromPoint(x: number, y: number): Element;
+    _fireEvent(element: Element, name: string, e?: Partial<GWU.io.Event>): boolean;
+    _bubbleEvent(element: Element, name: string, e: GWU.io.Event): boolean;
+    click(e: GWU.io.Event): boolean;
+    mousemove(e: GWU.io.Event): boolean;
+    keypress(e: GWU.io.Event): boolean;
+}
+declare class Selection {
+    document: Document;
+    selected: Element[];
+    constructor(document: Document, widgets?: Element[]);
+    get(): Element[];
+    get(index: number): Element;
+    length(): number;
+    slice(start: number, end?: number): Selection;
+    add(arg: SelectType): this;
+    clone(): this;
+    forEach(cb: ElementCb): this;
+    after(content: SelectType): this;
+    append(content: SelectType): this;
+    appendTo(dest: SelectType): this;
+    before(content: SelectType): this;
+    detach(): this;
+    empty(): this;
+    insertAfter(target: SelectType): this;
+    insertBefore(target: SelectType): this;
+    prepend(content: SelectType): this;
+    prependTo(dest: SelectType): this;
+    remove(_sub?: string): this;
+    replaceAll(target: SelectType): this;
+    replaceWith(content: SelectType): this;
+    text(): string;
+    text(t: string): this;
+    id(): string;
+    id(t: string): this;
+    prop(id: string): boolean | number;
+    prop(id: string, value: boolean | number): this;
+    addClass(id: string): this;
+    hasClass(id: string): boolean;
+    removeClass(id: string): this;
+    toggleClass(id: string): this;
+    style(): Style;
+    style(style: StyleOptions): this;
+    style(name: keyof Style): any;
+    style(name: keyof StyleOptions, value: any): this;
+    removeStyle(name: keyof Style): this;
+    pos(): GWU.xy.XY;
+    pos(left: number, top: number, position?: Omit<Position, 'static'>): this;
+    pos(xy: PosOptions, position?: Omit<Position, 'static'>): this;
+    animate(_props: any, _ms: number): this;
+    clearQueue(_name?: string): this;
+    delay(_ms: number, _name?: string): this;
+    dequeue(): this;
+    fadeIn(_ms: number): this;
+    fadeOut(_ms: number): this;
+    fadeTo(_ms: number, _opacity: number): this;
+    fadeToggle(_ms: number): this;
+    finish(_name?: string): this;
+    hide(_ms?: number): this;
+    queue(fn: FxFn): this;
+    queue(name: string): Fx[];
+    queue(name: string, fn: FxFn): this;
+    queue(name: string, items: Fx[]): this;
+    show(_ms?: number): this;
+    slideDown(_ms: number): this;
+    slideToggle(_ms: number): this;
+    slideUp(_ms: number): this;
+    stop(): this;
+    toggle(): this;
+    toggle(ms: number): this;
+    toggle(visible: boolean): this;
+    on(event: string, cb: EventCb): this;
+    off(event: string, cb?: EventCb): this;
+    fire(event: string, e?: GWU.io.Event): this;
 }
 
 interface PosOptions {
@@ -693,7 +796,7 @@ declare class Element implements Selectable {
     id: string;
     tag: string;
     parent: Element | null;
-    _props: Record<string, boolean>;
+    _props: Record<string, boolean | number>;
     classes: string[];
     children: Element[];
     events: Record<string, EventCb[]>;
@@ -710,9 +813,11 @@ declare class Element implements Selectable {
     clone(): this;
     get dirty(): boolean;
     set dirty(v: boolean);
-    prop(name: string): boolean;
-    prop(name: string, value: boolean): this;
+    prop(name: string): boolean | number;
+    prop(name: string, value: boolean | number): this;
     toggleProp(name: string): this;
+    onblur(): void;
+    onfocus(_reverse: boolean): void;
     addChild(child: Element, beforeIndex?: number): this;
     removeChild(child: Element): this;
     empty(): Element[];
@@ -762,104 +867,6 @@ declare class Element implements Selectable {
     elementFromPoint(x: number, y: number): Element | null;
 }
 declare function makeElement(tag: string, stylesheet?: Sheet): Element;
-
-declare type EventCb = (e: GWU.io.Event, layer: Document, widget: Element) => boolean;
-declare type FxFn = () => void;
-declare type Fx = number;
-declare type ElementCb = (element: Element) => any;
-declare type ElementMatch = (element: Element) => boolean;
-declare type SelectType = string | Element | Element[] | Selection;
-declare class Document {
-    ui: UICore;
-    body: Element;
-    children: Element[];
-    stylesheet: Sheet;
-    _done: boolean;
-    constructor(ui: UICore, rootTag?: string);
-    $(id?: SelectType): Selection;
-    select(id?: SelectType): Selection;
-    createElement(tag: string): Element;
-    create(tag: string): Selection;
-    rule(info: Record<string, StyleOptions>): this;
-    rule(rule: string): Style;
-    rule(rule: string, style: StyleOptions): this;
-    removeRule(rule: string): this;
-    _attach(w: Element | Element[]): this;
-    _detach(w: Element | Element[]): this;
-    computeStyles(): void;
-    updateLayout(widget?: Element): void;
-    draw(buffer?: GWU.canvas.Buffer): void;
-    elementFromPoint(x: number, y: number): Element;
-    _bubbleEvent(element: Element, name: string, e: GWU.io.Event): boolean;
-    click(e: GWU.io.Event): boolean;
-    mousemove(e: GWU.io.Event): boolean;
-}
-declare class Selection {
-    document: Document;
-    selected: Element[];
-    constructor(document: Document, widgets?: Element[]);
-    get(): Element[];
-    get(index: number): Element;
-    length(): number;
-    slice(start: number, end?: number): Selection;
-    add(arg: SelectType): this;
-    clone(): this;
-    forEach(cb: ElementCb): this;
-    after(content: SelectType): this;
-    append(content: SelectType): this;
-    appendTo(dest: SelectType): this;
-    before(content: SelectType): this;
-    detach(): this;
-    empty(): this;
-    insertAfter(target: SelectType): this;
-    insertBefore(target: SelectType): this;
-    prepend(content: SelectType): this;
-    prependTo(dest: SelectType): this;
-    remove(_sub?: string): this;
-    replaceAll(target: SelectType): this;
-    replaceWith(content: SelectType): this;
-    text(): string;
-    text(t: string): this;
-    id(): string;
-    id(t: string): this;
-    addClass(id: string): this;
-    hasClass(id: string): boolean;
-    removeClass(id: string): this;
-    toggleClass(id: string): this;
-    style(): Style;
-    style(style: StyleOptions): this;
-    style(name: keyof Style): any;
-    style(name: keyof StyleOptions, value: any): this;
-    removeStyle(name: keyof Style): this;
-    pos(): GWU.xy.XY;
-    pos(left: number, top: number, position?: Omit<Position, 'static'>): this;
-    pos(xy: PosOptions, position?: Omit<Position, 'static'>): this;
-    animate(_props: any, _ms: number): this;
-    clearQueue(_name?: string): this;
-    delay(_ms: number, _name?: string): this;
-    dequeue(): this;
-    fadeIn(_ms: number): this;
-    fadeOut(_ms: number): this;
-    fadeTo(_ms: number, _opacity: number): this;
-    fadeToggle(_ms: number): this;
-    finish(_name?: string): this;
-    hide(_ms?: number): this;
-    queue(fn: FxFn): this;
-    queue(name: string): Fx[];
-    queue(name: string, fn: FxFn): this;
-    queue(name: string, items: Fx[]): this;
-    show(_ms?: number): this;
-    slideDown(_ms: number): this;
-    slideToggle(_ms: number): this;
-    slideUp(_ms: number): this;
-    stop(): this;
-    toggle(): this;
-    toggle(ms: number): this;
-    toggle(visible: boolean): this;
-    on(event: string, cb: EventCb): this;
-    off(event: string, cb?: EventCb): this;
-    fire(event: string, e?: GWU.io.Event): this;
-}
 
 type index_d_Cb = Cb;
 type index_d_Callbacks = Callbacks;

@@ -7,9 +7,9 @@ import { Element, PosOptions, makeElement } from './element';
 
 // return true if you want to stop the event from propagating
 export type EventCb = (
-    e: GWU.io.Event,
-    layer: Document,
-    widget: Element
+    document: Document,
+    element: Element,
+    io?: GWU.io.Event
 ) => boolean; // | Promise<boolean>;
 
 // TODO - fix
@@ -24,6 +24,7 @@ export type SelectType = string | Element | Element[] | Selection;
 export class Document {
     ui: UICore;
     body: Element;
+    _activeElement: Element | null = null;
     children: Element[];
     stylesheet: Style.Sheet;
     _done = false;
@@ -162,6 +163,78 @@ export class Document {
         buffer.render();
     }
 
+    // activeElement
+
+    get activeElement(): Element | null {
+        return this._activeElement;
+    }
+
+    setActiveElement(w: Element | null, reverse = false): boolean {
+        if (w === this._activeElement) return true;
+
+        const opts: Partial<GWU.io.Event> = {
+            target: w,
+            dir: [reverse ? -1 : 1, 0],
+        };
+        if (
+            this._activeElement &&
+            this._fireEvent(this._activeElement, 'blur', opts)
+        ) {
+            return false;
+        }
+        if (w && this._fireEvent(w, 'focus', opts)) return false;
+
+        if (this._activeElement) this._activeElement.onblur();
+        this._activeElement = w;
+        if (this._activeElement) this._activeElement.onfocus(reverse);
+
+        return true;
+    }
+
+    nextTabStop() {
+        if (!this._activeElement) {
+            this.setActiveElement(
+                this.children.find(
+                    (w) => !w.prop('disabled') && w.prop('tabindex')
+                ) || null
+            );
+            return !!this._activeElement;
+        }
+
+        const next = GWU.arrayNext(
+            this.children,
+            this._activeElement,
+            (w) => !!w.prop('tabindex') && !w.prop('disabled')
+        );
+        if (next) {
+            this.setActiveElement(next);
+            return true;
+        }
+        return false;
+    }
+
+    prevTabStop() {
+        if (!this._activeElement) {
+            this.setActiveElement(
+                this.children.find(
+                    (w) => !w.prop('disabled') && w.prop('tabindex')
+                ) || null
+            );
+            return !!this._activeElement;
+        }
+
+        const prev = GWU.arrayPrev(
+            this.children,
+            this._activeElement,
+            (w) => !!w.prop('tabindex') && !w.prop('disabled')
+        );
+        if (prev) {
+            this.setActiveElement(prev, true);
+            return true;
+        }
+        return false;
+    }
+
     // events
 
     // return topmost element under point
@@ -169,12 +242,28 @@ export class Document {
         return this.body.elementFromPoint(x, y) || this.body;
     }
 
+    _fireEvent(
+        element: Element,
+        name: string,
+        e?: Partial<GWU.io.Event>
+    ): boolean {
+        if (!e || !e.type) {
+            e = GWU.io.makeCustomEvent(name, e);
+        }
+        const handlers = element.events[name] || [];
+        let handled = handlers.reduce(
+            (out, h) => h(this, element, e as GWU.io.Event) || out,
+            false
+        );
+        return handled;
+    }
+
     _bubbleEvent(element: Element, name: string, e: GWU.io.Event): boolean {
         let current: Element | null = element;
         while (current) {
             const handlers = current.events[name] || [];
             let handled = handlers.reduce(
-                (out, h) => h(e, this, current!) || out,
+                (out, h) => h(this, current!, e) || out,
                 false
             );
             if (handled) return true;
@@ -188,6 +277,10 @@ export class Document {
         if (!element) return false;
 
         if (this._bubbleEvent(element, 'click', e)) return this._done;
+
+        if (element.prop('tabindex')) {
+            this.setActiveElement(element);
+        }
         return false;
     }
 
@@ -207,7 +300,21 @@ export class Document {
     }
 
     // dir
+
     // keypress
+    keypress(e: GWU.io.Event): boolean {
+        const element = this.activeElement || this.body;
+        if (element && this._bubbleEvent(element, 'keypress', e))
+            return this._done;
+
+        if (e.key === 'Tab') {
+            this.nextTabStop();
+        } else if (e.key === 'TAB') {
+            this.prevTabStop();
+        }
+
+        return false;
+    }
 }
 
 // TODO - look at cheerio
@@ -485,6 +592,17 @@ export class Selection {
         return this;
     }
 
+    prop(id: string): boolean | number;
+    prop(id: string, value: boolean | number): this;
+    prop(id: string, value?: boolean | number): this | boolean | number {
+        if (value === undefined) {
+            if (this.selected.length == 0) return false;
+            return this.selected[0].prop(id);
+        }
+        this.selected.forEach((e) => e.prop(id, value));
+        return this;
+    }
+
     // STYLE
 
     addClass(id: string): this {
@@ -649,7 +767,7 @@ export class Selection {
         this.selected.forEach((w) => {
             const handlers = w.events[event];
             if (handlers) {
-                handlers.forEach((cb) => cb(e!, this.document, w));
+                handlers.forEach((cb) => cb(this.document, w, e));
             }
         });
         return this;

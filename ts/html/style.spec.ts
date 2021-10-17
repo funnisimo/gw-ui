@@ -34,6 +34,58 @@ describe('style', () => {
         expect(style.dirty).toBeTruthy();
     });
 
+    test('padding and margin', () => {
+        const a = new Style.Style('a', { padding: 1, margin: 2 });
+        expect(a.padTop).toEqual(1);
+        expect(a.padRight).toEqual(1);
+        expect(a.padBottom).toEqual(1);
+        expect(a.padLeft).toEqual(1);
+        expect(a.marginTop).toEqual(2);
+        expect(a.marginRight).toEqual(2);
+        expect(a.marginBottom).toEqual(2);
+        expect(a.marginLeft).toEqual(2);
+
+        a.set({ padding: [11], margin: [12] });
+        expect(a.padTop).toEqual(11);
+        expect(a.padRight).toEqual(11);
+        expect(a.padBottom).toEqual(11);
+        expect(a.padLeft).toEqual(11);
+        expect(a.marginTop).toEqual(12);
+        expect(a.marginRight).toEqual(12);
+        expect(a.marginBottom).toEqual(12);
+        expect(a.marginLeft).toEqual(12);
+
+        a.set({ padding: [1, 2], margin: [3, 4] });
+        expect(a.padTop).toEqual(1);
+        expect(a.padRight).toEqual(2);
+        expect(a.padBottom).toEqual(1);
+        expect(a.padLeft).toEqual(2);
+        expect(a.marginTop).toEqual(3);
+        expect(a.marginRight).toEqual(4);
+        expect(a.marginBottom).toEqual(3);
+        expect(a.marginLeft).toEqual(4);
+
+        a.set({ padding: [5, 6, 7], margin: [8, 9, 10] });
+        expect(a.padTop).toEqual(5);
+        expect(a.padRight).toEqual(6);
+        expect(a.padBottom).toEqual(7);
+        expect(a.padLeft).toEqual(6);
+        expect(a.marginTop).toEqual(8);
+        expect(a.marginRight).toEqual(9);
+        expect(a.marginBottom).toEqual(10);
+        expect(a.marginLeft).toEqual(9);
+
+        a.set({ padding: [1, 2, 3, 4], margin: [5, 6, 7, 8] });
+        expect(a.padTop).toEqual(1);
+        expect(a.padRight).toEqual(2);
+        expect(a.padBottom).toEqual(3);
+        expect(a.padLeft).toEqual(4);
+        expect(a.marginTop).toEqual(5);
+        expect(a.marginRight).toEqual(6);
+        expect(a.marginBottom).toEqual(7);
+        expect(a.marginLeft).toEqual(8);
+    });
+
     test('set', () => {
         const style = new Style.Style('*', { fg: 'white', bg: 'black' });
         expect(style.fg).toEqual('white');

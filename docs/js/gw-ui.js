@@ -2639,6 +2639,18 @@
         get padBottom() {
             return this._padBottom;
         }
+        get marginLeft() {
+            return this._marginLeft;
+        }
+        get marginRight() {
+            return this._marginRight;
+        }
+        get marginTop() {
+            return this._marginTop;
+        }
+        get marginBottom() {
+            return this._marginBottom;
+        }
         get(key) {
             const id = ('_' + key);
             return this[id];
@@ -2660,14 +2672,51 @@
                                         value[0];
                     }
                     else if (value.length == 2) {
-                        this._padLeft = this._padRight = value[0];
-                        this._padTop = this._padBottom = value[1];
+                        this._padLeft = this._padRight = value[1];
+                        this._padTop = this._padBottom = value[0];
+                    }
+                    else if (value.length == 3) {
+                        this._padTop = value[0];
+                        this._padRight = value[1];
+                        this._padBottom = value[2];
+                        this._padLeft = value[1];
                     }
                     else if (value.length == 4) {
                         this._padTop = value[0];
                         this._padRight = value[1];
                         this._padBottom = value[2];
                         this._padLeft = value[3];
+                    }
+                }
+                else if (key === 'margin') {
+                    if (typeof value === 'number') {
+                        value = [value];
+                    }
+                    else if (typeof value === 'string') {
+                        value = value.split(' ').map((v) => Number.parseInt(v));
+                    }
+                    if (value.length == 1) {
+                        this._marginLeft =
+                            this._marginRight =
+                                this._marginTop =
+                                    this._marginBottom =
+                                        value[0];
+                    }
+                    else if (value.length == 2) {
+                        this._marginLeft = this._marginRight = value[1];
+                        this._marginTop = this._marginBottom = value[0];
+                    }
+                    else if (value.length == 3) {
+                        this._marginTop = value[0];
+                        this._marginRight = value[1];
+                        this._marginBottom = value[2];
+                        this._marginLeft = value[1];
+                    }
+                    else if (value.length == 4) {
+                        this._marginTop = value[0];
+                        this._marginRight = value[1];
+                        this._marginBottom = value[2];
+                        this._marginLeft = value[3];
                     }
                 }
                 else {

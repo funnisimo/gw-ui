@@ -8,8 +8,6 @@ import { Selectable, Selector } from './selector';
 export type Position = 'static' | 'relative' | 'fixed' | 'absolute';
 
 export interface StyleOptions {
-    //        all,     [l+r, t+b],        [t, r, b, l]
-    padding?: number | [number, number] | [number, number, number, number];
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
     depth?: number;
@@ -32,10 +30,29 @@ export interface StyleOptions {
     top?: number;
     bottom?: number;
 
+    //        all,     [t+b, l+r],        [t, r+l,b],               [t, r, b, l]
+    padding?:
+        | number
+        | [number]
+        | [number, number]
+        | [number, number, number]
+        | [number, number, number, number];
     padLeft?: number;
     padRight?: number;
     padTop?: number;
     padBottom?: number;
+
+    //        all,     [t+b, l+r],        [t, l+r, b],               [t, r, b, l]
+    margin?:
+        | number
+        | [number]
+        | [number, number]
+        | [number, number, number]
+        | [number, number, number, number];
+    marginLeft?: number;
+    marginRight?: number;
+    marginTop?: number;
+    marginBottom?: number;
 }
 
 export class Style {
@@ -67,6 +84,11 @@ export class Style {
     protected _padRight?: number;
     protected _padTop?: number;
     protected _padBottom?: number;
+
+    protected _marginLeft?: number;
+    protected _marginRight?: number;
+    protected _marginTop?: number;
+    protected _marginBottom?: number;
 
     selector: Selector;
     protected _dirty = false;
@@ -159,6 +181,19 @@ export class Style {
         return this._padBottom;
     }
 
+    get marginLeft(): number | undefined {
+        return this._marginLeft;
+    }
+    get marginRight(): number | undefined {
+        return this._marginRight;
+    }
+    get marginTop(): number | undefined {
+        return this._marginTop;
+    }
+    get marginBottom(): number | undefined {
+        return this._marginBottom;
+    }
+
     get(key: keyof Style): any {
         const id = ('_' + key) as keyof this;
         return this[id];
@@ -186,13 +221,45 @@ export class Style {
                         this._padBottom =
                             value[0];
                 } else if (value.length == 2) {
-                    this._padLeft = this._padRight = value[0];
-                    this._padTop = this._padBottom = value[1];
+                    this._padLeft = this._padRight = value[1];
+                    this._padTop = this._padBottom = value[0];
+                } else if (value.length == 3) {
+                    this._padTop = value[0];
+                    this._padRight = value[1];
+                    this._padBottom = value[2];
+                    this._padLeft = value[1];
                 } else if (value.length == 4) {
                     this._padTop = value[0];
                     this._padRight = value[1];
                     this._padBottom = value[2];
                     this._padLeft = value[3];
+                }
+            } else if (key === 'margin') {
+                if (typeof value === 'number') {
+                    value = [value];
+                } else if (typeof value === 'string') {
+                    value = value.split(' ').map((v) => Number.parseInt(v));
+                }
+
+                if (value.length == 1) {
+                    this._marginLeft =
+                        this._marginRight =
+                        this._marginTop =
+                        this._marginBottom =
+                            value[0];
+                } else if (value.length == 2) {
+                    this._marginLeft = this._marginRight = value[1];
+                    this._marginTop = this._marginBottom = value[0];
+                } else if (value.length == 3) {
+                    this._marginTop = value[0];
+                    this._marginRight = value[1];
+                    this._marginBottom = value[2];
+                    this._marginLeft = value[1];
+                } else if (value.length == 4) {
+                    this._marginTop = value[0];
+                    this._marginRight = value[1];
+                    this._marginBottom = value[2];
+                    this._marginLeft = value[3];
                 }
             } else {
                 const field = '_' + key;

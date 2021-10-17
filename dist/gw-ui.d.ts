@@ -564,7 +564,6 @@ declare function selector(text: string): Selector;
 
 declare type Position = 'static' | 'relative' | 'fixed' | 'absolute';
 interface StyleOptions {
-    padding?: number | [number, number] | [number, number, number, number];
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
     depth?: number;
@@ -581,10 +580,16 @@ interface StyleOptions {
     right?: number;
     top?: number;
     bottom?: number;
+    padding?: number | [number] | [number, number] | [number, number, number] | [number, number, number, number];
     padLeft?: number;
     padRight?: number;
     padTop?: number;
     padBottom?: number;
+    margin?: number | [number] | [number, number] | [number, number, number] | [number, number, number, number];
+    marginLeft?: number;
+    marginRight?: number;
+    marginTop?: number;
+    marginBottom?: number;
 }
 declare class Style {
     protected _fg?: GWU.color.ColorBase;
@@ -609,6 +614,10 @@ declare class Style {
     protected _padRight?: number;
     protected _padTop?: number;
     protected _padBottom?: number;
+    protected _marginLeft?: number;
+    protected _marginRight?: number;
+    protected _marginTop?: number;
+    protected _marginBottom?: number;
     selector: Selector;
     protected _dirty: boolean;
     constructor(selector?: string, init?: StyleOptions);
@@ -636,6 +645,10 @@ declare class Style {
     get padRight(): number | undefined;
     get padTop(): number | undefined;
     get padBottom(): number | undefined;
+    get marginLeft(): number | undefined;
+    get marginRight(): number | undefined;
+    get marginTop(): number | undefined;
+    get marginBottom(): number | undefined;
     get(key: keyof Style): any;
     set(opts: StyleOptions, setDirty?: boolean): this;
     set(key: keyof StyleOptions, value: any, setDirty?: boolean): this;

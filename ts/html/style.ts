@@ -202,7 +202,7 @@ export class Style {
             setDirty = value || value === undefined ? true : false;
             Object.entries(key).forEach(([name, value]) => {
                 if (name === 'selector' || name === '_dirty') return;
-                if (value) {
+                if (value !== undefined && value !== null) {
                     this[name as keyof this] = value;
                 } else if (value === null) {
                     this.unset(name as keyof Style);
@@ -326,7 +326,7 @@ export class Sheet {
         if (selector === '*')
             throw new Error('Cannot re-install global style.');
 
-        const rule = new Style(selector, props);
+        let rule = new Style(selector, props);
         const existing = this.rules.findIndex(
             (s) => s.selector.text === rule.selector.text
         );
@@ -334,6 +334,7 @@ export class Sheet {
         if (existing > -1) {
             const current = this.rules[existing];
             current.set(rule);
+            rule = current;
         } else {
             this.rules.push(rule);
         }

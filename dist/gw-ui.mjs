@@ -2488,37 +2488,31 @@ class Selector {
             this.match.push(matchTag(match[1]));
         }
         // console.log(nextIndex);
-        // Add classes
-        const classExp = new RegExp(/\.([^\.:]+)/g);
-        classExp.lastIndex = nextIndex;
-        let match = classExp.exec(text);
-        while (match) {
-            // console.log(match);
-            this.priority += 100;
-            this.match.push(matchClass(match[1]));
-            match = classExp.exec(text);
-        }
-        const propExp = new RegExp(/:(?:(?:not\(\.([^\)]+)\))|(?:not\(:([^\)]+)\))|([^:]+))/g);
+        const filterExp = new RegExp(/(?:\.([^\.:]+))|(?::(?:(?:not\(\.([^\)]+)\))|(?:not\(:([^\)]+)\))|([^\.:]+)))/g);
         // const propExp = new RegExp(/:([^:]+)/g);
-        propExp.lastIndex = classExp.lastIndex;
-        match = propExp.exec(text);
+        filterExp.lastIndex = nextIndex;
+        let match = filterExp.exec(text);
         while (match) {
             // console.log(match);
             let fn;
             if (match[1]) {
-                this.priority += 100; // class
-                fn = matchNot(matchClass(match[1]));
+                this.priority += 100;
+                fn = matchClass(match[1]);
             }
             else if (match[2]) {
+                this.priority += 100; // class
+                fn = matchNot(matchClass(match[2]));
+            }
+            else if (match[3]) {
                 this.priority += 1; // prop
-                fn = matchNot(matchProp(match[2]));
+                fn = matchNot(matchProp(match[3]));
             }
             else {
                 this.priority += 1; // prop
-                fn = matchProp(match[3]);
+                fn = matchProp(match[4]);
             }
             this.match.push(fn);
-            match = propExp.exec(text);
+            match = filterExp.exec(text);
         }
     }
     matches(obj) {
@@ -2660,7 +2654,7 @@ class Style {
             Object.entries(key).forEach(([name, value]) => {
                 if (name === 'selector' || name === '_dirty')
                     return;
-                if (value) {
+                if (value !== undefined && value !== null) {
                     this[name] = value;
                 }
                 else if (value === null) {
@@ -2747,22 +2741,25 @@ class Sheet {
         }
     }
     add(selector, props) {
+        if (selector.includes(',')) {
+            const parts = selector
+                .split(',')
+                .map((p) => p.trim())
+                .map((p) => this.add(p, props));
+            return parts[parts.length - 1];
+        }
         if (selector.includes(' '))
             throw new Error('Hierarchical selectors not supported.');
         // if 2 '.' - Error('Only single class rules supported.')
         // if '&' - Error('Not supported.')
         if (selector === '*')
             throw new Error('Cannot re-install global style.');
-        const rule = new Style(selector, props);
+        let rule = new Style(selector, props);
         const existing = this.rules.findIndex((s) => s.selector.text === rule.selector.text);
         if (existing > -1) {
-            if (selector === '*') {
-                const current = this.rules[existing];
-                current.set(rule);
-            }
-            else {
-                this.rules[existing] = rule;
-            }
+            const current = this.rules[existing];
+            current.set(rule);
+            rule = current;
         }
         else {
             this.rules.push(rule);

@@ -88,6 +88,10 @@ describe('style', () => {
         };
 
         const divStyle: Style.Style = sheet.add('text, div', textOptions); // returns last one
+        const textStyle: Style.Style = sheet.add('text', { bg: 'blue' });
+
+        expect(sheet.get('text')).toBe(textStyle);
+        expect(sheet.get('div')).toBe(divStyle);
 
         expect(divStyle).toBeObject();
         expect(divStyle.selector.text).toEqual('div');
@@ -95,10 +99,9 @@ describe('style', () => {
         expect(divStyle.fg).toEqual('red');
         expect(divStyle.bg).toBeUndefined();
 
-        const textStyle = sheet.get('text')!;
         expect(textStyle.selector.text).toEqual('text');
         expect(textStyle.selector.priority).toEqual(10);
         expect(textStyle.fg).toEqual('red');
-        expect(textStyle.bg).toBeUndefined();
+        expect(textStyle.bg).toEqual('blue');
     });
 });

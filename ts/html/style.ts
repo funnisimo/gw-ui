@@ -310,6 +310,14 @@ export class Sheet {
     }
 
     add(selector: string, props: StyleOptions): Style {
+        if (selector.includes(',')) {
+            const parts = selector
+                .split(',')
+                .map((p) => p.trim())
+                .map((p) => this.add(p, props));
+            return parts[parts.length - 1];
+        }
+
         if (selector.includes(' '))
             throw new Error('Hierarchical selectors not supported.');
         // if 2 '.' - Error('Only single class rules supported.')
@@ -324,12 +332,8 @@ export class Sheet {
         );
 
         if (existing > -1) {
-            if (selector === '*') {
-                const current = this.rules[existing];
-                current.set(rule);
-            } else {
-                this.rules[existing] = rule;
-            }
+            const current = this.rules[existing];
+            current.set(rule);
         } else {
             this.rules.push(rule);
         }

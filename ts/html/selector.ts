@@ -99,42 +99,33 @@ export class Selector {
 
         // console.log(nextIndex);
 
-        // Add classes
-        const classExp = new RegExp(/\.([^\.:]+)/g);
-        classExp.lastIndex = nextIndex;
-        let match = classExp.exec(text);
-        while (match) {
-            // console.log(match);
-            this.priority += 100;
-            this.match.push(matchClass(match[1]));
-
-            match = classExp.exec(text);
-        }
-
-        const propExp = new RegExp(
-            /:(?:(?:not\(\.([^\)]+)\))|(?:not\(:([^\)]+)\))|([^:]+))/g
+        const filterExp = new RegExp(
+            /(?:\.([^\.:]+))|(?::(?:(?:not\(\.([^\)]+)\))|(?:not\(:([^\)]+)\))|([^\.:]+)))/g
         );
         // const propExp = new RegExp(/:([^:]+)/g);
-        propExp.lastIndex = classExp.lastIndex;
-        match = propExp.exec(text);
+        filterExp.lastIndex = nextIndex;
+        let match = filterExp.exec(text);
         while (match) {
             // console.log(match);
 
             let fn: MatchFn;
             if (match[1]) {
-                this.priority += 100; // class
-                fn = matchNot(matchClass(match[1]));
+                this.priority += 100;
+                fn = matchClass(match[1]);
             } else if (match[2]) {
+                this.priority += 100; // class
+                fn = matchNot(matchClass(match[2]));
+            } else if (match[3]) {
                 this.priority += 1; // prop
-                fn = matchNot(matchProp(match[2]));
+                fn = matchNot(matchProp(match[3]));
             } else {
                 this.priority += 1; // prop
-                fn = matchProp(match[3]);
+                fn = matchProp(match[4]);
             }
 
             this.match.push(fn);
 
-            match = propExp.exec(text);
+            match = filterExp.exec(text);
         }
     }
 

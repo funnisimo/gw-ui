@@ -81,4 +81,24 @@ describe('style', () => {
         expect(textStyle.selector.text).toEqual('text');
         expect(textStyle.selector.priority).toEqual(10);
     });
+
+    test('multi rule', () => {
+        const textOptions: Style.StyleOptions = {
+            fg: 'red',
+        };
+
+        const divStyle: Style.Style = sheet.add('text, div', textOptions); // returns last one
+
+        expect(divStyle).toBeObject();
+        expect(divStyle.selector.text).toEqual('div');
+        expect(divStyle.selector.priority).toEqual(10);
+        expect(divStyle.fg).toEqual('red');
+        expect(divStyle.bg).toBeUndefined();
+
+        const textStyle = sheet.get('text')!;
+        expect(textStyle.selector.text).toEqual('text');
+        expect(textStyle.selector.priority).toEqual(10);
+        expect(textStyle.fg).toEqual('red');
+        expect(textStyle.bg).toBeUndefined();
+    });
 });

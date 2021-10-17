@@ -3624,8 +3624,14 @@
         // keypress
         keypress(e) {
             const element = this.activeElement || this.body;
-            if (element && this._bubbleEvent(element, 'keypress', e))
-                return this._done;
+            if (element) {
+                if (this._bubbleEvent(element, e.key, e))
+                    return this._done;
+                if (this._bubbleEvent(element, e.code, e))
+                    return this._done;
+                if (this._bubbleEvent(element, 'keypress', e))
+                    return this._done;
+            }
             if (e.key === 'Tab') {
                 this.nextTabStop();
             }

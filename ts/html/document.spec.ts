@@ -425,9 +425,146 @@ describe('Document', () => {
             expect(bodyFn).not.toHaveBeenCalled();
         });
 
-        test.todo('keypress - keypress');
-        test.todo('keypress - Enter');
-        test.todo('keypress - a');
+        test('keypress - keypress', () => {
+            const divFn = jest.fn();
+            const div = document
+                .create('<div id=A>MOVE ME</div>')
+                .on('keypress', divFn)
+                .appendTo('body')
+                .get(0);
+            expect(div.prop('tabindex')).toBeFalsy(); // not set
+
+            const bodyFn = jest.fn();
+            document.select('body').on('keypress', bodyFn);
+            expect(document.body.prop('tabindex')).toBeFalsy(); // not set
+
+            document.nextTabStop();
+            document.updateLayout();
+            expect(document.activeElement).toBeNull(); // no active element set
+
+            document.keypress(UTILS.keypress('Enter'));
+            expect(divFn).not.toHaveBeenCalled(); // not a tabindex
+            expect(bodyFn).toHaveBeenCalled(); // called, even though not a tabstop (root element)
+
+            bodyFn.mockClear();
+            document.select('#A').prop('tabindex', true);
+            expect(div.prop('tabindex')).toBeTruthy(); // set
+
+            expect(document.activeElement).toBeNull(); // no active element set
+            document.keypress(UTILS.keypress('Enter'));
+            expect(divFn).not.toHaveBeenCalled(); // now a tabindex, but not active element
+            expect(bodyFn).toHaveBeenCalled(); // called because div did not return true
+
+            document.nextTabStop();
+            bodyFn.mockClear();
+
+            expect(document.activeElement).toBe(div);
+            document.keypress(UTILS.keypress('Enter'));
+            expect(divFn).toHaveBeenCalled(); // active element
+            expect(bodyFn).toHaveBeenCalled(); // called because div did not return true
+
+            divFn.mockClear();
+            bodyFn.mockClear();
+            divFn.mockReturnValue(true);
+
+            document.keypress(UTILS.keypress('Enter'));
+            expect(divFn).toHaveBeenCalled(); // now handles event
+            expect(bodyFn).not.toHaveBeenCalled();
+        });
+
+        test('keypress - Enter', () => {
+            const divFn = jest.fn();
+            const div = document
+                .create('<div id=A>MOVE ME</div>')
+                .on('Enter', divFn)
+                .appendTo('body')
+                .get(0);
+            expect(div.prop('tabindex')).toBeFalsy(); // not set
+
+            const bodyFn = jest.fn();
+            document.select('body').on('keypress', bodyFn);
+            expect(document.body.prop('tabindex')).toBeFalsy(); // not set
+
+            document.nextTabStop();
+            document.updateLayout();
+            expect(document.activeElement).toBeNull(); // no active element set
+
+            document.keypress(UTILS.keypress('Enter'));
+            expect(divFn).not.toHaveBeenCalled(); // not a tabindex
+            expect(bodyFn).toHaveBeenCalled(); // called, even though not a tabstop (root element)
+
+            bodyFn.mockClear();
+            document.select('#A').prop('tabindex', true);
+            expect(div.prop('tabindex')).toBeTruthy(); // set
+
+            expect(document.activeElement).toBeNull(); // no active element set
+            document.keypress(UTILS.keypress('Enter'));
+            expect(divFn).not.toHaveBeenCalled(); // now a tabindex, but not active element
+            expect(bodyFn).toHaveBeenCalled(); // called because div did not return true
+
+            document.nextTabStop();
+            bodyFn.mockClear();
+
+            expect(document.activeElement).toBe(div);
+            document.keypress(UTILS.keypress('Enter'));
+            expect(divFn).toHaveBeenCalled(); // active element
+            expect(bodyFn).toHaveBeenCalled(); // called because div did not return true
+
+            divFn.mockClear();
+            bodyFn.mockClear();
+            divFn.mockReturnValue(true);
+
+            document.keypress(UTILS.keypress('Enter'));
+            expect(divFn).toHaveBeenCalled(); // now handles event
+            expect(bodyFn).not.toHaveBeenCalled();
+        });
+
+        test('keypress - a', () => {
+            const divFn = jest.fn();
+            const div = document
+                .create('<div id=A>MOVE ME</div>')
+                .on('a', divFn)
+                .appendTo('body')
+                .get(0);
+            expect(div.prop('tabindex')).toBeFalsy(); // not set
+
+            const bodyFn = jest.fn();
+            document.select('body').on('keypress', bodyFn);
+            expect(document.body.prop('tabindex')).toBeFalsy(); // not set
+
+            document.nextTabStop();
+            document.updateLayout();
+            expect(document.activeElement).toBeNull(); // no active element set
+
+            document.keypress(UTILS.keypress('a'));
+            expect(divFn).not.toHaveBeenCalled(); // not a tabindex
+            expect(bodyFn).toHaveBeenCalled(); // called, even though not a tabstop (root element)
+
+            bodyFn.mockClear();
+            document.select('#A').prop('tabindex', true);
+            expect(div.prop('tabindex')).toBeTruthy(); // set
+
+            expect(document.activeElement).toBeNull(); // no active element set
+            document.keypress(UTILS.keypress('a'));
+            expect(divFn).not.toHaveBeenCalled(); // now a tabindex, but not active element
+            expect(bodyFn).toHaveBeenCalled(); // called because div did not return true
+
+            document.nextTabStop();
+            bodyFn.mockClear();
+
+            expect(document.activeElement).toBe(div);
+            document.keypress(UTILS.keypress('a'));
+            expect(divFn).toHaveBeenCalled(); // active element
+            expect(bodyFn).toHaveBeenCalled(); // called because div did not return true
+
+            divFn.mockClear();
+            bodyFn.mockClear();
+            divFn.mockReturnValue(true);
+
+            document.keypress(UTILS.keypress('a'));
+            expect(divFn).toHaveBeenCalled(); // now handles event
+            expect(bodyFn).not.toHaveBeenCalled();
+        });
     });
 
     describe('focus', () => {

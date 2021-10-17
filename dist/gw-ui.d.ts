@@ -549,14 +549,14 @@ interface Selectable {
     id: string;
     classes: string[];
     prop(name: string): boolean | number;
+    parent: Selectable | null;
+    children: Selectable[];
 }
+declare type MatchFn = (el: Selectable) => boolean;
 declare class Selector {
-    tag: string;
-    id: string;
-    class: string;
-    prop: string;
     text: string;
     priority: number;
+    match: MatchFn[];
     constructor(text: string);
     matches(obj: Selectable): boolean;
 }
@@ -874,6 +874,7 @@ type index_d_Callbacks = Callbacks;
 declare const index_d_Callbacks: typeof Callbacks;
 declare const index_d_isTruthy: typeof isTruthy;
 type index_d_Selectable = Selectable;
+type index_d_MatchFn = MatchFn;
 type index_d_Selector = Selector;
 declare const index_d_Selector: typeof Selector;
 declare const index_d_selector: typeof selector;
@@ -908,6 +909,7 @@ declare namespace index_d {
     index_d_Callbacks as Callbacks,
     index_d_isTruthy as isTruthy,
     index_d_Selectable as Selectable,
+    index_d_MatchFn as MatchFn,
     index_d_Selector as Selector,
     index_d_selector as selector,
     index_d_Position as Position,

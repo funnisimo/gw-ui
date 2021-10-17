@@ -6,6 +6,8 @@ describe('selector', () => {
         tag?: string;
         props?: Record<string, boolean>;
         classes?: string[];
+        parent?: Selector.Selectable;
+        children?: Selector.Selectable[];
     }
 
     function mockSelectable(opts: SelectableOptions = {}) {
@@ -17,6 +19,8 @@ describe('selector', () => {
                 return this.props[name];
             },
             classes: opts.classes ? opts.classes.slice() : [],
+            parent: opts.parent || null,
+            children: opts.children || [],
         };
     }
 
@@ -53,9 +57,18 @@ describe('selector', () => {
         expect(s.matches(obj)).toBeTruthy();
     });
 
+    test('id', () => {
+        const s = new Selector.Selector('#id');
+
+        const obj = mockSelectable({ id: 'id' });
+        expect(s.matches(obj)).toBeTruthy();
+        obj.id = 'other';
+        expect(s.matches(obj)).toBeFalsy();
+    });
+
     test('tag', () => {
         const s = new Selector.Selector('text');
-        expect(s.tag).toEqual('text');
+        // expect(s.tag).toEqual('text');
 
         const obj = mockSelectable({ tag: 'tag' });
         expect(s.matches(obj)).toBeFalsy();
@@ -72,7 +85,7 @@ describe('selector', () => {
 
     test('tag.className', () => {
         const s = new Selector.Selector('text.a');
-        expect(s.tag).toEqual('text');
+        // expect(s.tag).toEqual('text');
 
         const obj = mockSelectable({ tag: 'tag' });
         expect(s.matches(obj)).toBeFalsy();
@@ -92,7 +105,7 @@ describe('selector', () => {
 
     test('tag:prop', () => {
         const s = new Selector.Selector('text:a');
-        expect(s.tag).toEqual('text');
+        // expect(s.tag).toEqual('text');
 
         const obj = mockSelectable({ tag: 'tag' });
         expect(s.matches(obj)).toBeFalsy();
@@ -118,7 +131,7 @@ describe('selector', () => {
 
     test('tag.class:prop', () => {
         const s = new Selector.Selector('text.b:a');
-        expect(s.tag).toEqual('text');
+        // expect(s.tag).toEqual('text');
 
         const obj = mockSelectable({ tag: 'tag' });
         expect(s.matches(obj)).toBeFalsy();
@@ -144,8 +157,8 @@ describe('selector', () => {
 
     test('#id.class:prop', () => {
         const s = new Selector.Selector('#id.b:a');
-        expect(s.tag).toEqual('');
-        expect(s.id).toEqual('id');
+        // expect(s.tag).toEqual('');
+        // expect(s.id).toEqual('id');
 
         const obj = mockSelectable({ id: 'other' });
         expect(s.matches(obj)).toBeFalsy();
@@ -166,6 +179,51 @@ describe('selector', () => {
         expect(s.matches(obj)).toBeTruthy();
 
         obj.classes = ['a', 'c'];
+        expect(s.matches(obj)).toBeFalsy();
+    });
+
+    test('a:first', () => {
+        const s = new Selector.Selector('a:first');
+        // expect(s.tag).toEqual('');
+        // expect(s.id).toEqual('id');
+
+        const parent = mockSelectable({ tag: 'div' });
+        const obj = mockSelectable({ tag: 'a', parent });
+
+        expect(s.matches(obj)).toBeFalsy();
+
+        parent.children.push(obj);
+        expect(obj.parent).toBe(parent);
+        expect(parent.children).toEqual([obj]);
+
+        expect(s.matches(obj)).toBeTruthy();
+
+        const other = mockSelectable({ tag: 'a', parent });
+        parent.children.push(other);
+        expect(s.matches(other)).toBeFalsy();
+
+        expect(s.matches(obj)).toBeTruthy();
+    });
+
+    test('a:last', () => {
+        const s = new Selector.Selector('a:last');
+        // expect(s.tag).toEqual('');
+        // expect(s.id).toEqual('id');
+
+        const parent = mockSelectable({ tag: 'div' });
+        const obj = mockSelectable({ tag: 'a', parent });
+
+        expect(s.matches(obj)).toBeFalsy();
+
+        parent.children.push(obj);
+        expect(obj.parent).toBe(parent);
+        expect(parent.children).toEqual([obj]);
+        expect(s.matches(obj)).toBeTruthy();
+
+        const other = mockSelectable({ tag: 'a', parent });
+        parent.children.push(other);
+        expect(s.matches(other)).toBeTruthy();
+
         expect(s.matches(obj)).toBeFalsy();
     });
 });

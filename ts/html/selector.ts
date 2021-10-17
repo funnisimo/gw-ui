@@ -11,60 +11,144 @@ export interface Selectable {
     id: string;
     classes: string[];
     prop(name: string): boolean | number;
+    parent: Selectable | null;
+    children: Selectable[];
 }
 
-const MATCH = /^(\*|\#\w+|\$|\w+)(\.(\w[\w-]*))?(\:(\w+))?$/;
+export type MatchFn = (el: Selectable) => boolean;
+
+function matchTag(tag: string): MatchFn {
+    return (el: Selectable) => el.tag === tag;
+}
+
+function matchClass(cls: string): MatchFn {
+    return (el: Selectable) => el.classes.includes(cls);
+}
+
+function matchProp(prop: string): MatchFn {
+    if (prop.startsWith('first')) {
+        return matchFirst();
+    } else if (prop.startsWith('last')) {
+        return matchLast();
+    }
+
+    return (el: Selectable) => !!el.prop(prop);
+}
+
+function matchId(id: string): MatchFn {
+    return (el: Selectable) => el.id === id;
+}
+
+function matchFirst(): MatchFn {
+    return (el: Selectable) => !!el.parent && el.parent.children[0] === el;
+}
+
+function matchLast(): MatchFn {
+    return (el: Selectable) =>
+        !!el.parent && el.parent.children[el.parent.children.length - 1] === el;
+}
+
+function matchNot(fn: MatchFn): MatchFn {
+    return (el: Selectable) => !fn(el);
+}
 
 export class Selector {
-    tag = '';
-    id = '';
-    class = '';
-    prop = '';
-
     text: string;
     priority = 0;
+    match: MatchFn[] = [];
 
     constructor(text: string) {
         if (text.startsWith(':') || text.startsWith('.')) {
             text = '*' + text;
         }
 
-        const info = text.match(MATCH);
-        if (!info) throw new Error('Invalid selector - ' + text);
-
         this.text = text;
 
-        if (info[1] === '*') {
-        } else if (info[1] === '$') {
-            this.priority += 10000;
-        } else if (info[1].startsWith('#')) {
+        let nextIndex = 0;
+        if (text.startsWith('*')) {
+            // global
+            nextIndex = 1;
+        } else if (text.startsWith('#')) {
+            // id
             this.priority += 1000;
-            this.id = info[1].substring(1);
+
+            const match = text.match(/#([^\.:]+)/);
+            if (!match)
+                throw new Error(
+                    'Invalid selector - Failed to match ID: ' + text
+                );
+            nextIndex = match[0].length;
+            // console.log('match ID - ', match[1], match);
+            this.match.push(matchId(match[1]));
+        } else if (text.startsWith('$')) {
+            // self
+            this.priority += 10000;
+            nextIndex = 1;
         } else {
-            this.tag = info[1];
+            // tag
             this.priority += 10;
+            const match = text.match(/([^\.:]+)/);
+            if (!match)
+                throw new Error(
+                    'Invalid selector - Failed to match tag: ' + text
+                );
+            nextIndex = match[0].length;
+            // console.log('match Tag - ', match[1], match);
+            this.match.push(matchTag(match[1]));
         }
 
-        if (info[3]) {
-            this.class = info[3];
+        // console.log(nextIndex);
+
+        // Add classes
+        const classExp = new RegExp(/\.([^\.:]+)/g);
+        classExp.lastIndex = nextIndex;
+        let match = classExp.exec(text);
+        while (match) {
+            // console.log(match);
             this.priority += 100;
+            this.match.push(matchClass(match[1]));
+
+            match = classExp.exec(text);
         }
-        if (info[5]) {
-            this.prop = info[5];
-            this.priority += 1;
+
+        const propExp = new RegExp(
+            /:(?:(?:not\(\.([^\)]+)\))|(?:not\(:([^\)]+)\))|([^:]+))/g
+        );
+        // const propExp = new RegExp(/:([^:]+)/g);
+        propExp.lastIndex = classExp.lastIndex;
+        match = propExp.exec(text);
+        while (match) {
+            // console.log(match);
+
+            let fn: MatchFn;
+            if (match[1]) {
+                this.priority += 100; // class
+                fn = matchNot(matchClass(match[1]));
+            } else if (match[2]) {
+                this.priority += 1; // prop
+                fn = matchNot(matchProp(match[2]));
+            } else {
+                this.priority += 1; // prop
+                fn = matchProp(match[3]);
+            }
+
+            this.match.push(fn);
+
+            match = propExp.exec(text);
         }
     }
 
     matches(obj: Selectable): boolean {
-        if (this.tag.length && obj.tag !== this.tag) return false;
-        if (this.id.length && obj.id !== this.id) return false;
-        if (this.class.length && !obj.classes.includes(this.class))
-            return false;
-        if (this.prop.length) {
-            const v = obj.prop(this.prop) || false;
-            if (!isTruthy(v)) return false;
-        }
-        return true;
+        return this.match.every((fn) => fn(obj));
+        // if (this.tag.length && obj.tag !== this.tag) return false;
+        // if (this.id.length && obj.id !== this.id) return false;
+        // if (this.class.length && !obj.classes.includes(this.class))
+        //     return false;
+        // if (this.prop.length) {
+        //     const v = obj.prop(this.prop) || false;
+        //     if (!isTruthy(v)) return false;
+        // }
+        // return true;
     }
 }
 

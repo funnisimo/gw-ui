@@ -3615,6 +3615,12 @@
             return false;
         }
         // dir
+        dir(e) {
+            const element = this.activeElement || this.body;
+            if (element && this._bubbleEvent(element, 'dir', e))
+                return this._done;
+            return false;
+        }
         // keypress
         keypress(e) {
             const element = this.activeElement || this.body;

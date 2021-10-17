@@ -701,6 +701,7 @@ declare class Document {
     _bubbleEvent(element: Element, name: string, e: GWU.io.Event): boolean;
     click(e: GWU.io.Event): boolean;
     mousemove(e: GWU.io.Event): boolean;
+    dir(e: GWU.io.Event): boolean;
     keypress(e: GWU.io.Event): boolean;
 }
 declare class Selection {

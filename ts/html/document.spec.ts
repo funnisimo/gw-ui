@@ -378,7 +378,52 @@ describe('Document', () => {
             expect(bodyMove).not.toHaveBeenCalled();
         });
 
-        test.todo('dir - basic');
+        test('dir - basic', () => {
+            const divFn = jest.fn();
+            const div = document
+                .create('<div id=A>MOVE ME</div>')
+                .on('dir', divFn)
+                .appendTo('body')
+                .get(0);
+            expect(div.prop('tabindex')).toBeFalsy(); // not set
+
+            const bodyFn = jest.fn();
+            document.select('body').on('dir', bodyFn);
+            expect(document.body.prop('tabindex')).toBeFalsy(); // not set
+
+            document.nextTabStop();
+            document.updateLayout();
+            expect(document.activeElement).toBeNull(); // no active element set
+
+            document.dir(UTILS.dir('left'));
+            expect(divFn).not.toHaveBeenCalled(); // not a tabindex
+            expect(bodyFn).toHaveBeenCalled(); // called, even though not a tabstop (root element)
+
+            bodyFn.mockClear();
+            document.select('#A').prop('tabindex', true);
+            expect(div.prop('tabindex')).toBeTruthy(); // set
+
+            expect(document.activeElement).toBeNull(); // no active element set
+            document.dir(UTILS.dir('left'));
+            expect(divFn).not.toHaveBeenCalled(); // now a tabindex, but not active element
+            expect(bodyFn).toHaveBeenCalled(); // called because div did not return true
+
+            document.nextTabStop();
+            bodyFn.mockClear();
+
+            expect(document.activeElement).toBe(div);
+            document.dir(UTILS.dir('left'));
+            expect(divFn).toHaveBeenCalled(); // active element
+            expect(bodyFn).toHaveBeenCalled(); // called because div did not return true
+
+            divFn.mockClear();
+            bodyFn.mockClear();
+            divFn.mockReturnValue(true);
+
+            document.dir(UTILS.dir('left'));
+            expect(divFn).toHaveBeenCalled(); // now handles event
+            expect(bodyFn).not.toHaveBeenCalled();
+        });
 
         test.todo('keypress - keypress');
         test.todo('keypress - Enter');

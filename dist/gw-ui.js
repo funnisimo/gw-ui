@@ -3012,26 +3012,38 @@
             return this._bounds;
         }
         get innerLeft() {
-            return this._bounds.left + (this._usedStyle.padLeft || 0);
+            return (this._bounds.left +
+                (this._usedStyle.padLeft || 0) +
+                (this._usedStyle.marginLeft || 0));
         }
         get innerRight() {
-            return this._bounds.right - (this._usedStyle.padRight || 0);
+            return (this._bounds.right -
+                (this._usedStyle.padRight || 0) -
+                (this._usedStyle.marginRight || 0));
         }
         get innerWidth() {
             return (this._bounds.width -
                 (this._usedStyle.padLeft || 0) -
-                (this._usedStyle.padRight || 0));
+                (this._usedStyle.padRight || 0) -
+                (this._usedStyle.marginLeft || 0) -
+                (this._usedStyle.marginRight || 0));
         }
         get innerHeight() {
             return (this._bounds.height -
                 (this._usedStyle.padTop || 0) -
-                (this._usedStyle.padBottom || 0));
+                (this._usedStyle.padBottom || 0) -
+                (this._usedStyle.marginTop || 0) -
+                (this._usedStyle.marginBottom || 0));
         }
         get innerTop() {
-            return this._bounds.top + (this._usedStyle.padTop || 0);
+            return (this._bounds.top +
+                (this._usedStyle.padTop || 0) +
+                (this._usedStyle.marginTop || 0));
         }
         get innerBottom() {
-            return this._bounds.bottom + (this._usedStyle.padBottom || 0);
+            return (this._bounds.bottom -
+                (this._usedStyle.padBottom || 0) -
+                (this._usedStyle.marginBottom || 0));
         }
         updateLayout() {
             if (!this.dirty) {
@@ -3103,7 +3115,8 @@
         _updateHeight() {
             const used = this._usedStyle;
             const bounds = this.bounds;
-            bounds.height = this._lines.length + (used.padTop || 0);
+            bounds.height =
+                this._lines.length + (used.padTop || 0) + (used.marginTop || 0);
             // update children...
             this.children.forEach((c) => {
                 c.updateLayout();
@@ -3113,7 +3126,7 @@
                 }
             });
             // add padding
-            bounds.height += used.padBottom || 0;
+            bounds.height += (used.padBottom || 0) + (used.marginBottom || 0);
             if (used.height) {
                 bounds.height = used.height;
             }
@@ -3361,9 +3374,10 @@
         }
         // DRAWING
         draw(buffer) {
-            const bg = this.used('bg');
+            const used = this._usedStyle;
+            const bg = used.bg;
             const bounds = this.bounds;
-            buffer.fillRect(bounds.x, bounds.y, bounds.width, bounds.height, ' ', bg, bg);
+            buffer.fillRect(bounds.x + (used.marginLeft || 0), bounds.y + (used.marginTop || 0), bounds.width - (used.marginLeft || 0) - (used.marginRight || 0), bounds.height - (used.marginTop || 0) - (used.marginBottom || 0), ' ', bg, bg);
             if (this.children.length) {
                 // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
                 this.children.forEach((c) => {

@@ -116,12 +116,12 @@ describe('Element', () => {
         w.style('left', 4);
         w.updateLayout();
         expect(w.style('left')).toEqual(4);
-        expect(w.bounds.x).toEqual(4); // assume parent is 0
+        expect(w.bounds.x).toEqual(0); // position: static
 
-        w.style('left', 6);
+        w.style('position', 'relative');
         w.updateLayout();
-        expect(w.style('left')).toEqual(6);
-        expect(w.bounds.x).toEqual(6);
+        expect(w.style('left')).toEqual(4);
+        expect(w.bounds.x).toEqual(4);
     });
 
     test('right', () => {

@@ -13,7 +13,7 @@ const document = new GWI.html.Document(ui);
 document
     .create('<div id=A>')
     .style({ border: 'red', padding: 1, margin: 1 })
-    .pos(0, 0, 'fixed')
+    .pos(10, 5, 'fixed')
     .appendTo('body');
 
 document.create('<text>').text('Element - Fixed').appendTo('#A');

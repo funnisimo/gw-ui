@@ -2890,7 +2890,7 @@ class Element {
     }
     set dirty(v) {
         this._dirty = v;
-        if (this.parent) {
+        if (this.parent && v) {
             const position = this.used('position');
             if (position === 'static' || position === 'relative') {
                 this.parent.dirty = true;
@@ -2971,6 +2971,13 @@ class Element {
         return current !== this ? current : null;
     }
     positionedParent() {
+        const position = this._usedStyle.position || 'static';
+        if (position === 'static')
+            return null;
+        if (position === 'relative')
+            return this;
+        if (position === 'fixed')
+            return this.root();
         let parent = this.parent;
         if (parent) {
             // for absolute position, position is relative to closest ancestor that is positioned
@@ -3029,209 +3036,162 @@ class Element {
             (this._usedStyle.border ? 1 : 0));
     }
     updateLayout() {
-        if (!this.dirty) {
-            this.children.forEach((c) => c.updateLayout());
-            return this;
-        }
-        const position = this._usedStyle.position || 'static';
-        if (position === 'fixed') {
-            this._updateLayoutFixed();
-        }
-        else if (position === 'relative') {
-            this._updateLayoutRelative();
-        }
-        else if (position === 'absolute') {
-            this._updateLayoutAbsolute();
-        }
-        else {
-            this._updateLayoutStatic();
-        }
+        // if (!this.dirty) {
+        //     this.children.forEach((c) => c.updateLayout());
+        //     return this;
+        // }
+        this._updateWidth();
+        this._updateHeight();
+        this._updateLeft();
+        this._updateTop();
+        this.dirty = false;
+        this.children.forEach((c) => (c.dirty = false));
+        // const position = this._usedStyle.position || 'static';
+        // if (position === 'fixed') {
+        //     this._updateLayoutFixed();
+        // } else if (position === 'relative') {
+        //     this._updateLayoutRelative();
+        // } else if (position === 'absolute') {
+        //     this._updateLayoutAbsolute();
+        // } else {
+        //     this._updateLayoutStatic();
+        // }
         return this;
     }
-    _updateWidth(parentWidth = 0) {
-        const used = this.used();
-        const bounds = this.bounds;
-        let width = used.width || parentWidth;
-        if (!width) {
-            if (this.text.length) {
-                this._lines = GWU.text.splitIntoLines(this._text, (used.maxWidth || 999) -
-                    (used.padLeft || 0) -
-                    (used.padRight || 0));
-                width = this.contentWidth() || GWU.text.length(this._text);
-            }
-            width += used.padLeft || 0;
-            width += used.padRight || 0;
-            width += used.marginLeft || 0;
-            width += used.marginRight || 0;
-            if (used.border) {
-                width += 2;
-            }
-        }
-        const maxW = used.maxWidth || width;
-        const minW = used.minWidth || width;
-        bounds.width = GWU.clamp(width, minW, maxW);
-        if (this._text.length) {
-            if (bounds.width) {
-                this._lines = GWU.text.splitIntoLines(this._text, bounds.width - (used.padLeft || 0) - (used.padRight || 0));
-            }
-            else if (GWU.text.length(this._text)) {
-                this._lines = [this._text];
-            }
-        }
-        else {
-            this._lines = [];
-        }
-        return this;
-    }
-    _updateLeft(parentLeft = 0, parentWidth = 0) {
+    // update bounds.width and return it
+    _updateWidth() {
         const used = this._usedStyle;
-        let left = parentLeft;
-        if (used.position !== 'static') {
-            if (used.left) {
-                left += used.left;
+        const bounds = this._bounds;
+        bounds.width = used.width || 0;
+        if (!bounds.width) {
+            const position = used.position || 'static';
+            if (['static', 'relative'].includes(position) && this.parent) {
+                bounds.width = this.parent.innerWidth || 0;
             }
-            else if (used.right) {
-                const parentRight = parentLeft + parentWidth;
-                left = parentRight - used.right - this.bounds.width;
+            // compute internal width
+            if (!bounds.width) {
+                bounds.width =
+                    (used.padLeft || 0) +
+                        (used.padRight || 0) +
+                        (used.marginLeft || 0) +
+                        (used.marginRight || 0) +
+                        (used.border ? 2 : 0);
+                if (this.children.length) {
+                    // my width comes from my children...
+                    bounds.width += this.children.reduce((len, c) => Math.max(len, c._updateWidth()), 0);
+                }
+                else if (this._text.length) {
+                    this._lines = GWU.text.splitIntoLines(this._text);
+                    bounds.width += this.contentWidth();
+                }
             }
         }
-        this.bounds.left = left;
-        return this;
-    }
-    _updateTop(parentBottom = 0) {
-        this.bounds.top = parentBottom;
-        return this;
+        bounds.width = GWU.clamp(bounds.width, used.minWidth || bounds.width, used.maxWidth || bounds.width);
+        this.children.forEach((c) => c._updateWidth());
+        // These do not figure into parent with calculation
+        const position = used.position || 'static';
+        if (['fixed', 'absolute'].includes(position))
+            return 0;
+        return bounds.width;
     }
     _updateHeight() {
         const used = this._usedStyle;
-        const bounds = this.bounds;
-        bounds.height =
-            this._lines.length +
+        const bounds = this._bounds;
+        bounds.height = used.height || 0;
+        if (!bounds.height) {
+            bounds.height =
                 (used.padTop || 0) +
-                (used.marginTop || 0) +
-                (this._usedStyle.border ? 1 : 0);
-        // update children...
-        this.children.forEach((c) => {
-            c.updateLayout();
-            const cpos = c.used('position');
-            if (!['absolute', 'fixed'].includes(cpos)) {
-                bounds.height += c.bounds.height;
+                    (used.padBottom || 0) +
+                    (used.marginTop || 0) +
+                    (used.marginBottom || 0) +
+                    (used.border ? 2 : 0);
+            if (this.children.length) {
+                // my height comes from my children...
+                bounds.height += this.children.reduce((len, c) => len + c._updateHeight(), 0);
             }
-        });
-        // add padding
-        bounds.height +=
-            (used.padBottom || 0) +
-                (used.marginBottom || 0) +
-                (this._usedStyle.border ? 1 : 0);
-        if (used.height) {
-            bounds.height = used.height;
+            else if (this._text.length) {
+                this._lines = GWU.text.splitIntoLines(this._text, this.innerWidth);
+                bounds.height += this._lines.length;
+            }
+            else {
+                bounds.height += 0;
+            }
         }
-        const maxH = used.maxHeight || bounds.height;
-        const minH = used.minHeight || bounds.height;
-        bounds.height = GWU.clamp(bounds.height, minH, maxH);
-        if (bounds.height < this._lines.length) {
+        bounds.height = GWU.clamp(bounds.height, used.minHeight || bounds.height, used.maxHeight || bounds.height);
+        if (this._lines.length > bounds.height) {
             this._lines.length = bounds.height;
         }
-        return this;
-    }
-    applyLayoutOffset() {
-        const used = this._usedStyle;
+        this.children.forEach((c) => c._updateHeight());
+        // These do not figure into parent height calculation
         const position = used.position || 'static';
-        if (position !== 'static') {
-            let parent = this;
-            if (used.position === 'fixed') {
-                const root = this.root();
-                if (root)
-                    parent = root;
-            }
-            else if (used.position === 'absolute') {
-                const pos = this.positionedParent();
-                if (pos)
-                    parent = pos;
-            }
-            if (used.top) {
-                this.bounds.top = parent.innerTop + used.top;
-            }
-            else if (used.bottom) {
-                this.bounds.bottom = parent.innerBottom - used.bottom;
-            }
-        }
-        this.children.forEach((c) => c.applyLayoutOffset());
-        return this;
+        if (['fixed', 'absolute'].includes(position))
+            return 0;
+        return bounds.height;
     }
-    _updateLayoutStatic() {
-        const parent = this.parent;
-        this._updateWidth(parent ? parent.innerWidth : 0);
-        this._updateLeft(parent ? parent.innerLeft : 0, parent ? parent.innerWidth : 0);
-        this._updateTop(parent ? parent.bounds.bottom : 0);
-        this._updateHeight();
-        this.dirty = false;
-        return this;
-    }
-    _updateLayoutRelative() {
-        this._updateLayoutStatic();
-        this.applyLayoutOffset();
-    }
-    _updateLayoutFixed() {
-        const parent = this.root();
-        if (this.children.length) {
-            this.bounds.width = this._usedStyle.width || 0; // width comes from content
+    _updateLeft() {
+        const used = this._usedStyle;
+        const bounds = this._bounds;
+        const position = used.position || 'static';
+        bounds.left = 0;
+        if (position === 'static') {
+            if (this.parent) {
+                bounds.left = this.parent.innerLeft;
+            }
         }
         else {
-            this._updateWidth(0); // width comes from content
+            const root = this.positionedParent();
+            if (used.left !== undefined) {
+                bounds.left = (root ? root.bounds.left : 0) + used.left;
+            }
+            else if (used.right !== undefined) {
+                if (root) {
+                    bounds.right = root.bounds.right - used.right;
+                }
+            }
+            else {
+                bounds.left = root ? root.bounds.left : 0;
+            }
         }
-        this._updateHeight();
-        if (!this.bounds.width) {
-            const used = this._usedStyle;
-            this.bounds.width = this.children.reduce((len, c) => Math.max(len, c.bounds.width), 0);
-            this.bounds.width +=
-                (used.padLeft || 0) +
-                    (used.padRight || 0) +
-                    (used.marginLeft || 0) +
-                    (used.marginRight || 0) +
-                    (used.border ? 2 : 0);
-        }
-        this.bounds.left = 0;
-        if (this._usedStyle.left !== undefined) {
-            this.bounds.left = this._usedStyle.left;
-        }
-        else if (this._usedStyle.right && parent) {
-            this.bounds.right = parent.bounds.right - this._usedStyle.right;
-        }
-        this.bounds.top = 0;
-        if (this._usedStyle.top !== undefined) {
-            this.bounds.top = this._usedStyle.top;
-        }
-        else if (this._usedStyle.bottom && parent) {
-            this.bounds.bottom =
-                parent.bounds.height - this._usedStyle.bottom - 1;
-        }
-        this.dirty = false;
-        return this;
+        this.children.forEach((c) => c._updateLeft());
     }
-    _updateLayoutAbsolute() {
-        let parent = this.positionedParent();
-        this._updateWidth(0); // width comes from content
-        this._updateHeight();
-        this.bounds.left = 0;
-        if (this._usedStyle.left !== undefined) {
-            this.bounds.left =
-                this._usedStyle.left + (parent ? parent.bounds.left : 0);
+    _updateTop(parentBottom = 0) {
+        const used = this._usedStyle;
+        const bounds = this._bounds;
+        const position = used.position || 'static';
+        if (['fixed', 'absolute'].includes(position)) {
+            const root = this.positionedParent();
+            if (used.top !== undefined) {
+                bounds.top = (root ? root.bounds.top : 0) + used.top;
+            }
+            else if (used.bottom !== undefined) {
+                if (root) {
+                    bounds.bottom = root.bounds.bottom - used.bottom;
+                }
+            }
+            else {
+                bounds.top = root ? root.bounds.top : 0;
+            }
         }
-        else if (this._usedStyle.right && parent) {
-            this.bounds.right = parent.bounds.right - this._usedStyle.right;
+        else {
+            bounds.top = parentBottom;
+            if (position === 'relative') {
+                if (used.top !== undefined) {
+                    bounds.top += used.top;
+                }
+                else if (used.bottom !== undefined) {
+                    bounds.top -= used.bottom;
+                }
+            }
         }
-        this.bounds.top = 0;
-        if (this._usedStyle.top !== undefined) {
-            this.bounds.top =
-                this._usedStyle.top + (parent ? parent.bounds.top : 0);
+        if (this.children.length) {
+            let innerTop = this.innerTop;
+            this.children.forEach((c) => {
+                innerTop += c._updateTop(innerTop);
+            });
         }
-        else if (this._usedStyle.bottom && parent) {
-            this.bounds.bottom =
-                parent.bounds.height - this._usedStyle.bottom - 1;
-        }
-        this.dirty = false;
-        return this;
+        if (['fixed', 'absolute'].includes(position))
+            return 0;
+        return bounds.height;
     }
     style(...args) {
         if (!this._style) {

@@ -294,22 +294,43 @@ describe('Document', () => {
     test('layout = fixed div', () => {
         const div = document
             .create('<div id=A>')
-            .style({ border: 'red', padding: 1, margin: 1 })
-            .pos(0, 0, 'fixed')
+            .style({ border: 'red', padding: 1 })
+            .pos(10, 5, 'fixed')
             .appendTo('body')
             .get(0);
 
-        document.create('<text>').text('Element - Fixed').appendTo('#A');
+        const textA = document
+            .create('<text>')
+            .text('Element - Fixed')
+            .appendTo('#A')
+            .get(0);
 
-        document.create('<text>').text('Element 2').appendTo('#A');
+        const textB = document
+            .create('<text>')
+            .text('Element 2')
+            .appendTo('#A')
+            .get(0);
 
         document.updateLayout();
-        expect(div.bounds).toMatchObject({ x: 0, y: 0, width: 21, height: 8 });
+        expect(div.bounds).toMatchObject({ x: 10, y: 5, width: 19, height: 6 });
+        expect(textA.bounds).toMatchObject({
+            x: 12,
+            y: 7,
+            width: 15,
+            height: 1,
+        });
+        expect(textB.bounds).toMatchObject({
+            x: 12,
+            y: 8,
+            width: 15,
+            height: 1,
+        });
 
         document.draw();
-        expect(UTILS.getBufferText(ui.buffer, 3, 3, 15)).toEqual(
+        expect(UTILS.getBufferText(ui.buffer, 12, 7, 15)).toEqual(
             'Element - Fixed'
         );
+        expect(UTILS.getBufferText(ui.buffer, 12, 8, 15)).toEqual('Element 2');
     });
 
     describe('events', () => {

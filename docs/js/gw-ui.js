@@ -2464,7 +2464,7 @@
         return (el) => !!el.prop(prop);
     }
     function matchId(id) {
-        return (el) => el.id === id;
+        return (el) => el.attr('id') === id;
     }
     function matchFirst() {
         return (el) => !!el.parent && el.parent.children[0] === el;
@@ -2871,9 +2871,9 @@
         // hovered: Style.Style = {};
         // active: Style.Style = {};
         constructor(tag, styles) {
-            this.id = '';
             this.parent = null;
             this._props = {};
+            this._attrs = {};
             this.classes = [];
             this.children = [];
             this.events = {};
@@ -2922,6 +2922,12 @@
                     this.parent.dirty = true;
                 }
             }
+        }
+        attr(name, value) {
+            if (value === undefined)
+                return this._attrs[name];
+            this._attrs[name] = value;
+            return this;
         }
         prop(name, value) {
             if (value === undefined)
@@ -3506,7 +3512,7 @@
                 e.text(value);
             }
             else if (key === 'id') {
-                e.id = value;
+                e.attr('id', value);
             }
             else if (key === 'style') {
                 const style = value;
@@ -3521,6 +3527,9 @@
                         }
                     });
                 });
+            }
+            else if (typeof value === 'string') {
+                e.attr(key, value);
             }
             else {
                 e.prop(key, value);
@@ -3978,19 +3987,19 @@
             this.selected.forEach((w) => w.text(t));
             return this;
         }
-        id(t) {
-            if (!t) {
-                return this.selected[0] ? this.selected[0].text() : '';
+        attr(id, value) {
+            if (value === undefined) {
+                if (this.selected.length == 0)
+                    return undefined;
+                return this.selected[0].attr(id);
             }
-            if (this.selected.length) {
-                this.selected[0].id = t;
-            }
+            this.selected.forEach((e) => e.attr(id, value));
             return this;
         }
         prop(id, value) {
             if (value === undefined) {
                 if (this.selected.length == 0)
-                    return false;
+                    return undefined;
                 return this.selected[0].prop(id);
             }
             this.selected.forEach((e) => e.prop(id, value));
@@ -4037,12 +4046,21 @@
             return this;
         }
         pos(...args) {
-            if (this.selected.length == 0)
-                return this;
             if (args.length == 0) {
+                if (this.selected.length == 0)
+                    return undefined;
                 return this.selected[0].pos();
             }
             this.selected.forEach((w) => w.pos(args[0], args[1], args[2]));
+            return this;
+        }
+        size(...args) {
+            if (args.length == 0) {
+                if (this.selected.length == 0)
+                    return undefined;
+                return this.selected[0].size();
+            }
+            this.selected.forEach((w) => w.size(args[0], args[1]));
             return this;
         }
         // ANIMATION

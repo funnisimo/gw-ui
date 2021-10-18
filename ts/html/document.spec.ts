@@ -54,7 +54,7 @@ describe('Document', () => {
             '<div id=A style="fg:red;bg:white" hover>'
         );
         expect(div.tag).toEqual('div');
-        expect(div.id).toEqual('A');
+        expect(div.attr('id')).toEqual('A');
         expect(div.style('fg')).toEqual('red');
         expect(div.style('bg')).toEqual('white');
         expect(div.prop('hover')).toBeTruthy();
@@ -65,7 +65,7 @@ describe('Document', () => {
             '<div id=A style="fg:red;bg:white" hover>Text</div>'
         );
         expect(div.tag).toEqual('div');
-        expect(div.id).toEqual('A');
+        expect(div.attr('id')).toEqual('A');
         expect(div.style('fg')).toEqual('red');
         expect(div.style('bg')).toEqual('white');
         expect(div.prop('hover')).toBeTruthy();
@@ -229,14 +229,22 @@ describe('Document', () => {
     test('updateLayout - fixed elements take no height', () => {
         document.body.style('padding', 1);
 
-        document.create('<text>').id('a').text('static').appendTo('body');
         document
             .create('<text>')
-            .id('b')
+            .attr('id', 'a')
+            .text('static')
+            .appendTo('body');
+        document
+            .create('<text>')
+            .attr('id', 'b')
             .text('fixed')
             .pos(5, 5, 'fixed')
             .appendTo('body');
-        document.create('<text>').id('c').text('static').appendTo('body');
+        document
+            .create('<text>')
+            .attr('id', 'c')
+            .text('static')
+            .appendTo('body');
 
         document.computeStyles();
         document.updateLayout();
@@ -244,13 +252,13 @@ describe('Document', () => {
         const root = document.body;
         const [a, b, c] = root.children;
 
-        expect(a.id).toEqual('a');
+        expect(a.attr('id')).toEqual('a');
         expect(a.used('position')).toEqual('static');
-        expect(b.id).toEqual('b');
+        expect(b.attr('id')).toEqual('b');
         expect(b.used('position')).toEqual('fixed');
         expect(b.used('left')).toEqual(5);
         expect(b.used('top')).toEqual(5);
-        expect(c.id).toEqual('c');
+        expect(c.attr('id')).toEqual('c');
         expect(c.used('position')).toEqual('static');
 
         expect(root.bounds).toMatchObject({

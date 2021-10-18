@@ -3,7 +3,7 @@ import * as GWU from 'gw-utils';
 import { UICore } from '../types';
 import { Selector } from './selector';
 import * as Style from './style';
-import { Element, PosOptions, makeElement } from './element';
+import { Element, PosOptions, makeElement, Size } from './element';
 
 // return true if you want to stop the event from propagating
 export type EventCb = (
@@ -588,23 +588,37 @@ export class Selection {
         return this;
     }
 
-    id(): string;
-    id(t: string): this;
-    id(t?: string): this | string {
-        if (!t) {
-            return this.selected[0] ? this.selected[0].text() : '';
+    // id(): string;
+    // id(t: string): this;
+    // id(t?: string): this | string {
+    //     if (!t) {
+    //         return this.selected[0] ? this.selected[0].text() : '';
+    //     }
+    //     if (this.selected.length) {
+    //         this.selected[0].id = t;
+    //     }
+    //     return this;
+    // }
+
+    attr(id: string): string | undefined;
+    attr(id: string, value: string): this;
+    attr(id: string, value?: string): this | string | undefined {
+        if (value === undefined) {
+            if (this.selected.length == 0) return undefined;
+            return this.selected[0].attr(id);
         }
-        if (this.selected.length) {
-            this.selected[0].id = t;
-        }
+        this.selected.forEach((e) => e.attr(id, value));
         return this;
     }
 
-    prop(id: string): boolean | number;
+    prop(id: string): boolean | number | undefined;
     prop(id: string, value: boolean | number): this;
-    prop(id: string, value?: boolean | number): this | boolean | number {
+    prop(
+        id: string,
+        value?: boolean | number
+    ): this | boolean | number | undefined {
         if (value === undefined) {
-            if (this.selected.length == 0) return false;
+            if (this.selected.length == 0) return undefined;
             return this.selected[0].prop(id);
         }
         this.selected.forEach((e) => e.prop(id, value));
@@ -666,21 +680,32 @@ export class Selection {
         return this;
     }
 
-    pos(): GWU.xy.XY;
+    pos(): GWU.xy.XY | undefined;
     pos(
         left: number,
         top: number,
         position?: Omit<Style.Position, 'static'>
     ): this;
     pos(xy: PosOptions, position?: Omit<Style.Position, 'static'>): this;
-    pos(...args: any[]): this | GWU.xy.XY {
-        if (this.selected.length == 0) return this;
-
+    pos(...args: any[]): this | GWU.xy.XY | undefined {
         if (args.length == 0) {
+            if (this.selected.length == 0) return undefined;
             return this.selected[0].pos();
         }
 
         this.selected.forEach((w) => w.pos(args[0], args[1], args[2]));
+        return this;
+    }
+
+    size(): Size | undefined;
+    size(width: number, height: number): this;
+    size(...args: number[]): this | Size | undefined {
+        if (args.length == 0) {
+            if (this.selected.length == 0) return undefined;
+            return this.selected[0].size();
+        }
+
+        this.selected.forEach((w) => w.size(args[0], args[1]));
         return this;
     }
 

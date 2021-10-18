@@ -8,9 +8,10 @@ export function isTruthy(v: any): boolean {
 
 export interface Selectable {
     tag: string;
-    id: string;
     classes: string[];
-    prop(name: string): boolean | number;
+
+    attr(name: string): string | undefined;
+    prop(name: string): boolean | number | undefined;
     parent: Selectable | null;
     children: Selectable[];
 }
@@ -36,7 +37,7 @@ function matchProp(prop: string): MatchFn {
 }
 
 function matchId(id: string): MatchFn {
-    return (el: Selectable) => el.id === id;
+    return (el: Selectable) => el.attr('id') === id;
 }
 
 function matchFirst(): MatchFn {

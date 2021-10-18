@@ -546,9 +546,9 @@ declare class Callbacks {
 declare function isTruthy(v: any): boolean;
 interface Selectable {
     tag: string;
-    id: string;
     classes: string[];
-    prop(name: string): boolean | number;
+    attr(name: string): string | undefined;
+    prop(name: string): boolean | number | undefined;
     parent: Selectable | null;
     children: Selectable[];
 }
@@ -743,9 +743,9 @@ declare class Selection {
     replaceWith(content: SelectType): this;
     text(): string;
     text(t: string): this;
-    id(): string;
-    id(t: string): this;
-    prop(id: string): boolean | number;
+    attr(id: string): string | undefined;
+    attr(id: string, value: string): this;
+    prop(id: string): boolean | number | undefined;
     prop(id: string, value: boolean | number): this;
     addClass(id: string): this;
     hasClass(id: string): boolean;
@@ -756,9 +756,11 @@ declare class Selection {
     style(name: keyof Style): any;
     style(name: keyof StyleOptions, value: any): this;
     removeStyle(name: keyof Style): this;
-    pos(): GWU.xy.XY;
+    pos(): GWU.xy.XY | undefined;
     pos(left: number, top: number, position?: Omit<Position, 'static'>): this;
     pos(xy: PosOptions, position?: Omit<Position, 'static'>): this;
+    size(): Size | undefined;
+    size(width: number, height: number): this;
     animate(_props: any, _ms: number): this;
     clearQueue(_name?: string): this;
     delay(_ms: number, _name?: string): this;
@@ -807,10 +809,10 @@ interface SizeOptions {
     maxHeight?: number;
 }
 declare class Element implements Selectable {
-    id: string;
     tag: string;
     parent: Element | null;
     _props: Record<string, boolean | number>;
+    _attrs: Record<string, string>;
     classes: string[];
     children: Element[];
     events: Record<string, EventCb[]>;
@@ -827,6 +829,8 @@ declare class Element implements Selectable {
     clone(): this;
     get dirty(): boolean;
     set dirty(v: boolean);
+    attr(name: string): string;
+    attr(name: string, value: string): this;
     prop(name: string): boolean | number;
     prop(name: string, value: boolean | number): this;
     toggleProp(name: string): this;

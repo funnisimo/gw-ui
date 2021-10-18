@@ -5,6 +5,7 @@ describe('selector', () => {
         id?: string;
         tag?: string;
         props?: Record<string, boolean>;
+        attrs?: Record<string, string>;
         classes?: string[];
         parent?: Selector.Selectable;
         children?: Selector.Selectable[];
@@ -12,9 +13,14 @@ describe('selector', () => {
 
     function mockSelectable(opts: SelectableOptions = {}) {
         return {
+            id: opts.id || '',
             props: opts.props || {},
-            id: opts.id || 'id',
+            attrs: opts.attrs || {},
             tag: opts.tag || 'tag',
+            attr(name: string): string | undefined {
+                if (name === 'id') return this.id;
+                return this.attrs[name];
+            },
             prop(name: string) {
                 return this.props[name];
             },

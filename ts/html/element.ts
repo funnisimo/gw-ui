@@ -27,10 +27,10 @@ export interface SizeOptions {
 }
 
 export class Element implements Selectable {
-    id = '';
     tag: string;
     parent: Element | null = null;
     _props: Record<string, boolean | number> = {};
+    _attrs: Record<string, string> = {};
     classes: string[] = [];
     children: Element[] = [];
     events: Record<string, EventCb[]> = {};
@@ -97,6 +97,16 @@ export class Element implements Selectable {
                 this.parent.dirty = true;
             }
         }
+    }
+
+    // ATTRIBUTES
+
+    attr(name: string): string;
+    attr(name: string, value: string): this;
+    attr(name: string, value?: string): this | string {
+        if (value === undefined) return this._attrs[name];
+        this._attrs[name] = value;
+        return this;
     }
 
     // PROPS
@@ -1028,7 +1038,7 @@ export function makeElement(tag: string, stylesheet?: Style.Sheet): Element {
         else if (key === 'text') {
             e.text(value as string);
         } else if (key === 'id') {
-            e.id = value as string;
+            e.attr('id', value as string);
         } else if (key === 'style') {
             const style = value as string;
             // console.log('style=', style);
@@ -1042,6 +1052,8 @@ export function makeElement(tag: string, stylesheet?: Style.Sheet): Element {
                     }
                 });
             });
+        } else if (typeof value === 'string') {
+            e.attr(key, value);
         } else {
             e.prop(key, value as boolean);
         }

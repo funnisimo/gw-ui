@@ -1,11 +1,17 @@
 import * as GWU from 'gw-utils';
-import { Selectable, Selector } from './selector';
+import { Selectable, PropType } from './types';
+import { Selector } from './selector';
 
 // static - size/pos automatic (ignore TRBL)
 // relative - size automatic, pos = automatic + TRBL
 // fixed - size = self, pos = TRBL vs root
 // absolute - size = self, pos = TRBL vs positioned parent (fixed, absolute)
 export type Position = 'static' | 'relative' | 'fixed' | 'absolute';
+
+export interface Stylable extends Selectable {
+    style(): Style;
+    prop(name: string): PropType;
+}
 
 export interface StyleOptions {
     fg?: GWU.color.ColorBase;
@@ -320,11 +326,6 @@ export class Style {
 // export function affectsBounds(key: keyof StyleOptions): boolean {
 //     return !NO_BOUNDS.includes(key);
 // }
-
-export interface Stylable extends Selectable {
-    style(): Style;
-    prop(name: string): boolean | number;
-}
 
 export class ComputedStyle extends Style {
     // obj: Stylable;

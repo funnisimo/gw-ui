@@ -2770,6 +2770,10 @@
             return this;
         }
     }
+    // const NO_BOUNDS = ['fg', 'bg', 'depth', 'align', 'valign'];
+    // export function affectsBounds(key: keyof StyleOptions): boolean {
+    //     return !NO_BOUNDS.includes(key);
+    // }
     class ComputedStyle extends Style {
         // constructor(source: Stylable, sources?: Style[]) {
         constructor(sources) {

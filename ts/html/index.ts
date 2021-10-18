@@ -1,3 +1,4 @@
+export * from './types';
 export * from './callbacks';
 export * from './selector';
 export * from './style';

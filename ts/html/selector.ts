@@ -1,19 +1,11 @@
+import { Selectable } from './types';
+
 export function isTruthy(v: any): boolean {
     if (!v) return false;
     if (typeof v === 'string') {
         if (v === 'false' || v === '0') return false;
     }
     return true;
-}
-
-export interface Selectable {
-    tag: string;
-    classes: string[];
-
-    attr(name: string): string | undefined;
-    prop(name: string): boolean | number | undefined;
-    parent: Selectable | null;
-    children: Selectable[];
 }
 
 export type MatchFn = (el: Selectable) => boolean;

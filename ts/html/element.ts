@@ -1,6 +1,6 @@
 import * as GWU from 'gw-utils';
+import { Size, PropType, Selectable } from './types';
 import { EventCb } from './document';
-import { Selectable } from './selector';
 import * as Style from './style';
 
 export interface PosOptions {
@@ -10,11 +10,6 @@ export interface PosOptions {
     left?: number;
     bottom?: number;
     top?: number;
-}
-
-export interface Size {
-    width: number;
-    height: number;
 }
 
 export interface SizeOptions {
@@ -29,7 +24,7 @@ export interface SizeOptions {
 export class Element implements Selectable {
     tag: string;
     parent: Element | null = null;
-    _props: Record<string, boolean | number> = {};
+    _props: Record<string, PropType> = {};
     _attrs: Record<string, string> = {};
     classes: string[] = [];
     children: Element[] = [];
@@ -111,9 +106,9 @@ export class Element implements Selectable {
 
     // PROPS
 
-    prop(name: string): boolean | number;
-    prop(name: string, value: boolean | number): this;
-    prop(name: string, value?: boolean | number): this | boolean | number {
+    prop(name: string): PropType;
+    prop(name: string, value: PropType): this;
+    prop(name: string, value?: PropType): this | PropType {
         if (value === undefined) return this._props[name];
         this._props[name] = value;
         this._usedStyle.dirty = true; // Need to reload styles

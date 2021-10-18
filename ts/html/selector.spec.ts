@@ -1,4 +1,5 @@
 import * as Selector from './selector';
+import * as Types from './types';
 
 describe('selector', () => {
     interface SelectableOptions {
@@ -7,8 +8,8 @@ describe('selector', () => {
         props?: Record<string, boolean>;
         attrs?: Record<string, string>;
         classes?: string[];
-        parent?: Selector.Selectable;
-        children?: Selector.Selectable[];
+        parent?: Types.Selectable;
+        children?: Types.Selectable[];
     }
 
     function mockSelectable(opts: SelectableOptions = {}) {

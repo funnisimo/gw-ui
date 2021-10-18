@@ -1,9 +1,10 @@
 import * as GWU from 'gw-utils';
 
 import { UICore } from '../types';
+import { Size, PropType } from './types';
 import { Selector } from './selector';
 import * as Style from './style';
-import { Element, PosOptions, makeElement, Size } from './element';
+import { Element, PosOptions, makeElement } from './element';
 
 // return true if you want to stop the event from propagating
 export type EventCb = (
@@ -611,12 +612,9 @@ export class Selection {
         return this;
     }
 
-    prop(id: string): boolean | number | undefined;
-    prop(id: string, value: boolean | number): this;
-    prop(
-        id: string,
-        value?: boolean | number
-    ): this | boolean | number | undefined {
+    prop(id: string): PropType | undefined;
+    prop(id: string, value: PropType): this;
+    prop(id: string, value?: PropType): this | PropType | undefined {
         if (value === undefined) {
             if (this.selected.length == 0) return undefined;
             return this.selected[0].prop(id);

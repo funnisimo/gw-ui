@@ -523,6 +523,20 @@ declare class Menu extends Widget {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
+interface Size {
+    width: number;
+    height: number;
+}
+declare type PropType = string | number | boolean;
+interface Selectable {
+    tag: string;
+    classes: string[];
+    attr(name: string): string | undefined;
+    prop(name: string): PropType | undefined;
+    parent: Selectable | null;
+    children: Selectable[];
+}
+
 declare type Cb = (...args: any[]) => any | Promise<any>;
 declare class Callbacks {
     _items: Cb[];
@@ -544,14 +558,6 @@ declare class Callbacks {
 }
 
 declare function isTruthy(v: any): boolean;
-interface Selectable {
-    tag: string;
-    classes: string[];
-    attr(name: string): string | undefined;
-    prop(name: string): boolean | number | undefined;
-    parent: Selectable | null;
-    children: Selectable[];
-}
 declare type MatchFn = (el: Selectable) => boolean;
 declare class Selector {
     text: string;
@@ -563,6 +569,10 @@ declare class Selector {
 declare function selector(text: string): Selector;
 
 declare type Position = 'static' | 'relative' | 'fixed' | 'absolute';
+interface Stylable extends Selectable {
+    style(): Style;
+    prop(name: string): PropType;
+}
 interface StyleOptions {
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
@@ -656,10 +666,6 @@ declare class Style {
     clone(): this;
     copy(other: Style): this;
 }
-interface Stylable extends Selectable {
-    style(): Style;
-    prop(name: string): boolean | number;
-}
 declare class ComputedStyle extends Style {
     sources: Style[];
     constructor(sources?: Style[]);
@@ -745,8 +751,8 @@ declare class Selection {
     text(t: string): this;
     attr(id: string): string | undefined;
     attr(id: string, value: string): this;
-    prop(id: string): boolean | number | undefined;
-    prop(id: string, value: boolean | number): this;
+    prop(id: string): PropType | undefined;
+    prop(id: string, value: PropType): this;
     addClass(id: string): this;
     hasClass(id: string): boolean;
     removeClass(id: string): this;
@@ -796,10 +802,6 @@ interface PosOptions {
     bottom?: number;
     top?: number;
 }
-interface Size {
-    width: number;
-    height: number;
-}
 interface SizeOptions {
     width?: number;
     height?: number;
@@ -811,7 +813,7 @@ interface SizeOptions {
 declare class Element implements Selectable {
     tag: string;
     parent: Element | null;
-    _props: Record<string, boolean | number>;
+    _props: Record<string, PropType>;
     _attrs: Record<string, string>;
     classes: string[];
     children: Element[];
@@ -831,8 +833,8 @@ declare class Element implements Selectable {
     set dirty(v: boolean);
     attr(name: string): string;
     attr(name: string, value: string): this;
-    prop(name: string): boolean | number;
-    prop(name: string, value: boolean | number): this;
+    prop(name: string): PropType;
+    prop(name: string, value: PropType): this;
     toggleProp(name: string): this;
     onblur(): void;
     onfocus(_reverse: boolean): void;
@@ -881,26 +883,27 @@ declare class Element implements Selectable {
 }
 declare function makeElement(tag: string, stylesheet?: Sheet): Element;
 
+type index_d_Size = Size;
+type index_d_PropType = PropType;
+type index_d_Selectable = Selectable;
 type index_d_Cb = Cb;
 type index_d_Callbacks = Callbacks;
 declare const index_d_Callbacks: typeof Callbacks;
 declare const index_d_isTruthy: typeof isTruthy;
-type index_d_Selectable = Selectable;
 type index_d_MatchFn = MatchFn;
 type index_d_Selector = Selector;
 declare const index_d_Selector: typeof Selector;
 declare const index_d_selector: typeof selector;
 type index_d_Position = Position;
+type index_d_Stylable = Stylable;
 type index_d_StyleOptions = StyleOptions;
 type index_d_Style = Style;
 declare const index_d_Style: typeof Style;
-type index_d_Stylable = Stylable;
 type index_d_ComputedStyle = ComputedStyle;
 declare const index_d_ComputedStyle: typeof ComputedStyle;
 type index_d_Sheet = Sheet;
 declare const index_d_Sheet: typeof Sheet;
 type index_d_PosOptions = PosOptions;
-type index_d_Size = Size;
 type index_d_SizeOptions = SizeOptions;
 type index_d_Element = Element;
 declare const index_d_Element: typeof Element;
@@ -917,21 +920,22 @@ type index_d_Selection = Selection;
 declare const index_d_Selection: typeof Selection;
 declare namespace index_d {
   export {
+    index_d_Size as Size,
+    index_d_PropType as PropType,
+    index_d_Selectable as Selectable,
     index_d_Cb as Cb,
     index_d_Callbacks as Callbacks,
     index_d_isTruthy as isTruthy,
-    index_d_Selectable as Selectable,
     index_d_MatchFn as MatchFn,
     index_d_Selector as Selector,
     index_d_selector as selector,
     index_d_Position as Position,
+    index_d_Stylable as Stylable,
     index_d_StyleOptions as StyleOptions,
     index_d_Style as Style,
-    index_d_Stylable as Stylable,
     index_d_ComputedStyle as ComputedStyle,
     index_d_Sheet as Sheet,
     index_d_PosOptions as PosOptions,
-    index_d_Size as Size,
     index_d_SizeOptions as SizeOptions,
     index_d_Element as Element,
     index_d_makeElement as makeElement,

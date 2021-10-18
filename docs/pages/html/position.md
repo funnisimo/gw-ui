@@ -52,7 +52,7 @@ document
     .text(
         '6th Element - Relative - Starts on 4th line, but is moved.  Still takes up space there.'
     )
-    .pos(11, 5, 'relative')
+    .pos(11, 6, 'relative')
     .style({ fg: 'green', bg: 'gray', padding: 1 })
     .appendTo('body');
 

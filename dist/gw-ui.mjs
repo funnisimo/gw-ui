@@ -2553,9 +2553,12 @@ class Style {
     get bg() {
         return this._bg;
     }
-    get depth() {
-        return this._depth;
+    get border() {
+        return this._border;
     }
+    // get depth(): number | undefined {
+    //     return this._depth;
+    // }
     get align() {
         return this._align;
     }
@@ -2988,36 +2991,42 @@ class Element {
     get innerLeft() {
         return (this._bounds.left +
             (this._usedStyle.padLeft || 0) +
-            (this._usedStyle.marginLeft || 0));
+            (this._usedStyle.marginLeft || 0) +
+            (this._usedStyle.border ? 1 : 0));
     }
     get innerRight() {
         return (this._bounds.right -
             (this._usedStyle.padRight || 0) -
-            (this._usedStyle.marginRight || 0));
+            (this._usedStyle.marginRight || 0) -
+            (this._usedStyle.border ? 1 : 0));
     }
     get innerWidth() {
-        return (this._bounds.width -
+        return Math.max(0, this._bounds.width -
             (this._usedStyle.padLeft || 0) -
             (this._usedStyle.padRight || 0) -
             (this._usedStyle.marginLeft || 0) -
-            (this._usedStyle.marginRight || 0));
+            (this._usedStyle.marginRight || 0) -
+            (this._usedStyle.border ? 2 : 0));
     }
     get innerHeight() {
-        return (this._bounds.height -
+        return Math.max(0, this._bounds.height -
             (this._usedStyle.padTop || 0) -
             (this._usedStyle.padBottom || 0) -
             (this._usedStyle.marginTop || 0) -
-            (this._usedStyle.marginBottom || 0));
+            (this._usedStyle.marginBottom || 0) -
+            (this._usedStyle.border ? 2 : 0));
     }
     get innerTop() {
         return (this._bounds.top +
             (this._usedStyle.padTop || 0) +
-            (this._usedStyle.marginTop || 0));
+            (this._usedStyle.marginTop || 0) +
+            (this._usedStyle.border ? 1 : 0));
     }
     get innerBottom() {
         return (this._bounds.bottom -
             (this._usedStyle.padBottom || 0) -
-            (this._usedStyle.marginBottom || 0));
+            (this._usedStyle.marginBottom || 0) -
+            (this._usedStyle.border ? 1 : 0));
     }
     updateLayout() {
         if (!this.dirty) {
@@ -3044,12 +3053,19 @@ class Element {
         const bounds = this.bounds;
         let width = used.width || parentWidth;
         if (!width) {
-            this._lines = GWU.text.splitIntoLines(this._text, (used.maxWidth || 999) -
-                (used.padLeft || 0) -
-                (used.padRight || 0));
-            width = this.contentWidth() || GWU.text.length(this._text);
+            if (this.text.length) {
+                this._lines = GWU.text.splitIntoLines(this._text, (used.maxWidth || 999) -
+                    (used.padLeft || 0) -
+                    (used.padRight || 0));
+                width = this.contentWidth() || GWU.text.length(this._text);
+            }
             width += used.padLeft || 0;
             width += used.padRight || 0;
+            width += used.marginLeft || 0;
+            width += used.marginRight || 0;
+            if (used.border) {
+                width += 2;
+            }
         }
         const maxW = used.maxWidth || width;
         const minW = used.minWidth || width;
@@ -3090,7 +3106,10 @@ class Element {
         const used = this._usedStyle;
         const bounds = this.bounds;
         bounds.height =
-            this._lines.length + (used.padTop || 0) + (used.marginTop || 0);
+            this._lines.length +
+                (used.padTop || 0) +
+                (used.marginTop || 0) +
+                (this._usedStyle.border ? 1 : 0);
         // update children...
         this.children.forEach((c) => {
             c.updateLayout();
@@ -3100,7 +3119,10 @@ class Element {
             }
         });
         // add padding
-        bounds.height += (used.padBottom || 0) + (used.marginBottom || 0);
+        bounds.height +=
+            (used.padBottom || 0) +
+                (used.marginBottom || 0) +
+                (this._usedStyle.border ? 1 : 0);
         if (used.height) {
             bounds.height = used.height;
         }
@@ -3152,8 +3174,23 @@ class Element {
     }
     _updateLayoutFixed() {
         const parent = this.root();
-        this._updateWidth(0); // width comes from content
+        if (this.children.length) {
+            this.bounds.width = this._usedStyle.width || 0; // width comes from content
+        }
+        else {
+            this._updateWidth(0); // width comes from content
+        }
         this._updateHeight();
+        if (!this.bounds.width) {
+            const used = this._usedStyle;
+            this.bounds.width = this.children.reduce((len, c) => Math.max(len, c.bounds.width), 0);
+            this.bounds.width +=
+                (used.padLeft || 0) +
+                    (used.padRight || 0) +
+                    (used.marginLeft || 0) +
+                    (used.marginRight || 0) +
+                    (used.border ? 2 : 0);
+        }
         this.bounds.left = 0;
         if (this._usedStyle.left !== undefined) {
             this.bounds.left = this._usedStyle.left;
@@ -3351,7 +3388,20 @@ class Element {
         const used = this._usedStyle;
         const bg = used.bg;
         const bounds = this.bounds;
-        buffer.fillRect(bounds.x + (used.marginLeft || 0), bounds.y + (used.marginTop || 0), bounds.width - (used.marginLeft || 0) - (used.marginRight || 0), bounds.height - (used.marginTop || 0) - (used.marginBottom || 0), ' ', bg, bg);
+        if (used.border) {
+            GWU.xy.forBorder(bounds.x + (used.marginLeft || 0), bounds.y + (used.marginTop || 0), bounds.width - (used.marginLeft || 0) - (used.marginRight || 0), bounds.height -
+                (used.marginTop || 0) -
+                (used.marginBottom || 0), (x, y) => {
+                buffer.draw(x, y, 0, used.border, used.border);
+            });
+        }
+        buffer.fillRect(bounds.x + (used.marginLeft || 0) + (used.border ? 1 : 0), bounds.y + (used.marginTop || 0) + (used.border ? 1 : 0), bounds.width -
+            (used.marginLeft || 0) -
+            (used.marginRight || 0) -
+            (used.border ? 2 : 0), bounds.height -
+            (used.marginTop || 0) -
+            (used.marginBottom || 0) -
+            (used.border ? 2 : 0), ' ', bg, bg);
         if (this.children.length) {
             // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
             this.children.forEach((c) => {

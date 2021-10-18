@@ -566,7 +566,6 @@ declare type Position = 'static' | 'relative' | 'fixed' | 'absolute';
 interface StyleOptions {
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
-    depth?: number;
     align?: GWU.text.Align;
     valign?: GWU.text.VAlign;
     position?: Position;
@@ -590,11 +589,12 @@ interface StyleOptions {
     marginRight?: number;
     marginTop?: number;
     marginBottom?: number;
+    border?: GWU.color.ColorBase;
 }
 declare class Style {
     protected _fg?: GWU.color.ColorBase;
     protected _bg?: GWU.color.ColorBase;
-    protected _depth?: number;
+    protected _border?: GWU.color.ColorBase;
     protected _align?: GWU.text.Align;
     protected _valign?: GWU.text.VAlign;
     protected _position?: Position;
@@ -625,7 +625,7 @@ declare class Style {
     set dirty(v: boolean);
     get fg(): GWU.color.ColorBase | undefined;
     get bg(): GWU.color.ColorBase | undefined;
-    get depth(): number | undefined;
+    get border(): GWU.color.ColorBase | undefined;
     get align(): GWU.text.Align | undefined;
     get valign(): GWU.text.VAlign | undefined;
     get position(): Position | undefined;

@@ -213,7 +213,8 @@ export class Element implements Selectable {
         return (
             this._bounds.left +
             (this._usedStyle.padLeft || 0) +
-            (this._usedStyle.marginLeft || 0)
+            (this._usedStyle.marginLeft || 0) +
+            (this._usedStyle.border ? 1 : 0)
         );
     }
 
@@ -221,27 +222,32 @@ export class Element implements Selectable {
         return (
             this._bounds.right -
             (this._usedStyle.padRight || 0) -
-            (this._usedStyle.marginRight || 0)
+            (this._usedStyle.marginRight || 0) -
+            (this._usedStyle.border ? 1 : 0)
         );
     }
 
     get innerWidth(): number {
-        return (
+        return Math.max(
+            0,
             this._bounds.width -
-            (this._usedStyle.padLeft || 0) -
-            (this._usedStyle.padRight || 0) -
-            (this._usedStyle.marginLeft || 0) -
-            (this._usedStyle.marginRight || 0)
+                (this._usedStyle.padLeft || 0) -
+                (this._usedStyle.padRight || 0) -
+                (this._usedStyle.marginLeft || 0) -
+                (this._usedStyle.marginRight || 0) -
+                (this._usedStyle.border ? 2 : 0)
         );
     }
 
     get innerHeight(): number {
-        return (
+        return Math.max(
+            0,
             this._bounds.height -
-            (this._usedStyle.padTop || 0) -
-            (this._usedStyle.padBottom || 0) -
-            (this._usedStyle.marginTop || 0) -
-            (this._usedStyle.marginBottom || 0)
+                (this._usedStyle.padTop || 0) -
+                (this._usedStyle.padBottom || 0) -
+                (this._usedStyle.marginTop || 0) -
+                (this._usedStyle.marginBottom || 0) -
+                (this._usedStyle.border ? 2 : 0)
         );
     }
 
@@ -249,7 +255,8 @@ export class Element implements Selectable {
         return (
             this._bounds.top +
             (this._usedStyle.padTop || 0) +
-            (this._usedStyle.marginTop || 0)
+            (this._usedStyle.marginTop || 0) +
+            (this._usedStyle.border ? 1 : 0)
         );
     }
 
@@ -257,7 +264,8 @@ export class Element implements Selectable {
         return (
             this._bounds.bottom -
             (this._usedStyle.padBottom || 0) -
-            (this._usedStyle.marginBottom || 0)
+            (this._usedStyle.marginBottom || 0) -
+            (this._usedStyle.border ? 1 : 0)
         );
     }
 
@@ -287,15 +295,22 @@ export class Element implements Selectable {
 
         let width = used.width || parentWidth;
         if (!width) {
-            this._lines = GWU.text.splitIntoLines(
-                this._text,
-                (used.maxWidth || 999) -
-                    (used.padLeft || 0) -
-                    (used.padRight || 0)
-            );
-            width = this.contentWidth() || GWU.text.length(this._text);
+            if (this.text.length) {
+                this._lines = GWU.text.splitIntoLines(
+                    this._text,
+                    (used.maxWidth || 999) -
+                        (used.padLeft || 0) -
+                        (used.padRight || 0)
+                );
+                width = this.contentWidth() || GWU.text.length(this._text);
+            }
             width += used.padLeft || 0;
             width += used.padRight || 0;
+            width += used.marginLeft || 0;
+            width += used.marginRight || 0;
+            if (used.border) {
+                width += 2;
+            }
         }
 
         const maxW = used.maxWidth || width;
@@ -346,7 +361,10 @@ export class Element implements Selectable {
         const bounds = this.bounds;
 
         bounds.height =
-            this._lines.length + (used.padTop || 0) + (used.marginTop || 0);
+            this._lines.length +
+            (used.padTop || 0) +
+            (used.marginTop || 0) +
+            (this._usedStyle.border ? 1 : 0);
 
         // update children...
         this.children.forEach((c) => {
@@ -358,7 +376,10 @@ export class Element implements Selectable {
         });
 
         // add padding
-        bounds.height += (used.padBottom || 0) + (used.marginBottom || 0);
+        bounds.height +=
+            (used.padBottom || 0) +
+            (used.marginBottom || 0) +
+            (this._usedStyle.border ? 1 : 0);
 
         if (used.height) {
             bounds.height = used.height;
@@ -420,8 +441,26 @@ export class Element implements Selectable {
 
     _updateLayoutFixed() {
         const parent = this.root();
-        this._updateWidth(0); // width comes from content
+        if (this.children.length) {
+            this.bounds.width = this._usedStyle.width || 0; // width comes from content
+        } else {
+            this._updateWidth(0); // width comes from content
+        }
         this._updateHeight();
+
+        if (!this.bounds.width) {
+            const used = this._usedStyle;
+            this.bounds.width = this.children.reduce(
+                (len, c) => Math.max(len, c.bounds.width),
+                0
+            );
+            this.bounds.width +=
+                (used.padLeft || 0) +
+                (used.padRight || 0) +
+                (used.marginLeft || 0) +
+                (used.marginRight || 0) +
+                (used.border ? 2 : 0);
+        }
 
         this.bounds.left = 0;
         if (this._usedStyle.left !== undefined) {
@@ -656,11 +695,31 @@ export class Element implements Selectable {
         const bg = used.bg;
         const bounds = this.bounds;
 
+        if (used.border) {
+            GWU.xy.forBorder(
+                bounds.x + (used.marginLeft || 0),
+                bounds.y + (used.marginTop || 0),
+                bounds.width - (used.marginLeft || 0) - (used.marginRight || 0),
+                bounds.height -
+                    (used.marginTop || 0) -
+                    (used.marginBottom || 0),
+                (x, y) => {
+                    buffer.draw(x, y, 0, used.border, used.border);
+                }
+            );
+        }
+
         buffer.fillRect(
-            bounds.x + (used.marginLeft || 0),
-            bounds.y + (used.marginTop || 0),
-            bounds.width - (used.marginLeft || 0) - (used.marginRight || 0),
-            bounds.height - (used.marginTop || 0) - (used.marginBottom || 0),
+            bounds.x + (used.marginLeft || 0) + (used.border ? 1 : 0),
+            bounds.y + (used.marginTop || 0) + (used.border ? 1 : 0),
+            bounds.width -
+                (used.marginLeft || 0) -
+                (used.marginRight || 0) -
+                (used.border ? 2 : 0),
+            bounds.height -
+                (used.marginTop || 0) -
+                (used.marginBottom || 0) -
+                (used.border ? 2 : 0),
             ' ',
             bg,
             bg

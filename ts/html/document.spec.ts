@@ -291,6 +291,27 @@ describe('Document', () => {
         expect(a.bounds).toMatchObject({ x: 5, y: 10, width: 22, height: 3 });
     });
 
+    test('layout = fixed div', () => {
+        const div = document
+            .create('<div id=A>')
+            .style({ border: 'red', padding: 1, margin: 1 })
+            .pos(0, 0, 'fixed')
+            .appendTo('body')
+            .get(0);
+
+        document.create('<text>').text('Element - Fixed').appendTo('#A');
+
+        document.create('<text>').text('Element 2').appendTo('#A');
+
+        document.updateLayout();
+        expect(div.bounds).toMatchObject({ x: 0, y: 0, width: 21, height: 8 });
+
+        document.draw();
+        expect(UTILS.getBufferText(ui.buffer, 3, 3, 15)).toEqual(
+            'Element - Fixed'
+        );
+    });
+
     describe('events', () => {
         test('basic click', () => {
             const clickFn = jest.fn();

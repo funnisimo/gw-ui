@@ -10,7 +10,7 @@ export type Position = 'static' | 'relative' | 'fixed' | 'absolute';
 export interface StyleOptions {
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
-    depth?: number;
+    // depth?: number;
 
     align?: GWU.text.Align;
     valign?: GWU.text.VAlign;
@@ -53,12 +53,15 @@ export interface StyleOptions {
     marginRight?: number;
     marginTop?: number;
     marginBottom?: number;
+
+    border?: GWU.color.ColorBase;
 }
 
 export class Style {
     protected _fg?: GWU.color.ColorBase;
     protected _bg?: GWU.color.ColorBase;
-    protected _depth?: number;
+    protected _border?: GWU.color.ColorBase;
+    // protected _depth?: number;
 
     protected _align?: GWU.text.Align;
     protected _valign?: GWU.text.VAlign;
@@ -114,9 +117,12 @@ export class Style {
     get bg(): GWU.color.ColorBase | undefined {
         return this._bg;
     }
-    get depth(): number | undefined {
-        return this._depth;
+    get border(): GWU.color.ColorBase | undefined {
+        return this._border;
     }
+    // get depth(): number | undefined {
+    //     return this._depth;
+    // }
 
     get align(): GWU.text.Align | undefined {
         return this._align;

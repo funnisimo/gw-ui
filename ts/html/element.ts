@@ -100,8 +100,12 @@ export class Element implements Selectable {
     attr(name: string, value: string): this;
     attr(name: string, value?: string): this | string {
         if (value === undefined) return this._attrs[name];
-        this._attrs[name] = value;
+        this._setAttr(name, value);
         return this;
+    }
+
+    protected _setAttr(name: string, value: string) {
+        this._attrs[name] = value;
     }
 
     // PROPS
@@ -110,15 +114,27 @@ export class Element implements Selectable {
     prop(name: string, value: PropType): this;
     prop(name: string, value?: PropType): this | PropType {
         if (value === undefined) return this._props[name];
-        this._props[name] = value;
+        this._setProp(name, value);
         this._usedStyle.dirty = true; // Need to reload styles
         return this;
+    }
+
+    protected _setProp(name: string, value: PropType) {
+        this._props[name] = value;
     }
 
     toggleProp(name: string): this {
         const v = this._props[name] || false;
         this._props[name] = !v;
         this._usedStyle.dirty = true; // Need to reload styles
+        return this;
+    }
+
+    val(): PropType;
+    val(v: PropType): this;
+    val(v?: PropType): this | PropType {
+        if (v === undefined) return this.prop('value');
+        this._setProp('value', v);
         return this;
     }
 
@@ -336,9 +352,8 @@ export class Element implements Selectable {
                         (len, c) => Math.max(len, c._updateWidth()),
                         0
                     );
-                } else if (this._text.length) {
-                    this._lines = GWU.text.splitIntoLines(this._text);
-                    bounds.width += this.contentWidth();
+                } else {
+                    bounds.width += this._calcContentWidth();
                 }
             }
         }
@@ -361,6 +376,7 @@ export class Element implements Selectable {
     _updateHeight(): number {
         const used = this._usedStyle;
         const bounds = this._bounds;
+        let contentHeight = 0;
 
         bounds.height = used.height || 0;
         if (!bounds.height) {
@@ -377,14 +393,9 @@ export class Element implements Selectable {
                     (len, c) => len + c._updateHeight(),
                     0
                 );
-            } else if (this._text.length) {
-                this._lines = GWU.text.splitIntoLines(
-                    this._text,
-                    this.innerWidth
-                );
-                bounds.height += this._lines.length;
             } else {
-                bounds.height += 0;
+                contentHeight = this._calcContentHeight();
+                bounds.height += contentHeight;
             }
         }
 
@@ -394,8 +405,8 @@ export class Element implements Selectable {
             used.maxHeight || bounds.height
         );
 
-        if (this._lines.length > bounds.height) {
-            this._lines.length = bounds.height;
+        if (contentHeight > this.innerHeight) {
+            this._updateContentHeight();
         }
 
         this.children.forEach((c) => c._updateHeight());
@@ -471,225 +482,6 @@ export class Element implements Selectable {
 
         return bounds.height;
     }
-
-    // _updateWidth(parentWidth = 0): this {
-    //     const used = this.used();
-    //     const bounds = this.bounds;
-
-    //     let width = used.width || parentWidth;
-    //     if (!width) {
-    //         if (this.text.length) {
-    //             this._lines = GWU.text.splitIntoLines(
-    //                 this._text,
-    //                 (used.maxWidth || 999) -
-    //                     (used.padLeft || 0) -
-    //                     (used.padRight || 0)
-    //             );
-    //             width = this.contentWidth() || GWU.text.length(this._text);
-    //         }
-    //         width += used.padLeft || 0;
-    //         width += used.padRight || 0;
-    //         width += used.marginLeft || 0;
-    //         width += used.marginRight || 0;
-    //         if (used.border) {
-    //             width += 2;
-    //         }
-    //     }
-
-    //     const maxW = used.maxWidth || width;
-    //     const minW = used.minWidth || width;
-    //     bounds.width = GWU.clamp(width, minW, maxW);
-
-    //     if (this._text.length) {
-    //         if (bounds.width) {
-    //             this._lines = GWU.text.splitIntoLines(
-    //                 this._text,
-    //                 bounds.width - (used.padLeft || 0) - (used.padRight || 0)
-    //             );
-    //         } else if (GWU.text.length(this._text)) {
-    //             this._lines = [this._text];
-    //         }
-    //     } else {
-    //         this._lines = [];
-    //     }
-
-    //     return this;
-    // }
-
-    // _updateLeft(parentLeft = 0, parentWidth = 0): this {
-    //     const used = this._usedStyle;
-
-    //     let left = parentLeft;
-    //     if (used.position !== 'static') {
-    //         if (used.left) {
-    //             left += used.left;
-    //         } else if (used.right) {
-    //             const parentRight = parentLeft + parentWidth;
-
-    //             left = parentRight - used.right - this.bounds.width;
-    //         }
-    //     }
-
-    //     this.bounds.left = left;
-    //     return this;
-    // }
-
-    // _updateTop(parentBottom = 0): this {
-    //     this.bounds.top = parentBottom;
-    //     return this;
-    // }
-
-    // _updateHeight(): this {
-    //     const used = this._usedStyle;
-    //     const bounds = this.bounds;
-
-    //     bounds.height =
-    //         this._lines.length +
-    //         (used.padTop || 0) +
-    //         (used.marginTop || 0) +
-    //         (this._usedStyle.border ? 1 : 0);
-
-    //     // update children...
-    //     this.children.forEach((c) => {
-    //         c.updateLayout();
-    //         const cpos = c.used('position');
-    //         if (!['absolute', 'fixed'].includes(cpos)) {
-    //             bounds.height += c.bounds.height;
-    //         }
-    //     });
-
-    //     // add padding
-    //     bounds.height +=
-    //         (used.padBottom || 0) +
-    //         (used.marginBottom || 0) +
-    //         (this._usedStyle.border ? 1 : 0);
-
-    //     if (used.height) {
-    //         bounds.height = used.height;
-    //     }
-
-    //     const maxH = used.maxHeight || bounds.height;
-    //     const minH = used.minHeight || bounds.height;
-    //     bounds.height = GWU.clamp(bounds.height, minH, maxH);
-
-    //     if (bounds.height < this._lines.length) {
-    //         this._lines.length = bounds.height;
-    //     }
-
-    //     return this;
-    // }
-
-    // applyLayoutOffset(): this {
-    //     const used = this._usedStyle;
-    //     const position = used.position || 'static';
-    //     if (position !== 'static') {
-    //         let parent: Element | null = this;
-    //         if (used.position === 'fixed') {
-    //             const root = this.root();
-    //             if (root) parent = root;
-    //         } else if (used.position === 'absolute') {
-    //             const pos = this.positionedParent();
-    //             if (pos) parent = pos;
-    //         }
-
-    //         if (used.top) {
-    //             this.bounds.top = parent.innerTop + used.top;
-    //         } else if (used.bottom) {
-    //             this.bounds.bottom = parent.innerBottom - used.bottom;
-    //         }
-    //     }
-
-    //     this.children.forEach((c) => c.applyLayoutOffset());
-    //     return this;
-    // }
-
-    // _updateLayoutStatic() {
-    //     const parent = this.parent;
-    //     this._updateWidth(parent ? parent.innerWidth : 0);
-    //     this._updateLeft(
-    //         parent ? parent.innerLeft : 0,
-    //         parent ? parent.innerWidth : 0
-    //     );
-    //     this._updateTop(parent ? parent.bounds.bottom : 0);
-    //     this._updateHeight();
-
-    //     this.dirty = false;
-    //     return this;
-    // }
-
-    // _updateLayoutRelative() {
-    //     this._updateLayoutStatic();
-    //     this.applyLayoutOffset();
-    // }
-
-    // _updateLayoutFixed() {
-    //     const parent = this.root();
-    //     if (this.children.length) {
-    //         this.bounds.width = this._usedStyle.width || 0; // width comes from content
-    //     } else {
-    //         this._updateWidth(0); // width comes from content
-    //     }
-    //     this._updateHeight();
-
-    //     if (!this.bounds.width) {
-    //         const used = this._usedStyle;
-    //         this.bounds.width = this.children.reduce(
-    //             (len, c) => Math.max(len, c.bounds.width),
-    //             0
-    //         );
-    //         this.bounds.width +=
-    //             (used.padLeft || 0) +
-    //             (used.padRight || 0) +
-    //             (used.marginLeft || 0) +
-    //             (used.marginRight || 0) +
-    //             (used.border ? 2 : 0);
-    //     }
-
-    //     this.bounds.left = 0;
-    //     if (this._usedStyle.left !== undefined) {
-    //         this.bounds.left = this._usedStyle.left;
-    //     } else if (this._usedStyle.right && parent) {
-    //         this.bounds.right = parent.bounds.right - this._usedStyle.right;
-    //     }
-
-    //     this.bounds.top = 0;
-    //     if (this._usedStyle.top !== undefined) {
-    //         this.bounds.top = this._usedStyle.top;
-    //     } else if (this._usedStyle.bottom && parent) {
-    //         this.bounds.bottom =
-    //             parent.bounds.height - this._usedStyle.bottom - 1;
-    //     }
-
-    //     this.dirty = false;
-    //     return this;
-    // }
-
-    // _updateLayoutAbsolute() {
-    //     let parent = this.positionedParent();
-
-    //     this._updateWidth(0); // width comes from content
-    //     this._updateHeight();
-
-    //     this.bounds.left = 0;
-    //     if (this._usedStyle.left !== undefined) {
-    //         this.bounds.left =
-    //             this._usedStyle.left + (parent ? parent.bounds.left : 0);
-    //     } else if (this._usedStyle.right && parent) {
-    //         this.bounds.right = parent.bounds.right - this._usedStyle.right;
-    //     }
-
-    //     this.bounds.top = 0;
-    //     if (this._usedStyle.top !== undefined) {
-    //         this.bounds.top =
-    //             this._usedStyle.top + (parent ? parent.bounds.top : 0);
-    //     } else if (this._usedStyle.bottom && parent) {
-    //         this.bounds.bottom =
-    //             parent.bounds.height - this._usedStyle.bottom - 1;
-    //     }
-
-    //     this.dirty = false;
-    //     return this;
-    // }
 
     // STYLE + CLASS
 
@@ -857,40 +649,69 @@ export class Element implements Selectable {
     text(v?: string): this | string {
         if (v === undefined) return this._text;
         this._text = v;
-        // if (this.bounds.width) {
-        //     this._lines = GWU.text.splitIntoLines(v, this.bounds.width);
-        // } else {
-        //     this._lines = GWU.text.splitIntoLines(v);
-        //     this.bounds.width = this.contentWidth();
-        // }
         this.dirty = true;
         return this;
     }
 
-    contentWidth(): number {
+    _calcContentWidth(): number {
+        this._lines = GWU.text.splitIntoLines(this._text);
         return this._lines.reduce((out, line) => Math.max(out, line.length), 0);
+    }
+
+    _calcContentHeight(): number {
+        this._lines = GWU.text.splitIntoLines(this._text, this.innerWidth);
+        return this._lines.length;
+    }
+
+    _updateContentHeight() {
+        this._lines.length = this.innerHeight;
     }
 
     // DRAWING
 
     draw(buffer: GWU.canvas.DataBuffer): boolean {
         const used = this._usedStyle;
-        const bg = used.bg;
-        const bounds = this.bounds;
 
         if (used.border) {
-            GWU.xy.forBorder(
-                bounds.x + (used.marginLeft || 0),
-                bounds.y + (used.marginTop || 0),
-                bounds.width - (used.marginLeft || 0) - (used.marginRight || 0),
-                bounds.height -
-                    (used.marginTop || 0) -
-                    (used.marginBottom || 0),
-                (x, y) => {
-                    buffer.draw(x, y, 0, used.border, used.border);
-                }
-            );
+            this._drawBorder(buffer);
         }
+
+        this._fill(buffer);
+
+        if (this.children.length) {
+            // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
+            this.children.forEach((c) => {
+                if (!c.isPositioned()) c.draw(buffer);
+            });
+            this.children.forEach((c) => {
+                if (c.isPositioned()) c.draw(buffer);
+            });
+        } else {
+            this._drawContent(buffer);
+        }
+
+        return true;
+    }
+
+    _drawBorder(buffer: GWU.canvas.DataBuffer) {
+        const used = this._usedStyle;
+        const bounds = this.bounds;
+
+        GWU.xy.forBorder(
+            bounds.x + (used.marginLeft || 0),
+            bounds.y + (used.marginTop || 0),
+            bounds.width - (used.marginLeft || 0) - (used.marginRight || 0),
+            bounds.height - (used.marginTop || 0) - (used.marginBottom || 0),
+            (x, y) => {
+                buffer.draw(x, y, 0, used.border, used.border);
+            }
+        );
+    }
+
+    _fill(buffer: GWU.canvas.DataBuffer) {
+        const used = this._usedStyle;
+        const bg = used.bg;
+        const bounds = this.bounds;
 
         buffer.fillRect(
             bounds.x + (used.marginLeft || 0) + (used.border ? 1 : 0),
@@ -907,16 +728,10 @@ export class Element implements Selectable {
             bg,
             bg
         );
+    }
 
-        if (this.children.length) {
-            // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
-            this.children.forEach((c) => {
-                if (!c.isPositioned()) c.draw(buffer);
-            });
-            this.children.forEach((c) => {
-                if (c.isPositioned()) c.draw(buffer);
-            });
-        } else if (this._lines.length) {
+    _drawContent(buffer: GWU.canvas.DataBuffer) {
+        if (this._lines.length) {
             const fg = this.used('fg') || 'white';
             const top = this.innerTop;
             const width = this.innerWidth;
@@ -926,8 +741,6 @@ export class Element implements Selectable {
                 buffer.drawText(left, top + i, line, fg, -1, width, align);
             });
         }
-
-        return true;
     }
 
     // Events
@@ -981,6 +794,13 @@ export class Element implements Selectable {
     }
 }
 
+export type MakeElementFn = (tag: string, sheet?: Style.Sheet) => Element;
+export const elements: Record<string, MakeElementFn> = {};
+
+export function installElement(tag: string, fn: MakeElementFn) {
+    elements[tag] = fn;
+}
+
 // TODO - Look at htmlparser2
 export function makeElement(tag: string, stylesheet?: Style.Sheet): Element {
     if (tag.startsWith('<')) {
@@ -1026,7 +846,10 @@ export function makeElement(tag: string, stylesheet?: Style.Sheet): Element {
         // console.log(parts);
     }
 
-    const e = new Element(parts.tag, stylesheet);
+    const fn = elements[parts.tag];
+    const e = fn
+        ? fn(parts.tag, stylesheet)
+        : new Element(parts.tag, stylesheet);
 
     Object.entries(parts).forEach(([key, value]) => {
         if (key === 'tag') return;

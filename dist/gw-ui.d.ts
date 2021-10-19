@@ -94,7 +94,7 @@ interface InputOptions extends Omit<WidgetOptions, 'text'> {
     min?: number;
     max?: number;
 }
-declare class Input extends Widget {
+declare class Input$1 extends Widget {
     hint: string;
     hintFg: GWU.color.ColorBase;
     errorFg: GWU.color.ColorBase;
@@ -833,9 +833,13 @@ declare class Element implements Selectable {
     set dirty(v: boolean);
     attr(name: string): string;
     attr(name: string, value: string): this;
+    protected _setAttr(name: string, value: string): void;
     prop(name: string): PropType;
     prop(name: string, value: PropType): this;
+    protected _setProp(name: string, value: PropType): void;
     toggleProp(name: string): this;
+    val(): PropType;
+    val(v: PropType): this;
     onblur(): void;
     onfocus(_reverse: boolean): void;
     addChild(child: Element, beforeIndex?: number): this;
@@ -875,13 +879,32 @@ declare class Element implements Selectable {
     size(size: SizeOptions): this;
     text(): string;
     text(v: string): this;
-    contentWidth(): number;
+    _calcContentWidth(): number;
+    _calcContentHeight(): number;
+    _updateContentHeight(): void;
     draw(buffer: GWU.canvas.DataBuffer): boolean;
+    _drawBorder(buffer: GWU.canvas.DataBuffer): void;
+    _fill(buffer: GWU.canvas.DataBuffer): void;
+    _drawContent(buffer: GWU.canvas.DataBuffer): void;
     on(event: string, cb: EventCb): this;
     off(event: string, cb?: EventCb): this;
     elementFromPoint(x: number, y: number): Element | null;
 }
+declare type MakeElementFn = (tag: string, sheet?: Sheet) => Element;
+declare const elements: Record<string, MakeElementFn>;
+declare function installElement(tag: string, fn: MakeElementFn): void;
 declare function makeElement(tag: string, stylesheet?: Sheet): Element;
+
+declare class Input extends Element {
+    constructor(tag: string, sheet?: Sheet);
+    protected _setAttr(name: string, value: string): void;
+    protected _setProp(name: string, value: PropType): void;
+    _calcContentWidth(): number;
+    _calcContentHeight(): number;
+    _updateContentHeight(): void;
+    _drawContent(buffer: GWU.canvas.DataBuffer): void;
+    keypress(document: Document, _element: Element, e?: GWU.io.Event): boolean;
+}
 
 type index_d_Size = Size;
 type index_d_PropType = PropType;
@@ -907,7 +930,12 @@ type index_d_PosOptions = PosOptions;
 type index_d_SizeOptions = SizeOptions;
 type index_d_Element = Element;
 declare const index_d_Element: typeof Element;
+type index_d_MakeElementFn = MakeElementFn;
+declare const index_d_elements: typeof elements;
+declare const index_d_installElement: typeof installElement;
 declare const index_d_makeElement: typeof makeElement;
+type index_d_Input = Input;
+declare const index_d_Input: typeof Input;
 type index_d_EventCb = EventCb;
 type index_d_FxFn = FxFn;
 type index_d_Fx = Fx;
@@ -938,7 +966,11 @@ declare namespace index_d {
     index_d_PosOptions as PosOptions,
     index_d_SizeOptions as SizeOptions,
     index_d_Element as Element,
+    index_d_MakeElementFn as MakeElementFn,
+    index_d_elements as elements,
+    index_d_installElement as installElement,
     index_d_makeElement as makeElement,
+    index_d_Input as Input,
     index_d_EventCb as EventCb,
     index_d_FxFn as FxFn,
     index_d_Fx as Fx,
@@ -950,4 +982,4 @@ declare namespace index_d {
   };
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList, DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text, TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, index_d as html, makeTable, showDropDown };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList, DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text, TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, index_d as html, makeTable, showDropDown };

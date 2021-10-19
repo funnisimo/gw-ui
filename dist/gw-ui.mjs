@@ -213,7 +213,7 @@ class Button extends Widget {
     }
 }
 
-class Input extends Widget {
+class Input$1 extends Widget {
     constructor(id, opts) {
         super(id, opts);
     }
@@ -1165,7 +1165,7 @@ class UI {
         opts.width = maxLength;
         opts.x = x;
         opts.y = y;
-        const widget = new Input('INPUT', opts);
+        const widget = new Input$1('INPUT', opts);
         return this.showWidget(widget, {
             INPUT(_e, dlg) {
                 dlg.close(widget.text);
@@ -1211,7 +1211,7 @@ class UI {
         opts.input.width = opts.input.width || width;
         opts.input.bg = opts.input.bg || opts.fg;
         opts.input.fg = opts.input.fg || opts.bg;
-        const inputWidget = new Input('INPUT', opts.input || {});
+        const inputWidget = new Input$1('INPUT', opts.input || {});
         const builder = buildDialog(this, width, height)
             .with(promptWidget, { x: 0, y: 0 })
             .with(inputWidget, { bottom: 2, x: 0 })
@@ -2904,20 +2904,32 @@ class Element {
     attr(name, value) {
         if (value === undefined)
             return this._attrs[name];
-        this._attrs[name] = value;
+        this._setAttr(name, value);
         return this;
+    }
+    _setAttr(name, value) {
+        this._attrs[name] = value;
     }
     prop(name, value) {
         if (value === undefined)
             return this._props[name];
-        this._props[name] = value;
+        this._setProp(name, value);
         this._usedStyle.dirty = true; // Need to reload styles
         return this;
+    }
+    _setProp(name, value) {
+        this._props[name] = value;
     }
     toggleProp(name) {
         const v = this._props[name] || false;
         this._props[name] = !v;
         this._usedStyle.dirty = true; // Need to reload styles
+        return this;
+    }
+    val(v) {
+        if (v === undefined)
+            return this.prop('value');
+        this._setProp('value', v);
         return this;
     }
     onblur() {
@@ -3090,9 +3102,8 @@ class Element {
                     // my width comes from my children...
                     bounds.width += this.children.reduce((len, c) => Math.max(len, c._updateWidth()), 0);
                 }
-                else if (this._text.length) {
-                    this._lines = GWU.text.splitIntoLines(this._text);
-                    bounds.width += this.contentWidth();
+                else {
+                    bounds.width += this._calcContentWidth();
                 }
             }
         }
@@ -3107,6 +3118,7 @@ class Element {
     _updateHeight() {
         const used = this._usedStyle;
         const bounds = this._bounds;
+        let contentHeight = 0;
         bounds.height = used.height || 0;
         if (!bounds.height) {
             bounds.height =
@@ -3119,17 +3131,14 @@ class Element {
                 // my height comes from my children...
                 bounds.height += this.children.reduce((len, c) => len + c._updateHeight(), 0);
             }
-            else if (this._text.length) {
-                this._lines = GWU.text.splitIntoLines(this._text, this.innerWidth);
-                bounds.height += this._lines.length;
-            }
             else {
-                bounds.height += 0;
+                contentHeight = this._calcContentHeight();
+                bounds.height += contentHeight;
             }
         }
         bounds.height = GWU.clamp(bounds.height, used.minHeight || bounds.height, used.maxHeight || bounds.height);
-        if (this._lines.length > bounds.height) {
-            this._lines.length = bounds.height;
+        if (contentHeight > this.innerHeight) {
+            this._updateContentHeight();
         }
         this.children.forEach((c) => c._updateHeight());
         // These do not figure into parent height calculation
@@ -3341,37 +3350,27 @@ class Element {
         if (v === undefined)
             return this._text;
         this._text = v;
-        // if (this.bounds.width) {
-        //     this._lines = GWU.text.splitIntoLines(v, this.bounds.width);
-        // } else {
-        //     this._lines = GWU.text.splitIntoLines(v);
-        //     this.bounds.width = this.contentWidth();
-        // }
         this.dirty = true;
         return this;
     }
-    contentWidth() {
+    _calcContentWidth() {
+        this._lines = GWU.text.splitIntoLines(this._text);
         return this._lines.reduce((out, line) => Math.max(out, line.length), 0);
+    }
+    _calcContentHeight() {
+        this._lines = GWU.text.splitIntoLines(this._text, this.innerWidth);
+        return this._lines.length;
+    }
+    _updateContentHeight() {
+        this._lines.length = this.innerHeight;
     }
     // DRAWING
     draw(buffer) {
         const used = this._usedStyle;
-        const bg = used.bg;
-        const bounds = this.bounds;
         if (used.border) {
-            GWU.xy.forBorder(bounds.x + (used.marginLeft || 0), bounds.y + (used.marginTop || 0), bounds.width - (used.marginLeft || 0) - (used.marginRight || 0), bounds.height -
-                (used.marginTop || 0) -
-                (used.marginBottom || 0), (x, y) => {
-                buffer.draw(x, y, 0, used.border, used.border);
-            });
+            this._drawBorder(buffer);
         }
-        buffer.fillRect(bounds.x + (used.marginLeft || 0) + (used.border ? 1 : 0), bounds.y + (used.marginTop || 0) + (used.border ? 1 : 0), bounds.width -
-            (used.marginLeft || 0) -
-            (used.marginRight || 0) -
-            (used.border ? 2 : 0), bounds.height -
-            (used.marginTop || 0) -
-            (used.marginBottom || 0) -
-            (used.border ? 2 : 0), ' ', bg, bg);
+        this._fill(buffer);
         if (this.children.length) {
             // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
             this.children.forEach((c) => {
@@ -3383,7 +3382,32 @@ class Element {
                     c.draw(buffer);
             });
         }
-        else if (this._lines.length) {
+        else {
+            this._drawContent(buffer);
+        }
+        return true;
+    }
+    _drawBorder(buffer) {
+        const used = this._usedStyle;
+        const bounds = this.bounds;
+        GWU.xy.forBorder(bounds.x + (used.marginLeft || 0), bounds.y + (used.marginTop || 0), bounds.width - (used.marginLeft || 0) - (used.marginRight || 0), bounds.height - (used.marginTop || 0) - (used.marginBottom || 0), (x, y) => {
+            buffer.draw(x, y, 0, used.border, used.border);
+        });
+    }
+    _fill(buffer) {
+        const used = this._usedStyle;
+        const bg = used.bg;
+        const bounds = this.bounds;
+        buffer.fillRect(bounds.x + (used.marginLeft || 0) + (used.border ? 1 : 0), bounds.y + (used.marginTop || 0) + (used.border ? 1 : 0), bounds.width -
+            (used.marginLeft || 0) -
+            (used.marginRight || 0) -
+            (used.border ? 2 : 0), bounds.height -
+            (used.marginTop || 0) -
+            (used.marginBottom || 0) -
+            (used.border ? 2 : 0), ' ', bg, bg);
+    }
+    _drawContent(buffer) {
+        if (this._lines.length) {
             const fg = this.used('fg') || 'white';
             const top = this.innerTop;
             const width = this.innerWidth;
@@ -3393,7 +3417,6 @@ class Element {
                 buffer.drawText(left, top + i, line, fg, -1, width, align);
             });
         }
-        return true;
     }
     // Events
     on(event, cb) {
@@ -3442,6 +3465,10 @@ class Element {
         return result;
     }
 }
+const elements = {};
+function installElement(tag, fn) {
+    elements[tag] = fn;
+}
 // TODO - Look at htmlparser2
 function makeElement(tag, stylesheet) {
     if (tag.startsWith('<')) {
@@ -3482,7 +3509,10 @@ function makeElement(tag, stylesheet) {
         }
         // console.log(parts);
     }
-    const e = new Element(parts.tag, stylesheet);
+    const fn = elements[parts.tag];
+    const e = fn
+        ? fn(parts.tag, stylesheet)
+        : new Element(parts.tag, stylesheet);
     Object.entries(parts).forEach(([key, value]) => {
         if (key === 'tag')
             return;
@@ -3515,6 +3545,71 @@ function makeElement(tag, stylesheet) {
     });
     return e;
 }
+
+class Input extends Element {
+    constructor(tag, sheet) {
+        super(tag, sheet);
+        this.on('keypress', this.keypress.bind(this));
+        this.prop('tabindex', true);
+    }
+    // ATTRIBUTES
+    _setAttr(name, value) {
+        this._attrs[name] = value;
+        if (name === 'value') {
+            this._setProp('value', value);
+        }
+    }
+    _setProp(name, value) {
+        this._props[name] = value;
+    }
+    // CONTENT
+    _calcContentWidth() {
+        const size = this._attrs.size || '';
+        if (size.length)
+            return Number.parseInt(size);
+        return 10; // default somewhere else?
+    }
+    _calcContentHeight() {
+        return 1;
+    }
+    _updateContentHeight() { }
+    // DRAWING
+    _drawContent(buffer) {
+        const fg = this.used('fg') || 'white';
+        const top = this.innerTop;
+        const width = this.innerWidth;
+        const left = this.innerLeft;
+        const align = this.used('align');
+        buffer.drawText(left, top, this.prop('value'), fg, -1, width, align);
+    }
+    // EVENTS
+    keypress(document, _element, e) {
+        if (!e)
+            return false;
+        if (e.key === 'Enter') {
+            document.nextTabStop();
+            return true;
+        }
+        if (e.key === 'Escape') {
+            this._setProp('value', '');
+            return true;
+        }
+        if (e.key === 'Backspace' || e.key === 'Delete') {
+            const v = this._props.value ? '' + this._props.value : '';
+            this._setProp('value', v.substring(0, v.length - 1));
+            return true;
+        }
+        if (e.key.length > 1) {
+            return false;
+        }
+        let v = this._props.value ? this._props.value : '';
+        this._setProp('value', v + e.key);
+        return true;
+    }
+}
+installElement('input', (tag, sheet) => {
+    return new Input(tag, sheet);
+});
 
 class Document {
     constructor(ui, rootTag = 'body') {
@@ -4130,9 +4225,12 @@ var index = /*#__PURE__*/Object.freeze({
     ComputedStyle: ComputedStyle,
     Sheet: Sheet,
     Element: Element,
+    elements: elements,
+    installElement: installElement,
     makeElement: makeElement,
+    Input: Input,
     Document: Document,
     Selection: Selection
 });
 
-export { ActionButton, ActorEntry, Box, Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input, ItemEntry, List, Menu, MenuButton, Messages, Sidebar, Table, Text, UI, Viewport, Widget, buildDialog, index as html, makeTable, showDropDown };
+export { ActionButton, ActorEntry, Box, Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input$1 as Input, ItemEntry, List, Menu, MenuButton, Messages, Sidebar, Table, Text, UI, Viewport, Widget, buildDialog, index as html, makeTable, showDropDown };

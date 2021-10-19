@@ -4813,6 +4813,10 @@
     function splitIntoLines(source, width = 200, indent = 0) {
         const CS = options.colorStart;
         const output = [];
+        if (!source)
+            return output;
+        if (width <= 0)
+            width = 200;
         let text = wordWrap(source, width, indent);
         let start = 0;
         let fg0 = null;

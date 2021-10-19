@@ -3,4 +3,5 @@ export * from './callbacks';
 export * from './selector';
 export * from './style';
 export * from './element';
+export * from './input';
 export * from './document';

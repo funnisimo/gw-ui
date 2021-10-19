@@ -5,4 +5,6 @@ export * from './style';
 export * from './element';
 export * from './input';
 export * from './checkbox';
+export * from './button';
+export * from './fieldset';
 export * from './document';

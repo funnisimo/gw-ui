@@ -33,6 +33,36 @@ describe('Element', () => {
         expect(w.bounds).toMatchObject({ x: 0, y: 0, width: 7, height: 1 });
     });
 
+    test('make - tag only', () => {
+        const e = Element.makeElement('<div>');
+        expect(e.tag).toEqual('div');
+    });
+
+    test('make - text only', () => {
+        const e = Element.makeElement('<div>Text</div>');
+        expect(e.tag).toEqual('div');
+        expect(e.text()).toEqual('Text');
+    });
+
+    test('make - attributes', () => {
+        const e = Element.makeElement('<div id=A form="B" >');
+        expect(e.tag).toEqual('div');
+        expect(e.attr('id')).toEqual('A');
+        expect(e.attr('form')).toEqual('B');
+    });
+
+    test('make - attributes+props+text', () => {
+        const e = Element.makeElement(
+            '<div id=A form="B" checked disabled>Text</div>'
+        );
+        expect(e.tag).toEqual('div');
+        expect(e.attr('id')).toEqual('A');
+        expect(e.attr('form')).toEqual('B');
+        expect(e.prop('checked')).toBeTruthy();
+        expect(e.prop('disabled')).toBeTruthy();
+        expect(e.text()).toEqual('Text');
+    });
+
     // CLONE
 
     test('clone', () => {

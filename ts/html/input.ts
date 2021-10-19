@@ -4,6 +4,11 @@ import * as Style from './style';
 import * as Element from './element';
 import { Document } from './document';
 
+Style.defaultStyle.add('input', {
+    fg: 'black',
+    bg: 'gray',
+});
+
 export class Input extends Element.Element {
     constructor(tag: string, sheet?: Style.Sheet) {
         super(tag, sheet);

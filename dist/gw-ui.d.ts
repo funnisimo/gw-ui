@@ -77,7 +77,7 @@ declare class Text extends Widget {
 
 interface ButtonOptions extends WidgetOptions {
 }
-declare class Button extends Widget {
+declare class Button$1 extends Widget {
     constructor(id: string, opts?: ButtonOptions);
     init(opts: ButtonOptions): void;
     click(ev: GWU.io.Event, dialog: WidgetRunner): Promise<boolean>;
@@ -934,6 +934,22 @@ declare class CheckBox extends Element {
     click(document: Document, _element: Element, e?: GWU.io.Event): boolean;
 }
 
+declare class Button extends Element {
+    static default: {
+        clickfocus: boolean;
+    };
+    constructor(tag: string, sheet?: Sheet);
+    protected _setAttr(name: string, value: string): void;
+    keypress(document: Document, _element: Element, e?: GWU.io.Event): boolean;
+    click(document: Document, _element: Element, e?: GWU.io.Event): boolean;
+}
+
+declare class FieldSet extends Element {
+    static default: Record<string, PropType>;
+    constructor(tag: string, sheet?: Sheet);
+    _drawBorder(buffer: GWU.canvas.DataBuffer): void;
+}
+
 type index_d_Size = Size;
 type index_d_PropType = PropType;
 type index_d_Selectable = Selectable;
@@ -967,6 +983,10 @@ type index_d_Input = Input;
 declare const index_d_Input: typeof Input;
 type index_d_CheckBox = CheckBox;
 declare const index_d_CheckBox: typeof CheckBox;
+type index_d_Button = Button;
+declare const index_d_Button: typeof Button;
+type index_d_FieldSet = FieldSet;
+declare const index_d_FieldSet: typeof FieldSet;
 type index_d_EventCb = EventCb;
 type index_d_FxFn = FxFn;
 type index_d_Fx = Fx;
@@ -1004,6 +1024,8 @@ declare namespace index_d {
     index_d_makeElement as makeElement,
     index_d_Input as Input,
     index_d_CheckBox as CheckBox,
+    index_d_Button as Button,
+    index_d_FieldSet as FieldSet,
     index_d_EventCb as EventCb,
     index_d_FxFn as FxFn,
     index_d_Fx as Fx,
@@ -1015,4 +1037,4 @@ declare namespace index_d {
   };
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList, DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text, TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, index_d as html, makeTable, showDropDown };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$1 as Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList, DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text, TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, index_d as html, makeTable, showDropDown };

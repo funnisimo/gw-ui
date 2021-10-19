@@ -442,7 +442,3 @@ defaultStyle.add('*', {
     valign: 'top',
     position: 'static',
 });
-defaultStyle.add('input', {
-    fg: 'black',
-    bg: 'gray',
-});

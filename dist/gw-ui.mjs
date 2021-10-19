@@ -186,7 +186,7 @@ class Text extends Widget {
     }
 }
 
-class Button extends Widget {
+class Button$1 extends Widget {
     constructor(id, opts) {
         super(id, opts);
     }
@@ -1117,9 +1117,9 @@ class UI {
         const cancelOpts = Object.assign({}, opts.buttons, { text: 'CANCEL' }, opts.cancel);
         const builder = buildDialog(this, width, height)
             .with(textWidget, { x: 0, y: 0 })
-            .with(new Button('OK', okOpts), { x: 0, bottom: 0 });
+            .with(new Button$1('OK', okOpts), { x: 0, bottom: 0 });
         if (opts.allowCancel) {
-            builder.with(new Button('CANCEL', cancelOpts), {
+            builder.with(new Button$1('CANCEL', cancelOpts), {
                 right: 0,
                 bottom: 0,
             });
@@ -1215,10 +1215,10 @@ class UI {
         const builder = buildDialog(this, width, height)
             .with(promptWidget, { x: 0, y: 0 })
             .with(inputWidget, { bottom: 2, x: 0 })
-            .with(new Button('OK', okOpts), { bottom: 0, x: 0 })
+            .with(new Button$1('OK', okOpts), { bottom: 0, x: 0 })
             .addBox(opts.box);
         if (opts.allowCancel) {
-            builder.with(new Button('CANCEL', cancelOpts), {
+            builder.with(new Button$1('CANCEL', cancelOpts), {
                 bottom: 0,
                 right: 0,
             });
@@ -2859,10 +2859,6 @@ defaultStyle.add('*', {
     valign: 'top',
     position: 'static',
 });
-defaultStyle.add('input', {
-    fg: 'black',
-    bg: 'gray',
-});
 
 class Element {
     // hovered: Style.Style = {};
@@ -3545,37 +3541,44 @@ function makeElement(tag, stylesheet) {
         if (!tag.endsWith('>'))
             throw new Error('Need brackets around new tag - e.g. "<tag>"');
     }
-    const fieldRE = /(\w+)( *= *(\'([^\']*)\'|\"([^\"]*)\"|(\w+)))?/;
-    const endRE = / *>/;
-    const textRE = /(.+?)(?=(<\/|$))/;
+    const tagRE = /<(\w+)/g;
+    const fieldRE = /(\w+)(?: *= *(?:(?:\'([^\']*)\')|(?:\"([^\"]*)\")|(\w+)))?/g;
+    const endRE = / *>/g;
+    const textRE = />(.+?)(?=(<\/|$))/g;
     const parts = {};
+    const tag_re = new RegExp(tagRE, 'g');
     const field_re = new RegExp(fieldRE, 'g');
     const end_re = new RegExp(endRE, 'g');
     const text_re = new RegExp(textRE, 'g');
     // console.log('PARSE', tag);
-    let match = field_re.exec(tag);
+    let match = tag_re.exec(tag);
     if (!match) {
         parts.tag = 'div';
     }
     else {
         parts.tag = match[1];
-        match = field_re.exec(tag);
-        while (match) {
-            // console.log(match);
-            parts[match[1]] = match[4] || match[5] || match[6] || true;
-            end_re.lastIndex = field_re.lastIndex;
-            const endM = end_re.exec(tag);
-            if (endM && endM.index == field_re.lastIndex) {
-                // console.log('endM', endM);
-                text_re.lastIndex = end_re.lastIndex;
-                const tm = text_re.exec(tag);
-                // console.log(tm);
-                if (tm) {
-                    parts.text = tm[1];
-                }
-                break;
-            }
+        if (tag[tag_re.lastIndex] === ' ') {
+            field_re.lastIndex = tag_re.lastIndex;
             match = field_re.exec(tag);
+            while (match) {
+                // console.log(match);
+                parts[match[1]] = match[2] || match[3] || match[4] || true;
+                text_re.lastIndex = field_re.lastIndex;
+                end_re.lastIndex = field_re.lastIndex;
+                const endMatch = end_re.exec(tag);
+                if (endMatch && endMatch.index === field_re.lastIndex) {
+                    break;
+                }
+                match = field_re.exec(tag);
+            }
+        }
+        else {
+            text_re.lastIndex = tag_re.lastIndex;
+        }
+        const tm = text_re.exec(tag);
+        // console.log(tm);
+        if (tm) {
+            parts.text = tm[1];
         }
         // console.log(parts);
     }
@@ -3616,6 +3619,10 @@ function makeElement(tag, stylesheet) {
     return e;
 }
 
+defaultStyle.add('input', {
+    fg: 'black',
+    bg: 'gray',
+});
 class Input extends Element {
     constructor(tag, sheet) {
         super(tag, sheet);
@@ -3826,6 +3833,105 @@ CheckBox.default = {
 };
 installElement('checkbox', (tag, sheet) => {
     return new CheckBox(tag, sheet);
+});
+
+defaultStyle.add('button', {
+    fg: 'black',
+    bg: 'gray',
+});
+class Button extends Element {
+    constructor(tag, sheet) {
+        super(tag, sheet);
+        this.on('keypress', this.keypress.bind(this));
+        this.on('click', this.click.bind(this));
+        this.prop('tabindex', true);
+        Object.entries(Button.default).forEach(([key, value]) => {
+            if (typeof value === 'boolean') {
+                this.prop(key, value);
+            }
+            else {
+                this.attr(key, value);
+            }
+        });
+    }
+    // ATTRIBUTES
+    _setAttr(name, value) {
+        this._attrs[name] = value;
+        if (name === 'value') {
+            this._setProp('value', value);
+        }
+    }
+    // PROPERTIES
+    // CONTENT
+    // DRAWING
+    // EVENTS
+    keypress(document, _element, e) {
+        if (!e)
+            return false;
+        if (e.key === 'Enter' || e.key === ' ') {
+            document._fireEvent(this, 'click', e);
+            return true;
+        }
+        return false;
+    }
+    click(document, _element, e) {
+        if (!e)
+            return false;
+        if (!this.contains(e))
+            return false;
+        if (this.prop('clickfocus')) {
+            document.setActiveElement(this);
+        }
+        return true;
+    }
+}
+Button.default = {
+    clickfocus: false,
+};
+installElement('button', (tag, sheet) => {
+    return new Button(tag, sheet);
+});
+
+defaultStyle.add('fieldset', {
+    margin: 1,
+    border: 'dark_gray',
+    fg: 'white',
+    bg: -1,
+    padding: 1,
+});
+class FieldSet extends Element {
+    constructor(tag, sheet) {
+        super(tag, sheet);
+        Object.entries(FieldSet.default).forEach(([key, value]) => {
+            if (typeof value === 'boolean') {
+                this.prop(key, value);
+            }
+            else if (value !== undefined) {
+                this.attr(key, '' + value);
+            }
+        });
+    }
+    // ATTRIBUTES
+    // PROPERTIES
+    // CONTENT
+    // DRAWING
+    _drawBorder(buffer) {
+        super._drawBorder(buffer);
+        const legend = this.attr('legend');
+        if (!legend || legend.length == 0)
+            return;
+        const used = this._usedStyle;
+        const fg = used.fg || 'white';
+        const top = this.innerTop - (used.padTop || 0) - 1; // -1 for border
+        const width = this.innerWidth;
+        const left = this.innerLeft;
+        const align = used.align;
+        buffer.drawText(left, top, legend, fg, -1, width, align);
+    }
+}
+FieldSet.default = {};
+installElement('fieldset', (tag, sheet) => {
+    return new FieldSet(tag, sheet);
 });
 
 class Document {
@@ -4466,8 +4572,10 @@ var index = /*#__PURE__*/Object.freeze({
     makeElement: makeElement,
     Input: Input,
     CheckBox: CheckBox,
+    Button: Button,
+    FieldSet: FieldSet,
     Document: Document,
     Selection: Selection
 });
 
-export { ActionButton, ActorEntry, Box, Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input$1 as Input, ItemEntry, List, Menu, MenuButton, Messages, Sidebar, Table, Text, UI, Viewport, Widget, buildDialog, index as html, makeTable, showDropDown };
+export { ActionButton, ActorEntry, Box, Button$1 as Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input$1 as Input, ItemEntry, List, Menu, MenuButton, Messages, Sidebar, Table, Text, UI, Viewport, Widget, buildDialog, index as html, makeTable, showDropDown };

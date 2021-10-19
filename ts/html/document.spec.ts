@@ -72,6 +72,14 @@ describe('Document', () => {
         expect(div.text()).toEqual('Text');
     });
 
+    test('append', () => {
+        const f = document.$('body');
+        f.append('<div>Text</div>');
+        expect(document.body.children).toHaveLength(1);
+        const d = document.body.children[0];
+        expect(d.text()).toEqual('Text');
+    });
+
     test('updateLayout - simple text box', () => {
         document.$('<text>').text('test').appendTo('body');
 

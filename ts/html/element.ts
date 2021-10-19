@@ -856,40 +856,47 @@ export function makeElement(tag: string, stylesheet?: Style.Sheet): Element {
             throw new Error('Need brackets around new tag - e.g. "<tag>"');
     }
 
-    const fieldRE = /(\w+)( *= *(\'([^\']*)\'|\"([^\"]*)\"|(\w+)))?/;
-    const endRE = / *>/;
-    const textRE = /(.+?)(?=(<\/|$))/;
+    const tagRE = /<(\w+)/g;
+    const fieldRE =
+        /(\w+)(?: *= *(?:(?:\'([^\']*)\')|(?:\"([^\"]*)\")|(\w+)))?/g;
+    const endRE = / *>/g;
+    const textRE = />(.+?)(?=(<\/|$))/g;
 
     const parts: Record<string, string | boolean> = {};
+    const tag_re = new RegExp(tagRE, 'g');
     const field_re = new RegExp(fieldRE, 'g');
     const end_re = new RegExp(endRE, 'g');
     const text_re = new RegExp(textRE, 'g');
 
     // console.log('PARSE', tag);
 
-    let match = field_re.exec(tag);
+    let match = tag_re.exec(tag);
     if (!match) {
         parts.tag = 'div';
     } else {
         parts.tag = match[1];
-        match = field_re.exec(tag);
-        while (match) {
-            // console.log(match);
-            parts[match[1]] = match[4] || match[5] || match[6] || true;
-
-            end_re.lastIndex = field_re.lastIndex;
-            const endM = end_re.exec(tag);
-            if (endM && endM.index == field_re.lastIndex) {
-                // console.log('endM', endM);
-                text_re.lastIndex = end_re.lastIndex;
-                const tm = text_re.exec(tag);
-                // console.log(tm);
-                if (tm) {
-                    parts.text = tm[1];
-                }
-                break;
-            }
+        if (tag[tag_re.lastIndex] === ' ') {
+            field_re.lastIndex = tag_re.lastIndex;
             match = field_re.exec(tag);
+            while (match) {
+                // console.log(match);
+                parts[match[1]] = match[2] || match[3] || match[4] || true;
+
+                text_re.lastIndex = field_re.lastIndex;
+                end_re.lastIndex = field_re.lastIndex;
+                const endMatch = end_re.exec(tag);
+                if (endMatch && endMatch.index === field_re.lastIndex) {
+                    break;
+                }
+                match = field_re.exec(tag);
+            }
+        } else {
+            text_re.lastIndex = tag_re.lastIndex;
+        }
+        const tm = text_re.exec(tag);
+        // console.log(tm);
+        if (tm) {
+            parts.text = tm[1];
         }
         // console.log(parts);
     }

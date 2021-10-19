@@ -141,14 +141,17 @@ export class Document {
         return this;
     }
 
-    computeStyles() {
+    computeStyles(): boolean {
+        let anyChanged = false;
         this.children.forEach((w) => {
             if (w.used().dirty || this.stylesheet.dirty) {
                 w.used(this.stylesheet.computeFor(w));
+                anyChanged = true;
             }
         });
 
         this.stylesheet.dirty = false;
+        return anyChanged;
     }
 
     updateLayout(widget?: Element) {
@@ -157,11 +160,18 @@ export class Document {
     }
 
     draw(buffer?: GWU.canvas.Buffer) {
-        this.computeStyles();
+        if (this._prepareDraw()) {
+            buffer = buffer || this.ui.buffer;
+            this.body.draw(buffer);
+            buffer.render();
+            // console.log('draw');
+        }
+    }
+
+    protected _prepareDraw() {
+        if (!this.computeStyles()) return this.children.some((c) => c.dirty);
         this.updateLayout();
-        buffer = buffer || this.ui.buffer;
-        this.body.draw(buffer);
-        buffer.render();
+        return true;
     }
 
     // activeElement
@@ -185,9 +195,9 @@ export class Document {
         }
         if (w && this._fireEvent(w, 'focus', opts)) return false;
 
-        if (this._activeElement) this._activeElement.onblur();
+        if (this._activeElement) this._activeElement.onblur(this);
         this._activeElement = w;
-        if (this._activeElement) this._activeElement.onfocus(reverse);
+        if (this._activeElement) this._activeElement.onfocus(this, reverse);
 
         return true;
     }
@@ -277,6 +287,7 @@ export class Document {
         let element: Element | null = this.elementFromPoint(e.x, e.y);
         if (!element) return false;
 
+        if (element.prop('disabled')) return false;
         if (this._bubbleEvent(element, 'click', e)) return this._done;
 
         if (element.prop('tabindex')) {
@@ -286,14 +297,20 @@ export class Document {
     }
 
     mousemove(e: GWU.io.Event): boolean {
-        this.children.forEach((w) => w.prop('hover', false));
         let element: Element | null = this.elementFromPoint(e.x, e.y);
+        const hovered: Element[] = [];
 
         let current: Element | null = element;
         while (current) {
+            hovered.push(current);
             current.prop('hover', true);
             current = current.parent;
         }
+
+        this.children.forEach((w) => {
+            if (hovered.includes(w)) return;
+            w.prop('hover', false);
+        });
 
         if (element && this._bubbleEvent(element, 'mousemove', e))
             return this._done;

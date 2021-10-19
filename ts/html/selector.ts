@@ -113,7 +113,18 @@ export class Selector {
                 fn = matchNot(matchProp(match[3]));
             } else {
                 this.priority += 1; // prop
-                fn = matchProp(match[4]);
+                const prop = match[4];
+                if (prop === 'invalid') {
+                    fn = matchNot(matchProp('valid'));
+                } else if (prop === 'optional') {
+                    fn = matchNot(matchProp('required'));
+                } else if (prop === 'enabled') {
+                    fn = matchNot(matchProp('disabled'));
+                } else if (prop === 'unchecked') {
+                    fn = matchNot(matchProp('checked'));
+                } else {
+                    fn = matchProp(match[4]);
+                }
             }
 
             this.match.push(fn);

@@ -22,6 +22,7 @@ describe('Element', () => {
             body,
             ui,
             nextTabStop: jest.fn(),
+            _fireEvent: jest.fn(),
         } as unknown as Document.Document;
     }
 
@@ -53,17 +54,147 @@ describe('Element', () => {
     });
 
     test('typing', () => {
-        const el = Element.makeElement('<input type=text>') as Input.Input;
+        const el = Element.makeElement('<input>') as Input.Input;
         expect(el).toBeInstanceOf(Input.Input);
 
         el.keypress(doc, el, UTILS.keypress('t'));
+        expect(doc._fireEvent).toHaveBeenCalledWith(
+            el,
+            'input',
+            expect.anything()
+        );
+        expect(doc._fireEvent).not.toHaveBeenCalledWith(el, 'change');
+
         el.keypress(doc, el, UTILS.keypress('e'));
         el.keypress(doc, el, UTILS.keypress('s'));
         el.keypress(doc, el, UTILS.keypress('t'));
+        expect(doc._fireEvent).toHaveBeenCalledTimes(4);
 
         expect(el.val()).toEqual('test');
 
+        // @ts-ignore
+        doc._fireEvent.mockClear();
         el.keypress(doc, el, UTILS.keypress('Backspace'));
         expect(el.val()).toEqual('tes');
+        expect(doc._fireEvent).toHaveBeenCalledWith(
+            el,
+            'input',
+            expect.anything()
+        );
+        expect(doc._fireEvent).not.toHaveBeenCalledWith(el, 'change');
+
+        // @ts-ignore
+        doc._fireEvent.mockClear();
+        el.onblur(doc);
+        expect(doc._fireEvent).not.toHaveBeenCalledWith(
+            el,
+            'input',
+            expect.anything()
+        );
+        expect(doc._fireEvent).toHaveBeenCalledWith(el, 'change');
+    });
+
+    describe('isValid', () => {
+        test('basic text', () => {
+            const el = Element.makeElement('<input>') as Input.Input;
+            expect(el.prop('empty')).toBeTruthy();
+            expect(el.prop('valid')).toBeTruthy();
+
+            el.val('test');
+            expect(el.prop('valid')).toBeTruthy();
+            expect(el.prop('empty')).toBeFalsy();
+
+            el.val('');
+            expect(el.prop('valid')).toBeTruthy();
+            expect(el.prop('empty')).toBeTruthy();
+        });
+
+        test('min/max Length', () => {
+            const el = Element.makeElement(
+                '<input minLength=3 maxLength=6>'
+            ) as Input.Input;
+            expect(el.val()).toEqual('');
+            expect(el.prop('empty')).toBeTruthy();
+            expect(el.prop('valid')).toBeFalsy();
+
+            el.val('test');
+            expect(el.prop('valid')).toBeTruthy();
+            expect(el.prop('empty')).toBeFalsy();
+
+            el.val('te');
+            expect(el.prop('valid')).toBeFalsy();
+            expect(el.prop('empty')).toBeFalsy();
+
+            el.val('');
+            expect(el.prop('valid')).toBeFalsy();
+            expect(el.prop('empty')).toBeTruthy();
+        });
+
+        test('required', () => {
+            const el = Element.makeElement('<input required>') as Input.Input;
+            // console.log(el._props, el._attrs);
+            expect(el.val()).toEqual('');
+            expect(el.prop('required')).toBeTruthy();
+            expect(el.prop('empty')).toBeTruthy();
+            expect(el.prop('valid')).toBeFalsy();
+
+            el.prop('required', false);
+            expect(el.prop('valid')).toBeTruthy();
+            expect(el.prop('empty')).toBeTruthy();
+
+            el.prop('required', true);
+            expect(el.prop('valid')).toBeFalsy();
+            expect(el.prop('empty')).toBeTruthy();
+
+            el.val('test');
+            expect(el.prop('valid')).toBeTruthy();
+            expect(el.prop('empty')).toBeFalsy();
+
+            el.val('');
+            expect(el.prop('valid')).toBeFalsy();
+            expect(el.prop('empty')).toBeTruthy();
+        });
+
+        test('min/max', () => {
+            const el = Element.makeElement(
+                '<input type=number min=3 max=16>'
+            ) as Input.Input;
+            expect(el.val()).toEqual('');
+            expect(el.prop('valid')).toBeFalsy();
+
+            el.val('5');
+            expect(el.prop('valid')).toBeTruthy();
+
+            el.val('15');
+            expect(el.prop('valid')).toBeTruthy();
+
+            el.val('2');
+            expect(el.prop('valid')).toBeFalsy();
+            el.val('21');
+            expect(el.prop('valid')).toBeFalsy();
+            el.val('');
+            expect(el.prop('valid')).toBeFalsy();
+        });
+
+        test('min/max - text ignores', () => {
+            const el = Element.makeElement(
+                '<input min=3 max=16>'
+            ) as Input.Input;
+            expect(el.val()).toEqual('');
+            expect(el.prop('valid')).toBeTruthy();
+
+            el.val('5');
+            expect(el.prop('valid')).toBeTruthy();
+
+            el.val('15');
+            expect(el.prop('valid')).toBeTruthy();
+
+            el.val('2');
+            expect(el.prop('valid')).toBeTruthy();
+            el.val('21');
+            expect(el.prop('valid')).toBeTruthy();
+            el.val('');
+            expect(el.prop('valid')).toBeTruthy();
+        });
     });
 });

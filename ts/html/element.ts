@@ -1,6 +1,6 @@
 import * as GWU from 'gw-utils';
 import { Size, PropType, Selectable } from './types';
-import { EventCb } from './document';
+import { EventCb, Document } from './document';
 import * as Style from './style';
 
 export interface PosOptions {
@@ -108,6 +108,30 @@ export class Element implements Selectable {
         this._attrs[name] = value;
     }
 
+    protected _attrInt(name: string, def = 0): number {
+        let v = this._attrs[name];
+        if (v === undefined) return def;
+        if (typeof v === 'string') {
+            return Number.parseInt(v);
+        } else if (typeof v === 'boolean') {
+            return v ? 1 : 0;
+        }
+        return v;
+    }
+
+    protected _attrString(name: string): string {
+        let v = this._attrs[name] || '';
+        if (typeof v === 'string') return v;
+        return '' + v;
+    }
+
+    protected _attrBool(name: string): boolean {
+        const v = this._attrs[name] || false;
+        if (typeof v === 'boolean') return v;
+        if (typeof v === 'number') return v != 0;
+        return v.length > 0 && v !== 'false';
+    }
+
     // PROPS
 
     prop(name: string): PropType;
@@ -115,18 +139,18 @@ export class Element implements Selectable {
     prop(name: string, value?: PropType): this | PropType {
         if (value === undefined) return this._props[name];
         this._setProp(name, value);
-        this._usedStyle.dirty = true; // Need to reload styles
         return this;
     }
 
     protected _setProp(name: string, value: PropType) {
+        if (this._props[name] === value) return;
         this._props[name] = value;
+        this._usedStyle.dirty = true; // Need to reload styles
     }
 
     toggleProp(name: string): this {
         const v = this._props[name] || false;
-        this._props[name] = !v;
-        this._usedStyle.dirty = true; // Need to reload styles
+        this._setProp(name, !v);
         return this;
     }
 
@@ -138,12 +162,34 @@ export class Element implements Selectable {
         return this;
     }
 
-    onblur() {
+    onblur(_doc: Document) {
         this.prop('focus', false);
     }
 
-    onfocus(_reverse: boolean) {
+    onfocus(_doc: Document, _reverse: boolean) {
         this.prop('focus', true);
+    }
+
+    protected _propInt(name: string, def = 0): number {
+        let v = this._props[name];
+        if (v === undefined) return def;
+        if (typeof v === 'string') {
+            return Number.parseInt(v);
+        } else if (typeof v === 'boolean') {
+            return v ? 1 : 0;
+        }
+        return v;
+    }
+
+    protected _propString(name: string): string {
+        let v = this._props[name] || '';
+        if (typeof v === 'string') return v;
+        return '' + v;
+    }
+
+    protected _propBool(name: string): boolean {
+        const v = this._props[name] || false;
+        return !!v;
     }
 
     // CHILDREN
@@ -650,6 +696,7 @@ export class Element implements Selectable {
         if (v === undefined) return this._text;
         this._text = v;
         this.dirty = true;
+        this._usedStyle.dirty = true; // We need to re-layout the _lines (which possibly affects width+height)
         return this;
     }
 
@@ -690,6 +737,7 @@ export class Element implements Selectable {
             this._drawContent(buffer);
         }
 
+        this.dirty = false;
         return true;
     }
 

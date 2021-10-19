@@ -675,7 +675,7 @@ declare class ComputedStyle extends Style {
 declare class Sheet {
     rules: Style[];
     _dirty: boolean;
-    constructor(parentSheet?: Sheet);
+    constructor(parentSheet?: Sheet | null);
     get dirty(): boolean;
     set dirty(v: boolean);
     add(selector: string, props: StyleOptions): Style;
@@ -683,6 +683,7 @@ declare class Sheet {
     remove(selector: string): void;
     computeFor(widget: Stylable): ComputedStyle;
 }
+declare const defaultStyle: Sheet;
 
 declare type EventCb = (document: Document, element: Element, io?: GWU.io.Event) => boolean;
 declare type FxFn = () => void;
@@ -708,9 +709,10 @@ declare class Document {
     removeRule(rule: string): this;
     _attach(w: Element | Element[]): this;
     _detach(w: Element | Element[]): this;
-    computeStyles(): void;
+    computeStyles(): boolean;
     updateLayout(widget?: Element): void;
     draw(buffer?: GWU.canvas.Buffer): void;
+    protected _prepareDraw(): boolean;
     get activeElement(): Element | null;
     setActiveElement(w: Element | null, reverse?: boolean): boolean;
     nextTabStop(): boolean;
@@ -834,14 +836,20 @@ declare class Element implements Selectable {
     attr(name: string): string;
     attr(name: string, value: string): this;
     protected _setAttr(name: string, value: string): void;
+    protected _attrInt(name: string, def?: number): number;
+    protected _attrString(name: string): string;
+    protected _attrBool(name: string): boolean;
     prop(name: string): PropType;
     prop(name: string, value: PropType): this;
     protected _setProp(name: string, value: PropType): void;
     toggleProp(name: string): this;
     val(): PropType;
     val(v: PropType): this;
-    onblur(): void;
-    onfocus(_reverse: boolean): void;
+    onblur(_doc: Document): void;
+    onfocus(_doc: Document, _reverse: boolean): void;
+    protected _propInt(name: string, def?: number): number;
+    protected _propString(name: string): string;
+    protected _propBool(name: string): boolean;
     addChild(child: Element, beforeIndex?: number): this;
     removeChild(child: Element): this;
     empty(): Element[];
@@ -899,10 +907,13 @@ declare class Input extends Element {
     constructor(tag: string, sheet?: Sheet);
     protected _setAttr(name: string, value: string): void;
     protected _setProp(name: string, value: PropType): void;
+    get isTypeNumber(): boolean;
     _calcContentWidth(): number;
     _calcContentHeight(): number;
     _updateContentHeight(): void;
+    isValid(): boolean;
     _drawContent(buffer: GWU.canvas.DataBuffer): void;
+    onblur(doc: Document): void;
     keypress(document: Document, _element: Element, e?: GWU.io.Event): boolean;
 }
 
@@ -926,6 +937,7 @@ type index_d_ComputedStyle = ComputedStyle;
 declare const index_d_ComputedStyle: typeof ComputedStyle;
 type index_d_Sheet = Sheet;
 declare const index_d_Sheet: typeof Sheet;
+declare const index_d_defaultStyle: typeof defaultStyle;
 type index_d_PosOptions = PosOptions;
 type index_d_SizeOptions = SizeOptions;
 type index_d_Element = Element;
@@ -963,6 +975,7 @@ declare namespace index_d {
     index_d_Style as Style,
     index_d_ComputedStyle as ComputedStyle,
     index_d_Sheet as Sheet,
+    index_d_defaultStyle as defaultStyle,
     index_d_PosOptions as PosOptions,
     index_d_SizeOptions as SizeOptions,
     index_d_Element as Element,

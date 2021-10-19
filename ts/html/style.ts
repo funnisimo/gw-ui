@@ -357,19 +357,12 @@ export class Sheet {
     rules: Style[] = [];
     _dirty = true;
 
-    constructor(parentSheet?: Sheet) {
+    constructor(parentSheet?: Sheet | null) {
+        if (parentSheet === undefined) {
+            parentSheet = defaultStyle;
+        }
         if (parentSheet) {
             this.rules = parentSheet.rules.slice();
-        } else {
-            this.rules.push(
-                new Style('*', {
-                    fg: 'white',
-                    bg: 'black',
-                    align: 'left',
-                    valign: 'top',
-                    position: 'static',
-                })
-            );
         }
     }
 
@@ -396,9 +389,6 @@ export class Sheet {
             throw new Error('Hierarchical selectors not supported.');
         // if 2 '.' - Error('Only single class rules supported.')
         // if '&' - Error('Not supported.')
-
-        if (selector === '*')
-            throw new Error('Cannot re-install global style.');
 
         let rule = new Style(selector, props);
         const existing = this.rules.findIndex(
@@ -442,3 +432,17 @@ export class Sheet {
         return new ComputedStyle(sources);
     }
 }
+
+export const defaultStyle = new Sheet(null);
+
+defaultStyle.add('*', {
+    fg: 'white',
+    bg: 'black',
+    align: 'left',
+    valign: 'top',
+    position: 'static',
+});
+defaultStyle.add('input', {
+    fg: 'black',
+    bg: 'gray',
+});

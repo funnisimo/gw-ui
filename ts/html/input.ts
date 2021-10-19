@@ -9,20 +9,45 @@ export class Input extends Element.Element {
         super(tag, sheet);
         this.on('keypress', this.keypress.bind(this));
         this.prop('tabindex', true);
+        this.prop('value', '');
     }
+
+    // reset() {
+    //     this.prop('value', this._attrString('value'));
+    // }
 
     // ATTRIBUTES
 
     protected _setAttr(name: string, value: string) {
-        this._attrs[name] = value;
+        super._setAttr(name, value);
         if (name === 'value') {
             this._setProp('value', value);
         }
+        super._setProp('valid', this.isValid());
     }
 
     protected _setProp(name: string, value: PropType) {
-        this._props[name] = value;
+        if (name === 'value') {
+            value = '' + value;
+            const maxLength = this._attrInt('maxLength', 0);
+            if (maxLength && value.length > maxLength) {
+                value = value.substring(0, maxLength);
+            }
+            super._setProp('empty', value.length == 0);
+            this._props.value = value;
+            this.dirty = true;
+        } else {
+            super._setProp(name, value);
+        }
+
+        super._setProp('valid', this.isValid());
     }
+
+    get isTypeNumber(): boolean {
+        return this._attrs.type === 'number';
+    }
+
+    // PROPERTIES
 
     // CONTENT
 
@@ -38,6 +63,31 @@ export class Input extends Element.Element {
 
     _updateContentHeight() {}
 
+    isValid(): boolean {
+        const v = this._propString('value');
+        if (this.isTypeNumber) {
+            const val = this._propInt('value');
+            const min = this._attrInt('min', Number.MIN_SAFE_INTEGER);
+            if (val < min) return false;
+            const max = this._attrInt('max', Number.MAX_SAFE_INTEGER);
+            if (val > max) return false;
+            return v.length > 0;
+        }
+        const requiredLen = this._propInt('required', 0);
+        // console.log(
+        //     'required',
+        //     this._attrs.required,
+        //     requiredLen,
+        //     v,
+        //     v.length,
+        //     this._attrInt('minLength', requiredLen)
+        // );
+        return (
+            v.length >= this._attrInt('minLength', requiredLen) &&
+            v.length <= this._attrInt('maxLength', Number.MAX_SAFE_INTEGER)
+        );
+    }
+
     // DRAWING
 
     _drawContent(buffer: GWU.canvas.DataBuffer) {
@@ -46,18 +96,23 @@ export class Input extends Element.Element {
         const width = this.innerWidth;
         const left = this.innerLeft;
         const align = this.used('align');
-        buffer.drawText(
-            left,
-            top,
-            this.prop('value') as string,
-            fg,
-            -1,
-            width,
-            align
-        );
+
+        let v = this._propString('value');
+        if (v.length == 0) {
+            v = this._attrString('placeholder');
+        }
+
+        buffer.drawText(left, top, v, fg, -1, width, align);
     }
 
     // EVENTS
+
+    onblur(doc: Document) {
+        super.onblur(doc);
+        if (this.val() !== this.attr('value')) {
+            doc._fireEvent(this, 'change');
+        }
+    }
 
     keypress(
         document: Document,
@@ -72,18 +127,28 @@ export class Input extends Element.Element {
         }
         if (e.key === 'Escape') {
             this._setProp('value', '');
+            document._fireEvent(this, 'input', e);
             return true;
         }
         if (e.key === 'Backspace' || e.key === 'Delete') {
-            const v = this._props.value ? '' + this._props.value : '';
+            const v = this._propString('value');
             this._setProp('value', v.substring(0, v.length - 1));
+            document._fireEvent(this, 'input', e);
             return true;
         }
         if (e.key.length > 1) {
             return false;
         }
-        let v = this._props.value ? this._props.value : '';
-        this._setProp('value', v + e.key);
+
+        const textEntryBounds = this.isTypeNumber ? ['0', '9'] : [' ', '~'];
+
+        // eat/use all other keys
+        if (e.key >= textEntryBounds[0] && e.key <= textEntryBounds[1]) {
+            // allow only permitted input
+            const v = this._propString('value');
+            this._setProp('value', v + e.key);
+            document._fireEvent(this, 'input', e);
+        }
         return true;
     }
 }

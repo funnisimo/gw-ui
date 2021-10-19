@@ -2535,7 +2535,22 @@
                 }
                 else {
                     this.priority += 1; // prop
-                    fn = matchProp(match[4]);
+                    const prop = match[4];
+                    if (prop === 'invalid') {
+                        fn = matchNot(matchProp('valid'));
+                    }
+                    else if (prop === 'optional') {
+                        fn = matchNot(matchProp('required'));
+                    }
+                    else if (prop === 'enabled') {
+                        fn = matchNot(matchProp('disabled'));
+                    }
+                    else if (prop === 'unchecked') {
+                        fn = matchNot(matchProp('checked'));
+                    }
+                    else {
+                        fn = matchProp(match[4]);
+                    }
                 }
                 this.match.push(fn);
                 match = filterExp.exec(text);
@@ -2800,17 +2815,11 @@
         constructor(parentSheet) {
             this.rules = [];
             this._dirty = true;
+            if (parentSheet === undefined) {
+                parentSheet = defaultStyle;
+            }
             if (parentSheet) {
                 this.rules = parentSheet.rules.slice();
-            }
-            else {
-                this.rules.push(new Style('*', {
-                    fg: 'white',
-                    bg: 'black',
-                    align: 'left',
-                    valign: 'top',
-                    position: 'static',
-                }));
             }
         }
         get dirty() {
@@ -2834,8 +2843,6 @@
                 throw new Error('Hierarchical selectors not supported.');
             // if 2 '.' - Error('Only single class rules supported.')
             // if '&' - Error('Not supported.')
-            if (selector === '*')
-                throw new Error('Cannot re-install global style.');
             let rule = new Style(selector, props);
             const existing = this.rules.findIndex((s) => s.selector.text === rule.selector.text);
             if (existing > -1) {
@@ -2870,6 +2877,18 @@
             return new ComputedStyle(sources);
         }
     }
+    const defaultStyle = new Sheet(null);
+    defaultStyle.add('*', {
+        fg: 'white',
+        bg: 'black',
+        align: 'left',
+        valign: 'top',
+        position: 'static',
+    });
+    defaultStyle.add('input', {
+        fg: 'black',
+        bg: 'gray',
+    });
 
     class Element {
         // hovered: Style.Style = {};
@@ -2936,20 +2955,47 @@
         _setAttr(name, value) {
             this._attrs[name] = value;
         }
+        _attrInt(name, def = 0) {
+            let v = this._attrs[name];
+            if (v === undefined)
+                return def;
+            if (typeof v === 'string') {
+                return Number.parseInt(v);
+            }
+            else if (typeof v === 'boolean') {
+                return v ? 1 : 0;
+            }
+            return v;
+        }
+        _attrString(name) {
+            let v = this._attrs[name] || '';
+            if (typeof v === 'string')
+                return v;
+            return '' + v;
+        }
+        _attrBool(name) {
+            const v = this._attrs[name] || false;
+            if (typeof v === 'boolean')
+                return v;
+            if (typeof v === 'number')
+                return v != 0;
+            return v.length > 0 && v !== 'false';
+        }
         prop(name, value) {
             if (value === undefined)
                 return this._props[name];
             this._setProp(name, value);
-            this._usedStyle.dirty = true; // Need to reload styles
             return this;
         }
         _setProp(name, value) {
+            if (this._props[name] === value)
+                return;
             this._props[name] = value;
+            this._usedStyle.dirty = true; // Need to reload styles
         }
         toggleProp(name) {
             const v = this._props[name] || false;
-            this._props[name] = !v;
-            this._usedStyle.dirty = true; // Need to reload styles
+            this._setProp(name, !v);
             return this;
         }
         val(v) {
@@ -2958,11 +3004,33 @@
             this._setProp('value', v);
             return this;
         }
-        onblur() {
+        onblur(_doc) {
             this.prop('focus', false);
         }
-        onfocus(_reverse) {
+        onfocus(_doc, _reverse) {
             this.prop('focus', true);
+        }
+        _propInt(name, def = 0) {
+            let v = this._props[name];
+            if (v === undefined)
+                return def;
+            if (typeof v === 'string') {
+                return Number.parseInt(v);
+            }
+            else if (typeof v === 'boolean') {
+                return v ? 1 : 0;
+            }
+            return v;
+        }
+        _propString(name) {
+            let v = this._props[name] || '';
+            if (typeof v === 'string')
+                return v;
+            return '' + v;
+        }
+        _propBool(name) {
+            const v = this._props[name] || false;
+            return !!v;
         }
         // CHILDREN
         addChild(child, beforeIndex = -1) {
@@ -3377,6 +3445,7 @@
                 return this._text;
             this._text = v;
             this.dirty = true;
+            this._usedStyle.dirty = true; // We need to re-layout the _lines (which possibly affects width+height)
             return this;
         }
         _calcContentWidth() {
@@ -3411,6 +3480,7 @@
             else {
                 this._drawContent(buffer);
             }
+            this.dirty = false;
             return true;
         }
         _drawBorder(buffer) {
@@ -3577,17 +3647,39 @@
             super(tag, sheet);
             this.on('keypress', this.keypress.bind(this));
             this.prop('tabindex', true);
+            this.prop('value', '');
         }
+        // reset() {
+        //     this.prop('value', this._attrString('value'));
+        // }
         // ATTRIBUTES
         _setAttr(name, value) {
-            this._attrs[name] = value;
+            super._setAttr(name, value);
             if (name === 'value') {
                 this._setProp('value', value);
             }
+            super._setProp('valid', this.isValid());
         }
         _setProp(name, value) {
-            this._props[name] = value;
+            if (name === 'value') {
+                value = '' + value;
+                const maxLength = this._attrInt('maxLength', 0);
+                if (maxLength && value.length > maxLength) {
+                    value = value.substring(0, maxLength);
+                }
+                super._setProp('empty', value.length == 0);
+                this._props.value = value;
+                this.dirty = true;
+            }
+            else {
+                super._setProp(name, value);
+            }
+            super._setProp('valid', this.isValid());
         }
+        get isTypeNumber() {
+            return this._attrs.type === 'number';
+        }
+        // PROPERTIES
         // CONTENT
         _calcContentWidth() {
             const size = this._attrs.size || '';
@@ -3599,6 +3691,30 @@
             return 1;
         }
         _updateContentHeight() { }
+        isValid() {
+            const v = this._propString('value');
+            if (this.isTypeNumber) {
+                const val = this._propInt('value');
+                const min = this._attrInt('min', Number.MIN_SAFE_INTEGER);
+                if (val < min)
+                    return false;
+                const max = this._attrInt('max', Number.MAX_SAFE_INTEGER);
+                if (val > max)
+                    return false;
+                return v.length > 0;
+            }
+            const requiredLen = this._propInt('required', 0);
+            // console.log(
+            //     'required',
+            //     this._attrs.required,
+            //     requiredLen,
+            //     v,
+            //     v.length,
+            //     this._attrInt('minLength', requiredLen)
+            // );
+            return (v.length >= this._attrInt('minLength', requiredLen) &&
+                v.length <= this._attrInt('maxLength', Number.MAX_SAFE_INTEGER));
+        }
         // DRAWING
         _drawContent(buffer) {
             const fg = this.used('fg') || 'white';
@@ -3606,9 +3722,19 @@
             const width = this.innerWidth;
             const left = this.innerLeft;
             const align = this.used('align');
-            buffer.drawText(left, top, this.prop('value'), fg, -1, width, align);
+            let v = this._propString('value');
+            if (v.length == 0) {
+                v = this._attrString('placeholder');
+            }
+            buffer.drawText(left, top, v, fg, -1, width, align);
         }
         // EVENTS
+        onblur(doc) {
+            super.onblur(doc);
+            if (this.val() !== this.attr('value')) {
+                doc._fireEvent(this, 'change');
+            }
+        }
         keypress(document, _element, e) {
             if (!e)
                 return false;
@@ -3618,18 +3744,26 @@
             }
             if (e.key === 'Escape') {
                 this._setProp('value', '');
+                document._fireEvent(this, 'input', e);
                 return true;
             }
             if (e.key === 'Backspace' || e.key === 'Delete') {
-                const v = this._props.value ? '' + this._props.value : '';
+                const v = this._propString('value');
                 this._setProp('value', v.substring(0, v.length - 1));
+                document._fireEvent(this, 'input', e);
                 return true;
             }
             if (e.key.length > 1) {
                 return false;
             }
-            let v = this._props.value ? this._props.value : '';
-            this._setProp('value', v + e.key);
+            const textEntryBounds = this.isTypeNumber ? ['0', '9'] : [' ', '~'];
+            // eat/use all other keys
+            if (e.key >= textEntryBounds[0] && e.key <= textEntryBounds[1]) {
+                // allow only permitted input
+                const v = this._propString('value');
+                this._setProp('value', v + e.key);
+                document._fireEvent(this, 'input', e);
+            }
             return true;
         }
     }
@@ -3740,23 +3874,33 @@
             return this;
         }
         computeStyles() {
+            let anyChanged = false;
             this.children.forEach((w) => {
                 if (w.used().dirty || this.stylesheet.dirty) {
                     w.used(this.stylesheet.computeFor(w));
+                    anyChanged = true;
                 }
             });
             this.stylesheet.dirty = false;
+            return anyChanged;
         }
         updateLayout(widget) {
             widget = widget || this.body;
             widget.updateLayout();
         }
         draw(buffer) {
-            this.computeStyles();
+            if (this._prepareDraw()) {
+                buffer = buffer || this.ui.buffer;
+                this.body.draw(buffer);
+                buffer.render();
+                // console.log('draw');
+            }
+        }
+        _prepareDraw() {
+            if (!this.computeStyles())
+                return this.children.some((c) => c.dirty);
             this.updateLayout();
-            buffer = buffer || this.ui.buffer;
-            this.body.draw(buffer);
-            buffer.render();
+            return true;
         }
         // activeElement
         get activeElement() {
@@ -3776,10 +3920,10 @@
             if (w && this._fireEvent(w, 'focus', opts))
                 return false;
             if (this._activeElement)
-                this._activeElement.onblur();
+                this._activeElement.onblur(this);
             this._activeElement = w;
             if (this._activeElement)
-                this._activeElement.onfocus(reverse);
+                this._activeElement.onfocus(this, reverse);
             return true;
         }
         nextTabStop() {
@@ -3834,6 +3978,8 @@
             let element = this.elementFromPoint(e.x, e.y);
             if (!element)
                 return false;
+            if (element.prop('disabled'))
+                return false;
             if (this._bubbleEvent(element, 'click', e))
                 return this._done;
             if (element.prop('tabindex')) {
@@ -3842,13 +3988,19 @@
             return false;
         }
         mousemove(e) {
-            this.children.forEach((w) => w.prop('hover', false));
             let element = this.elementFromPoint(e.x, e.y);
+            const hovered = [];
             let current = element;
             while (current) {
+                hovered.push(current);
                 current.prop('hover', true);
                 current = current.parent;
             }
+            this.children.forEach((w) => {
+                if (hovered.includes(w))
+                    return;
+                w.prop('hover', false);
+            });
             if (element && this._bubbleEvent(element, 'mousemove', e))
                 return this._done;
             return false;
@@ -4250,6 +4402,7 @@
         Style: Style,
         ComputedStyle: ComputedStyle,
         Sheet: Sheet,
+        defaultStyle: defaultStyle,
         Element: Element,
         elements: elements,
         installElement: installElement,

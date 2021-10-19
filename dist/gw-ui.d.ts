@@ -917,6 +917,23 @@ declare class Input extends Element {
     keypress(document: Document, _element: Element, e?: GWU.io.Event): boolean;
 }
 
+declare class CheckBox extends Element {
+    static default: {
+        uncheck: string;
+        check: string;
+        padCheck: string;
+        value: string;
+    };
+    constructor(tag: string, sheet?: Sheet);
+    protected _setAttr(name: string, value: string): void;
+    _calcContentWidth(): number;
+    _calcContentHeight(): number;
+    _drawContent(buffer: GWU.canvas.DataBuffer): void;
+    onblur(doc: Document): void;
+    keypress(document: Document, _element: Element, e?: GWU.io.Event): boolean;
+    click(document: Document, _element: Element, e?: GWU.io.Event): boolean;
+}
+
 type index_d_Size = Size;
 type index_d_PropType = PropType;
 type index_d_Selectable = Selectable;
@@ -948,6 +965,8 @@ declare const index_d_installElement: typeof installElement;
 declare const index_d_makeElement: typeof makeElement;
 type index_d_Input = Input;
 declare const index_d_Input: typeof Input;
+type index_d_CheckBox = CheckBox;
+declare const index_d_CheckBox: typeof CheckBox;
 type index_d_EventCb = EventCb;
 type index_d_FxFn = FxFn;
 type index_d_Fx = Fx;
@@ -984,6 +1003,7 @@ declare namespace index_d {
     index_d_installElement as installElement,
     index_d_makeElement as makeElement,
     index_d_Input as Input,
+    index_d_CheckBox as CheckBox,
     index_d_EventCb as EventCb,
     index_d_FxFn as FxFn,
     index_d_Fx as Fx,

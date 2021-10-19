@@ -3745,6 +3745,88 @@ installElement('input', (tag, sheet) => {
     return new Input(tag, sheet);
 });
 
+class CheckBox extends Element {
+    constructor(tag, sheet) {
+        super(tag, sheet);
+        this.on('keypress', this.keypress.bind(this));
+        this.on('click', this.click.bind(this));
+        this.prop('tabindex', true);
+        this.prop('checked', false);
+        Object.entries(CheckBox.default).forEach(([key, value]) => this.attr(key, value));
+    }
+    // reset() {
+    //     this.prop('value', this._attrString('value'));
+    // }
+    // ATTRIBUTES
+    _setAttr(name, value) {
+        this._attrs[name] = value;
+        if (name === 'value') {
+            this._setProp('value', value);
+        }
+    }
+    // PROPERTIES
+    // CONTENT
+    _calcContentWidth() {
+        return 2 + super._calcContentWidth();
+    }
+    _calcContentHeight() {
+        this._lines = GWU.text.splitIntoLines(this._text, this.innerWidth - 2);
+        return this._lines.length;
+    }
+    // DRAWING
+    _drawContent(buffer) {
+        const fg = this.used('fg') || 'white';
+        const top = this.innerTop;
+        const width = this.innerWidth;
+        const left = this.innerLeft;
+        const align = this.used('align');
+        const state = this.prop('checked') ? 'check' : 'uncheck';
+        let v = this._attrs[state];
+        buffer.drawText(left, top, v, fg, -1);
+        this._lines.forEach((line, i) => {
+            buffer.drawText(left + 2, top + i, line, fg, -1, width - 2, align);
+        });
+    }
+    // EVENTS
+    onblur(doc) {
+        super.onblur(doc);
+        doc._fireEvent(this, 'change');
+    }
+    keypress(document, _element, e) {
+        if (!e)
+            return false;
+        if (e.key === 'Enter' || e.key === ' ') {
+            this.toggleProp('checked');
+            document._fireEvent(this, 'input', e);
+            return true;
+        }
+        if (e.key === 'Backspace' || e.key === 'Delete') {
+            this.prop('checked', false);
+            document._fireEvent(this, 'input', e);
+            return true;
+        }
+        return false;
+    }
+    click(document, _element, e) {
+        if (!e)
+            return false;
+        if (!this.contains(e))
+            return false;
+        this.toggleProp('checked');
+        document.setActiveElement(this);
+        return true;
+    }
+}
+CheckBox.default = {
+    uncheck: '\u2610',
+    check: '\u2612',
+    padCheck: '1',
+    value: 'on',
+};
+installElement('checkbox', (tag, sheet) => {
+    return new CheckBox(tag, sheet);
+});
+
 class Document {
     constructor(ui, rootTag = 'body') {
         this._activeElement = null;
@@ -4382,6 +4464,7 @@ var index = /*#__PURE__*/Object.freeze({
     installElement: installElement,
     makeElement: makeElement,
     Input: Input,
+    CheckBox: CheckBox,
     Document: Document,
     Selection: Selection
 });

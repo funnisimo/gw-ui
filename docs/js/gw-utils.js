@@ -5254,7 +5254,7 @@
             this._ctx.fillStyle = 'white';
         }
         draw(n, ch) {
-            if (n > 256)
+            if (n >= 256)
                 throw new Error('Cannot draw more than 256 glyphs.');
             const x = (n % 16) * this.tileWidth;
             const y = Math.floor(n / 16) * this.tileHeight;
@@ -5292,29 +5292,29 @@
                 '\u2660',
                 '\u263c',
                 '\u2600',
-                '\u2605',
                 '\u2606',
+                '\u2605',
                 '\u2642',
                 '\u2640',
                 '\u266a',
                 '\u266b',
-                '\u2638',
-                '\u25b6',
-                '\u25c0',
-                '\u2195',
-                '\u203c',
-                '\u204b',
-                '\u262f',
-                '\u2318',
-                '\u2616',
+                '\u2690',
+                '\u2691',
+                '\u2610',
+                '\u2611',
+                '\u2612',
+                '\u26ac',
+                '\u29bf',
                 '\u2191',
-                '\u2193',
                 '\u2192',
+                '\u2193',
                 '\u2190',
-                '\u2126',
                 '\u2194',
+                '\u2195',
                 '\u25b2',
+                '\u25b6',
                 '\u25bc',
+                '\u25c0', // bug left arrow
             ].forEach((ch, i) => {
                 this.draw(i, ch);
             });

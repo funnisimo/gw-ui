@@ -3797,7 +3797,7 @@
         }
         _calcContentHeight() {
             this._lines = GWU__namespace.text.splitIntoLines(this._text, this.innerWidth - 2);
-            return this._lines.length;
+            return Math.max(1, this._lines.length);
         }
         // DRAWING
         _drawContent(buffer) {
@@ -3840,6 +3840,7 @@
                 return false;
             this.toggleProp('checked');
             document.setActiveElement(this);
+            document._fireEvent(this, 'input', e);
             return true;
         }
     }

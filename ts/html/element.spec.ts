@@ -29,7 +29,7 @@ describe('Element', () => {
         w.text('Testing');
         expect(w.dirty).toBeTruthy();
         w.updateLayout();
-        expect(w.dirty).toBeFalsy();
+        expect(w.dirty).toBeTruthy(); // still needs style to be updated
         expect(w.bounds).toMatchObject({ x: 0, y: 0, width: 7, height: 1 });
     });
 
@@ -253,7 +253,7 @@ describe('Element', () => {
         w.text('12345678901234567890');
         w.updateLayout();
         expect(w.used('width')).toEqual(9);
-        expect(w.dirty).toBeFalsy();
+        expect(w.dirty).toBeTruthy(); // needs style to be updated
         // w._update();
         // expect(w.dirty).toBeFalsy();
         // expect(w._lines).toEqual(['12345678-', '90123456-', '7890']);
@@ -407,7 +407,7 @@ describe('Element', () => {
         w.updateLayout();
         expect(w.used('height')).toBeUndefined();
         expect(w.bounds.height).toEqual(4);
-        expect(w.dirty).toBeFalsy();
+        expect(w.dirty).toBeTruthy(); // still needs style to be updated
 
         w.text('1\n2\n3\n4\n5\n6\n');
         expect(w.dirty).toBeTruthy();

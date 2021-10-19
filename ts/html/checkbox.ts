@@ -46,7 +46,7 @@ export class CheckBox extends Element.Element {
 
     _calcContentHeight(): number {
         this._lines = GWU.text.splitIntoLines(this._text, this.innerWidth - 2);
-        return this._lines.length;
+        return Math.max(1, this._lines.length);
     }
 
     // DRAWING
@@ -104,6 +104,7 @@ export class CheckBox extends Element.Element {
 
         this.toggleProp('checked');
         document.setActiveElement(this);
+        document._fireEvent(this, 'input', e);
         return true;
     }
 }

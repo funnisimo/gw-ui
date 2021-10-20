@@ -850,6 +850,7 @@ declare class Element implements Selectable {
     protected _propInt(name: string, def?: number): number;
     protected _propString(name: string): string;
     protected _propBool(name: string): boolean;
+    _isValidChild(_child: Element): boolean;
     addChild(child: Element, beforeIndex?: number): this;
     removeChild(child: Element): this;
     empty(): Element[];
@@ -893,6 +894,7 @@ declare class Element implements Selectable {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
     _drawBorder(buffer: GWU.canvas.DataBuffer): void;
     _fill(buffer: GWU.canvas.DataBuffer): void;
+    _drawChildren(buffer: GWU.canvas.DataBuffer): void;
     _drawContent(buffer: GWU.canvas.DataBuffer): void;
     on(event: string, cb: EventCb): this;
     off(event: string, cb?: EventCb): this;
@@ -950,6 +952,21 @@ declare class FieldSet extends Element {
     _drawBorder(buffer: GWU.canvas.DataBuffer): void;
 }
 
+declare class UnorderedList extends Element {
+    static default: {
+        bullet: string;
+    };
+    constructor(tag: string, sheet?: Sheet);
+    _calcContentWidth(): number;
+    _calcContentHeight(): number;
+    get innerLeft(): number;
+    get innerWidth(): number;
+    _drawChildren(buffer: GWU.canvas.DataBuffer): void;
+    _isValidChild(child: Element): boolean;
+}
+declare class OrderedList extends Element {
+}
+
 type index_d_Size = Size;
 type index_d_PropType = PropType;
 type index_d_Selectable = Selectable;
@@ -987,6 +1004,10 @@ type index_d_Button = Button;
 declare const index_d_Button: typeof Button;
 type index_d_FieldSet = FieldSet;
 declare const index_d_FieldSet: typeof FieldSet;
+type index_d_UnorderedList = UnorderedList;
+declare const index_d_UnorderedList: typeof UnorderedList;
+type index_d_OrderedList = OrderedList;
+declare const index_d_OrderedList: typeof OrderedList;
 type index_d_EventCb = EventCb;
 type index_d_FxFn = FxFn;
 type index_d_Fx = Fx;
@@ -1026,6 +1047,8 @@ declare namespace index_d {
     index_d_CheckBox as CheckBox,
     index_d_Button as Button,
     index_d_FieldSet as FieldSet,
+    index_d_UnorderedList as UnorderedList,
+    index_d_OrderedList as OrderedList,
     index_d_EventCb as EventCb,
     index_d_FxFn as FxFn,
     index_d_Fx as Fx,

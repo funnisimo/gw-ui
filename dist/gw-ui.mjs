@@ -2852,14 +2852,14 @@ class Sheet {
     }
 }
 const defaultStyle = new Sheet(null);
+
 defaultStyle.add('*', {
     fg: 'white',
-    bg: 'black',
+    bg: -1,
     align: 'left',
     valign: 'top',
     position: 'static',
 });
-
 class Element {
     // hovered: Style.Style = {};
     // active: Style.Style = {};
@@ -3003,7 +3003,13 @@ class Element {
         return !!v;
     }
     // CHILDREN
+    _isValidChild(_child) {
+        return true;
+    }
     addChild(child, beforeIndex = -1) {
+        if (!this._isValidChild(child)) {
+            throw new Error(`Invalid child (tag=${child.tag}) for element (tag=${this.tag})`);
+        }
         if (child.parent) {
             if (child.parent === this)
                 return this; // ok
@@ -3027,6 +3033,7 @@ class Element {
         if (!child.parent)
             return this; // not attached, silently ignore
         if (child.parent !== this) {
+            // TODO - fail silently?
             throw new Error('Cannot remove child that is not attached to this widget.');
         }
         if (GWU.arrayDelete(this.children, child)) {
@@ -3437,15 +3444,7 @@ class Element {
         }
         this._fill(buffer);
         if (this.children.length) {
-            // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
-            this.children.forEach((c) => {
-                if (!c.isPositioned())
-                    c.draw(buffer);
-            });
-            this.children.forEach((c) => {
-                if (c.isPositioned())
-                    c.draw(buffer);
-            });
+            this._drawChildren(buffer);
         }
         else {
             this._drawContent(buffer);
@@ -3471,6 +3470,17 @@ class Element {
             (used.marginTop || 0) -
             (used.marginBottom || 0) -
             (used.border ? 2 : 0), ' ', bg, bg);
+    }
+    _drawChildren(buffer) {
+        // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
+        this.children.forEach((c) => {
+            if (!c.isPositioned())
+                c.draw(buffer);
+        });
+        this.children.forEach((c) => {
+            if (c.isPositioned())
+                c.draw(buffer);
+        });
     }
     _drawContent(buffer) {
         if (this._lines.length) {
@@ -3934,6 +3944,61 @@ installElement('fieldset', (tag, sheet) => {
     return new FieldSet(tag, sheet);
 });
 
+// import { Document } from './document';
+// Style.defaultStyle.add('button', {
+//     fg: 'black',
+//     bg: 'gray',
+// });
+class UnorderedList extends Element {
+    constructor(tag, sheet) {
+        super(tag, sheet);
+        Object.entries(UnorderedList.default).forEach(([key, value]) => this.attr(key, value));
+    }
+    // CONTENT
+    _calcContentWidth() {
+        return 2 + super._calcContentWidth();
+    }
+    _calcContentHeight() {
+        this._lines = GWU.text.splitIntoLines(this._text, this.innerWidth - 2);
+        return Math.max(1, this._lines.length);
+    }
+    get innerLeft() {
+        return super.innerLeft + 2;
+    }
+    get innerWidth() {
+        return Math.max(0, super.innerWidth - 2);
+    }
+    // DRAWING
+    _drawChildren(buffer) {
+        let v = this._attrs.bullet;
+        this.children.forEach((c) => {
+            const fg = c.used('fg') || 'white';
+            const top = c.innerTop;
+            const left = c.innerLeft - 2;
+            buffer.drawText(left, top, v, fg, -1);
+            c.draw(buffer);
+        });
+    }
+    // CHILDREN
+    _isValidChild(child) {
+        return child.tag === 'li';
+    }
+}
+UnorderedList.default = {
+    bullet: '\u2022', // bullet
+};
+installElement('ul', (tag, sheet) => {
+    return new UnorderedList(tag, sheet);
+});
+class OrderedList extends Element {
+}
+installElement('ol', (tag, sheet) => {
+    return new OrderedList(tag, sheet);
+});
+
+defaultStyle.add('body', {
+    bg: 'black',
+});
 class Document {
     constructor(ui, rootTag = 'body') {
         this._activeElement = null;
@@ -4574,6 +4639,8 @@ var index = /*#__PURE__*/Object.freeze({
     CheckBox: CheckBox,
     Button: Button,
     FieldSet: FieldSet,
+    UnorderedList: UnorderedList,
+    OrderedList: OrderedList,
     Document: Document,
     Selection: Selection
 });

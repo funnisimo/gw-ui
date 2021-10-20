@@ -21,6 +21,14 @@ export interface SizeOptions {
     maxHeight?: number;
 }
 
+Style.defaultStyle.add('*', {
+    fg: 'white',
+    bg: -1,
+    align: 'left',
+    valign: 'top',
+    position: 'static',
+});
+
 export class Element implements Selectable {
     tag: string;
     parent: Element | null = null;
@@ -194,7 +202,17 @@ export class Element implements Selectable {
 
     // CHILDREN
 
+    _isValidChild(_child: Element): boolean {
+        return true;
+    }
+
     addChild(child: Element, beforeIndex = -1): this {
+        if (!this._isValidChild(child)) {
+            throw new Error(
+                `Invalid child (tag=${child.tag}) for element (tag=${this.tag})`
+            );
+        }
+
         if (child.parent) {
             if (child.parent === this) return this; // ok
 
@@ -218,6 +236,7 @@ export class Element implements Selectable {
     removeChild(child: Element): this {
         if (!child.parent) return this; // not attached, silently ignore
         if (child.parent !== this) {
+            // TODO - fail silently?
             throw new Error(
                 'Cannot remove child that is not attached to this widget.'
             );
@@ -726,13 +745,7 @@ export class Element implements Selectable {
         this._fill(buffer);
 
         if (this.children.length) {
-            // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
-            this.children.forEach((c) => {
-                if (!c.isPositioned()) c.draw(buffer);
-            });
-            this.children.forEach((c) => {
-                if (c.isPositioned()) c.draw(buffer);
-            });
+            this._drawChildren(buffer);
         } else {
             this._drawContent(buffer);
         }
@@ -776,6 +789,16 @@ export class Element implements Selectable {
             bg,
             bg
         );
+    }
+
+    _drawChildren(buffer: GWU.canvas.DataBuffer) {
+        // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
+        this.children.forEach((c) => {
+            if (!c.isPositioned()) c.draw(buffer);
+        });
+        this.children.forEach((c) => {
+            if (c.isPositioned()) c.draw(buffer);
+        });
     }
 
     _drawContent(buffer: GWU.canvas.DataBuffer) {

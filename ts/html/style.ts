@@ -434,11 +434,3 @@ export class Sheet {
 }
 
 export const defaultStyle = new Sheet(null);
-
-defaultStyle.add('*', {
-    fg: 'white',
-    bg: 'black',
-    align: 'left',
-    valign: 'top',
-    position: 'static',
-});

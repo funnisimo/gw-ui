@@ -22,6 +22,10 @@ export type ElementMatch = (element: Element) => boolean;
 
 export type SelectType = string | Element | Element[] | Selection;
 
+Style.defaultStyle.add('body', {
+    bg: 'black',
+});
+
 export class Document {
     ui: UICore;
     body: Element;

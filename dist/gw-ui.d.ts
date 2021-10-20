@@ -957,14 +957,19 @@ declare class UnorderedList extends Element {
         bullet: string;
     };
     constructor(tag: string, sheet?: Sheet);
+    protected get indentWidth(): number;
     _calcContentWidth(): number;
     _calcContentHeight(): number;
     get innerLeft(): number;
     get innerWidth(): number;
+    _drawBullet(buffer: GWU.canvas.DataBuffer, _index: number, left: number, top: number, fg: GWU.color.ColorBase): void;
     _drawChildren(buffer: GWU.canvas.DataBuffer): void;
     _isValidChild(child: Element): boolean;
 }
-declare class OrderedList extends Element {
+declare class OrderedList extends UnorderedList {
+    constructor(tag: string, sheet?: Sheet);
+    protected get indentWidth(): number;
+    _drawBullet(buffer: GWU.canvas.DataBuffer, index: number, left: number, top: number, fg: GWU.color.ColorBase): void;
 }
 
 type index_d_Size = Size;

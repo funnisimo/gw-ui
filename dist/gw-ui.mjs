@@ -3952,30 +3952,35 @@ installElement('fieldset', (tag, sheet) => {
 class UnorderedList extends Element {
     constructor(tag, sheet) {
         super(tag, sheet);
-        Object.entries(UnorderedList.default).forEach(([key, value]) => this.attr(key, value));
     }
     // CONTENT
+    get indentWidth() {
+        return 2;
+    }
     _calcContentWidth() {
-        return 2 + super._calcContentWidth();
+        return this.indentWidth + super._calcContentWidth();
     }
     _calcContentHeight() {
-        this._lines = GWU.text.splitIntoLines(this._text, this.innerWidth - 2);
+        this._lines = GWU.text.splitIntoLines(this._text, this.innerWidth - this.indentWidth);
         return Math.max(1, this._lines.length);
     }
     get innerLeft() {
-        return super.innerLeft + 2;
+        return super.innerLeft + this.indentWidth;
     }
     get innerWidth() {
-        return Math.max(0, super.innerWidth - 2);
+        return Math.max(0, super.innerWidth - this.indentWidth);
     }
     // DRAWING
+    _drawBullet(buffer, _index, left, top, fg) {
+        const b = this._attrs.bullet || UnorderedList.default.bullet;
+        buffer.drawText(left, top, b, fg, -1);
+    }
     _drawChildren(buffer) {
-        let v = this._attrs.bullet;
-        this.children.forEach((c) => {
+        this.children.forEach((c, i) => {
             const fg = c.used('fg') || 'white';
             const top = c.innerTop;
-            const left = c.innerLeft - 2;
-            buffer.drawText(left, top, v, fg, -1);
+            const left = c.innerLeft - this.indentWidth;
+            this._drawBullet(buffer, i, left, top, fg);
             c.draw(buffer);
         });
     }
@@ -3990,7 +3995,17 @@ UnorderedList.default = {
 installElement('ul', (tag, sheet) => {
     return new UnorderedList(tag, sheet);
 });
-class OrderedList extends Element {
+class OrderedList extends UnorderedList {
+    constructor(tag, sheet) {
+        super(tag, sheet);
+    }
+    get indentWidth() {
+        return this.children.length >= 10 ? 4 : 3;
+    }
+    _drawBullet(buffer, index, left, top, fg) {
+        const b = ('' + (index + 1) + '. ').padStart(this.indentWidth, ' ');
+        buffer.drawText(left, top, b, fg, -1);
+    }
 }
 installElement('ol', (tag, sheet) => {
     return new OrderedList(tag, sheet);

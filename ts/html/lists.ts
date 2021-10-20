@@ -15,42 +15,54 @@ export class UnorderedList extends Element.Element {
 
     constructor(tag: string, sheet?: Style.Sheet) {
         super(tag, sheet);
-
-        Object.entries(UnorderedList.default).forEach(([key, value]) =>
-            this.attr(key, value)
-        );
     }
 
     // CONTENT
 
+    protected get indentWidth(): number {
+        return 2;
+    }
+
     _calcContentWidth(): number {
-        return 2 + super._calcContentWidth();
+        return this.indentWidth + super._calcContentWidth();
     }
 
     _calcContentHeight(): number {
-        this._lines = GWU.text.splitIntoLines(this._text, this.innerWidth - 2);
+        this._lines = GWU.text.splitIntoLines(
+            this._text,
+            this.innerWidth - this.indentWidth
+        );
         return Math.max(1, this._lines.length);
     }
 
     get innerLeft(): number {
-        return super.innerLeft + 2;
+        return super.innerLeft + this.indentWidth;
     }
 
     get innerWidth(): number {
-        return Math.max(0, super.innerWidth - 2);
+        return Math.max(0, super.innerWidth - this.indentWidth);
     }
 
     // DRAWING
 
-    _drawChildren(buffer: GWU.canvas.DataBuffer) {
-        let v = this._attrs.bullet;
+    _drawBullet(
+        buffer: GWU.canvas.DataBuffer,
+        _index: number,
+        left: number,
+        top: number,
+        fg: GWU.color.ColorBase
+    ) {
+        const b = this._attrs.bullet || UnorderedList.default.bullet;
+        buffer.drawText(left, top, b, fg, -1);
+    }
 
-        this.children.forEach((c) => {
+    _drawChildren(buffer: GWU.canvas.DataBuffer) {
+        this.children.forEach((c, i) => {
             const fg = c.used('fg') || 'white';
             const top = c.innerTop;
-            const left = c.innerLeft - 2;
+            const left = c.innerLeft - this.indentWidth;
 
-            buffer.drawText(left, top, v, fg, -1);
+            this._drawBullet(buffer, i, left, top, fg);
             c.draw(buffer);
         });
     }
@@ -66,7 +78,26 @@ Element.installElement('ul', (tag: string, sheet?: Style.Sheet) => {
     return new UnorderedList(tag, sheet);
 });
 
-export class OrderedList extends Element.Element {}
+export class OrderedList extends UnorderedList {
+    constructor(tag: string, sheet?: Style.Sheet) {
+        super(tag, sheet);
+    }
+
+    protected get indentWidth(): number {
+        return this.children.length >= 10 ? 4 : 3;
+    }
+
+    _drawBullet(
+        buffer: GWU.canvas.DataBuffer,
+        index: number,
+        left: number,
+        top: number,
+        fg: GWU.color.ColorBase
+    ) {
+        const b = ('' + (index + 1) + '. ').padStart(this.indentWidth, ' ');
+        buffer.drawText(left, top, b, fg, -1);
+    }
+}
 
 Element.installElement('ol', (tag: string, sheet?: Style.Sheet) => {
     return new OrderedList(tag, sheet);

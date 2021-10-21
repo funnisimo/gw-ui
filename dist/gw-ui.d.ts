@@ -141,10 +141,10 @@ interface TableOptions extends WidgetOptions {
 }
 declare type ColorOption = GWU.color.ColorBase | null;
 declare type DataArray = any[];
-declare type DataList = {
+declare type DataList$1 = {
     next: any;
 };
-declare type DataType = DataArray | DataList | null;
+declare type DataType = DataArray | DataList$1 | null;
 declare class Column {
     active: boolean;
     hovered: boolean;
@@ -732,6 +732,8 @@ declare class Selection {
     replaceWith(content: SelectType): this;
     text(): string;
     text(t: string): this;
+    data(): any;
+    data(d: any): this;
     attr(id: string): string | undefined;
     attr(id: string, value: string): this;
     prop(id: string): PropType | undefined;
@@ -801,6 +803,7 @@ declare class Element implements Selectable {
     classes: string[];
     children: Element[];
     events: Record<string, EventCb[]>;
+    _data: any | null;
     _bounds: GWU.xy.Bounds;
     _text: string;
     _lines: string[];
@@ -826,6 +829,9 @@ declare class Element implements Selectable {
     toggleProp(name: string): this;
     val(): PropType;
     val(v: PropType): this;
+    data(): any;
+    data(v: any): this;
+    protected _setData(v: any): void;
     onblur(_doc: Document): void;
     onfocus(_doc: Document, _reverse: boolean): void;
     protected _propInt(name: string, def?: number): number;
@@ -869,6 +875,7 @@ declare class Element implements Selectable {
     size(size: SizeOptions): this;
     text(): string;
     text(v: string): this;
+    protected _setText(v: string): void;
     _calcContentWidth(): number;
     _calcContentHeight(): number;
     _updateContentHeight(): void;
@@ -948,6 +955,26 @@ declare class OrderedList extends UnorderedList {
     _drawBullet(buffer: GWU.canvas.DataBuffer, index: number, left: number, top: number, fg: GWU.color.ColorBase): void;
 }
 
+declare class DataList extends Element {
+    _data: any[];
+    static default: {
+        bullet: string;
+        empty: string;
+        prefix: null;
+        wrap: boolean;
+        width: number;
+    };
+    constructor(tag: string, sheet?: Sheet);
+    _setData(v: any): void;
+    protected get indentWidth(): number;
+    _calcContentWidth(): number;
+    _calcContentHeight(): number;
+    get innerLeft(): number;
+    get innerWidth(): number;
+    _drawContent(buffer: GWU.canvas.DataBuffer): void;
+    _isValidChild(_child: Element): boolean;
+}
+
 declare const selfClosingTags: Record<string, boolean>;
 declare type MakeElementFn = (tag: string, sheet?: Sheet) => Element;
 declare const elements: Record<string, MakeElementFn>;
@@ -1004,6 +1031,8 @@ type index_d_UnorderedList = UnorderedList;
 declare const index_d_UnorderedList: typeof UnorderedList;
 type index_d_OrderedList = OrderedList;
 declare const index_d_OrderedList: typeof OrderedList;
+type index_d_DataList = DataList;
+declare const index_d_DataList: typeof DataList;
 declare const index_d_selfClosingTags: typeof selfClosingTags;
 type index_d_MakeElementFn = MakeElementFn;
 declare const index_d_elements: typeof elements;
@@ -1047,6 +1076,7 @@ declare namespace index_d {
     index_d_FieldSet as FieldSet,
     index_d_UnorderedList as UnorderedList,
     index_d_OrderedList as OrderedList,
+    index_d_DataList as DataList,
     index_d_selfClosingTags as selfClosingTags,
     index_d_MakeElementFn as MakeElementFn,
     index_d_elements as elements,
@@ -1065,4 +1095,4 @@ declare namespace index_d {
   };
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$1 as Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList, DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text, TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, index_d as html, makeTable, showDropDown };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$1 as Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList$1 as DataList, DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text, TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, index_d as html, makeTable, showDropDown };

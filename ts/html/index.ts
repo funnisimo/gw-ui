@@ -7,5 +7,6 @@ export * from './checkbox';
 export * from './button';
 export * from './fieldset';
 export * from './lists';
+export * from './datalist';
 export * from './parser';
 export * from './document';

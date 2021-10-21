@@ -37,6 +37,7 @@ export class Element implements Selectable {
     classes: string[] = [];
     children: Element[] = [];
     events: Record<string, EventCb[]> = {};
+    _data: any | null = null;
 
     _bounds: GWU.xy.Bounds = new GWU.xy.Bounds(0, 0, 0, 0);
     _text: string = '';
@@ -172,6 +173,20 @@ export class Element implements Selectable {
         if (v === undefined) return this.prop('value');
         this._setProp('value', v);
         return this;
+    }
+
+    data(): any;
+    data(v: any): this;
+    data(v?: any): this | any {
+        if (v === undefined) {
+            return this._data;
+        }
+        this._setData(v);
+        return this;
+    }
+
+    protected _setData(v: any) {
+        this._data = v;
     }
 
     onblur(_doc: Document) {
@@ -371,26 +386,12 @@ export class Element implements Selectable {
         // }
 
         this._updateWidth();
-
         this._updateHeight();
-
         this._updateLeft();
-
         this._updateTop();
 
         this.dirty = false;
         this.children.forEach((c) => (c.dirty = false));
-        // const position = this._usedStyle.position || 'static';
-
-        // if (position === 'fixed') {
-        //     this._updateLayoutFixed();
-        // } else if (position === 'relative') {
-        //     this._updateLayoutRelative();
-        // } else if (position === 'absolute') {
-        //     this._updateLayoutAbsolute();
-        // } else {
-        //     this._updateLayoutStatic();
-        // }
         return this;
     }
 
@@ -717,10 +718,14 @@ export class Element implements Selectable {
     text(v: string): this;
     text(v?: string): this | string {
         if (v === undefined) return this._text;
+        this._setText(v);
+        return this;
+    }
+
+    protected _setText(v: string) {
         this._text = v;
         this.dirty = true;
         this._usedStyle.dirty = true; // We need to re-layout the _lines (which possibly affects width+height)
-        return this;
     }
 
     _calcContentWidth(): number {

@@ -174,7 +174,8 @@ export class Document {
     }
 
     protected _prepareDraw() {
-        if (!this.computeStyles()) return this.children.some((c) => c.dirty);
+        if (!this.computeStyles() && !this.children.some((c) => c.dirty))
+            return false;
         this.updateLayout();
         return true;
     }
@@ -347,6 +348,9 @@ export class Document {
         return false;
     }
 }
+
+///////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
 
 // TODO - look at cheerio
 export class Selection {
@@ -608,6 +612,17 @@ export class Selection {
             return this.selected.length ? this.selected[0].text() : '';
         }
         this.selected.forEach((w) => w.text(t));
+        return this;
+    }
+
+    data(): any;
+    data(d: any): this;
+    data(d?: any): this | any {
+        if (d === undefined) {
+            if (!this.selected.length) return undefined;
+            return this.selected[0].data();
+        }
+        this.selected.forEach((e) => e.data(d));
         return this;
     }
 

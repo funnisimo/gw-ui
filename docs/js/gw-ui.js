@@ -2857,6 +2857,7 @@
             this.classes = [];
             this.children = [];
             this.events = {};
+            this._data = null;
             this._bounds = new GWU__namespace.xy.Bounds(0, 0, 0, 0);
             this._text = '';
             this._lines = [];
@@ -2964,6 +2965,16 @@
                 return this.prop('value');
             this._setProp('value', v);
             return this;
+        }
+        data(v) {
+            if (v === undefined) {
+                return this._data;
+            }
+            this._setData(v);
+            return this;
+        }
+        _setData(v) {
+            this._data = v;
         }
         onblur(_doc) {
             this.prop('focus', false);
@@ -3130,16 +3141,6 @@
             this._updateTop();
             this.dirty = false;
             this.children.forEach((c) => (c.dirty = false));
-            // const position = this._usedStyle.position || 'static';
-            // if (position === 'fixed') {
-            //     this._updateLayoutFixed();
-            // } else if (position === 'relative') {
-            //     this._updateLayoutRelative();
-            // } else if (position === 'absolute') {
-            //     this._updateLayoutAbsolute();
-            // } else {
-            //     this._updateLayoutStatic();
-            // }
             return this;
         }
         // update bounds.width and return it
@@ -3411,10 +3412,13 @@
         text(v) {
             if (v === undefined)
                 return this._text;
+            this._setText(v);
+            return this;
+        }
+        _setText(v) {
             this._text = v;
             this.dirty = true;
             this._usedStyle.dirty = true; // We need to re-layout the _lines (which possibly affects width+height)
-            return this;
         }
         _calcContentWidth() {
             this._lines = GWU__namespace.text.splitIntoLines(this._text);
@@ -4095,6 +4099,86 @@
         return new OrderedList(tag, sheet);
     });
 
+    // import { Document } from './document';
+    // Style.defaultStyle.add('button', {
+    //     fg: 'black',
+    //     bg: 'gray',
+    // });
+    class DataList extends Element {
+        constructor(tag, sheet) {
+            super(tag, sheet);
+            this._data = [];
+        }
+        // CONTENT
+        _setData(v) {
+            if (!Array.isArray(v)) {
+                throw new Error('<datalist> only uses Array values for data field.');
+            }
+            super._setData(v);
+            this.dirty = true;
+        }
+        get indentWidth() {
+            const prefix = this.attr('prefix') || DataList.default.prefix;
+            if (!prefix)
+                return 0;
+            if (prefix.includes('#')) {
+                return prefix.length - 1 + this._data.length >= 10 ? 2 : 1;
+            }
+            return prefix.length;
+        }
+        _calcContentWidth() {
+            const width = this._data.reduce((len, d) => {
+                const dlen = ('' + d).length; // calculate formatted width
+                return Math.max(dlen, len);
+            }, 0);
+            return width ? this.indentWidth + width : DataList.default.width; //
+        }
+        _calcContentHeight() {
+            return Math.max(1, this._data.length);
+        }
+        get innerLeft() {
+            return super.innerLeft + this.indentWidth;
+        }
+        get innerWidth() {
+            return Math.max(0, super.innerWidth - this.indentWidth);
+        }
+        // DRAWING
+        _drawContent(buffer) {
+            const fg = this.used('fg') || 'white';
+            const top = this.innerTop;
+            const left = this.innerLeft + this.indentWidth;
+            const width = this.innerWidth - this.indentWidth;
+            const align = this.used('align');
+            const empty = this.attr('empty') || DataList.default.empty;
+            if (this._data.length == 0) {
+                buffer.drawText(left, top, empty, fg, -1, width, align);
+            }
+            this._data.forEach((d, i) => {
+                if (!d) {
+                    buffer.drawText(left, top + i, empty, fg, -1, width, align);
+                }
+                else {
+                    buffer.drawText(left, top + i, d, fg, -1, width, align);
+                }
+                // this._drawBullet(buffer, i, left, top, fg);
+            });
+        }
+        // CHILDREN
+        _isValidChild(_child) {
+            return false; // no children
+        }
+    }
+    DataList.default = {
+        bullet: '\u2022',
+        empty: '-',
+        prefix: null,
+        wrap: false,
+        width: 10,
+    };
+    installElement('datalist', (tag, sheet) => {
+        return new DataList(tag, sheet);
+    });
+
     defaultStyle.add('body', {
         bg: 'black',
     });
@@ -4224,8 +4308,8 @@
             }
         }
         _prepareDraw() {
-            if (!this.computeStyles())
-                return this.children.some((c) => c.dirty);
+            if (!this.computeStyles() && !this.children.some((c) => c.dirty))
+                return false;
             this.updateLayout();
             return true;
         }
@@ -4359,6 +4443,8 @@
             return false;
         }
     }
+    ///////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////
     // TODO - look at cheerio
     class Selection {
         constructor(document, widgets = []) {
@@ -4565,6 +4651,15 @@
             this.selected.forEach((w) => w.text(t));
             return this;
         }
+        data(d) {
+            if (d === undefined) {
+                if (!this.selected.length)
+                    return undefined;
+                return this.selected[0].data();
+            }
+            this.selected.forEach((e) => e.data(d));
+            return this;
+        }
         attr(id, value) {
             if (value === undefined) {
                 if (this.selected.length == 0)
@@ -4737,6 +4832,7 @@
         FieldSet: FieldSet,
         UnorderedList: UnorderedList,
         OrderedList: OrderedList,
+        DataList: DataList,
         selfClosingTags: selfClosingTags,
         elements: elements,
         configureElement: configureElement,

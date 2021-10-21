@@ -2,6 +2,7 @@ import * as GWU from 'gw-utils';
 import * as Style from './style';
 import * as Element from './element';
 import { Document } from './document';
+import * as Parser from './parser';
 
 export class CheckBox extends Element.Element {
     static default = {
@@ -109,6 +110,6 @@ export class CheckBox extends Element.Element {
     }
 }
 
-Element.installElement('checkbox', (tag: string, sheet?: Style.Sheet) => {
+Parser.installElement('checkbox', (tag: string, sheet?: Style.Sheet) => {
     return new CheckBox(tag, sheet);
 });

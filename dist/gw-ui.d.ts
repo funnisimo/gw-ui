@@ -537,26 +537,6 @@ interface Selectable {
     children: Selectable[];
 }
 
-declare type Cb = (...args: any[]) => any | Promise<any>;
-declare class Callbacks {
-    _items: Cb[];
-    _disabled: boolean;
-    _fired: boolean;
-    _once: boolean;
-    _stopOnFalse: boolean;
-    _unique: boolean;
-    constructor(flags: string);
-    add(cb: Cb | Cb[]): this;
-    disable(): this;
-    disabled(): boolean;
-    empty(): this;
-    fire(...args: any[]): Promise<this>;
-    fired(): boolean;
-    fireWith(obj: object, args: any[]): Promise<this>;
-    has(cb: Cb): boolean;
-    remove(cb: Cb): this;
-}
-
 declare function isTruthy(v: any): boolean;
 declare type MatchFn = (el: Selectable) => boolean;
 declare class Selector {
@@ -666,6 +646,7 @@ declare class Style {
     clone(): this;
     copy(other: Style): this;
 }
+declare function makeStyle(style: string, selector?: string): Style;
 declare class ComputedStyle extends Style {
     sources: Style[];
     constructor(sources?: Style[]);
@@ -851,7 +832,7 @@ declare class Element implements Selectable {
     protected _propString(name: string): string;
     protected _propBool(name: string): boolean;
     _isValidChild(_child: Element): boolean;
-    addChild(child: Element, beforeIndex?: number): this;
+    appendChild(child: Element, beforeIndex?: number): this;
     removeChild(child: Element): this;
     empty(): Element[];
     root(): Element | null;
@@ -900,10 +881,6 @@ declare class Element implements Selectable {
     off(event: string, cb?: EventCb): this;
     elementFromPoint(x: number, y: number): Element | null;
 }
-declare type MakeElementFn = (tag: string, sheet?: Sheet) => Element;
-declare const elements: Record<string, MakeElementFn>;
-declare function installElement(tag: string, fn: MakeElementFn): void;
-declare function makeElement(tag: string, stylesheet?: Sheet): Element;
 
 declare class Input extends Element {
     constructor(tag: string, sheet?: Sheet);
@@ -964,7 +941,6 @@ declare class UnorderedList extends Element {
     get innerWidth(): number;
     _drawBullet(buffer: GWU.canvas.DataBuffer, _index: number, left: number, top: number, fg: GWU.color.ColorBase): void;
     _drawChildren(buffer: GWU.canvas.DataBuffer): void;
-    _isValidChild(child: Element): boolean;
 }
 declare class OrderedList extends UnorderedList {
     constructor(tag: string, sheet?: Sheet);
@@ -972,12 +948,30 @@ declare class OrderedList extends UnorderedList {
     _drawBullet(buffer: GWU.canvas.DataBuffer, index: number, left: number, top: number, fg: GWU.color.ColorBase): void;
 }
 
+declare const selfClosingTags: Record<string, boolean>;
+declare type MakeElementFn = (tag: string, sheet?: Sheet) => Element;
+declare const elements: Record<string, MakeElementFn>;
+interface ElementInstallOptions {
+    selfClosing?: boolean;
+    openCloses?: string[];
+    closeCloses?: string[];
+}
+declare function configureElement(tag: string, opts?: ElementInstallOptions): void;
+declare function installElement(tag: string, fn: MakeElementFn, opts?: ElementInstallOptions): void;
+interface MyOptions {
+    lowerCaseTagName?: boolean;
+    stylesheet?: Sheet;
+}
+/**
+ * Parse a chuck of HTML source.
+ * @param  {string} data      html
+ * @return {HTMLElement}      root element
+ */
+declare function parse(data: string, options?: MyOptions | Sheet): Element;
+
 type index_d_Size = Size;
 type index_d_PropType = PropType;
 type index_d_Selectable = Selectable;
-type index_d_Cb = Cb;
-type index_d_Callbacks = Callbacks;
-declare const index_d_Callbacks: typeof Callbacks;
 declare const index_d_isTruthy: typeof isTruthy;
 type index_d_MatchFn = MatchFn;
 type index_d_Selector = Selector;
@@ -988,6 +982,7 @@ type index_d_Stylable = Stylable;
 type index_d_StyleOptions = StyleOptions;
 type index_d_Style = Style;
 declare const index_d_Style: typeof Style;
+declare const index_d_makeStyle: typeof makeStyle;
 type index_d_ComputedStyle = ComputedStyle;
 declare const index_d_ComputedStyle: typeof ComputedStyle;
 type index_d_Sheet = Sheet;
@@ -997,10 +992,6 @@ type index_d_PosOptions = PosOptions;
 type index_d_SizeOptions = SizeOptions;
 type index_d_Element = Element;
 declare const index_d_Element: typeof Element;
-type index_d_MakeElementFn = MakeElementFn;
-declare const index_d_elements: typeof elements;
-declare const index_d_installElement: typeof installElement;
-declare const index_d_makeElement: typeof makeElement;
 type index_d_Input = Input;
 declare const index_d_Input: typeof Input;
 type index_d_CheckBox = CheckBox;
@@ -1013,6 +1004,13 @@ type index_d_UnorderedList = UnorderedList;
 declare const index_d_UnorderedList: typeof UnorderedList;
 type index_d_OrderedList = OrderedList;
 declare const index_d_OrderedList: typeof OrderedList;
+declare const index_d_selfClosingTags: typeof selfClosingTags;
+type index_d_MakeElementFn = MakeElementFn;
+declare const index_d_elements: typeof elements;
+type index_d_ElementInstallOptions = ElementInstallOptions;
+declare const index_d_configureElement: typeof configureElement;
+declare const index_d_installElement: typeof installElement;
+declare const index_d_parse: typeof parse;
 type index_d_EventCb = EventCb;
 type index_d_FxFn = FxFn;
 type index_d_Fx = Fx;
@@ -1028,8 +1026,6 @@ declare namespace index_d {
     index_d_Size as Size,
     index_d_PropType as PropType,
     index_d_Selectable as Selectable,
-    index_d_Cb as Cb,
-    index_d_Callbacks as Callbacks,
     index_d_isTruthy as isTruthy,
     index_d_MatchFn as MatchFn,
     index_d_Selector as Selector,
@@ -1038,22 +1034,26 @@ declare namespace index_d {
     index_d_Stylable as Stylable,
     index_d_StyleOptions as StyleOptions,
     index_d_Style as Style,
+    index_d_makeStyle as makeStyle,
     index_d_ComputedStyle as ComputedStyle,
     index_d_Sheet as Sheet,
     index_d_defaultStyle as defaultStyle,
     index_d_PosOptions as PosOptions,
     index_d_SizeOptions as SizeOptions,
     index_d_Element as Element,
-    index_d_MakeElementFn as MakeElementFn,
-    index_d_elements as elements,
-    index_d_installElement as installElement,
-    index_d_makeElement as makeElement,
     index_d_Input as Input,
     index_d_CheckBox as CheckBox,
     index_d_Button as Button,
     index_d_FieldSet as FieldSet,
     index_d_UnorderedList as UnorderedList,
     index_d_OrderedList as OrderedList,
+    index_d_selfClosingTags as selfClosingTags,
+    index_d_MakeElementFn as MakeElementFn,
+    index_d_elements as elements,
+    index_d_ElementInstallOptions as ElementInstallOptions,
+    index_d_configureElement as configureElement,
+    index_d_installElement as installElement,
+    index_d_parse as parse,
     index_d_EventCb as EventCb,
     index_d_FxFn as FxFn,
     index_d_Fx as Fx,

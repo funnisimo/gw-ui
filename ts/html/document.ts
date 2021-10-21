@@ -4,7 +4,8 @@ import { UICore } from '../types';
 import { Size, PropType } from './types';
 import { Selector } from './selector';
 import * as Style from './style';
-import { Element, PosOptions, makeElement } from './element';
+import { Element, PosOptions } from './element';
+import { parse } from './parser';
 
 // return true if you want to stop the event from propagating
 export type EventCb = (
@@ -83,7 +84,7 @@ export class Document {
     }
 
     createElement(tag: string): Element {
-        return makeElement(tag, this.stylesheet);
+        return parse(tag, this.stylesheet);
     }
 
     create(tag: string): Selection {
@@ -420,7 +421,7 @@ export class Selection {
             let nextIndex = parent.children.indexOf(next) + 1;
 
             current.forEach((toAdd) => {
-                parent.addChild(toAdd, nextIndex);
+                parent.appendChild(toAdd, nextIndex);
                 if (parent._attached) {
                     this.document._attach(toAdd);
                 }
@@ -445,7 +446,7 @@ export class Selection {
             current =
                 i < last ? (<Selection>content).clone() : <Selection>content;
             current.forEach((toAppend) => {
-                dest.addChild(toAppend);
+                dest.appendChild(toAppend);
                 if (dest._attached) {
                     this.document._attach(toAppend);
                 }
@@ -485,7 +486,7 @@ export class Selection {
             let nextIndex = parent.children.indexOf(next);
 
             current.forEach((toAdd) => {
-                parent.addChild(toAdd, nextIndex++);
+                parent.appendChild(toAdd, nextIndex++);
                 if (parent._attached) {
                     this.document._attach(toAdd);
                 }
@@ -549,7 +550,7 @@ export class Selection {
             current =
                 i < last ? (<Selection>content).clone() : <Selection>content;
             current.forEach((toAppend) => {
-                dest.addChild(toAppend, 0); // before first child
+                dest.appendChild(toAppend, 0); // before first child
                 if (dest._attached) {
                     this.document._attach(toAppend);
                 }

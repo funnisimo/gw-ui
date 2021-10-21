@@ -3,6 +3,7 @@ import { PropType } from './types';
 import * as Style from './style';
 import * as Element from './element';
 import { Document } from './document';
+import * as Parser from './parser';
 
 Style.defaultStyle.add('input', {
     fg: 'black',
@@ -158,6 +159,6 @@ export class Input extends Element.Element {
     }
 }
 
-Element.installElement('input', (tag: string, sheet?: Style.Sheet) => {
+Parser.installElement('input', (tag: string, sheet?: Style.Sheet) => {
     return new Input(tag, sheet);
 });

@@ -1,6 +1,7 @@
 import 'jest-extended';
 // import * as GWU from 'gw-utils';
 import * as Element from './element';
+import * as Parser from './parser';
 
 describe('Element', () => {
     let root: Element.Element;
@@ -34,25 +35,25 @@ describe('Element', () => {
     });
 
     test('make - tag only', () => {
-        const e = Element.makeElement('<div>');
+        const e = Parser.parse('<div>');
         expect(e.tag).toEqual('div');
     });
 
     test('make - text only', () => {
-        const e = Element.makeElement('<div>Text</div>');
+        const e = Parser.parse('<div>Text</div>');
         expect(e.tag).toEqual('div');
         expect(e.text()).toEqual('Text');
     });
 
     test('make - attributes', () => {
-        const e = Element.makeElement('<div id=A form="B" >');
+        const e = Parser.parse('<div id=A form="B" >');
         expect(e.tag).toEqual('div');
         expect(e.attr('id')).toEqual('A');
         expect(e.attr('form')).toEqual('B');
     });
 
     test('make - attributes+props+text', () => {
-        const e = Element.makeElement(
+        const e = Parser.parse(
             '<div id=A form="B" checked disabled>Text</div>'
         );
         expect(e.tag).toEqual('div');
@@ -73,7 +74,7 @@ describe('Element', () => {
         expect(a.dirty).toBeFalsy();
         expect(b.dirty).toBeFalsy();
 
-        a.addChild(b);
+        a.appendChild(b);
         expect(a.dirty).toBeTruthy();
         expect(b.dirty).toBeTruthy();
 
@@ -97,7 +98,7 @@ describe('Element', () => {
         expect(a.dirty).toBeFalsy();
         expect(b.dirty).toBeFalsy();
 
-        a.addChild(b);
+        a.appendChild(b);
         expect(a.dirty).toBeTruthy();
         expect(b.dirty).toBeTruthy();
 
@@ -105,7 +106,7 @@ describe('Element', () => {
         expect(a.children).toHaveLength(1);
 
         // does nothing if already there
-        a.addChild(b);
+        a.appendChild(b);
         expect(b.parent).toBe(a);
         expect(a.children).toHaveLength(1);
     });
@@ -114,7 +115,7 @@ describe('Element', () => {
         const a = new Element.Element('text');
         const b = new Element.Element('text');
 
-        a.addChild(b);
+        a.appendChild(b);
         expect(b.parent).toBe(a);
         expect(a.children).toHaveLength(1);
 
@@ -156,7 +157,7 @@ describe('Element', () => {
 
     test('right', () => {
         const w = new Element.Element('text');
-        root.addChild(w);
+        root.appendChild(w);
 
         expect(w.used('right')).toBeUndefined();
         expect(w.bounds).toMatchObject({ x: 0, y: 0, width: 0, height: 0 });

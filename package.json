@@ -15,8 +15,8 @@
         "copy-map": "cp node_modules/gw-map/dist/gw-map.js* docs/js",
         "build": "npm run compile && npm run bundle && npm run copy && npm run version",
         "serve": "cd docs && http-server -p 8080",
-        "test": "jest",
-        "coverage": "jest --coverage",
+        "test": "jest --runInBand",
+        "coverage": "jest --runInBand --coverage",
         "test-debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
         "version": "node -e 'const v = require(\"./package.json\").version; console.log(v);' > docs/VERSION"
     },

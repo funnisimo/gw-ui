@@ -223,8 +223,12 @@ export class Style {
                 if (typeof value === 'number') {
                     value = [value];
                 } else if (typeof value === 'string') {
-                    value = value.split(' ').map((v) => Number.parseInt(v));
+                    value = value.split(' ');
                 }
+                value = value.map((v: string | number) => {
+                    if (typeof v === 'string') return Number.parseInt(v);
+                    return v;
+                });
 
                 if (value.length == 1) {
                     this._padLeft =
@@ -250,8 +254,12 @@ export class Style {
                 if (typeof value === 'number') {
                     value = [value];
                 } else if (typeof value === 'string') {
-                    value = value.split(' ').map((v) => Number.parseInt(v));
+                    value = value.split(' ');
                 }
+                value = value.map((v: string | number) => {
+                    if (typeof v === 'string') return Number.parseInt(v);
+                    return v;
+                });
 
                 if (value.length == 1) {
                     this._marginLeft =
@@ -275,6 +283,15 @@ export class Style {
                 }
             } else {
                 const field = '_' + key;
+                if (typeof value === 'string') {
+                    if (value.match(/^[+-]?\d+$/)) {
+                        value = Number.parseInt(value);
+                    } else if (value === 'true') {
+                        value = true;
+                    } else if (value === 'false') {
+                        value = false;
+                    }
+                }
                 this[field as keyof this] = value;
             }
         } else if (key instanceof Style) {
@@ -319,6 +336,29 @@ export class Style {
         Object.assign(this, other);
         return this;
     }
+}
+
+export function makeStyle(style: string, selector = '$'): Style {
+    const opts: StyleOptions = {};
+
+    const parts = style
+        .trim()
+        .split(';')
+        .map((p) => p.trim());
+    parts.forEach((p) => {
+        const [name, base] = p.split(':').map((p) => p.trim());
+        if (!name) return;
+        const baseParts = base.split(/ +/g);
+        if (baseParts.length == 1) {
+            // @ts-ignore
+            opts[name] = base;
+        } else {
+            // @ts-ignore
+            opts[name] = baseParts;
+        }
+    });
+
+    return new Style(selector, opts);
 }
 
 // const NO_BOUNDS = ['fg', 'bg', 'depth', 'align', 'valign'];

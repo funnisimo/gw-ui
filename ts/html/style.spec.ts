@@ -1,5 +1,5 @@
 import 'jest-extended';
-import * as Style from './style';
+import * as Style from './index';
 
 describe('style', () => {
     let sheet: Style.Sheet;
@@ -32,6 +32,16 @@ describe('style', () => {
         expect(style.fg).toEqual('white');
         expect(style.bg).toEqual('black');
         expect(style.dirty).toBeTruthy();
+    });
+
+    test('makeStyle', () => {
+        const style = Style.makeStyle('fg: white; bg: black; padding: 1 2 3 4');
+        expect(style.fg).toEqual('white');
+        expect(style.bg).toEqual('black');
+        expect(style.padTop).toEqual(1);
+        expect(style.padRight).toEqual(2);
+        expect(style.padBottom).toEqual(3);
+        expect(style.padLeft).toEqual(4);
     });
 
     test('padding and margin', () => {
@@ -109,13 +119,15 @@ describe('style', () => {
     });
 
     test('default', () => {
+        expect(Style.defaultStyle.get('*')).toBeInstanceOf(Style.Style);
+
         const def = sheet.get('*')!;
         expect(def.selector.text).toEqual('*');
         expect(def.selector.priority).toEqual(0);
 
         expect(def).toBeObject();
         expect(def.fg).toEqual('white');
-        expect(def.bg).toEqual('black');
+        expect(def.bg).toEqual(-1);
         expect(def.align).toEqual('left');
         expect(def.valign).toEqual('top');
     });

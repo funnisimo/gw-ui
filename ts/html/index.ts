@@ -1,5 +1,4 @@
 export * from './types';
-export * from './callbacks';
 export * from './selector';
 export * from './style';
 export * from './element';
@@ -8,4 +7,5 @@ export * from './checkbox';
 export * from './button';
 export * from './fieldset';
 export * from './lists';
+export * from './parser';
 export * from './document';

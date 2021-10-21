@@ -2,6 +2,7 @@ import * as GWU from 'gw-utils';
 import { PropType } from './types';
 import * as Style from './style';
 import * as Element from './element';
+import * as Parser from './parser';
 
 Style.defaultStyle.add('fieldset', {
     margin: 1,
@@ -53,6 +54,6 @@ export class FieldSet extends Element.Element {
     // EVENTS
 }
 
-Element.installElement('fieldset', (tag: string, sheet?: Style.Sheet) => {
+Parser.installElement('fieldset', (tag: string, sheet?: Style.Sheet) => {
     return new FieldSet(tag, sheet);
 });

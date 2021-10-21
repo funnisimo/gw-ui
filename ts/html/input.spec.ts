@@ -5,6 +5,7 @@ import { UICore } from '../types';
 import * as Element from './element';
 import * as Input from './input';
 import * as Document from './document';
+import * as Parser from './parser';
 
 describe('Element', () => {
     let ui: UICore;
@@ -37,7 +38,7 @@ describe('Element', () => {
     });
 
     test('make', () => {
-        const e = Element.makeElement(
+        const e = Parser.parse(
             '<input type=text value=val min=4 max=100 minLength=3 maxLength=10 placeholder=Taco required disabled>'
         );
         expect(e).toBeInstanceOf(Input.Input);
@@ -54,7 +55,7 @@ describe('Element', () => {
     });
 
     test('typing', () => {
-        const el = Element.makeElement('<input>') as Input.Input;
+        const el = Parser.parse('<input>') as Input.Input;
         expect(el).toBeInstanceOf(Input.Input);
 
         el.keypress(doc, el, UTILS.keypress('t'));
@@ -96,7 +97,7 @@ describe('Element', () => {
 
     describe('isValid', () => {
         test('basic text', () => {
-            const el = Element.makeElement('<input>') as Input.Input;
+            const el = Parser.parse('<input>') as Input.Input;
             expect(el.prop('empty')).toBeTruthy();
             expect(el.prop('valid')).toBeTruthy();
 
@@ -110,7 +111,7 @@ describe('Element', () => {
         });
 
         test('min/max Length', () => {
-            const el = Element.makeElement(
+            const el = Parser.parse(
                 '<input minLength=3 maxLength=6>'
             ) as Input.Input;
             expect(el.val()).toEqual('');
@@ -131,7 +132,7 @@ describe('Element', () => {
         });
 
         test('required', () => {
-            const el = Element.makeElement('<input required>') as Input.Input;
+            const el = Parser.parse('<input required>') as Input.Input;
             // console.log(el._props, el._attrs);
             expect(el.val()).toEqual('');
             expect(el.prop('required')).toBeTruthy();
@@ -156,7 +157,7 @@ describe('Element', () => {
         });
 
         test('min/max', () => {
-            const el = Element.makeElement(
+            const el = Parser.parse(
                 '<input type=number min=3 max=16>'
             ) as Input.Input;
             expect(el.val()).toEqual('');
@@ -177,9 +178,7 @@ describe('Element', () => {
         });
 
         test('min/max - text ignores', () => {
-            const el = Element.makeElement(
-                '<input min=3 max=16>'
-            ) as Input.Input;
+            const el = Parser.parse('<input min=3 max=16>') as Input.Input;
             expect(el.val()).toEqual('');
             expect(el.prop('valid')).toBeTruthy();
 

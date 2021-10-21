@@ -114,6 +114,10 @@ export class Element implements Selectable {
 
     protected _setAttr(name: string, value: string) {
         this._attrs[name] = value;
+        if (name === 'style') {
+            this._style = Style.makeStyle(value);
+            this._usedStyle.dirty = true;
+        }
     }
 
     protected _attrInt(name: string, def = 0): number {
@@ -206,7 +210,7 @@ export class Element implements Selectable {
         return true;
     }
 
-    addChild(child: Element, beforeIndex = -1): this {
+    appendChild(child: Element, beforeIndex = -1): this {
         if (!this._isValidChild(child)) {
             throw new Error(
                 `Invalid child (tag=${child.tag}) for element (tag=${this.tag})`
@@ -863,97 +867,4 @@ export class Element implements Selectable {
 
         return result;
     }
-}
-
-export type MakeElementFn = (tag: string, sheet?: Style.Sheet) => Element;
-export const elements: Record<string, MakeElementFn> = {};
-
-export function installElement(tag: string, fn: MakeElementFn) {
-    elements[tag] = fn;
-}
-
-// TODO - Look at htmlparser2
-export function makeElement(tag: string, stylesheet?: Style.Sheet): Element {
-    if (tag.startsWith('<')) {
-        if (!tag.endsWith('>'))
-            throw new Error('Need brackets around new tag - e.g. "<tag>"');
-    }
-
-    const tagRE = /<(\w+)/g;
-    const fieldRE =
-        /(\w+)(?: *= *(?:(?:\'([^\']*)\')|(?:\"([^\"]*)\")|(\w+)))?/g;
-    const endRE = / *>/g;
-    const textRE = />(.+?)(?=(<\/|$))/g;
-
-    const parts: Record<string, string | boolean> = {};
-    const tag_re = new RegExp(tagRE, 'g');
-    const field_re = new RegExp(fieldRE, 'g');
-    const end_re = new RegExp(endRE, 'g');
-    const text_re = new RegExp(textRE, 'g');
-
-    // console.log('PARSE', tag);
-
-    let match = tag_re.exec(tag);
-    if (!match) {
-        parts.tag = 'div';
-    } else {
-        parts.tag = match[1];
-        if (tag[tag_re.lastIndex] === ' ') {
-            field_re.lastIndex = tag_re.lastIndex;
-            match = field_re.exec(tag);
-            while (match) {
-                // console.log(match);
-                parts[match[1]] = match[2] || match[3] || match[4] || true;
-
-                text_re.lastIndex = field_re.lastIndex;
-                end_re.lastIndex = field_re.lastIndex;
-                const endMatch = end_re.exec(tag);
-                if (endMatch && endMatch.index === field_re.lastIndex) {
-                    break;
-                }
-                match = field_re.exec(tag);
-            }
-        } else {
-            text_re.lastIndex = tag_re.lastIndex;
-        }
-        const tm = text_re.exec(tag);
-        // console.log(tm);
-        if (tm) {
-            parts.text = tm[1];
-        }
-        // console.log(parts);
-    }
-
-    const fn = elements[parts.tag];
-    const e = fn
-        ? fn(parts.tag, stylesheet)
-        : new Element(parts.tag, stylesheet);
-
-    Object.entries(parts).forEach(([key, value]) => {
-        if (key === 'tag') return;
-        else if (key === 'text') {
-            e.text(value as string);
-        } else if (key === 'id') {
-            e.attr('id', value as string);
-        } else if (key === 'style') {
-            const style = value as string;
-            // console.log('style=', style);
-            style.split(';').forEach((s) => {
-                const parts = s.split('=').map((p) => p.trim());
-                parts.forEach((p) => {
-                    const [k, v] = p.split(':').map((t) => t.trim());
-                    // console.log(' - ', k, v);
-                    if (k && v) {
-                        e.style(k as keyof Style.StyleOptions, v);
-                    }
-                });
-            });
-        } else if (typeof value === 'string') {
-            e.attr(key, value);
-        } else {
-            e.prop(key, value as boolean);
-        }
-    });
-
-    return e;
 }

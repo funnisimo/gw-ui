@@ -5,6 +5,7 @@ import { UICore } from '../types';
 import * as Element from './element';
 import * as CheckBox from './checkbox';
 import * as Document from './document';
+import * as Parser from './parser';
 
 describe('Element', () => {
     let ui: UICore;
@@ -42,7 +43,7 @@ describe('Element', () => {
     });
 
     test('make', () => {
-        const e = Element.makeElement('<checkbox check=A uncheck=B value=val>');
+        const e = Parser.parse('<checkbox check=A uncheck=B value=val>');
         expect(e).toBeInstanceOf(CheckBox.CheckBox);
         expect(e.attr('value')).toEqual('val');
         expect(e.val()).toEqual('val');
@@ -51,7 +52,7 @@ describe('Element', () => {
     });
 
     test('keypress', () => {
-        const el = Element.makeElement('<checkbox>') as CheckBox.CheckBox;
+        const el = Parser.parse('<checkbox>') as CheckBox.CheckBox;
         expect(el).toBeInstanceOf(CheckBox.CheckBox);
 
         expect(el.prop('checked')).toBeFalsy();
@@ -77,7 +78,7 @@ describe('Element', () => {
     });
 
     test('click', () => {
-        const el = Element.makeElement('<checkbox>') as CheckBox.CheckBox;
+        const el = Parser.parse('<checkbox>') as CheckBox.CheckBox;
         expect(el).toBeInstanceOf(CheckBox.CheckBox);
 
         el.updateLayout();

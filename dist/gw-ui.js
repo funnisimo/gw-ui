@@ -2357,88 +2357,6 @@
         }
     }
 
-    class Callbacks {
-        constructor(flags) {
-            this._items = [];
-            this._disabled = false;
-            this._fired = false;
-            this._once = false;
-            // _memory = false;
-            this._stopOnFalse = false;
-            this._unique = false;
-            const f = flags.split(' ');
-            this._once = f.includes('once');
-            // this._memory = f.includes('memory');
-            this._stopOnFalse = f.includes('stopOnFalse');
-            this._unique = f.includes('unique');
-        }
-        add(cb) {
-            if (Array.isArray(cb)) {
-                cb.forEach((c) => this.add(c));
-            }
-            else {
-                if (!this._unique || !this._items.includes(cb)) {
-                    this._items.push(cb);
-                }
-            }
-            return this;
-        }
-        disable() {
-            this._disabled = true;
-            return this;
-        }
-        disabled() {
-            return !this._disabled;
-        }
-        empty() {
-            this._items.length = 0;
-            return this;
-        }
-        async fire(...args) {
-            if (this._disabled)
-                return this;
-            if (this._once && this._fired)
-                return this;
-            this._fired = true;
-            for (let cb of this._items) {
-                const r = await cb(...args);
-                if (this._stopOnFalse && r === false) {
-                    break;
-                }
-            }
-            return this;
-        }
-        fired() {
-            return this._fired;
-        }
-        async fireWith(obj, args) {
-            if (this._disabled)
-                return this;
-            if (this._once && this._fired)
-                return this;
-            this._fired = true;
-            for (let cb of this._items) {
-                const r = await cb.apply(obj, args);
-                if (this._stopOnFalse && r === false) {
-                    break;
-                }
-            }
-            return this;
-        }
-        has(cb) {
-            return this._items.includes(cb);
-        }
-        // lock - I am not sure what this does or why it is there
-        // locked
-        remove(cb) {
-            const index = this._items.indexOf(cb);
-            if (index >= 0) {
-                this._items.splice(index, 1);
-            }
-            return this;
-        }
-    }
-
     function isTruthy(v) {
         if (!v)
             return false;
@@ -2680,8 +2598,13 @@
                         value = [value];
                     }
                     else if (typeof value === 'string') {
-                        value = value.split(' ').map((v) => Number.parseInt(v));
+                        value = value.split(' ');
                     }
+                    value = value.map((v) => {
+                        if (typeof v === 'string')
+                            return Number.parseInt(v);
+                        return v;
+                    });
                     if (value.length == 1) {
                         this._padLeft =
                             this._padRight =
@@ -2711,8 +2634,13 @@
                         value = [value];
                     }
                     else if (typeof value === 'string') {
-                        value = value.split(' ').map((v) => Number.parseInt(v));
+                        value = value.split(' ');
                     }
+                    value = value.map((v) => {
+                        if (typeof v === 'string')
+                            return Number.parseInt(v);
+                        return v;
+                    });
                     if (value.length == 1) {
                         this._marginLeft =
                             this._marginRight =
@@ -2739,6 +2667,17 @@
                 }
                 else {
                     const field = '_' + key;
+                    if (typeof value === 'string') {
+                        if (value.match(/^[+-]?\d+$/)) {
+                            value = Number.parseInt(value);
+                        }
+                        else if (value === 'true') {
+                            value = true;
+                        }
+                        else if (value === 'false') {
+                            value = false;
+                        }
+                    }
                     this[field] = value;
                 }
             }
@@ -2784,6 +2723,28 @@
             Object.assign(this, other);
             return this;
         }
+    }
+    function makeStyle(style, selector = '$') {
+        const opts = {};
+        const parts = style
+            .trim()
+            .split(';')
+            .map((p) => p.trim());
+        parts.forEach((p) => {
+            const [name, base] = p.split(':').map((p) => p.trim());
+            if (!name)
+                return;
+            const baseParts = base.split(/ +/g);
+            if (baseParts.length == 1) {
+                // @ts-ignore
+                opts[name] = base;
+            }
+            else {
+                // @ts-ignore
+                opts[name] = baseParts;
+            }
+        });
+        return new Style(selector, opts);
     }
     // const NO_BOUNDS = ['fg', 'bg', 'depth', 'align', 'valign'];
     // export function affectsBounds(key: keyof StyleOptions): boolean {
@@ -2950,6 +2911,10 @@
         }
         _setAttr(name, value) {
             this._attrs[name] = value;
+            if (name === 'style') {
+                this._style = makeStyle(value);
+                this._usedStyle.dirty = true;
+            }
         }
         _attrInt(name, def = 0) {
             let v = this._attrs[name];
@@ -3032,7 +2997,7 @@
         _isValidChild(_child) {
             return true;
         }
-        addChild(child, beforeIndex = -1) {
+        appendChild(child, beforeIndex = -1) {
             if (!this._isValidChild(child)) {
                 throw new Error(`Invalid child (tag=${child.tag}) for element (tag=${this.tag})`);
             }
@@ -3567,93 +3532,190 @@
             return result;
         }
     }
+
+    const MARKUP_RE = /<!--[^]*?(?=-->)-->|<(\/?)(\w*)\s*([^>]*?)(\/?)>/g;
+    const ATTR_RE = /(\w+)(?: *= *(?:(?:\'([^\']*)\')|(?:\"([^\"]*)\")|(\w+)))?/g;
+    // var kAttributePattern = /\b(id|class)\s*=\s*("([^"]+)"|'([^']+)'|(\S+))/gi;
+    const selfClosingTags = {
+        meta: true,
+        img: true,
+        link: true,
+        input: true,
+        area: true,
+        br: true,
+        hr: true,
+    };
+    var tagsClosedByOpening = {
+        li: { li: true },
+        p: { p: true, div: true },
+        td: { td: true, th: true },
+        th: { td: true, th: true },
+    };
+    var tagsClosedByClosing = {
+        li: { ul: true, ol: true },
+        a: { div: true },
+        b: { div: true },
+        i: { div: true },
+        p: { div: true },
+        td: { tr: true, table: true },
+        th: { tr: true, table: true },
+    };
     const elements = {};
-    function installElement(tag, fn) {
-        elements[tag] = fn;
+    function configureElement(tag, opts = {}) {
+        if (opts.selfClosing) {
+            selfClosingTags[tag] = true;
+        }
+        if (opts.openCloses && opts.openCloses.length) {
+            const tcbo = (tagsClosedByOpening[tag] = {});
+            opts.openCloses.forEach((t) => (tcbo[t] = true));
+        }
+        if (opts.closeCloses && opts.closeCloses.length) {
+            const tcbc = (tagsClosedByClosing[tag] = {});
+            opts.closeCloses.forEach((t) => (tcbc[t] = true));
+        }
     }
-    // TODO - Look at htmlparser2
-    function makeElement(tag, stylesheet) {
-        if (tag.startsWith('<')) {
-            if (!tag.endsWith('>'))
-                throw new Error('Need brackets around new tag - e.g. "<tag>"');
-        }
-        const tagRE = /<(\w+)/g;
-        const fieldRE = /(\w+)(?: *= *(?:(?:\'([^\']*)\')|(?:\"([^\"]*)\")|(\w+)))?/g;
-        const endRE = / *>/g;
-        const textRE = />(.+?)(?=(<\/|$))/g;
-        const parts = {};
-        const tag_re = new RegExp(tagRE, 'g');
-        const field_re = new RegExp(fieldRE, 'g');
-        const end_re = new RegExp(endRE, 'g');
-        const text_re = new RegExp(textRE, 'g');
-        // console.log('PARSE', tag);
-        let match = tag_re.exec(tag);
-        if (!match) {
-            parts.tag = 'div';
-        }
-        else {
-            parts.tag = match[1];
-            if (tag[tag_re.lastIndex] === ' ') {
-                field_re.lastIndex = tag_re.lastIndex;
-                match = field_re.exec(tag);
-                while (match) {
-                    // console.log(match);
-                    parts[match[1]] = match[2] || match[3] || match[4] || true;
-                    text_re.lastIndex = field_re.lastIndex;
-                    end_re.lastIndex = field_re.lastIndex;
-                    const endMatch = end_re.exec(tag);
-                    if (endMatch && endMatch.index === field_re.lastIndex) {
-                        break;
-                    }
-                    match = field_re.exec(tag);
+    function installElement(tag, fn, opts = {}) {
+        elements[tag] = fn;
+        configureElement(tag, opts);
+    }
+    function createElement(tag, rawAttr, stylesheet) {
+        const fn = elements[tag];
+        const e = fn ? fn(tag, stylesheet) : new Element(tag, stylesheet);
+        // TODO - Add attributs, properties, and styles
+        if (rawAttr) {
+            // console.log(tag, rawAttr);
+            const re = new RegExp(ATTR_RE, 'g');
+            let match = re.exec(rawAttr);
+            while (match) {
+                const name = match[1];
+                const value = match[2] || match[3] || match[4] || true;
+                // console.log('- attr', name, value);
+                if (value === true) {
+                    e.prop(name, value);
                 }
+                else {
+                    e.attr(name, value);
+                }
+                match = re.exec(rawAttr);
             }
-            else {
-                text_re.lastIndex = tag_re.lastIndex;
-            }
-            const tm = text_re.exec(tag);
-            // console.log(tm);
-            if (tm) {
-                parts.text = tm[1];
-            }
-            // console.log(parts);
         }
-        const fn = elements[parts.tag];
-        const e = fn
-            ? fn(parts.tag, stylesheet)
-            : new Element(parts.tag, stylesheet);
-        Object.entries(parts).forEach(([key, value]) => {
-            if (key === 'tag')
-                return;
-            else if (key === 'text') {
-                e.text(value);
-            }
-            else if (key === 'id') {
-                e.attr('id', value);
-            }
-            else if (key === 'style') {
-                const style = value;
-                // console.log('style=', style);
-                style.split(';').forEach((s) => {
-                    const parts = s.split('=').map((p) => p.trim());
-                    parts.forEach((p) => {
-                        const [k, v] = p.split(':').map((t) => t.trim());
-                        // console.log(' - ', k, v);
-                        if (k && v) {
-                            e.style(k, v);
-                        }
-                    });
-                });
-            }
-            else if (typeof value === 'string') {
-                e.attr(key, value);
-            }
-            else {
-                e.prop(key, value);
-            }
-        });
         return e;
     }
+    function back(arr) {
+        return arr[arr.length - 1];
+    }
+    /**
+     * Parse a chuck of HTML source.
+     * @param  {string} data      html
+     * @return {HTMLElement}      root element
+     */
+    function parse(data, options = {}) {
+        if (options instanceof Sheet) {
+            options = { stylesheet: options };
+        }
+        var root = createElement('dummy', '', options.stylesheet);
+        var currentElement = root;
+        var stack = [root];
+        var lastTextPos = -1;
+        options = options || {};
+        const RE = new RegExp(MARKUP_RE, 'gi');
+        var match, text;
+        match = RE.exec(data);
+        while (match) {
+            if (lastTextPos > -1) {
+                if (lastTextPos + match[0].length < RE.lastIndex) {
+                    // if has content
+                    text = data.substring(lastTextPos, RE.lastIndex - match[0].length);
+                    currentElement.text(text); //.appendNode(new TextNode(text));
+                }
+            }
+            lastTextPos = RE.lastIndex;
+            if (match[0][1] == '!') {
+                // this is a comment
+                continue;
+            }
+            if (options.lowerCaseTagName)
+                match[2] = match[2].toLowerCase();
+            if (!match[1]) {
+                // not </ tags
+                // var attrs: Record<string, string> = {};
+                // var attMatch;
+                // attMatch = kAttributePattern.exec(match[3]);
+                // while (attMatch) {
+                //     attrs[attMatch[1]] = attMatch[3] || attMatch[4] || attMatch[5];
+                //     attMatch = kAttributePattern.exec(match[3]);
+                // }
+                // console.log(attrs);
+                if (!match[4] && tagsClosedByOpening[currentElement.tag]) {
+                    if (tagsClosedByOpening[currentElement.tag][match[2]]) {
+                        stack.pop();
+                        currentElement = back(stack);
+                    }
+                }
+                const child = createElement(match[2], match[3], options.stylesheet);
+                stack.push(child);
+                currentElement.appendChild(child);
+                currentElement = child;
+                // if (kBlockTextElements[match[2]]) {
+                //   // a little test to find next </script> or </style> ...
+                //   var closeMarkup = '</' + match[2] + '>';
+                //   var index = data.indexOf(closeMarkup, kMarkupPattern.lastIndex);
+                //   if (options[match[2]]) {
+                //     if (index == -1) {
+                //       // there is no matching ending for the text element.
+                //       text = data.substr(kMarkupPattern.lastIndex);
+                //     } else {
+                //       text = data.substring(kMarkupPattern.lastIndex, index);
+                //     }
+                //     if (text.length > 0)
+                //       currentParent.appendChild(new TextNode(text));
+                //   }
+                //   if (index == -1) {
+                //     lastTextPos = kMarkupPattern.lastIndex = data.length + 1;
+                //   } else {
+                //     lastTextPos = kMarkupPattern.lastIndex = index + closeMarkup.length;
+                //     match[1] = true;
+                //   }
+                // }
+            }
+            if (match[1] || match[4] || selfClosingTags[match[2]]) {
+                // </ or /> or <br> etc.
+                while (true) {
+                    if (currentElement.tag == match[2]) {
+                        stack.pop();
+                        currentElement = back(stack);
+                        break;
+                    }
+                    else {
+                        // Trying to close current tag, and move on
+                        if (tagsClosedByClosing[currentElement.tag]) {
+                            if (tagsClosedByClosing[currentElement.tag][match[2]]) {
+                                stack.pop();
+                                currentElement = back(stack);
+                                continue;
+                            }
+                        }
+                        // Use aggressive strategy to handle unmatching markups.
+                        break;
+                    }
+                }
+            }
+            match = RE.exec(data);
+        }
+        // in case you forget closing tag on something like : "<div>text"
+        if (lastTextPos > -1) {
+            if (lastTextPos < data.length) {
+                // if has content
+                text = data.substring(lastTextPos);
+                currentElement.text(text); //.appendNode(new TextNode(text));
+            }
+        }
+        const e = root.children[0]; // real root
+        e.parent = null;
+        return e;
+    }
+    // let t = parse('<div name="test" checked id=A>Test</div>');
+    // console.log(t);
 
     defaultStyle.add('input', {
         fg: 'black',
@@ -4004,15 +4066,11 @@
         _drawChildren(buffer) {
             this.children.forEach((c, i) => {
                 const fg = c.used('fg') || 'white';
-                const top = c.innerTop;
-                const left = c.innerLeft - this.indentWidth;
+                const top = c.bounds.top + (c.used('marginTop') || 0);
+                const left = c.bounds.left - this.indentWidth;
                 this._drawBullet(buffer, i, left, top, fg);
                 c.draw(buffer);
             });
-        }
-        // CHILDREN
-        _isValidChild(child) {
-            return child.tag === 'li';
         }
     }
     UnorderedList.default = {
@@ -4093,7 +4151,7 @@
             return new Selection(this, selected);
         }
         createElement(tag) {
-            return makeElement(tag, this.stylesheet);
+            return parse(tag, this.stylesheet);
         }
         create(tag) {
             return this.select(this.createElement(tag));
@@ -4358,7 +4416,7 @@
                 const parent = next.parent;
                 let nextIndex = parent.children.indexOf(next) + 1;
                 current.forEach((toAdd) => {
-                    parent.addChild(toAdd, nextIndex);
+                    parent.appendChild(toAdd, nextIndex);
                     if (parent._attached) {
                         this.document._attach(toAdd);
                     }
@@ -4379,7 +4437,7 @@
                 current =
                     i < last ? content.clone() : content;
                 current.forEach((toAppend) => {
-                    dest.addChild(toAppend);
+                    dest.appendChild(toAppend);
                     if (dest._attached) {
                         this.document._attach(toAppend);
                     }
@@ -4411,7 +4469,7 @@
                 const parent = next.parent;
                 let nextIndex = parent.children.indexOf(next);
                 current.forEach((toAdd) => {
-                    parent.addChild(toAdd, nextIndex++);
+                    parent.appendChild(toAdd, nextIndex++);
                     if (parent._attached) {
                         this.document._attach(toAdd);
                     }
@@ -4465,7 +4523,7 @@
                 current =
                     i < last ? content.clone() : content;
                 current.forEach((toAppend) => {
-                    dest.addChild(toAppend, 0); // before first child
+                    dest.appendChild(toAppend, 0); // before first child
                     if (dest._attached) {
                         this.document._attach(toAppend);
                     }
@@ -4664,24 +4722,26 @@
 
     var index = /*#__PURE__*/Object.freeze({
         __proto__: null,
-        Callbacks: Callbacks,
         isTruthy: isTruthy,
         Selector: Selector,
         selector: selector,
         Style: Style,
+        makeStyle: makeStyle,
         ComputedStyle: ComputedStyle,
         Sheet: Sheet,
         defaultStyle: defaultStyle,
         Element: Element,
-        elements: elements,
-        installElement: installElement,
-        makeElement: makeElement,
         Input: Input,
         CheckBox: CheckBox,
         Button: Button,
         FieldSet: FieldSet,
         UnorderedList: UnorderedList,
         OrderedList: OrderedList,
+        selfClosingTags: selfClosingTags,
+        elements: elements,
+        configureElement: configureElement,
+        installElement: installElement,
+        parse: parse,
         Document: Document,
         Selection: Selection
     });

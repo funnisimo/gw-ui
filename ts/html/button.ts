@@ -2,6 +2,7 @@ import * as GWU from 'gw-utils';
 import * as Style from './style';
 import * as Element from './element';
 import { Document } from './document';
+import * as Parser from './parser';
 
 Style.defaultStyle.add('button', {
     fg: 'black',
@@ -74,6 +75,6 @@ export class Button extends Element.Element {
     }
 }
 
-Element.installElement('button', (tag: string, sheet?: Style.Sheet) => {
+Parser.installElement('button', (tag: string, sheet?: Style.Sheet) => {
     return new Button(tag, sheet);
 });

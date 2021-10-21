@@ -1,6 +1,7 @@
 import * as GWU from 'gw-utils';
 import * as Style from './style';
 import * as Element from './element';
+import * as Parser from './parser';
 // import { Document } from './document';
 
 // Style.defaultStyle.add('button', {
@@ -59,8 +60,8 @@ export class UnorderedList extends Element.Element {
     _drawChildren(buffer: GWU.canvas.DataBuffer) {
         this.children.forEach((c, i) => {
             const fg = c.used('fg') || 'white';
-            const top = c.innerTop;
-            const left = c.innerLeft - this.indentWidth;
+            const top = c.bounds.top + (c.used('marginTop') || 0);
+            const left = c.bounds.left - this.indentWidth;
 
             this._drawBullet(buffer, i, left, top, fg);
             c.draw(buffer);
@@ -69,12 +70,12 @@ export class UnorderedList extends Element.Element {
 
     // CHILDREN
 
-    _isValidChild(child: Element.Element): boolean {
-        return child.tag === 'li';
-    }
+    // _isValidChild(child: Element.Element): boolean {
+    //     return child.tag === 'li';
+    // }
 }
 
-Element.installElement('ul', (tag: string, sheet?: Style.Sheet) => {
+Parser.installElement('ul', (tag: string, sheet?: Style.Sheet) => {
     return new UnorderedList(tag, sheet);
 });
 
@@ -99,6 +100,6 @@ export class OrderedList extends UnorderedList {
     }
 }
 
-Element.installElement('ol', (tag: string, sheet?: Style.Sheet) => {
+Parser.installElement('ol', (tag: string, sheet?: Style.Sheet) => {
     return new OrderedList(tag, sheet);
 });

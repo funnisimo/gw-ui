@@ -1,54 +1,13 @@
+import * as GWU from 'gw-utils';
 import { Selectable } from './types';
 
-export function isTruthy(v: any): boolean {
-    if (!v) return false;
-    if (typeof v === 'string') {
-        if (v === 'false' || v === '0') return false;
-    }
-    return true;
-}
-
 export type MatchFn = (el: Selectable) => boolean;
-
-function matchTag(tag: string): MatchFn {
-    return (el: Selectable) => el.tag === tag;
-}
-
-function matchClass(cls: string): MatchFn {
-    return (el: Selectable) => el.classes.includes(cls);
-}
-
-function matchProp(prop: string): MatchFn {
-    if (prop.startsWith('first')) {
-        return matchFirst();
-    } else if (prop.startsWith('last')) {
-        return matchLast();
-    }
-
-    return (el: Selectable) => !!el.prop(prop);
-}
-
-function matchId(id: string): MatchFn {
-    return (el: Selectable) => el.attr('id') === id;
-}
-
-function matchFirst(): MatchFn {
-    return (el: Selectable) => !!el.parent && el.parent.children[0] === el;
-}
-
-function matchLast(): MatchFn {
-    return (el: Selectable) =>
-        !!el.parent && el.parent.children[el.parent.children.length - 1] === el;
-}
-
-function matchNot(fn: MatchFn): MatchFn {
-    return (el: Selectable) => !fn(el);
-}
+type BuildFn = (next: MatchFn, e: Selectable) => boolean;
 
 export class Selector {
     text: string;
     priority = 0;
-    match: MatchFn[] = [];
+    matchFn: MatchFn;
 
     constructor(text: string) {
         if (text.startsWith(':') || text.startsWith('.')) {
@@ -56,97 +15,143 @@ export class Selector {
         }
 
         this.text = text;
+        this.matchFn = this._parse(text);
+    }
 
-        let nextIndex = 0;
-        if (text.startsWith('*')) {
-            // global
-            nextIndex = 1;
-        } else if (text.startsWith('#')) {
-            // id
-            this.priority += 1000;
-
-            const match = text.match(/#([^\.:]+)/);
-            if (!match)
-                throw new Error(
-                    'Invalid selector - Failed to match ID: ' + text
-                );
-            nextIndex = match[0].length;
-            // console.log('match ID - ', match[1], match);
-            this.match.push(matchId(match[1]));
-        } else if (text.startsWith('$')) {
-            // self
-            this.priority += 10000;
-            nextIndex = 1;
-        } else {
-            // tag
-            this.priority += 10;
-            const match = text.match(/([^\.:]+)/);
-            if (!match)
-                throw new Error(
-                    'Invalid selector - Failed to match tag: ' + text
-                );
-            nextIndex = match[0].length;
-            // console.log('match Tag - ', match[1], match);
-            this.match.push(matchTag(match[1]));
-        }
-
-        // console.log(nextIndex);
-
-        const filterExp = new RegExp(
-            /(?:\.([^\.:]+))|(?::(?:(?:not\(\.([^\)]+)\))|(?:not\(:([^\)]+)\))|([^\.:]+)))/g
-        );
-        // const propExp = new RegExp(/:([^:]+)/g);
-        filterExp.lastIndex = nextIndex;
-        let match = filterExp.exec(text);
-        while (match) {
-            // console.log(match);
-
-            let fn: MatchFn;
-            if (match[1]) {
-                this.priority += 100;
-                fn = matchClass(match[1]);
-            } else if (match[2]) {
-                this.priority += 100; // class
-                fn = matchNot(matchClass(match[2]));
-            } else if (match[3]) {
-                this.priority += 1; // prop
-                fn = matchNot(matchProp(match[3]));
-            } else {
-                this.priority += 1; // prop
-                const prop = match[4];
-                if (prop === 'invalid') {
-                    fn = matchNot(matchProp('valid'));
-                } else if (prop === 'optional') {
-                    fn = matchNot(matchProp('required'));
-                } else if (prop === 'enabled') {
-                    fn = matchNot(matchProp('disabled'));
-                } else if (prop === 'unchecked') {
-                    fn = matchNot(matchProp('checked'));
-                } else {
-                    fn = matchProp(match[4]);
-                }
+    protected _parse(text: string): MatchFn {
+        const parts = text.split(/ +/g).map((p) => p.trim());
+        const matches = [];
+        for (let i = 0; i < parts.length; ++i) {
+            let p = parts[i];
+            if (p === '>') {
+                matches.push(this._parentMatch());
+                ++i;
+                p = parts[i];
+            } else if (i > 0) {
+                matches.push(this._ancestorMatch());
             }
 
-            this.match.push(fn);
-
-            match = filterExp.exec(text);
+            matches.push(this._matchElement(p));
         }
+
+        return matches.reduce(
+            (out, fn) => fn.bind(undefined, out),
+            GWU.TRUE as MatchFn
+        );
+    }
+
+    protected _parentMatch(): BuildFn {
+        return function parentM(next: MatchFn, e: Selectable) {
+            // console.log('parent', e.parent);
+            if (!e.parent) return false;
+            return next(e.parent);
+        };
+    }
+
+    protected _ancestorMatch(): BuildFn {
+        return function ancestorM(next, e) {
+            let current = e.parent;
+            while (current) {
+                if (next(current)) return true;
+            }
+            return false;
+        };
+    }
+
+    protected _matchElement(text: string): BuildFn {
+        const CSS_RE =
+            /(?:(\w+|\*|\$)|#(\w+)|\.([^\.: ]+))|(?::(?:(?:not\(\.([^\)]+)\))|(?:not\(:([^\)]+)\))|([^\.: ]+)))/g;
+
+        const parts: MatchFn[] = [];
+        const re = new RegExp(CSS_RE, 'g');
+        let match = re.exec(text);
+        while (match) {
+            if (match[1]) {
+                const fn = this._matchTag(match[1]);
+                if (fn) {
+                    parts.push(fn);
+                }
+            } else if (match[2]) {
+                parts.push(this._matchId(match[2]));
+            } else if (match[3]) {
+                parts.push(this._matchClass(match[3]));
+            } else if (match[4]) {
+                parts.push(this._matchNot(this._matchClass(match[4])));
+            } else if (match[5]) {
+                parts.push(this._matchNot(this._matchProp(match[5])));
+            } else {
+                parts.push(this._matchProp(match[6]));
+            }
+
+            match = re.exec(text);
+        }
+
+        return (next: MatchFn, e: Selectable) => {
+            if (!parts.every((fn) => fn(e))) return false;
+            return next(e);
+        };
+    }
+
+    protected _matchTag(tag: string): MatchFn | null {
+        if (tag === '*') return null;
+        if (tag === '$') {
+            this.priority += 10000;
+            return null;
+        }
+        this.priority += 10;
+        return (el: Selectable) => el.tag === tag;
+    }
+
+    protected _matchClass(cls: string): MatchFn {
+        this.priority += 100;
+        return (el: Selectable) => el.classes.includes(cls);
+    }
+
+    protected _matchProp(prop: string): MatchFn {
+        if (prop.startsWith('first')) {
+            return this._matchFirst();
+        } else if (prop.startsWith('last')) {
+            return this._matchLast();
+        } else if (prop === 'invalid') {
+            return this._matchNot(this._matchProp('valid'));
+        } else if (prop === 'optional') {
+            return this._matchNot(this._matchProp('required'));
+        } else if (prop === 'enabled') {
+            return this._matchNot(this._matchProp('disabled'));
+        } else if (prop === 'unchecked') {
+            return this._matchNot(this._matchProp('checked'));
+        }
+
+        this.priority += 1; // prop
+        return (el: Selectable) => !!el.prop(prop);
+    }
+
+    protected _matchId(id: string): MatchFn {
+        this.priority += 1000;
+        return (el: Selectable) => el.attr('id') === id;
+    }
+
+    protected _matchFirst(): MatchFn {
+        this.priority += 1; // prop
+        return (el: Selectable) => !!el.parent && el.parent.children[0] === el;
+    }
+
+    protected _matchLast(): MatchFn {
+        this.priority += 1; // prop
+        return (el: Selectable) =>
+            !!el.parent &&
+            el.parent.children[el.parent.children.length - 1] === el;
+    }
+
+    protected _matchNot(fn: MatchFn): MatchFn {
+        return (el: Selectable) => !fn(el);
     }
 
     matches(obj: Selectable): boolean {
-        return this.match.every((fn) => fn(obj));
-        // if (this.tag.length && obj.tag !== this.tag) return false;
-        // if (this.id.length && obj.id !== this.id) return false;
-        // if (this.class.length && !obj.classes.includes(this.class))
-        //     return false;
-        // if (this.prop.length) {
-        //     const v = obj.prop(this.prop) || false;
-        //     if (!isTruthy(v)) return false;
-        // }
-        // return true;
+        return this.matchFn(obj);
     }
 }
 
-export function selector(text: string): Selector {
+export function compile(text: string): Selector {
     return new Selector(text);
 }

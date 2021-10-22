@@ -1,3 +1,4 @@
+// import * as GWU from 'gw-utils';
 import * as Selector from './selector';
 import * as Types from './types';
 
@@ -33,28 +34,28 @@ describe('selector', () => {
 
     test('priority', () => {
         // global
-        expect(Selector.selector('*').priority).toEqual(0);
-        expect(Selector.selector('*:hovered').priority).toEqual(1);
-        expect(Selector.selector(':hovered').priority).toEqual(1);
+        expect(Selector.compile('*').priority).toEqual(0);
+        expect(Selector.compile('*:hovered').priority).toEqual(1);
+        expect(Selector.compile(':hovered').priority).toEqual(1);
 
         // tag (+/- class)
-        expect(Selector.selector('text').priority).toEqual(10);
-        expect(Selector.selector('text:hovered').priority).toEqual(11);
-        expect(Selector.selector('text.class').priority).toEqual(110);
-        expect(Selector.selector('text.class:hovered').priority).toEqual(111);
+        expect(Selector.compile('text').priority).toEqual(10);
+        expect(Selector.compile('text:hovered').priority).toEqual(11);
+        expect(Selector.compile('text.class').priority).toEqual(110);
+        expect(Selector.compile('text.class:hovered').priority).toEqual(111);
 
         // class
-        expect(Selector.selector('.class').priority).toEqual(100);
-        expect(Selector.selector('.class:hovered').priority).toEqual(101);
+        expect(Selector.compile('.class').priority).toEqual(100);
+        expect(Selector.compile('.class:hovered').priority).toEqual(101);
 
         // id
-        expect(Selector.selector('#id').priority).toEqual(1000);
-        expect(Selector.selector('#id.class').priority).toEqual(1100);
-        expect(Selector.selector('#id.class:hovered').priority).toEqual(1101);
-        expect(Selector.selector('#id:hovered').priority).toEqual(1001);
+        expect(Selector.compile('#id').priority).toEqual(1000);
+        expect(Selector.compile('#id.class').priority).toEqual(1100);
+        expect(Selector.compile('#id.class:hovered').priority).toEqual(1101);
+        expect(Selector.compile('#id:hovered').priority).toEqual(1001);
 
         // local
-        expect(Selector.selector('$').priority).toEqual(10000);
+        expect(Selector.compile('$').priority).toEqual(10000);
     });
 
     test('default', () => {

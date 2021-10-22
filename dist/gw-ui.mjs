@@ -2331,137 +2331,142 @@ class Menu extends Widget {
     }
 }
 
-function isTruthy(v) {
-    if (!v)
-        return false;
-    if (typeof v === 'string') {
-        if (v === 'false' || v === '0')
-            return false;
-    }
-    return true;
-}
-function matchTag(tag) {
-    return (el) => el.tag === tag;
-}
-function matchClass(cls) {
-    return (el) => el.classes.includes(cls);
-}
-function matchProp(prop) {
-    if (prop.startsWith('first')) {
-        return matchFirst();
-    }
-    else if (prop.startsWith('last')) {
-        return matchLast();
-    }
-    return (el) => !!el.prop(prop);
-}
-function matchId(id) {
-    return (el) => el.attr('id') === id;
-}
-function matchFirst() {
-    return (el) => !!el.parent && el.parent.children[0] === el;
-}
-function matchLast() {
-    return (el) => !!el.parent && el.parent.children[el.parent.children.length - 1] === el;
-}
-function matchNot(fn) {
-    return (el) => !fn(el);
-}
 class Selector {
     constructor(text) {
         this.priority = 0;
-        this.match = [];
         if (text.startsWith(':') || text.startsWith('.')) {
             text = '*' + text;
         }
         this.text = text;
-        let nextIndex = 0;
-        if (text.startsWith('*')) {
-            // global
-            nextIndex = 1;
+        this.matchFn = this._parse(text);
+    }
+    _parse(text) {
+        const parts = text.split(/ +/g).map((p) => p.trim());
+        const matches = [];
+        for (let i = 0; i < parts.length; ++i) {
+            let p = parts[i];
+            if (p === '>') {
+                matches.push(this._parentMatch());
+                ++i;
+                p = parts[i];
+            }
+            else if (i > 0) {
+                matches.push(this._ancestorMatch());
+            }
+            matches.push(this._matchElement(p));
         }
-        else if (text.startsWith('#')) {
-            // id
-            this.priority += 1000;
-            const match = text.match(/#([^\.:]+)/);
-            if (!match)
-                throw new Error('Invalid selector - Failed to match ID: ' + text);
-            nextIndex = match[0].length;
-            // console.log('match ID - ', match[1], match);
-            this.match.push(matchId(match[1]));
-        }
-        else if (text.startsWith('$')) {
-            // self
-            this.priority += 10000;
-            nextIndex = 1;
-        }
-        else {
-            // tag
-            this.priority += 10;
-            const match = text.match(/([^\.:]+)/);
-            if (!match)
-                throw new Error('Invalid selector - Failed to match tag: ' + text);
-            nextIndex = match[0].length;
-            // console.log('match Tag - ', match[1], match);
-            this.match.push(matchTag(match[1]));
-        }
-        // console.log(nextIndex);
-        const filterExp = new RegExp(/(?:\.([^\.:]+))|(?::(?:(?:not\(\.([^\)]+)\))|(?:not\(:([^\)]+)\))|([^\.:]+)))/g);
-        // const propExp = new RegExp(/:([^:]+)/g);
-        filterExp.lastIndex = nextIndex;
-        let match = filterExp.exec(text);
+        return matches.reduce((out, fn) => fn.bind(undefined, out), GWU.TRUE);
+    }
+    _parentMatch() {
+        return function parentM(next, e) {
+            // console.log('parent', e.parent);
+            if (!e.parent)
+                return false;
+            return next(e.parent);
+        };
+    }
+    _ancestorMatch() {
+        return function ancestorM(next, e) {
+            let current = e.parent;
+            while (current) {
+                if (next(current))
+                    return true;
+            }
+            return false;
+        };
+    }
+    _matchElement(text) {
+        const CSS_RE = /(?:(\w+|\*|\$)|#(\w+)|\.([^\.: ]+))|(?::(?:(?:not\(\.([^\)]+)\))|(?:not\(:([^\)]+)\))|([^\.: ]+)))/g;
+        const parts = [];
+        const re = new RegExp(CSS_RE, 'g');
+        let match = re.exec(text);
         while (match) {
-            // console.log(match);
-            let fn;
             if (match[1]) {
-                this.priority += 100;
-                fn = matchClass(match[1]);
+                const fn = this._matchTag(match[1]);
+                if (fn) {
+                    parts.push(fn);
+                }
             }
             else if (match[2]) {
-                this.priority += 100; // class
-                fn = matchNot(matchClass(match[2]));
+                parts.push(this._matchId(match[2]));
             }
             else if (match[3]) {
-                this.priority += 1; // prop
-                fn = matchNot(matchProp(match[3]));
+                parts.push(this._matchClass(match[3]));
+            }
+            else if (match[4]) {
+                parts.push(this._matchNot(this._matchClass(match[4])));
+            }
+            else if (match[5]) {
+                parts.push(this._matchNot(this._matchProp(match[5])));
             }
             else {
-                this.priority += 1; // prop
-                const prop = match[4];
-                if (prop === 'invalid') {
-                    fn = matchNot(matchProp('valid'));
-                }
-                else if (prop === 'optional') {
-                    fn = matchNot(matchProp('required'));
-                }
-                else if (prop === 'enabled') {
-                    fn = matchNot(matchProp('disabled'));
-                }
-                else if (prop === 'unchecked') {
-                    fn = matchNot(matchProp('checked'));
-                }
-                else {
-                    fn = matchProp(match[4]);
-                }
+                parts.push(this._matchProp(match[6]));
             }
-            this.match.push(fn);
-            match = filterExp.exec(text);
+            match = re.exec(text);
         }
+        return (next, e) => {
+            if (!parts.every((fn) => fn(e)))
+                return false;
+            return next(e);
+        };
+    }
+    _matchTag(tag) {
+        if (tag === '*')
+            return null;
+        if (tag === '$') {
+            this.priority += 10000;
+            return null;
+        }
+        this.priority += 10;
+        return (el) => el.tag === tag;
+    }
+    _matchClass(cls) {
+        this.priority += 100;
+        return (el) => el.classes.includes(cls);
+    }
+    _matchProp(prop) {
+        if (prop.startsWith('first')) {
+            return this._matchFirst();
+        }
+        else if (prop.startsWith('last')) {
+            return this._matchLast();
+        }
+        else if (prop === 'invalid') {
+            return this._matchNot(this._matchProp('valid'));
+        }
+        else if (prop === 'optional') {
+            return this._matchNot(this._matchProp('required'));
+        }
+        else if (prop === 'enabled') {
+            return this._matchNot(this._matchProp('disabled'));
+        }
+        else if (prop === 'unchecked') {
+            return this._matchNot(this._matchProp('checked'));
+        }
+        this.priority += 1; // prop
+        return (el) => !!el.prop(prop);
+    }
+    _matchId(id) {
+        this.priority += 1000;
+        return (el) => el.attr('id') === id;
+    }
+    _matchFirst() {
+        this.priority += 1; // prop
+        return (el) => !!el.parent && el.parent.children[0] === el;
+    }
+    _matchLast() {
+        this.priority += 1; // prop
+        return (el) => !!el.parent &&
+            el.parent.children[el.parent.children.length - 1] === el;
+    }
+    _matchNot(fn) {
+        return (el) => !fn(el);
     }
     matches(obj) {
-        return this.match.every((fn) => fn(obj));
-        // if (this.tag.length && obj.tag !== this.tag) return false;
-        // if (this.id.length && obj.id !== this.id) return false;
-        // if (this.class.length && !obj.classes.includes(this.class))
-        //     return false;
-        // if (this.prop.length) {
-        //     const v = obj.prop(this.prop) || false;
-        //     if (!isTruthy(v)) return false;
-        // }
-        // return true;
+        return this.matchFn(obj);
     }
 }
-function selector(text) {
+function compile(text) {
     return new Selector(text);
 }
 
@@ -4791,9 +4796,8 @@ class Selection {
 
 var index = /*#__PURE__*/Object.freeze({
     __proto__: null,
-    isTruthy: isTruthy,
     Selector: Selector,
-    selector: selector,
+    compile: compile,
     Style: Style,
     makeStyle: makeStyle,
     ComputedStyle: ComputedStyle,

@@ -537,16 +537,27 @@ interface Selectable {
     children: Selectable[];
 }
 
-declare function isTruthy(v: any): boolean;
 declare type MatchFn = (el: Selectable) => boolean;
+declare type BuildFn = (next: MatchFn, e: Selectable) => boolean;
 declare class Selector {
     text: string;
     priority: number;
-    match: MatchFn[];
+    matchFn: MatchFn;
     constructor(text: string);
+    protected _parse(text: string): MatchFn;
+    protected _parentMatch(): BuildFn;
+    protected _ancestorMatch(): BuildFn;
+    protected _matchElement(text: string): BuildFn;
+    protected _matchTag(tag: string): MatchFn | null;
+    protected _matchClass(cls: string): MatchFn;
+    protected _matchProp(prop: string): MatchFn;
+    protected _matchId(id: string): MatchFn;
+    protected _matchFirst(): MatchFn;
+    protected _matchLast(): MatchFn;
+    protected _matchNot(fn: MatchFn): MatchFn;
     matches(obj: Selectable): boolean;
 }
-declare function selector(text: string): Selector;
+declare function compile(text: string): Selector;
 
 declare type Position = 'static' | 'relative' | 'fixed' | 'absolute';
 interface Stylable extends Selectable {
@@ -999,11 +1010,10 @@ declare function parse(data: string, options?: MyOptions | Sheet): Element;
 type index_d_Size = Size;
 type index_d_PropType = PropType;
 type index_d_Selectable = Selectable;
-declare const index_d_isTruthy: typeof isTruthy;
 type index_d_MatchFn = MatchFn;
 type index_d_Selector = Selector;
 declare const index_d_Selector: typeof Selector;
-declare const index_d_selector: typeof selector;
+declare const index_d_compile: typeof compile;
 type index_d_Position = Position;
 type index_d_Stylable = Stylable;
 type index_d_StyleOptions = StyleOptions;
@@ -1055,10 +1065,9 @@ declare namespace index_d {
     index_d_Size as Size,
     index_d_PropType as PropType,
     index_d_Selectable as Selectable,
-    index_d_isTruthy as isTruthy,
     index_d_MatchFn as MatchFn,
     index_d_Selector as Selector,
-    index_d_selector as selector,
+    index_d_compile as compile,
     index_d_Position as Position,
     index_d_Stylable as Stylable,
     index_d_StyleOptions as StyleOptions,

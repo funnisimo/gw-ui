@@ -2971,14 +2971,14 @@
             this._setProp('value', v);
             return this;
         }
-        data(v) {
-            if (v === undefined) {
+        data(doc, v) {
+            if (doc === undefined) {
                 return this._data;
             }
-            this._setData(v);
+            this._setData(doc, v);
             return this;
         }
-        _setData(v) {
+        _setData(_doc, v) {
             this._data = v;
         }
         onblur(_doc) {
@@ -3144,8 +3144,8 @@
             this._updateHeight();
             this._updateLeft();
             this._updateTop();
-            this.dirty = false;
-            this.children.forEach((c) => (c.dirty = false));
+            // this.dirty = false;
+            // this.children.forEach((c) => (c.dirty = false));
             return this;
         }
         // update bounds.width and return it
@@ -3197,7 +3197,7 @@
                         (used.border ? 2 : 0);
                 if (this.children.length) {
                     // my height comes from my children...
-                    bounds.height += this.children.reduce((len, c) => len + c._updateHeight(), 0);
+                    bounds.height += this._calcChildHeight();
                 }
                 else {
                     contentHeight = this._calcContentHeight();
@@ -3433,6 +3433,9 @@
             this._lines = GWU__namespace.text.splitIntoLines(this._text, this.innerWidth);
             return this._lines.length;
         }
+        _calcChildHeight() {
+            return this.children.reduce((len, c) => len + c._updateHeight(), 0);
+        }
         _updateContentHeight() {
             this._lines.length = this.innerHeight;
         }
@@ -3443,12 +3446,7 @@
                 this._drawBorder(buffer);
             }
             this._fill(buffer);
-            if (this.children.length) {
-                this._drawChildren(buffer);
-            }
-            else {
-                this._drawContent(buffer);
-            }
+            this._drawContent(buffer);
             this.dirty = false;
             return true;
         }
@@ -3471,6 +3469,14 @@
                 (used.marginBottom || 0) -
                 (used.border ? 2 : 0), ' ', bg, bg);
         }
+        _drawContent(buffer) {
+            if (this.children.length) {
+                this._drawChildren(buffer);
+            }
+            else {
+                this._drawText(buffer);
+            }
+        }
         _drawChildren(buffer) {
             // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
             this.children.forEach((c) => {
@@ -3482,7 +3488,7 @@
                     c.draw(buffer);
             });
         }
-        _drawContent(buffer) {
+        _drawText(buffer) {
             if (this._lines.length) {
                 const fg = this.used('fg') || 'white';
                 const top = this.innerTop;
@@ -3804,7 +3810,7 @@
                 v.length <= this._attrInt('maxLength', Number.MAX_SAFE_INTEGER));
         }
         // DRAWING
-        _drawContent(buffer) {
+        _drawText(buffer) {
             const fg = this.used('fg') || 'white';
             const top = this.innerTop;
             const width = this.innerWidth;
@@ -3888,7 +3894,7 @@
             return Math.max(1, this._lines.length);
         }
         // DRAWING
-        _drawContent(buffer) {
+        _drawText(buffer) {
             const fg = this.used('fg') || 'white';
             const top = this.innerTop;
             const width = this.innerWidth;
@@ -4104,42 +4110,48 @@
         return new OrderedList(tag, sheet);
     });
 
-    // import { Document } from './document';
-    // Style.defaultStyle.add('button', {
-    //     fg: 'black',
-    //     bg: 'gray',
-    // });
     class DataList extends Element {
         constructor(tag, sheet) {
             super(tag, sheet);
             this._data = [];
         }
         // CONTENT
-        _setData(v) {
+        _setData(doc, v) {
             if (!Array.isArray(v)) {
                 throw new Error('<datalist> only uses Array values for data field.');
             }
-            super._setData(v);
+            super._setData(doc, v);
             this.dirty = true;
+            if (this.children.length) {
+                const oldChildren = doc.select(this.children.filter((c) => c.tag === 'data'));
+                oldChildren.detach();
+            }
+            if (!this._data)
+                return;
+            this._data.forEach((item) => {
+                doc.create('<data>').text(item).appendTo(this);
+            });
         }
         get indentWidth() {
-            const prefix = this.attr('prefix') || DataList.default.prefix;
-            if (!prefix)
-                return 0;
-            if (prefix.includes('#')) {
-                return prefix.length - 1 + this._data.length >= 10 ? 2 : 1;
-            }
-            return prefix.length;
+            return 0;
+            // const prefix = this.attr('prefix') || DataList.default.prefix;
+            // if (!prefix) return 0;
+            // if (prefix.includes('#')) {
+            //     return prefix.length - 1 + this._data.length >= 10 ? 2 : 1;
+            // }
+            // return prefix.length;
         }
         _calcContentWidth() {
-            const width = this._data.reduce((len, d) => {
-                const dlen = ('' + d).length; // calculate formatted width
-                return Math.max(dlen, len);
-            }, 0);
-            return width ? this.indentWidth + width : DataList.default.width; //
+            return DataList.default.width; // no legend or data, so use default
         }
         _calcContentHeight() {
-            return Math.max(1, this._data.length);
+            return 1; // no legend or data so just an empty cell
+        }
+        _calcChildHeight() {
+            if (!this._data || this._data.length === 0) {
+                return super._calcChildHeight() + 1; // legend (if present) + empty cell
+            }
+            return super._calcChildHeight();
         }
         get innerLeft() {
             return super.innerLeft + this.indentWidth;
@@ -4149,35 +4161,28 @@
         }
         // DRAWING
         _drawContent(buffer) {
-            const fg = this.used('fg') || 'white';
-            const top = this.innerTop;
-            const left = this.innerLeft + this.indentWidth;
-            const width = this.innerWidth - this.indentWidth;
-            const align = this.used('align');
-            const empty = this.attr('empty') || DataList.default.empty;
-            if (this._data.length == 0) {
+            // draw legend and data (if any)
+            this._drawChildren(buffer);
+            if (!this._data || this._data.length == 0) {
+                // empty cell is necessary
+                const fg = this.used('fg') || 'white';
+                const top = this.innerBottom - 1;
+                const left = this.innerLeft + this.indentWidth;
+                const width = this.innerWidth - this.indentWidth;
+                const align = this.used('align');
+                const empty = this.attr('empty') || DataList.default.empty;
                 buffer.drawText(left, top, empty, fg, -1, width, align);
             }
-            this._data.forEach((d, i) => {
-                if (!d) {
-                    buffer.drawText(left, top + i, empty, fg, -1, width, align);
-                }
-                else {
-                    buffer.drawText(left, top + i, d, fg, -1, width, align);
-                }
-                // this._drawBullet(buffer, i, left, top, fg);
-            });
         }
         // CHILDREN
-        _isValidChild(_child) {
-            return false; // no children
+        _isValidChild(child) {
+            return ['data', 'legend'].includes(child.tag);
         }
     }
     DataList.default = {
         bullet: '\u2022',
         empty: '-',
-        prefix: null,
-        wrap: false,
+        prefix: 'none',
         width: 10,
     };
     installElement('datalist', (tag, sheet) => {
@@ -4662,7 +4667,7 @@
                     return undefined;
                 return this.selected[0].data();
             }
-            this.selected.forEach((e) => e.data(d));
+            this.selected.forEach((e) => e.data(this.document, d));
             return this;
         }
         attr(id, value) {

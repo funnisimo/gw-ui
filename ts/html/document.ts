@@ -622,7 +622,7 @@ export class Selection {
             if (!this.selected.length) return undefined;
             return this.selected[0].data();
         }
-        this.selected.forEach((e) => e.data(d));
+        this.selected.forEach((e) => e.data(this.document, d));
         return this;
     }
 

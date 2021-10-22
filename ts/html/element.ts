@@ -176,16 +176,16 @@ export class Element implements Selectable {
     }
 
     data(): any;
-    data(v: any): this;
-    data(v?: any): this | any {
-        if (v === undefined) {
+    data(doc: Document, v: any): this;
+    data(doc?: Document, v?: any): this | any {
+        if (doc === undefined) {
             return this._data;
         }
-        this._setData(v);
+        this._setData(doc, v);
         return this;
     }
 
-    protected _setData(v: any) {
+    protected _setData(_doc: Document, v: any) {
         this._data = v;
     }
 
@@ -293,7 +293,7 @@ export class Element implements Selectable {
         return current !== this ? current : null;
     }
 
-    positionedParent(): Element | null {
+    protected positionedParent(): Element | null {
         const position = this._usedStyle.position || 'static';
         if (position === 'static') return null;
         if (position === 'relative') return this;
@@ -390,8 +390,8 @@ export class Element implements Selectable {
         this._updateLeft();
         this._updateTop();
 
-        this.dirty = false;
-        this.children.forEach((c) => (c.dirty = false));
+        // this.dirty = false;
+        // this.children.forEach((c) => (c.dirty = false));
         return this;
     }
 
@@ -459,10 +459,7 @@ export class Element implements Selectable {
 
             if (this.children.length) {
                 // my height comes from my children...
-                bounds.height += this.children.reduce(
-                    (len, c) => len + c._updateHeight(),
-                    0
-                );
+                bounds.height += this._calcChildHeight();
             } else {
                 contentHeight = this._calcContentHeight();
                 bounds.height += contentHeight;
@@ -738,6 +735,10 @@ export class Element implements Selectable {
         return this._lines.length;
     }
 
+    _calcChildHeight(): number {
+        return this.children.reduce((len, c) => len + c._updateHeight(), 0);
+    }
+
     _updateContentHeight() {
         this._lines.length = this.innerHeight;
     }
@@ -753,11 +754,7 @@ export class Element implements Selectable {
 
         this._fill(buffer);
 
-        if (this.children.length) {
-            this._drawChildren(buffer);
-        } else {
-            this._drawContent(buffer);
-        }
+        this._drawContent(buffer);
 
         this.dirty = false;
         return true;
@@ -800,6 +797,14 @@ export class Element implements Selectable {
         );
     }
 
+    _drawContent(buffer: GWU.canvas.DataBuffer) {
+        if (this.children.length) {
+            this._drawChildren(buffer);
+        } else {
+            this._drawText(buffer);
+        }
+    }
+
     _drawChildren(buffer: GWU.canvas.DataBuffer) {
         // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
         this.children.forEach((c) => {
@@ -810,7 +815,7 @@ export class Element implements Selectable {
         });
     }
 
-    _drawContent(buffer: GWU.canvas.DataBuffer) {
+    _drawText(buffer: GWU.canvas.DataBuffer) {
         if (this._lines.length) {
             const fg = this.used('fg') || 'white';
             const top = this.innerTop;

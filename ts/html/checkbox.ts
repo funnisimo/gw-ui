@@ -52,7 +52,7 @@ export class CheckBox extends Element.Element {
 
     // DRAWING
 
-    _drawContent(buffer: GWU.canvas.DataBuffer) {
+    _drawText(buffer: GWU.canvas.DataBuffer) {
         const fg = this.used('fg') || 'white';
         const top = this.innerTop;
         const width = this.innerWidth;

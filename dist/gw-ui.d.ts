@@ -841,8 +841,8 @@ declare class Element implements Selectable {
     val(): PropType;
     val(v: PropType): this;
     data(): any;
-    data(v: any): this;
-    protected _setData(v: any): void;
+    data(doc: Document, v: any): this;
+    protected _setData(_doc: Document, v: any): void;
     onblur(_doc: Document): void;
     onfocus(_doc: Document, _reverse: boolean): void;
     protected _propInt(name: string, def?: number): number;
@@ -853,7 +853,7 @@ declare class Element implements Selectable {
     removeChild(child: Element): this;
     empty(): Element[];
     root(): Element | null;
-    positionedParent(): Element | null;
+    protected positionedParent(): Element | null;
     get bounds(): GWU.xy.Bounds;
     get innerLeft(): number;
     get innerRight(): number;
@@ -889,12 +889,14 @@ declare class Element implements Selectable {
     protected _setText(v: string): void;
     _calcContentWidth(): number;
     _calcContentHeight(): number;
+    _calcChildHeight(): number;
     _updateContentHeight(): void;
     draw(buffer: GWU.canvas.DataBuffer): boolean;
     _drawBorder(buffer: GWU.canvas.DataBuffer): void;
     _fill(buffer: GWU.canvas.DataBuffer): void;
-    _drawChildren(buffer: GWU.canvas.DataBuffer): void;
     _drawContent(buffer: GWU.canvas.DataBuffer): void;
+    _drawChildren(buffer: GWU.canvas.DataBuffer): void;
+    _drawText(buffer: GWU.canvas.DataBuffer): void;
     on(event: string, cb: EventCb): this;
     off(event: string, cb?: EventCb): this;
     elementFromPoint(x: number, y: number): Element | null;
@@ -909,7 +911,7 @@ declare class Input extends Element {
     _calcContentHeight(): number;
     _updateContentHeight(): void;
     isValid(): boolean;
-    _drawContent(buffer: GWU.canvas.DataBuffer): void;
+    _drawText(buffer: GWU.canvas.DataBuffer): void;
     onblur(doc: Document): void;
     keypress(document: Document, _element: Element, e?: GWU.io.Event): boolean;
 }
@@ -925,7 +927,7 @@ declare class CheckBox extends Element {
     protected _setAttr(name: string, value: string): void;
     _calcContentWidth(): number;
     _calcContentHeight(): number;
-    _drawContent(buffer: GWU.canvas.DataBuffer): void;
+    _drawText(buffer: GWU.canvas.DataBuffer): void;
     onblur(doc: Document): void;
     keypress(document: Document, _element: Element, e?: GWU.io.Event): boolean;
     click(document: Document, _element: Element, e?: GWU.io.Event): boolean;
@@ -966,24 +968,25 @@ declare class OrderedList extends UnorderedList {
     _drawBullet(buffer: GWU.canvas.DataBuffer, index: number, left: number, top: number, fg: GWU.color.ColorBase): void;
 }
 
+declare type PrefixType = 'none' | 'letter' | 'number' | 'bullet';
 declare class DataList extends Element {
     _data: any[];
     static default: {
         bullet: string;
         empty: string;
-        prefix: null;
-        wrap: boolean;
+        prefix: PrefixType;
         width: number;
     };
     constructor(tag: string, sheet?: Sheet);
-    _setData(v: any): void;
+    protected _setData(doc: Document, v: any): void;
     protected get indentWidth(): number;
     _calcContentWidth(): number;
     _calcContentHeight(): number;
+    _calcChildHeight(): number;
     get innerLeft(): number;
     get innerWidth(): number;
     _drawContent(buffer: GWU.canvas.DataBuffer): void;
-    _isValidChild(_child: Element): boolean;
+    _isValidChild(child: Element): boolean;
 }
 
 declare const selfClosingTags: Record<string, boolean>;
@@ -1041,6 +1044,7 @@ type index_d_UnorderedList = UnorderedList;
 declare const index_d_UnorderedList: typeof UnorderedList;
 type index_d_OrderedList = OrderedList;
 declare const index_d_OrderedList: typeof OrderedList;
+type index_d_PrefixType = PrefixType;
 type index_d_DataList = DataList;
 declare const index_d_DataList: typeof DataList;
 declare const index_d_selfClosingTags: typeof selfClosingTags;
@@ -1085,6 +1089,7 @@ declare namespace index_d {
     index_d_FieldSet as FieldSet,
     index_d_UnorderedList as UnorderedList,
     index_d_OrderedList as OrderedList,
+    index_d_PrefixType as PrefixType,
     index_d_DataList as DataList,
     index_d_selfClosingTags as selfClosingTags,
     index_d_MakeElementFn as MakeElementFn,

@@ -18,16 +18,9 @@ term.pos(5, 4).fg('blue').bright(50).text('Hello again.').reset();
 term.render();
 ```
 
-## Gridwork
+## Using Borders
 
-To make filling out displays with grid oriented data, there are a few helper functions:
-
--   column(x, width) - defines a column
--   col(n) - moves to a column by index
--   wrap(text) - draws text in the current column with the column width as the wrap length
--   nextLine() - Moves to the beginning of the next line
-
-So filling out a grid can look something like this:
+You can use borders to create table-like displays:
 
 ```js
 const canvas = GWU.canvas.make(100, 38, { loop: LOOP });

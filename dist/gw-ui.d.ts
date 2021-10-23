@@ -1156,6 +1156,30 @@ declare class Text {
     draw(buffer: GWU.canvas.DataBuffer): void;
 }
 
+declare class Grid {
+    _left: number;
+    _top: number;
+    _colWidths: number[];
+    _rowHeights: number[];
+    _col: number;
+    _row: number;
+    x: number;
+    y: number;
+    constructor(x: number, y: number);
+    cols(): number[];
+    cols(count: number, width: number): this;
+    cols(widths: number[]): this;
+    rows(): number[];
+    rows(count: number, height?: number): this;
+    rows(heights: number[]): this;
+    col(n?: number): this;
+    nextCol(): this;
+    row(n?: number): this;
+    nextRow(): this;
+    protected _setX(): this;
+    protected _setY(): this;
+}
+
 declare class Term {
     ui: UICore;
     x: number;
@@ -1164,6 +1188,7 @@ declare class Term {
     _defaultBg: GWU.color.ColorBase;
     _fg: GWU.color.Color;
     _bg: GWU.color.Color;
+    _grid: Grid | null;
     constructor(ui: UICore);
     get buffer(): GWU.canvas.DataBuffer;
     get width(): number;
@@ -1184,15 +1209,23 @@ declare class Term {
     right(n?: number): this;
     nextLine(n?: number): this;
     prevLine(n?: number): this;
-    col(n: number): this;
-    row(n: number): this;
     clear(newDefaultBg?: GWU.color.ColorBase): this;
     erase(newDefaultBg?: GWU.color.ColorBase): this;
     eraseBelow(): this;
     eraseAbove(): this;
-    eraseLine(): this;
+    eraseLine(n: number): this;
     eraseLineAbove(): this;
     eraseLineBelow(): this;
+    grid(): this;
+    cols(count: number, width: number): this;
+    cols(widths: number[]): this;
+    rows(count: number, width: number): this;
+    rows(heights: number[]): this;
+    startRow(n: number): this;
+    nextCol(): this;
+    endRow(): this;
+    col(n: number): this;
+    row(n: number): this;
     text(text: string, width?: number, align?: GWU.text.Align): this;
     border(w: number, h: number, bg?: GWU.color.ColorBase): this;
     render(): this;
@@ -1203,6 +1236,8 @@ type index_d_TextOptions = TextOptions;
 type index_d_Style = Style;
 type index_d_Text = Text;
 declare const index_d_Text: typeof Text;
+type index_d_Grid = Grid;
+declare const index_d_Grid: typeof Grid;
 type index_d_Term = Term;
 declare const index_d_Term: typeof Term;
 declare namespace index_d {
@@ -1211,6 +1246,7 @@ declare namespace index_d {
     index_d_TextOptions as TextOptions,
     index_d_Style as Style,
     index_d_Text as Text,
+    index_d_Grid as Grid,
     index_d_Term as Term,
   };
 }

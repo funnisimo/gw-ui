@@ -4892,10 +4892,82 @@ Text.default = {
     valign: 'top',
 };
 
+class Grid {
+    constructor(x, y) {
+        this._left = 0;
+        this._top = 0;
+        this._colWidths = [];
+        this._rowHeights = [];
+        this._col = 0;
+        this._row = -1;
+        this.x = 0;
+        this.y = 0;
+        this._left = x;
+        this._top = y;
+        this.x = x;
+        this.y = y;
+    }
+    cols(...args) {
+        if (args.length === 0)
+            return this._colWidths;
+        if (args.length == 2) {
+            args[0] = new Array(args[0]).fill(args[1]);
+        }
+        if (Array.isArray(args[0])) {
+            this._colWidths = args[0];
+        }
+        return this;
+    }
+    rows(...args) {
+        if (args.length === 0)
+            return this._rowHeights;
+        if (typeof args[0] === 'number') {
+            args[0] = new Array(args[0]).fill(args[1] || 1);
+        }
+        if (Array.isArray(args[0])) {
+            this._rowHeights = args[0];
+        }
+        return this;
+    }
+    col(n) {
+        if (n === undefined)
+            n = this._col;
+        this._col = GWU.clamp(n, 0, this._colWidths.length - 1);
+        return this._setX()._setY(); // move back to top of our current row
+    }
+    nextCol() {
+        return this.col(this._col + 1);
+    }
+    row(n) {
+        if (n === undefined)
+            n = this._row;
+        this._row = GWU.clamp(n, 0, this._rowHeights.length - 1);
+        return this._setY()._setX(); // move back to beginning of current column
+    }
+    nextRow() {
+        return this.row(this._row + 1).col(0);
+    }
+    _setX() {
+        this.x = this._left;
+        for (let i = 0; i < this._col; ++i) {
+            this.x += this._colWidths[i];
+        }
+        return this;
+    }
+    _setY() {
+        this.y = this._top;
+        for (let i = 0; i < this._row; ++i) {
+            this.y += this._rowHeights[i];
+        }
+        return this;
+    }
+}
+
 class Term {
     constructor(ui) {
         this.x = 0;
         this.y = 0;
+        this._grid = null;
         this.ui = ui;
         this.default('white', 'black');
     }
@@ -4973,18 +5045,14 @@ class Term {
     prevLine(n = 1) {
         return this.pos(0, this.y - n);
     }
-    col(n) {
-        return this.pos(n, this.y);
-    }
-    row(n) {
-        return this.pos(this.x, n);
-    }
     // EDIT
     // erase and move back to top left
     clear(newDefaultBg) {
         return this.erase(newDefaultBg).pos(0, 0);
     }
+    // just erase screen
     erase(newDefaultBg) {
+        // remove all widgets
         if (newDefaultBg !== undefined) {
             this._defaultBg = newDefaultBg;
             this._bg.set(newDefaultBg);
@@ -4993,23 +5061,85 @@ class Term {
         return this;
     }
     eraseBelow() {
+        // TODO - remove widgets below
         this.buffer.fillRect(0, this.y + 1, this.width, this.height - this.y - 1, ' ', this._bg, this._bg);
         return this;
     }
     eraseAbove() {
+        // TODO - remove widgets above
         this.buffer.fillRect(0, 0, this.width, this.y - 1, ' ', this._bg, this._bg);
         return this;
     }
-    eraseLine() {
-        this.buffer.fillRect(0, this.y, this.width, 1, ' ', this._bg, this._bg);
+    eraseLine(n) {
+        if (n === undefined) {
+            n = this.y;
+        }
+        if (n >= 0 && n < this.height) {
+            // TODO - remove widgets on line
+            this.buffer.fillRect(0, n, this.width, 1, ' ', this._bg, this._bg);
+        }
         return this;
     }
     eraseLineAbove() {
-        this.buffer.fillRect(0, this.y - 1, this.width, 1, ' ', this._bg, this._bg);
-        return this;
+        return this.eraseLine(this.y - 1);
     }
     eraseLineBelow() {
-        this.buffer.fillRect(0, this.y + 1, this.width, 1, ' ', this._bg, this._bg);
+        return this.eraseLine(this.y + 1);
+    }
+    // GRID
+    // erases/clears current grid information
+    grid() {
+        this._grid = new Grid(this.x, this.y);
+        return this;
+    }
+    cols(...args) {
+        if (!this._grid)
+            return this;
+        this._grid.cols(args[0], args[1]);
+        return this;
+    }
+    rows(...args) {
+        if (!this._grid)
+            return this;
+        this._grid.rows(args[0], args[1]);
+        return this;
+    }
+    startRow(n) {
+        if (!this._grid)
+            return this;
+        if (n !== undefined) {
+            this._grid.row(n);
+        }
+        else {
+            this._grid.nextRow();
+        }
+        this.pos(this._grid.x, this._grid.y);
+        return this;
+    }
+    nextCol() {
+        if (!this._grid)
+            return this;
+        this._grid.nextCol();
+        this.pos(this._grid.x, this._grid.y);
+        return this;
+    }
+    endRow() {
+        return this;
+    }
+    // moves to specific column
+    col(n) {
+        if (!this._grid)
+            return this;
+        this._grid.col(n);
+        this.pos(this._grid.x, this._grid.y);
+        return this;
+    }
+    // moves to specific row
+    row(n) {
+        if (!this._grid)
+            return this;
+        this._grid.row(n);
+        this.pos(this._grid.x, this._grid.y);
         return this;
     }
     // DRAW
@@ -5035,6 +5165,7 @@ class Term {
 var index = /*#__PURE__*/Object.freeze({
     __proto__: null,
     Text: Text,
+    Grid: Grid,
     Term: Term
 });
 

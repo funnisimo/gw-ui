@@ -1,5 +1,6 @@
 import * as GWU from 'gw-utils';
 import { UICore } from '../types';
+import { Grid } from './grid';
 
 export class Term {
     ui: UICore;
@@ -9,6 +10,8 @@ export class Term {
     _defaultBg!: GWU.color.ColorBase;
     _fg!: GWU.color.Color;
     _bg!: GWU.color.Color;
+
+    _grid: Grid | null = null;
 
     constructor(ui: UICore) {
         this.ui = ui;
@@ -108,13 +111,6 @@ export class Term {
         return this.pos(0, this.y - n);
     }
 
-    col(n: number): this {
-        return this.pos(n, this.y);
-    }
-    row(n: number): this {
-        return this.pos(this.x, n);
-    }
-
     // EDIT
 
     // erase and move back to top left
@@ -122,7 +118,9 @@ export class Term {
         return this.erase(newDefaultBg).pos(0, 0);
     }
 
+    // just erase screen
     erase(newDefaultBg?: GWU.color.ColorBase): this {
+        // remove all widgets
         if (newDefaultBg !== undefined) {
             this._defaultBg = newDefaultBg;
             this._bg.set(newDefaultBg);
@@ -132,6 +130,7 @@ export class Term {
     }
 
     eraseBelow(): this {
+        // TODO - remove widgets below
         this.buffer.fillRect(
             0,
             this.y + 1,
@@ -145,6 +144,7 @@ export class Term {
     }
 
     eraseAbove(): this {
+        // TODO - remove widgets above
         this.buffer.fillRect(
             0,
             0,
@@ -157,34 +157,84 @@ export class Term {
         return this;
     }
 
-    eraseLine(): this {
-        this.buffer.fillRect(0, this.y, this.width, 1, ' ', this._bg, this._bg);
+    eraseLine(n: number): this {
+        if (n === undefined) {
+            n = this.y;
+        }
+        if (n >= 0 && n < this.height) {
+            // TODO - remove widgets on line
+            this.buffer.fillRect(0, n, this.width, 1, ' ', this._bg, this._bg);
+        }
         return this;
     }
 
     eraseLineAbove(): this {
-        this.buffer.fillRect(
-            0,
-            this.y - 1,
-            this.width,
-            1,
-            ' ',
-            this._bg,
-            this._bg
-        );
-        return this;
+        return this.eraseLine(this.y - 1);
     }
 
     eraseLineBelow(): this {
-        this.buffer.fillRect(
-            0,
-            this.y + 1,
-            this.width,
-            1,
-            ' ',
-            this._bg,
-            this._bg
-        );
+        return this.eraseLine(this.y + 1);
+    }
+
+    // GRID
+
+    // erases/clears current grid information
+    grid(): this {
+        this._grid = new Grid(this.x, this.y);
+        return this;
+    }
+
+    cols(count: number, width: number): this;
+    cols(widths: number[]): this;
+    cols(...args: any[]): this {
+        if (!this._grid) return this;
+        this._grid.cols(args[0], args[1]);
+        return this;
+    }
+
+    rows(count: number, width: number): this;
+    rows(heights: number[]): this;
+    rows(...args: any[]): this {
+        if (!this._grid) return this;
+        this._grid.rows(args[0], args[1]);
+        return this;
+    }
+
+    startRow(n: number): this {
+        if (!this._grid) return this;
+        if (n !== undefined) {
+            this._grid.row(n);
+        } else {
+            this._grid.nextRow();
+        }
+        this.pos(this._grid.x, this._grid.y);
+        return this;
+    }
+
+    nextCol(): this {
+        if (!this._grid) return this;
+        this._grid.nextCol();
+        this.pos(this._grid.x, this._grid.y);
+        return this;
+    }
+
+    endRow(): this {
+        return this;
+    }
+
+    // moves to specific column
+    col(n: number): this {
+        if (!this._grid) return this;
+        this._grid.col(n);
+        this.pos(this._grid.x, this._grid.y);
+        return this;
+    }
+
+    // moves to specific row
+    row(n: number): this {
+        if (!this._grid) return this;
+        this._grid.row(n);
+        this.pos(this._grid.x, this._grid.y);
         return this;
     }
 

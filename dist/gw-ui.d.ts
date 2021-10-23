@@ -1123,45 +1123,6 @@ interface Style {
     valign: GWU.text.VAlign;
 }
 
-interface WidgetOptions {
-    width?: number;
-    height?: number;
-    style?: StyleOptions;
-    hover?: StyleOptions;
-    focus?: StyleOptions;
-}
-declare abstract class Widget {
-    static default: Style;
-    bounds: GWU.xy.Bounds;
-    activeStyle: Style;
-    _normalStyle: StyleOptions;
-    _hoverStyle: StyleOptions;
-    _focusStyle: StyleOptions;
-    _focus: boolean;
-    _hover: boolean;
-    constructor(x: number, y: number, opts?: WidgetOptions);
-    contains(e: GWU.xy.XY): boolean;
-    contains(x: number, y: number): boolean;
-    normalStyle(opts: StyleOptions): void;
-    hoverStyle(opts: StyleOptions): void;
-    focusStyle(opts: StyleOptions): void;
-    get focused(): boolean;
-    set focused(v: boolean);
-    get hovered(): boolean;
-    set hovered(v: boolean);
-    protected _updateStyle(): void;
-    abstract draw(buffer: GWU.canvas.DataBuffer): void;
-}
-
-interface TextOptions extends WidgetOptions {
-}
-declare class Text extends Widget {
-    text: string;
-    _lines: string[];
-    constructor(x: number, y: number, text: string, opts?: TextOptions);
-    draw(buffer: GWU.canvas.DataBuffer): void;
-}
-
 declare class Grid {
     _left: number;
     _top: number;
@@ -1245,6 +1206,46 @@ declare class Term {
     render(): this;
     mousemove(e: GWU.io.Event): boolean;
     draw(): void;
+}
+
+interface WidgetOptions {
+    width?: number;
+    height?: number;
+    style?: StyleOptions;
+    hover?: StyleOptions;
+    focus?: StyleOptions;
+}
+declare abstract class Widget {
+    static default: Style;
+    bounds: GWU.xy.Bounds;
+    activeStyle: Style;
+    _normalStyle: StyleOptions;
+    _hoverStyle: StyleOptions;
+    _focusStyle: StyleOptions;
+    _focus: boolean;
+    _hover: boolean;
+    constructor(x: number, y: number, opts?: WidgetOptions);
+    contains(e: GWU.xy.XY): boolean;
+    contains(x: number, y: number): boolean;
+    normalStyle(opts: StyleOptions): void;
+    hoverStyle(opts: StyleOptions): void;
+    focusStyle(opts: StyleOptions): void;
+    get focused(): boolean;
+    set focused(v: boolean);
+    get hovered(): boolean;
+    set hovered(v: boolean);
+    protected _updateStyle(): void;
+    abstract draw(buffer: GWU.canvas.DataBuffer): void;
+    mousemove(_e: GWU.io.Event, _term: Term): boolean;
+}
+
+interface TextOptions extends WidgetOptions {
+}
+declare class Text extends Widget {
+    text: string;
+    _lines: string[];
+    constructor(x: number, y: number, text: string, opts?: TextOptions);
+    draw(buffer: GWU.canvas.DataBuffer): void;
 }
 
 type index_d_WidgetOptions = WidgetOptions;

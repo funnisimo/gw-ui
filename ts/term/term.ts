@@ -328,10 +328,12 @@ export class Term {
 
     mousemove(e: GWU.io.Event): boolean {
         const w = this.widgetAt(e);
+
         this.widgets.forEach((w2) => {
             w2.hovered = w2 === w;
         });
-        return false;
+
+        return !!w && w.mousemove(e, this);
     }
 
     draw() {

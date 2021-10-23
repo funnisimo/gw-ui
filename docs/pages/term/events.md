@@ -1,6 +1,8 @@
 # Basic Events
 
-You can draw into the canvas like a terminal.
+## Hover
+
+By default, the Term will watch for mousemove events and will set enable hover style for widgets.
 
 ```js
 const canvas = GWU.canvas.make(100, 38, { loop: LOOP });

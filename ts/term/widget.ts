@@ -1,5 +1,6 @@
 import * as GWU from 'gw-utils';
 import { Style, StyleOptions } from './style';
+import { Term } from './term';
 
 export interface WidgetOptions {
     width?: number;
@@ -95,4 +96,8 @@ export abstract class Widget {
     }
 
     abstract draw(buffer: GWU.canvas.DataBuffer): void;
+
+    mousemove(_e: GWU.io.Event, _term: Term): boolean {
+        return false;
+    }
 }

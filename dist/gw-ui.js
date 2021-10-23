@@ -4919,6 +4919,9 @@
                 Object.assign(this.activeStyle, this._hoverStyle);
             }
         }
+        mousemove(_e, _term) {
+            return false;
+        }
     }
     Widget.default = {
         fg: 'white',
@@ -5265,7 +5268,7 @@
             this.widgets.forEach((w2) => {
                 w2.hovered = w2 === w;
             });
-            return false;
+            return !!w && w.mousemove(e, this);
         }
         draw() {
             this.widgets.forEach((w) => w.draw(this.buffer));

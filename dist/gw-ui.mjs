@@ -1,7 +1,7 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 
-class Widget {
+class Widget$1 {
     constructor(id, opts) {
         this.active = false;
         this.hovered = false;
@@ -135,7 +135,7 @@ class Widget {
     }
 }
 
-class Text$1 extends Widget {
+class Text$1 extends Widget$1 {
     constructor(id, opts) {
         super(id, opts);
     }
@@ -186,7 +186,7 @@ class Text$1 extends Widget {
     }
 }
 
-class Button$1 extends Widget {
+class Button$1 extends Widget$1 {
     constructor(id, opts) {
         super(id, opts);
     }
@@ -213,7 +213,7 @@ class Button$1 extends Widget {
     }
 }
 
-class Input$1 extends Widget {
+class Input$1 extends Widget$1 {
     constructor(id, opts) {
         super(id, opts);
     }
@@ -352,7 +352,7 @@ class Column {
         return GWU.text.truncate(v, this.width);
     }
 }
-class Table extends Widget {
+class Table extends Widget$1 {
     constructor(id, opts) {
         super(id, opts);
         this.data = null;
@@ -601,7 +601,7 @@ class List extends Table {
     }
 }
 
-class Box extends Widget {
+class Box extends Widget$1 {
     constructor(id, opts) {
         super(id, (() => {
             if (!opts)
@@ -1248,7 +1248,7 @@ class UI {
     }
 }
 
-class Messages extends Widget {
+class Messages extends Widget$1 {
     constructor(id, opts) {
         super(id, opts);
     }
@@ -1360,7 +1360,7 @@ class Messages extends Widget {
     }
 }
 
-class Viewport extends Widget {
+class Viewport extends Widget$1 {
     constructor(id, opts) {
         super(id, opts);
         this.offsetX = 0;
@@ -1714,7 +1714,7 @@ class CellEntry extends EntryBase {
         return this.cell.drawStatus(buffer, bounds);
     }
 }
-class Sidebar extends Widget {
+class Sidebar extends Widget$1 {
     constructor(id, opts) {
         super(id, opts);
         this.cellCache = [];
@@ -2164,7 +2164,7 @@ async function showDropDown(dialog, menu, button) {
     ui.finishLayer();
     menu.clearHighlight();
 }
-class Menu extends Widget {
+class Menu extends Widget$1 {
     constructor(id, opts) {
         super(id, opts);
         this.activeIndex = -1;
@@ -4831,20 +4831,86 @@ var index$1 = /*#__PURE__*/Object.freeze({
     Selection: Selection
 });
 
-class Text {
-    constructor(opts) {
-        this.x = -1;
-        this.y = -1;
-        this.width = -1;
-        this.height = 1;
+class Widget {
+    constructor(x, y, opts = {}) {
+        this.bounds = new GWU.xy.Bounds(-1, -1, 0, 1);
+        this._normalStyle = {};
+        this._hoverStyle = {};
+        this._focusStyle = {};
+        this._focus = false;
+        this._hover = false;
+        this.activeStyle = {
+            fg: 'white',
+            bg: -1,
+            align: 'left',
+            valign: 'top',
+        };
+        this.bounds.x = x;
+        this.bounds.y = y;
+        if (opts.style)
+            this._normalStyle = opts.style;
+        if (opts.focus)
+            this._focusStyle = opts.focus;
+        if (opts.hover)
+            this._hoverStyle = opts.hover;
+        this._updateStyle();
+    }
+    contains(...args) {
+        return this.bounds.contains(args[0], args[1]);
+    }
+    normalStyle(opts) {
+        this._normalStyle = opts;
+        this._updateStyle();
+    }
+    hoverStyle(opts) {
+        this._hoverStyle = opts;
+        this._updateStyle();
+    }
+    focusStyle(opts) {
+        this._focusStyle = opts;
+        this._updateStyle();
+    }
+    get focused() {
+        return this._focus;
+    }
+    set focused(v) {
+        this._focus = v;
+        this._updateStyle();
+    }
+    get hovered() {
+        return this._hover;
+    }
+    set hovered(v) {
+        this._hover = v;
+        this._updateStyle();
+    }
+    _updateStyle() {
+        this.activeStyle = Object.assign({}, Widget.default, this._normalStyle);
+        if (this._focus) {
+            Object.assign(this.activeStyle, this._focusStyle);
+        }
+        else if (this._hover) {
+            Object.assign(this.activeStyle, this._hoverStyle);
+        }
+    }
+}
+Widget.default = {
+    fg: 'white',
+    bg: -1,
+    align: 'left',
+    valign: 'top',
+};
+
+class Text extends Widget {
+    constructor(x, y, text, opts = {}) {
+        super(x, y, opts);
         this.text = '';
-        this.normal = { fg: Text.default.fg };
-        this.state = 'normal';
         this._lines = [];
-        Object.assign(this, opts);
-        this._lines = GWU.text.splitIntoLines(this.text, this.width > 0 ? this.width : 100);
-        if (this.width <= 0) {
-            this.width = this._lines.reduce((out, line) => Math.max(out, line.length), 0);
+        this.text = text;
+        this.bounds.width = opts.width || 0;
+        this._lines = GWU.text.splitIntoLines(this.text, this.bounds.width > 0 ? this.bounds.width : 100);
+        if (this.bounds.width <= 0) {
+            this.bounds.width = this._lines.reduce((out, line) => Math.max(out, line.length), 0);
         }
         if (opts.height) {
             if (this._lines.length > opts.height) {
@@ -4852,45 +4918,16 @@ class Text {
             }
         }
         else {
-            this.height = this._lines.length;
+            this.bounds.height = this._lines.length;
         }
-        this.activeStyle = this.normal;
-    }
-    contains(e) {
-        return (this.x <= e.x &&
-            this.y <= e.y &&
-            this.x + this.width > e.x &&
-            this.y + this.height > e.y);
-    }
-    setState(state) {
-        this.state = state;
-        this.activeStyle = this[state] || this.normal;
-    }
-    fg() {
-        return this.activeStyle.fg || this.normal.fg || Text.default.fg;
-    }
-    bg() {
-        return this.activeStyle.bg || this.normal.bg || Text.default.bg;
-    }
-    align() {
-        return (this.activeStyle.align || this.normal.align || Text.default.align);
-    }
-    valign() {
-        return (this.activeStyle.valign || this.normal.valign || Text.default.valign);
     }
     draw(buffer) {
-        buffer.fillRect(this.x, this.y, this.width, this.height, ' ', this.bg(), this.bg());
+        buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.activeStyle.bg, this.activeStyle.bg);
         this._lines.forEach((line, i) => {
-            buffer.drawText(this.x, this.y + i, line, this.fg(), -1, this.width, this.align());
+            buffer.drawText(this.bounds.x, this.bounds.y + i, line, this.activeStyle.fg, -1, this.bounds.width, this.activeStyle.align);
         });
     }
 }
-Text.default = {
-    fg: 'white',
-    bg: -1,
-    align: 'left',
-    valign: 'top',
-};
 
 class Grid {
     constructor(x, y) {
@@ -4967,9 +5004,11 @@ class Term {
     constructor(ui) {
         this.x = 0;
         this.y = 0;
+        this.widgets = [];
+        this._currentWidget = null;
         this._grid = null;
         this.ui = ui;
-        this.default('white', 'black');
+        this.reset();
     }
     get buffer() {
         return this.ui.buffer;
@@ -4981,36 +5020,52 @@ class Term {
         return this.ui.height;
     }
     // COLOR
-    default(fg, bg) {
-        this._defaultFg = fg;
-        this._defaultBg = bg;
-        this._fg = GWU.color.make(fg);
-        this._bg = GWU.color.make(bg);
+    reset() {
+        this._style = Object.assign({}, Term.default);
+        this._focusStyle = {};
+        this._hoverStyle = {};
         return this;
     }
     fg(v) {
-        this._fg.set(v);
+        this._style.fg = v;
         return this;
     }
     bg(v) {
-        this._bg.set(v);
+        this._style.bg = v;
         return this;
     }
-    dim(pct = 25) {
-        this._fg.darken(pct);
+    dim(pct = 25, fg = true, bg = false) {
+        if (fg) {
+            this._style.fg = GWU.color.from(this._style.fg).darken(pct);
+        }
+        if (bg) {
+            this._style.bg = GWU.color.from(this._style.bg).darken(pct);
+        }
         return this;
     }
-    bright(pct = 25) {
-        this._fg.lighten(pct);
+    bright(pct = 25, fg = true, bg = false) {
+        if (fg) {
+            this._style.fg = GWU.color.from(this._style.fg).lighten(pct);
+        }
+        if (bg) {
+            this._style.bg = GWU.color.from(this._style.bg).lighten(pct);
+        }
         return this;
     }
-    inverse() {
-        [this._fg, this._bg] = [this._bg, this._fg];
+    invert() {
+        [this._style.fg, this._style.bg] = [this._style.bg, this._style.fg];
         return this;
     }
-    reset() {
-        this._fg.set(this._defaultFg);
-        this._bg.set(this._defaultBg);
+    style(opts) {
+        this._style = Object.assign({}, Term.default, opts);
+        return this;
+    }
+    focusStyle(opts) {
+        this._focusStyle = opts;
+        return this;
+    }
+    hoverStyle(opts) {
+        this._hoverStyle = opts;
         return this;
     }
     // POSITION
@@ -5047,27 +5102,26 @@ class Term {
     }
     // EDIT
     // erase and move back to top left
-    clear(newDefaultBg) {
-        return this.erase(newDefaultBg).pos(0, 0);
+    clear(color) {
+        return this.erase(color).pos(0, 0);
     }
     // just erase screen
-    erase(newDefaultBg) {
+    erase(color) {
         // remove all widgets
-        if (newDefaultBg !== undefined) {
-            this._defaultBg = newDefaultBg;
-            this._bg.set(newDefaultBg);
+        if (color === undefined) {
+            color = this._style.bg;
         }
-        this.buffer.fill(' ', this._bg, this._bg);
+        this.buffer.fill(' ', color, color);
         return this;
     }
     eraseBelow() {
         // TODO - remove widgets below
-        this.buffer.fillRect(0, this.y + 1, this.width, this.height - this.y - 1, ' ', this._bg, this._bg);
+        this.buffer.fillRect(0, this.y + 1, this.width, this.height - this.y - 1, ' ', this._style.bg, this._style.bg);
         return this;
     }
     eraseAbove() {
         // TODO - remove widgets above
-        this.buffer.fillRect(0, 0, this.width, this.y - 1, ' ', this._bg, this._bg);
+        this.buffer.fillRect(0, 0, this.width, this.y - 1, ' ', this._style.bg, this._style.bg);
         return this;
     }
     eraseLine(n) {
@@ -5076,7 +5130,7 @@ class Term {
         }
         if (n >= 0 && n < this.height) {
             // TODO - remove widgets on line
-            this.buffer.fillRect(0, n, this.width, 1, ' ', this._bg, this._bg);
+            this.buffer.fillRect(0, n, this.width, 1, ' ', this._style.bg, this._style.bg);
         }
         return this;
     }
@@ -5143,16 +5197,35 @@ class Term {
         return this;
     }
     // DRAW
-    text(text, width, align) {
-        this.x += this.buffer.drawText(this.x, this.y, text, this._fg, this._bg, width, align);
+    drawText(text, width, _align) {
+        const widget = new Text(this.x, this.y, text, { width });
+        widget.normalStyle(this._style);
+        widget.draw(this.buffer);
         return this;
     }
     border(w, h, bg) {
-        const c = bg || this._fg;
+        const c = bg || this._style.fg;
         const buf = this.buffer;
         GWU.xy.forBorder(this.x, this.y, w, h, (x, y) => {
             buf.draw(x, y, ' ', c, c);
         });
+        return this;
+    }
+    // WIDGETS
+    get() {
+        return this._currentWidget;
+    }
+    widgetAt(...args) {
+        return this.widgets.find((w) => w.contains(args[0], args[1])) || null;
+    }
+    text(text, width, _align) {
+        const widget = new Text(this.x, this.y, text, { width });
+        widget.normalStyle(this._style);
+        widget.hoverStyle(this._hoverStyle);
+        widget.focusStyle(this._focusStyle);
+        widget.draw(this.buffer);
+        this._currentWidget = widget;
+        this.widgets.push(widget);
         return this;
     }
     // CONTROL
@@ -5160,13 +5233,32 @@ class Term {
         this.ui.render();
         return this;
     }
+    // EVENTS
+    mousemove(e) {
+        const w = this.widgetAt(e);
+        this.widgets.forEach((w2) => {
+            w2.hovered = w2 === w;
+        });
+        return false;
+    }
+    draw() {
+        this.widgets.forEach((w) => w.draw(this.buffer));
+        this.render();
+    }
 }
+Term.default = {
+    fg: 'white',
+    bg: 'black',
+    align: 'left',
+    valign: 'top',
+};
 
 var index = /*#__PURE__*/Object.freeze({
     __proto__: null,
+    Widget: Widget,
     Text: Text,
     Grid: Grid,
     Term: Term
 });
 
-export { ActionButton, ActorEntry, Box, Button$1 as Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input$1 as Input, ItemEntry, List, Menu, MenuButton, Messages, Sidebar, Table, Text$1 as Text, UI, Viewport, Widget, buildDialog, index$1 as html, makeTable, showDropDown, index as term };
+export { ActionButton, ActorEntry, Box, Button$1 as Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input$1 as Input, ItemEntry, List, Menu, MenuButton, Messages, Sidebar, Table, Text$1 as Text, UI, Viewport, Widget$1 as Widget, buildDialog, index$1 as html, makeTable, showDropDown, index as term };

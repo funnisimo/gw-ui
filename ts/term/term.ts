@@ -1,21 +1,34 @@
 import * as GWU from 'gw-utils';
 import { UICore } from '../types';
 import { Grid } from './grid';
+import { Text } from './text';
+import { Style, StyleOptions } from './style';
+import { Widget } from './widget';
 
 export class Term {
+    static default: Style = {
+        fg: 'white',
+        bg: 'black',
+        align: 'left',
+        valign: 'top',
+    };
+
     ui: UICore;
     x = 0;
     y = 0;
-    _defaultFg!: GWU.color.ColorBase;
-    _defaultBg!: GWU.color.ColorBase;
-    _fg!: GWU.color.Color;
-    _bg!: GWU.color.Color;
+
+    widgets: Widget[] = [];
+    _currentWidget: Widget | null = null;
+
+    _style!: Style;
+    _hoverStyle!: StyleOptions;
+    _focusStyle!: StyleOptions;
 
     _grid: Grid | null = null;
 
     constructor(ui: UICore) {
         this.ui = ui;
-        this.default('white', 'black');
+        this.reset();
     }
 
     get buffer(): GWU.canvas.DataBuffer {
@@ -30,42 +43,60 @@ export class Term {
 
     // COLOR
 
-    default(fg: GWU.color.ColorBase, bg: GWU.color.ColorBase): this {
-        this._defaultFg = fg;
-        this._defaultBg = bg;
-        this._fg = GWU.color.make(fg);
-        this._bg = GWU.color.make(bg);
+    reset(): this {
+        this._style = Object.assign({}, Term.default);
+        this._focusStyle = {};
+        this._hoverStyle = {};
         return this;
     }
 
     fg(v: GWU.color.ColorBase): this {
-        this._fg.set(v);
+        this._style.fg = v;
         return this;
     }
 
     bg(v: GWU.color.ColorBase): this {
-        this._bg.set(v);
+        this._style.bg = v;
         return this;
     }
 
-    dim(pct = 25): this {
-        this._fg.darken(pct);
+    dim(pct = 25, fg = true, bg = false): this {
+        if (fg) {
+            this._style.fg = GWU.color.from(this._style.fg).darken(pct);
+        }
+        if (bg) {
+            this._style.bg = GWU.color.from(this._style.bg).darken(pct);
+        }
         return this;
     }
 
-    bright(pct = 25): this {
-        this._fg.lighten(pct);
+    bright(pct = 25, fg = true, bg = false): this {
+        if (fg) {
+            this._style.fg = GWU.color.from(this._style.fg).lighten(pct);
+        }
+        if (bg) {
+            this._style.bg = GWU.color.from(this._style.bg).lighten(pct);
+        }
         return this;
     }
 
-    inverse(): this {
-        [this._fg, this._bg] = [this._bg, this._fg];
+    invert(): this {
+        [this._style.fg, this._style.bg] = [this._style.bg, this._style.fg];
         return this;
     }
 
-    reset(): this {
-        this._fg.set(this._defaultFg);
-        this._bg.set(this._defaultBg);
+    style(opts: StyleOptions): this {
+        this._style = Object.assign({}, Term.default, opts);
+        return this;
+    }
+
+    focusStyle(opts: StyleOptions): this {
+        this._focusStyle = opts;
+        return this;
+    }
+
+    hoverStyle(opts: StyleOptions): this {
+        this._hoverStyle = opts;
         return this;
     }
 
@@ -114,18 +145,17 @@ export class Term {
     // EDIT
 
     // erase and move back to top left
-    clear(newDefaultBg?: GWU.color.ColorBase): this {
-        return this.erase(newDefaultBg).pos(0, 0);
+    clear(color?: GWU.color.ColorBase): this {
+        return this.erase(color).pos(0, 0);
     }
 
     // just erase screen
-    erase(newDefaultBg?: GWU.color.ColorBase): this {
+    erase(color?: GWU.color.ColorBase): this {
         // remove all widgets
-        if (newDefaultBg !== undefined) {
-            this._defaultBg = newDefaultBg;
-            this._bg.set(newDefaultBg);
+        if (color === undefined) {
+            color = this._style.bg;
         }
-        this.buffer.fill(' ', this._bg, this._bg);
+        this.buffer.fill(' ', color, color);
         return this;
     }
 
@@ -137,8 +167,8 @@ export class Term {
             this.width,
             this.height - this.y - 1,
             ' ',
-            this._bg,
-            this._bg
+            this._style.bg,
+            this._style.bg
         );
         return this;
     }
@@ -151,8 +181,8 @@ export class Term {
             this.width,
             this.y - 1,
             ' ',
-            this._bg,
-            this._bg
+            this._style.bg,
+            this._style.bg
         );
         return this;
     }
@@ -163,7 +193,15 @@ export class Term {
         }
         if (n >= 0 && n < this.height) {
             // TODO - remove widgets on line
-            this.buffer.fillRect(0, n, this.width, 1, ' ', this._bg, this._bg);
+            this.buffer.fillRect(
+                0,
+                n,
+                this.width,
+                1,
+                ' ',
+                this._style.bg,
+                this._style.bg
+            );
         }
         return this;
     }
@@ -240,25 +278,42 @@ export class Term {
 
     // DRAW
 
-    text(text: string, width?: number, align?: GWU.text.Align): this {
-        this.x += this.buffer.drawText(
-            this.x,
-            this.y,
-            text,
-            this._fg,
-            this._bg,
-            width,
-            align
-        );
+    drawText(text: string, width?: number, _align?: GWU.text.Align): this {
+        const widget = new Text(this.x, this.y, text, { width });
+        widget.normalStyle(this._style);
+        widget.draw(this.buffer);
         return this;
     }
 
     border(w: number, h: number, bg?: GWU.color.ColorBase): this {
-        const c = bg || this._fg;
+        const c = bg || this._style.fg;
         const buf = this.buffer;
         GWU.xy.forBorder(this.x, this.y, w, h, (x, y) => {
             buf.draw(x, y, ' ', c, c);
         });
+        return this;
+    }
+
+    // WIDGETS
+
+    get(): Widget | null {
+        return this._currentWidget;
+    }
+
+    widgetAt(x: number, y: number): Widget | null;
+    widgetAt(xy: GWU.xy.XY): Widget | null;
+    widgetAt(...args: any[]): Widget | null {
+        return this.widgets.find((w) => w.contains(args[0], args[1])) || null;
+    }
+
+    text(text: string, width?: number, _align?: GWU.text.Align): this {
+        const widget = new Text(this.x, this.y, text, { width });
+        widget.normalStyle(this._style);
+        widget.hoverStyle(this._hoverStyle);
+        widget.focusStyle(this._focusStyle);
+        widget.draw(this.buffer);
+        this._currentWidget = widget;
+        this.widgets.push(widget);
         return this;
     }
 
@@ -267,5 +322,20 @@ export class Term {
     render(): this {
         this.ui.render();
         return this;
+    }
+
+    // EVENTS
+
+    mousemove(e: GWU.io.Event): boolean {
+        const w = this.widgetAt(e);
+        this.widgets.forEach((w2) => {
+            w2.hovered = w2 === w;
+        });
+        return false;
+    }
+
+    draw() {
+        this.widgets.forEach((w) => w.draw(this.buffer));
+        this.render();
     }
 }

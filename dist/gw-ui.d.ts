@@ -10,10 +10,10 @@ interface PosOptions$1 {
 }
 interface WidgetRunner {
     readonly ui: UICore;
-    fireAction(action: string, widget: Widget): void | Promise<void>;
+    fireAction(action: string, widget: Widget$1): void | Promise<void>;
     requestRedraw(): void;
 }
-interface WidgetOptions {
+interface WidgetOptions$1 {
     x?: number;
     y?: number;
     width?: number;
@@ -31,7 +31,7 @@ interface WidgetOptions {
     action?: string;
     depth?: number;
 }
-declare abstract class Widget {
+declare abstract class Widget$1 {
     bounds: GWU.xy.Bounds;
     active: boolean;
     hovered: boolean;
@@ -48,8 +48,8 @@ declare abstract class Widget {
     align: GWU.text.Align;
     valign: VAlign;
     action: string;
-    constructor(id: string, opts?: WidgetOptions);
-    init(opts: WidgetOptions): void;
+    constructor(id: string, opts?: WidgetOptions$1);
+    init(opts: WidgetOptions$1): void;
     reset(): void;
     activate(_reverse?: boolean): void;
     deactivate(): void;
@@ -63,10 +63,10 @@ declare abstract class Widget {
     draw(buffer: GWU.canvas.DataBuffer): void;
 }
 
-interface TextOptions$1 extends WidgetOptions {
+interface TextOptions$1 extends WidgetOptions$1 {
     wrap?: number;
 }
-declare class Text$1 extends Widget {
+declare class Text$1 extends Widget$1 {
     lines: string[];
     wrap: boolean;
     constructor(id: string, opts?: TextOptions$1);
@@ -75,16 +75,16 @@ declare class Text$1 extends Widget {
     draw(buffer: GWU.canvas.DataBuffer): void;
 }
 
-interface ButtonOptions extends WidgetOptions {
+interface ButtonOptions extends WidgetOptions$1 {
 }
-declare class Button$1 extends Widget {
+declare class Button$1 extends Widget$1 {
     constructor(id: string, opts?: ButtonOptions);
     init(opts: ButtonOptions): void;
     click(ev: GWU.io.Event, dialog: WidgetRunner): Promise<boolean>;
     keypress(ev: GWU.io.Event, dialog: WidgetRunner): Promise<boolean>;
 }
 
-interface InputOptions extends Omit<WidgetOptions, 'text'> {
+interface InputOptions extends Omit<WidgetOptions$1, 'text'> {
     errorFg?: GWU.color.ColorBase;
     hint?: string;
     hintFg?: GWU.color.ColorBase;
@@ -94,7 +94,7 @@ interface InputOptions extends Omit<WidgetOptions, 'text'> {
     min?: number;
     max?: number;
 }
-declare class Input$1 extends Widget {
+declare class Input$1 extends Widget$1 {
     hint: string;
     hintFg: GWU.color.ColorBase;
     errorFg: GWU.color.ColorBase;
@@ -127,7 +127,7 @@ interface ColumnOptions {
     hoverBg?: GWU.color.ColorBase;
 }
 declare type HoverType = 'none' | 'column' | 'row' | 'cell';
-interface TableOptions extends WidgetOptions {
+interface TableOptions extends WidgetOptions$1 {
     height: number;
     letters?: boolean;
     headers?: boolean;
@@ -164,7 +164,7 @@ declare class Column {
     constructor(opts: ColumnOptions);
     value(data: any, index: number): string;
 }
-declare class Table extends Widget {
+declare class Table extends Widget$1 {
     headers: boolean;
     letters: boolean;
     headerFg: GWU.color.ColorBase;
@@ -204,14 +204,14 @@ declare class List extends Table {
     constructor(id: string, opts: ListOptions);
 }
 
-interface BoxOptions extends Omit<WidgetOptions, 'text'> {
+interface BoxOptions extends Omit<WidgetOptions$1, 'text'> {
     title?: string;
     borderBg?: GWU.color.ColorBase;
     pad?: number;
     padX?: number;
     padY?: number;
 }
-declare class Box extends Widget {
+declare class Box extends Widget$1 {
     borderBg: GWU.color.ColorBase | null;
     constructor(id: string, opts?: BoxOptions);
     init(opts: BoxOptions): void;
@@ -219,31 +219,31 @@ declare class Box extends Widget {
     draw(buffer: GWU.canvas.DataBuffer): void;
 }
 
-declare type EventCallback = (ev: GWU.io.Event | string, dialog: Dialog, widget: Widget | null) => any | Promise<any>;
+declare type EventCallback = (ev: GWU.io.Event | string, dialog: Dialog, widget: Widget$1 | null) => any | Promise<any>;
 declare type EventHandlers = Record<string, EventCallback>;
 declare class Dialog implements WidgetRunner {
     ui: UICore;
     id: string;
-    widgets: Widget[];
+    widgets: Widget$1[];
     eventHandlers: EventHandlers;
-    _activeWidget: Widget | null;
+    _activeWidget: Widget$1 | null;
     result: any;
     done: boolean;
     timers: Record<string, number>;
     needsRedraw: boolean;
     constructor(ui: UICore, id?: string);
     init(): void;
-    get activeWidget(): Widget | null;
-    setActiveWidget(w: Widget | null, reverse?: boolean): void;
+    get activeWidget(): Widget$1 | null;
+    setActiveWidget(w: Widget$1 | null, reverse?: boolean): void;
     requestRedraw(): void;
     setTimeout(action: string, time: number): void;
     clearTimeout(action: string): void;
-    fireAction(action: string, widget: Widget | null): Promise<void>;
+    fireAction(action: string, widget: Widget$1 | null): Promise<void>;
     setEventHandlers(map: EventHandlers): void;
     show(): Promise<any>;
     close(returnValue: any): void;
-    widgetAt(x: number, y: number): Widget | null;
-    getWidget(id: string): Widget | null;
+    widgetAt(x: number, y: number): Widget$1 | null;
+    getWidget(id: string): Widget$1 | null;
     nextTabstop(): boolean;
     prevTabstop(): boolean;
     tick(e: GWU.io.Event): Promise<boolean>;
@@ -259,7 +259,7 @@ declare class DialogBuilder {
     nextY: number;
     box: BoxOptions | null;
     constructor(ui: UICore, width: number, height: number);
-    with(widget: Widget, at?: PosOptions$1): this;
+    with(widget: Widget$1, at?: PosOptions$1): this;
     center(): this;
     place(x: number, y: number): this;
     addBox(opts?: BoxOptions): this;
@@ -267,7 +267,7 @@ declare class DialogBuilder {
 }
 declare function buildDialog(ui: UICore, width?: number, height?: number): DialogBuilder;
 
-interface AlertOptions extends WidgetOptions {
+interface AlertOptions extends WidgetOptions$1 {
     duration?: number;
     waitForAck?: boolean;
     pad?: number;
@@ -275,7 +275,7 @@ interface AlertOptions extends WidgetOptions {
     padY?: number;
     box?: BoxOptions;
 }
-interface ConfirmOptions extends WidgetOptions {
+interface ConfirmOptions extends WidgetOptions$1 {
     allowCancel?: boolean;
     pad?: number;
     padX?: number;
@@ -334,15 +334,15 @@ declare class UI implements UICore {
     alert(opts: number | AlertOptions, text: string, args: any): Promise<any>;
     confirm(text: string, args?: any): Promise<boolean>;
     confirm(opts: ConfirmOptions, text: string, args?: any): Promise<boolean>;
-    showWidget(widget: Widget, keymap?: EventHandlers): Promise<any>;
+    showWidget(widget: Widget$1, keymap?: EventHandlers): Promise<any>;
     getInputAt(x: number, y: number, maxLength: number, opts?: InputOptions): Promise<string>;
     inputBox(opts: InputBoxOptions, prompt: string, args?: any): Promise<any>;
 }
 
-interface MessageOptions extends WidgetOptions {
+interface MessageOptions extends WidgetOptions$1 {
     length?: number;
 }
-declare class Messages extends Widget {
+declare class Messages extends Widget$1 {
     cache: GWU.message.MessageCache;
     constructor(id: string, opts?: MessageOptions);
     init(opts: MessageOptions): void;
@@ -352,7 +352,7 @@ declare class Messages extends Widget {
 }
 
 declare type ViewFilterFn = (mixer: GWU.sprite.Mixer, x: number, y: number, map: GWM.map.Map) => void;
-interface ViewportOptions extends WidgetOptions {
+interface ViewportOptions extends WidgetOptions$1 {
     snap?: boolean;
     filter?: ViewFilterFn;
     lockX?: boolean;
@@ -360,7 +360,7 @@ interface ViewportOptions extends WidgetOptions {
     lock?: boolean;
     center?: boolean;
 }
-declare class Viewport extends Widget {
+declare class Viewport extends Widget$1 {
     center: boolean;
     snap: boolean;
     filter: ViewFilterFn | null;
@@ -403,7 +403,7 @@ declare class Flavor extends Text$1 {
     getFlavorText(map: GWM.map.Map, x: number, y: number, fov?: GWU.fov.FovSystem): string;
 }
 
-interface SidebarOptions extends WidgetOptions {
+interface SidebarOptions extends WidgetOptions$1 {
 }
 declare abstract class EntryBase {
     dist: number;
@@ -436,7 +436,7 @@ declare class CellEntry extends EntryBase {
     draw(buffer: GWU.canvas.DataBuffer, bounds: GWU.xy.Bounds): number;
 }
 declare type SidebarEntry = ActorEntry | ItemEntry | CellEntry;
-declare class Sidebar extends Widget {
+declare class Sidebar extends Widget$1 {
     cellCache: GWM.map.CellInfoType[];
     lastX: number;
     lastY: number;
@@ -498,14 +498,14 @@ declare class DropDownButton extends MenuButton {
     draw(buffer: GWU.canvas.DataBuffer): void;
 }
 declare function showDropDown(dialog: WidgetRunner, menu: Menu, button: DropDownButton): Promise<void>;
-interface MenuOptions extends WidgetOptions {
+interface MenuOptions extends WidgetOptions$1 {
     separator?: string;
     lead?: string;
     dropFg?: GWU.color.ColorBase;
     dropBg?: GWU.color.ColorBase;
     buttons: ButtonConfig;
 }
-declare class Menu extends Widget {
+declare class Menu extends Widget$1 {
     buttons: MenuButton[];
     separator: string;
     lead: string;
@@ -568,7 +568,7 @@ interface Stylable extends Selectable {
     style(): Style$1;
     prop(name: string): PropType;
 }
-interface StyleOptions {
+interface StyleOptions$1 {
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
     align?: GWU.text.Align;
@@ -625,7 +625,7 @@ declare class Style$1 {
     protected _marginBottom?: number;
     selector: Selector;
     protected _dirty: boolean;
-    constructor(selector?: string, init?: StyleOptions);
+    constructor(selector?: string, init?: StyleOptions$1);
     get dirty(): boolean;
     set dirty(v: boolean);
     get fg(): GWU.color.ColorBase | undefined;
@@ -655,8 +655,8 @@ declare class Style$1 {
     get marginTop(): number | undefined;
     get marginBottom(): number | undefined;
     get(key: keyof Style$1): any;
-    set(opts: StyleOptions, setDirty?: boolean): this;
-    set(key: keyof StyleOptions, value: any, setDirty?: boolean): this;
+    set(opts: StyleOptions$1, setDirty?: boolean): this;
+    set(key: keyof StyleOptions$1, value: any, setDirty?: boolean): this;
     unset(key: keyof Style$1): this;
     clone(): this;
     copy(other: Style$1): this;
@@ -674,7 +674,7 @@ declare class Sheet {
     constructor(parentSheet?: Sheet | null);
     get dirty(): boolean;
     set dirty(v: boolean);
-    add(selector: string, props: StyleOptions): Style$1;
+    add(selector: string, props: StyleOptions$1): Style$1;
     get(selector: string): Style$1 | null;
     remove(selector: string): void;
     computeFor(widget: Stylable): ComputedStyle;
@@ -699,9 +699,9 @@ declare class Document {
     select(id?: SelectType): Selection;
     createElement(tag: string): Element;
     create(tag: string): Selection;
-    rule(info: Record<string, StyleOptions>): this;
+    rule(info: Record<string, StyleOptions$1>): this;
     rule(rule: string): Style$1;
-    rule(rule: string, style: StyleOptions): this;
+    rule(rule: string, style: StyleOptions$1): this;
     removeRule(rule: string): this;
     _attach(w: Element | Element[]): this;
     _detach(w: Element | Element[]): this;
@@ -758,9 +758,9 @@ declare class Selection {
     removeClass(id: string): this;
     toggleClass(id: string): this;
     style(): Style$1;
-    style(style: StyleOptions): this;
+    style(style: StyleOptions$1): this;
     style(name: keyof Style$1): any;
-    style(name: keyof StyleOptions, value: any): this;
+    style(name: keyof StyleOptions$1, value: any): this;
     removeStyle(name: keyof Style$1): this;
     pos(): GWU.xy.XY | undefined;
     pos(left: number, top: number, position?: Omit<Position, 'static'>): this;
@@ -872,8 +872,8 @@ declare class Element implements Selectable {
     _updateTop(parentBottom?: number): number;
     style(): Style$1;
     style(id: keyof Style$1): any;
-    style(props: StyleOptions): this;
-    style(id: keyof StyleOptions, val: any): this;
+    style(props: StyleOptions$1): this;
+    style(id: keyof StyleOptions$1, val: any): this;
     removeStyle(id: keyof Style$1): this;
     used(): Style$1;
     used(style: ComputedStyle): this;
@@ -1023,7 +1023,6 @@ declare const index_d$1_Selector: typeof Selector;
 declare const index_d$1_compile: typeof compile;
 type index_d$1_Position = Position;
 type index_d$1_Stylable = Stylable;
-type index_d$1_StyleOptions = StyleOptions;
 declare const index_d$1_makeStyle: typeof makeStyle;
 type index_d$1_ComputedStyle = ComputedStyle;
 declare const index_d$1_ComputedStyle: typeof ComputedStyle;
@@ -1076,7 +1075,7 @@ declare namespace index_d$1 {
     index_d$1_compile as compile,
     index_d$1_Position as Position,
     index_d$1_Stylable as Stylable,
-    index_d$1_StyleOptions as StyleOptions,
+    StyleOptions$1 as StyleOptions,
     Style$1 as Style,
     index_d$1_makeStyle as makeStyle,
     index_d$1_ComputedStyle as ComputedStyle,
@@ -1111,48 +1110,55 @@ declare namespace index_d$1 {
   };
 }
 
-declare type State = 'normal' | 'hover' | 'focus';
-interface TextOptions {
-    text: string;
-    x: number;
-    y: number;
-    width?: number;
-    height?: number;
-    style: Style;
-    hover?: Style;
-    focus?: Style;
-}
-interface Style {
+interface StyleOptions {
     fg?: GWU.color.ColorBase;
     bg?: GWU.color.ColorBase;
     align?: GWU.text.Align;
     valign?: GWU.text.VAlign;
 }
-declare class Text {
-    static default: {
-        fg: string;
-        bg: number;
-        align: "left" | "center" | "right";
-        valign: "top" | "middle" | "bottom";
-    };
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    text: string;
+interface Style {
+    fg: GWU.color.ColorBase;
+    bg: GWU.color.ColorBase;
+    align: GWU.text.Align;
+    valign: GWU.text.VAlign;
+}
+
+interface WidgetOptions {
+    width?: number;
+    height?: number;
+    style?: StyleOptions;
+    hover?: StyleOptions;
+    focus?: StyleOptions;
+}
+declare abstract class Widget {
+    static default: Style;
+    bounds: GWU.xy.Bounds;
     activeStyle: Style;
-    normal: Style;
-    hover?: Style;
-    focus?: Style;
-    state: State;
-    _lines: string[];
-    constructor(opts: TextOptions);
+    _normalStyle: StyleOptions;
+    _hoverStyle: StyleOptions;
+    _focusStyle: StyleOptions;
+    _focus: boolean;
+    _hover: boolean;
+    constructor(x: number, y: number, opts?: WidgetOptions);
     contains(e: GWU.xy.XY): boolean;
-    setState(state: State): void;
-    fg(): GWU.color.ColorBase;
-    bg(): GWU.color.ColorBase;
-    align(): GWU.text.Align;
-    valign(): GWU.text.VAlign;
+    contains(x: number, y: number): boolean;
+    normalStyle(opts: StyleOptions): void;
+    hoverStyle(opts: StyleOptions): void;
+    focusStyle(opts: StyleOptions): void;
+    get focused(): boolean;
+    set focused(v: boolean);
+    get hovered(): boolean;
+    set hovered(v: boolean);
+    protected _updateStyle(): void;
+    abstract draw(buffer: GWU.canvas.DataBuffer): void;
+}
+
+interface TextOptions extends WidgetOptions {
+}
+declare class Text extends Widget {
+    text: string;
+    _lines: string[];
+    constructor(x: number, y: number, text: string, opts?: TextOptions);
     draw(buffer: GWU.canvas.DataBuffer): void;
 }
 
@@ -1181,25 +1187,29 @@ declare class Grid {
 }
 
 declare class Term {
+    static default: Style;
     ui: UICore;
     x: number;
     y: number;
-    _defaultFg: GWU.color.ColorBase;
-    _defaultBg: GWU.color.ColorBase;
-    _fg: GWU.color.Color;
-    _bg: GWU.color.Color;
+    widgets: Widget[];
+    _currentWidget: Widget | null;
+    _style: Style;
+    _hoverStyle: StyleOptions;
+    _focusStyle: StyleOptions;
     _grid: Grid | null;
     constructor(ui: UICore);
     get buffer(): GWU.canvas.DataBuffer;
     get width(): number;
     get height(): number;
-    default(fg: GWU.color.ColorBase, bg: GWU.color.ColorBase): this;
+    reset(): this;
     fg(v: GWU.color.ColorBase): this;
     bg(v: GWU.color.ColorBase): this;
-    dim(pct?: number): this;
-    bright(pct?: number): this;
-    inverse(): this;
-    reset(): this;
+    dim(pct?: number, fg?: boolean, bg?: boolean): this;
+    bright(pct?: number, fg?: boolean, bg?: boolean): this;
+    invert(): this;
+    style(opts: StyleOptions): this;
+    focusStyle(opts: StyleOptions): this;
+    hoverStyle(opts: StyleOptions): this;
     pos(x: number, y: number): this;
     moveTo(x: number, y: number): this;
     move(dx: number, dy: number): this;
@@ -1209,8 +1219,8 @@ declare class Term {
     right(n?: number): this;
     nextLine(n?: number): this;
     prevLine(n?: number): this;
-    clear(newDefaultBg?: GWU.color.ColorBase): this;
-    erase(newDefaultBg?: GWU.color.ColorBase): this;
+    clear(color?: GWU.color.ColorBase): this;
+    erase(color?: GWU.color.ColorBase): this;
     eraseBelow(): this;
     eraseAbove(): this;
     eraseLine(n: number): this;
@@ -1226,14 +1236,21 @@ declare class Term {
     endRow(): this;
     col(n: number): this;
     row(n: number): this;
-    text(text: string, width?: number, align?: GWU.text.Align): this;
+    drawText(text: string, width?: number, _align?: GWU.text.Align): this;
     border(w: number, h: number, bg?: GWU.color.ColorBase): this;
+    get(): Widget | null;
+    widgetAt(x: number, y: number): Widget | null;
+    widgetAt(xy: GWU.xy.XY): Widget | null;
+    text(text: string, width?: number, _align?: GWU.text.Align): this;
     render(): this;
+    mousemove(e: GWU.io.Event): boolean;
+    draw(): void;
 }
 
-type index_d_State = State;
+type index_d_WidgetOptions = WidgetOptions;
+type index_d_Widget = Widget;
+declare const index_d_Widget: typeof Widget;
 type index_d_TextOptions = TextOptions;
-type index_d_Style = Style;
 type index_d_Text = Text;
 declare const index_d_Text: typeof Text;
 type index_d_Grid = Grid;
@@ -1242,13 +1259,13 @@ type index_d_Term = Term;
 declare const index_d_Term: typeof Term;
 declare namespace index_d {
   export {
-    index_d_State as State,
+    index_d_WidgetOptions as WidgetOptions,
+    index_d_Widget as Widget,
     index_d_TextOptions as TextOptions,
-    index_d_Style as Style,
     index_d_Text as Text,
     index_d_Grid as Grid,
     index_d_Term as Term,
   };
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$1 as Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList$1 as DataList, DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text$1 as Text, TextOptions$1 as TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, index_d$1 as html, makeTable, showDropDown, index_d as term };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$1 as Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList$1 as DataList, DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text$1 as Text, TextOptions$1 as TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget$1 as Widget, WidgetOptions$1 as WidgetOptions, WidgetRunner, buildDialog, index_d$1 as html, makeTable, showDropDown, index_d as term };

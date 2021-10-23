@@ -11,8 +11,8 @@ describe('Term', () => {
         term = new Term.Term(ui);
     });
 
-    test('text', () => {
-        term.clear('black').pos(2, 3).text('Hello World.').render();
+    test('drawText', () => {
+        term.clear('black').pos(2, 3).drawText('Hello World.').render();
 
         expect(UTILS.getBufferText(ui.buffer, 2, 3, 20)).toEqual(
             'Hello World.'

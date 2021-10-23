@@ -3777,7 +3777,7 @@
                 return this;
             percent = Math.min(100, Math.max(0, percent));
             if (percent <= 0)
-                return;
+                return this;
             const keepPct = 100 - percent;
             for (let i = 0; i < 3; ++i) {
                 this._data[i] = Math.round((this._data[i] * keepPct + 100 * percent) / 100);
@@ -3790,7 +3790,7 @@
                 return this;
             percent = Math.min(100, Math.max(0, percent));
             if (percent <= 0)
-                return;
+                return this;
             const keepPct = 100 - percent;
             for (let i = 0; i < 3; ++i) {
                 this._data[i] = Math.round((this._data[i] * keepPct + 0 * percent) / 100);

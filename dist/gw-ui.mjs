@@ -135,7 +135,7 @@ class Widget {
     }
 }
 
-class Text extends Widget {
+class Text$1 extends Widget {
     constructor(id, opts) {
         super(id, opts);
     }
@@ -985,6 +985,12 @@ class UI {
         this.buffer = opts.canvas.buffer;
         this.loop = opts.loop || GWU.loop;
     }
+    get width() {
+        return this.canvas.width;
+    }
+    get height() {
+        return this.canvas.height;
+    }
     render() {
         this.buffer.render();
     }
@@ -1055,7 +1061,7 @@ class UI {
             y: 0,
             wrap: width,
         };
-        const textWidget = new Text('TEXT', textOpts);
+        const textWidget = new Text$1('TEXT', textOpts);
         const height = textWidget.bounds.height;
         const dlg = buildDialog(this, width, height)
             .with(textWidget, { x: 0, y: 0 })
@@ -1096,7 +1102,7 @@ class UI {
             text,
             wrap: width,
         };
-        const textWidget = new Text('TEXT', textOpts);
+        const textWidget = new Text$1('TEXT', textOpts);
         const height = textWidget.bounds.height + 2;
         opts.allowCancel = opts.allowCancel !== false;
         opts.buttons = Object.assign({
@@ -1186,7 +1192,7 @@ class UI {
             text: prompt,
             wrap: width,
         };
-        const promptWidget = new Text('TEXT', promptOpts);
+        const promptWidget = new Text$1('TEXT', promptOpts);
         const height = promptWidget.bounds.height +
             2 + // skip + input
             2; // skip + ok/cancel
@@ -1516,7 +1522,7 @@ class Viewport extends Widget {
 
 GWU.color.install('flavorText', 50, 40, 90);
 GWU.color.install('flavorPrompt', 100, 90, 20);
-class Flavor extends Text {
+class Flavor extends Text$1 {
     constructor(id, opts) {
         super(id, opts);
     }
@@ -4799,7 +4805,7 @@ class Selection {
     }
 }
 
-var index = /*#__PURE__*/Object.freeze({
+var index$1 = /*#__PURE__*/Object.freeze({
     __proto__: null,
     Selector: Selector,
     compile: compile,
@@ -4825,4 +4831,211 @@ var index = /*#__PURE__*/Object.freeze({
     Selection: Selection
 });
 
-export { ActionButton, ActorEntry, Box, Button$1 as Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input$1 as Input, ItemEntry, List, Menu, MenuButton, Messages, Sidebar, Table, Text, UI, Viewport, Widget, buildDialog, index as html, makeTable, showDropDown };
+class Text {
+    constructor(opts) {
+        this.x = -1;
+        this.y = -1;
+        this.width = -1;
+        this.height = 1;
+        this.text = '';
+        this.normal = { fg: Text.default.fg };
+        this.state = 'normal';
+        this._lines = [];
+        Object.assign(this, opts);
+        this._lines = GWU.text.splitIntoLines(this.text, this.width > 0 ? this.width : 100);
+        if (this.width <= 0) {
+            this.width = this._lines.reduce((out, line) => Math.max(out, line.length), 0);
+        }
+        if (opts.height) {
+            if (this._lines.length > opts.height) {
+                this._lines.length = opts.height;
+            }
+        }
+        else {
+            this.height = this._lines.length;
+        }
+        this.activeStyle = this.normal;
+    }
+    contains(e) {
+        return (this.x <= e.x &&
+            this.y <= e.y &&
+            this.x + this.width > e.x &&
+            this.y + this.height > e.y);
+    }
+    setState(state) {
+        this.state = state;
+        this.activeStyle = this[state] || this.normal;
+    }
+    fg() {
+        return this.activeStyle.fg || this.normal.fg || Text.default.fg;
+    }
+    bg() {
+        return this.activeStyle.bg || this.normal.bg || Text.default.bg;
+    }
+    align() {
+        return (this.activeStyle.align || this.normal.align || Text.default.align);
+    }
+    valign() {
+        return (this.activeStyle.valign || this.normal.valign || Text.default.valign);
+    }
+    draw(buffer) {
+        buffer.fillRect(this.x, this.y, this.width, this.height, ' ', this.bg(), this.bg());
+        this._lines.forEach((line, i) => {
+            buffer.drawText(this.x, this.y + i, line, this.fg(), -1, this.width, this.align());
+        });
+    }
+}
+Text.default = {
+    fg: 'white',
+    bg: -1,
+    align: 'left',
+    valign: 'top',
+};
+
+class Term {
+    constructor(ui) {
+        this.x = 0;
+        this.y = 0;
+        this.ui = ui;
+        this.default('white', 'black');
+    }
+    get buffer() {
+        return this.ui.buffer;
+    }
+    get width() {
+        return this.ui.width;
+    }
+    get height() {
+        return this.ui.height;
+    }
+    // COLOR
+    default(fg, bg) {
+        this._defaultFg = fg;
+        this._defaultBg = bg;
+        this._fg = GWU.color.make(fg);
+        this._bg = GWU.color.make(bg);
+        return this;
+    }
+    fg(v) {
+        this._fg.set(v);
+        return this;
+    }
+    bg(v) {
+        this._bg.set(v);
+        return this;
+    }
+    dim(pct = 25) {
+        this._fg.darken(pct);
+        return this;
+    }
+    bright(pct = 25) {
+        this._fg.lighten(pct);
+        return this;
+    }
+    inverse() {
+        [this._fg, this._bg] = [this._bg, this._fg];
+        return this;
+    }
+    reset() {
+        this._fg.set(this._defaultFg);
+        this._bg.set(this._defaultBg);
+        return this;
+    }
+    // POSITION
+    pos(x, y) {
+        this.x = GWU.clamp(x, 0, this.width);
+        this.y = GWU.clamp(y, 0, this.height);
+        return this;
+    }
+    moveTo(x, y) {
+        return this.pos(x, y);
+    }
+    move(dx, dy) {
+        this.x = GWU.clamp(this.x + dx, 0, this.width);
+        this.y = GWU.clamp(this.y + dy, 0, this.height);
+        return this;
+    }
+    up(n = 1) {
+        return this.move(0, -n);
+    }
+    down(n = 1) {
+        return this.move(0, n);
+    }
+    left(n = 1) {
+        return this.move(-n, 0);
+    }
+    right(n = 1) {
+        return this.move(n, 0);
+    }
+    nextLine(n = 1) {
+        return this.pos(0, this.y + n);
+    }
+    prevLine(n = 1) {
+        return this.pos(0, this.y - n);
+    }
+    col(n) {
+        return this.pos(n, this.y);
+    }
+    row(n) {
+        return this.pos(this.x, n);
+    }
+    // EDIT
+    // erase and move back to top left
+    clear(newDefaultBg) {
+        return this.erase(newDefaultBg).pos(0, 0);
+    }
+    erase(newDefaultBg) {
+        if (newDefaultBg !== undefined) {
+            this._defaultBg = newDefaultBg;
+            this._bg.set(newDefaultBg);
+        }
+        this.buffer.fill(' ', this._bg, this._bg);
+        return this;
+    }
+    eraseBelow() {
+        this.buffer.fillRect(0, this.y + 1, this.width, this.height - this.y - 1, ' ', this._bg, this._bg);
+        return this;
+    }
+    eraseAbove() {
+        this.buffer.fillRect(0, 0, this.width, this.y - 1, ' ', this._bg, this._bg);
+        return this;
+    }
+    eraseLine() {
+        this.buffer.fillRect(0, this.y, this.width, 1, ' ', this._bg, this._bg);
+        return this;
+    }
+    eraseLineAbove() {
+        this.buffer.fillRect(0, this.y - 1, this.width, 1, ' ', this._bg, this._bg);
+        return this;
+    }
+    eraseLineBelow() {
+        this.buffer.fillRect(0, this.y + 1, this.width, 1, ' ', this._bg, this._bg);
+        return this;
+    }
+    // DRAW
+    text(text, width, align) {
+        this.x += this.buffer.drawText(this.x, this.y, text, this._fg, this._bg, width, align);
+        return this;
+    }
+    border(w, h, bg) {
+        const c = bg || this._fg;
+        const buf = this.buffer;
+        GWU.xy.forBorder(this.x, this.y, w, h, (x, y) => {
+            buf.draw(x, y, ' ', c, c);
+        });
+        return this;
+    }
+    // CONTROL
+    render() {
+        this.ui.render();
+        return this;
+    }
+}
+
+var index = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    Text: Text,
+    Term: Term
+});
+
+export { ActionButton, ActorEntry, Box, Button$1 as Button, CellEntry, Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input$1 as Input, ItemEntry, List, Menu, MenuButton, Messages, Sidebar, Table, Text$1 as Text, UI, Viewport, Widget, buildDialog, index$1 as html, makeTable, showDropDown, index as term };

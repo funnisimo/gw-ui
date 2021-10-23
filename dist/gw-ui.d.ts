@@ -63,14 +63,14 @@ declare abstract class Widget {
     draw(buffer: GWU.canvas.DataBuffer): void;
 }
 
-interface TextOptions extends WidgetOptions {
+interface TextOptions$1 extends WidgetOptions {
     wrap?: number;
 }
-declare class Text extends Widget {
+declare class Text$1 extends Widget {
     lines: string[];
     wrap: boolean;
-    constructor(id: string, opts?: TextOptions);
-    init(opts: TextOptions): void;
+    constructor(id: string, opts?: TextOptions$1);
+    init(opts: TextOptions$1): void;
     setText(text: string): void;
     draw(buffer: GWU.canvas.DataBuffer): void;
 }
@@ -286,12 +286,14 @@ interface ConfirmOptions extends WidgetOptions {
     box?: BoxOptions;
 }
 interface InputBoxOptions extends ConfirmOptions {
-    prompt?: string | TextOptions;
+    prompt?: string | TextOptions$1;
     input?: InputOptions;
 }
 interface UICore {
     buffer: GWU.canvas.Buffer;
     loop: GWU.io.Loop;
+    readonly width: number;
+    readonly height: number;
     render(): void;
     startLayer(): GWU.canvas.Buffer;
     resetLayerBuffer(): void;
@@ -320,6 +322,8 @@ declare class UI implements UICore {
     freeBuffers: GWU.canvas.Buffer[];
     inDialog: boolean;
     constructor(opts?: Partial<UIOptions>);
+    get width(): number;
+    get height(): number;
     render(): void;
     get baseBuffer(): GWU.canvas.Buffer;
     get canvasBuffer(): GWU.canvas.Buffer;
@@ -382,11 +386,11 @@ declare class Viewport extends Widget {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-interface FlavorOptions extends TextOptions {
+interface FlavorOptions extends TextOptions$1 {
     promptFg?: GWU.color.ColorBase;
     overflow?: boolean;
 }
-declare class Flavor extends Text {
+declare class Flavor extends Text$1 {
     isPrompt: boolean;
     overflow: boolean;
     promptFg: GWU.color.Color;
@@ -561,7 +565,7 @@ declare function compile(text: string): Selector;
 
 declare type Position = 'static' | 'relative' | 'fixed' | 'absolute';
 interface Stylable extends Selectable {
-    style(): Style;
+    style(): Style$1;
     prop(name: string): PropType;
 }
 interface StyleOptions {
@@ -592,7 +596,7 @@ interface StyleOptions {
     marginBottom?: number;
     border?: GWU.color.ColorBase;
 }
-declare class Style {
+declare class Style$1 {
     protected _fg?: GWU.color.ColorBase;
     protected _bg?: GWU.color.ColorBase;
     protected _border?: GWU.color.ColorBase;
@@ -650,28 +654,28 @@ declare class Style {
     get marginRight(): number | undefined;
     get marginTop(): number | undefined;
     get marginBottom(): number | undefined;
-    get(key: keyof Style): any;
+    get(key: keyof Style$1): any;
     set(opts: StyleOptions, setDirty?: boolean): this;
     set(key: keyof StyleOptions, value: any, setDirty?: boolean): this;
-    unset(key: keyof Style): this;
+    unset(key: keyof Style$1): this;
     clone(): this;
-    copy(other: Style): this;
+    copy(other: Style$1): this;
 }
-declare function makeStyle(style: string, selector?: string): Style;
-declare class ComputedStyle extends Style {
-    sources: Style[];
-    constructor(sources?: Style[]);
+declare function makeStyle(style: string, selector?: string): Style$1;
+declare class ComputedStyle extends Style$1 {
+    sources: Style$1[];
+    constructor(sources?: Style$1[]);
     get dirty(): boolean;
     set dirty(v: boolean);
 }
 declare class Sheet {
-    rules: Style[];
+    rules: Style$1[];
     _dirty: boolean;
     constructor(parentSheet?: Sheet | null);
     get dirty(): boolean;
     set dirty(v: boolean);
-    add(selector: string, props: StyleOptions): Style;
-    get(selector: string): Style | null;
+    add(selector: string, props: StyleOptions): Style$1;
+    get(selector: string): Style$1 | null;
     remove(selector: string): void;
     computeFor(widget: Stylable): ComputedStyle;
 }
@@ -696,7 +700,7 @@ declare class Document {
     createElement(tag: string): Element;
     create(tag: string): Selection;
     rule(info: Record<string, StyleOptions>): this;
-    rule(rule: string): Style;
+    rule(rule: string): Style$1;
     rule(rule: string, style: StyleOptions): this;
     removeRule(rule: string): this;
     _attach(w: Element | Element[]): this;
@@ -753,11 +757,11 @@ declare class Selection {
     hasClass(id: string): boolean;
     removeClass(id: string): this;
     toggleClass(id: string): this;
-    style(): Style;
+    style(): Style$1;
     style(style: StyleOptions): this;
-    style(name: keyof Style): any;
+    style(name: keyof Style$1): any;
     style(name: keyof StyleOptions, value: any): this;
-    removeStyle(name: keyof Style): this;
+    removeStyle(name: keyof Style$1): this;
     pos(): GWU.xy.XY | undefined;
     pos(left: number, top: number, position?: Omit<Position, 'static'>): this;
     pos(xy: PosOptions, position?: Omit<Position, 'static'>): this;
@@ -820,7 +824,7 @@ declare class Element implements Selectable {
     _lines: string[];
     _dirty: boolean;
     _attached: boolean;
-    _style: Style | null;
+    _style: Style$1 | null;
     _usedStyle: ComputedStyle;
     constructor(tag: string, styles?: Sheet);
     contains(xy: GWU.xy.XY): boolean;
@@ -866,14 +870,14 @@ declare class Element implements Selectable {
     _updateHeight(): number;
     _updateLeft(): void;
     _updateTop(parentBottom?: number): number;
-    style(): Style;
-    style(id: keyof Style): any;
+    style(): Style$1;
+    style(id: keyof Style$1): any;
     style(props: StyleOptions): this;
     style(id: keyof StyleOptions, val: any): this;
-    removeStyle(id: keyof Style): this;
-    used(): Style;
+    removeStyle(id: keyof Style$1): this;
+    used(): Style$1;
     used(style: ComputedStyle): this;
-    used(id: keyof Style): any;
+    used(id: keyof Style$1): any;
     addClass(id: string): this;
     removeClass(id: string): this;
     toggleClass(id: string): this;
@@ -1010,103 +1014,205 @@ interface MyOptions {
  */
 declare function parse(data: string, options?: MyOptions | Sheet): Element;
 
-type index_d_Size = Size;
-type index_d_PropType = PropType;
-type index_d_Selectable = Selectable;
-type index_d_MatchFn = MatchFn;
-type index_d_Selector = Selector;
-declare const index_d_Selector: typeof Selector;
-declare const index_d_compile: typeof compile;
-type index_d_Position = Position;
-type index_d_Stylable = Stylable;
-type index_d_StyleOptions = StyleOptions;
-type index_d_Style = Style;
-declare const index_d_Style: typeof Style;
-declare const index_d_makeStyle: typeof makeStyle;
-type index_d_ComputedStyle = ComputedStyle;
-declare const index_d_ComputedStyle: typeof ComputedStyle;
-type index_d_Sheet = Sheet;
-declare const index_d_Sheet: typeof Sheet;
-declare const index_d_defaultStyle: typeof defaultStyle;
-type index_d_PosOptions = PosOptions;
-type index_d_SizeOptions = SizeOptions;
-type index_d_Element = Element;
-declare const index_d_Element: typeof Element;
-type index_d_Input = Input;
-declare const index_d_Input: typeof Input;
-type index_d_CheckBox = CheckBox;
-declare const index_d_CheckBox: typeof CheckBox;
-type index_d_Button = Button;
-declare const index_d_Button: typeof Button;
-type index_d_FieldSet = FieldSet;
-declare const index_d_FieldSet: typeof FieldSet;
-type index_d_UnorderedList = UnorderedList;
-declare const index_d_UnorderedList: typeof UnorderedList;
-type index_d_OrderedList = OrderedList;
-declare const index_d_OrderedList: typeof OrderedList;
-type index_d_PrefixType = PrefixType;
-type index_d_DataList = DataList;
-declare const index_d_DataList: typeof DataList;
-declare const index_d_selfClosingTags: typeof selfClosingTags;
-type index_d_MakeElementFn = MakeElementFn;
-declare const index_d_elements: typeof elements;
-type index_d_ElementInstallOptions = ElementInstallOptions;
-declare const index_d_configureElement: typeof configureElement;
-declare const index_d_installElement: typeof installElement;
-declare const index_d_parse: typeof parse;
-type index_d_EventCb = EventCb;
-type index_d_FxFn = FxFn;
-type index_d_Fx = Fx;
-type index_d_ElementCb = ElementCb;
-type index_d_ElementMatch = ElementMatch;
-type index_d_SelectType = SelectType;
-type index_d_Document = Document;
-declare const index_d_Document: typeof Document;
-type index_d_Selection = Selection;
-declare const index_d_Selection: typeof Selection;
-declare namespace index_d {
+type index_d$1_Size = Size;
+type index_d$1_PropType = PropType;
+type index_d$1_Selectable = Selectable;
+type index_d$1_MatchFn = MatchFn;
+type index_d$1_Selector = Selector;
+declare const index_d$1_Selector: typeof Selector;
+declare const index_d$1_compile: typeof compile;
+type index_d$1_Position = Position;
+type index_d$1_Stylable = Stylable;
+type index_d$1_StyleOptions = StyleOptions;
+declare const index_d$1_makeStyle: typeof makeStyle;
+type index_d$1_ComputedStyle = ComputedStyle;
+declare const index_d$1_ComputedStyle: typeof ComputedStyle;
+type index_d$1_Sheet = Sheet;
+declare const index_d$1_Sheet: typeof Sheet;
+declare const index_d$1_defaultStyle: typeof defaultStyle;
+type index_d$1_PosOptions = PosOptions;
+type index_d$1_SizeOptions = SizeOptions;
+type index_d$1_Element = Element;
+declare const index_d$1_Element: typeof Element;
+type index_d$1_Input = Input;
+declare const index_d$1_Input: typeof Input;
+type index_d$1_CheckBox = CheckBox;
+declare const index_d$1_CheckBox: typeof CheckBox;
+type index_d$1_Button = Button;
+declare const index_d$1_Button: typeof Button;
+type index_d$1_FieldSet = FieldSet;
+declare const index_d$1_FieldSet: typeof FieldSet;
+type index_d$1_UnorderedList = UnorderedList;
+declare const index_d$1_UnorderedList: typeof UnorderedList;
+type index_d$1_OrderedList = OrderedList;
+declare const index_d$1_OrderedList: typeof OrderedList;
+type index_d$1_PrefixType = PrefixType;
+type index_d$1_DataList = DataList;
+declare const index_d$1_DataList: typeof DataList;
+declare const index_d$1_selfClosingTags: typeof selfClosingTags;
+type index_d$1_MakeElementFn = MakeElementFn;
+declare const index_d$1_elements: typeof elements;
+type index_d$1_ElementInstallOptions = ElementInstallOptions;
+declare const index_d$1_configureElement: typeof configureElement;
+declare const index_d$1_installElement: typeof installElement;
+declare const index_d$1_parse: typeof parse;
+type index_d$1_EventCb = EventCb;
+type index_d$1_FxFn = FxFn;
+type index_d$1_Fx = Fx;
+type index_d$1_ElementCb = ElementCb;
+type index_d$1_ElementMatch = ElementMatch;
+type index_d$1_SelectType = SelectType;
+type index_d$1_Document = Document;
+declare const index_d$1_Document: typeof Document;
+type index_d$1_Selection = Selection;
+declare const index_d$1_Selection: typeof Selection;
+declare namespace index_d$1 {
   export {
-    index_d_Size as Size,
-    index_d_PropType as PropType,
-    index_d_Selectable as Selectable,
-    index_d_MatchFn as MatchFn,
-    index_d_Selector as Selector,
-    index_d_compile as compile,
-    index_d_Position as Position,
-    index_d_Stylable as Stylable,
-    index_d_StyleOptions as StyleOptions,
-    index_d_Style as Style,
-    index_d_makeStyle as makeStyle,
-    index_d_ComputedStyle as ComputedStyle,
-    index_d_Sheet as Sheet,
-    index_d_defaultStyle as defaultStyle,
-    index_d_PosOptions as PosOptions,
-    index_d_SizeOptions as SizeOptions,
-    index_d_Element as Element,
-    index_d_Input as Input,
-    index_d_CheckBox as CheckBox,
-    index_d_Button as Button,
-    index_d_FieldSet as FieldSet,
-    index_d_UnorderedList as UnorderedList,
-    index_d_OrderedList as OrderedList,
-    index_d_PrefixType as PrefixType,
-    index_d_DataList as DataList,
-    index_d_selfClosingTags as selfClosingTags,
-    index_d_MakeElementFn as MakeElementFn,
-    index_d_elements as elements,
-    index_d_ElementInstallOptions as ElementInstallOptions,
-    index_d_configureElement as configureElement,
-    index_d_installElement as installElement,
-    index_d_parse as parse,
-    index_d_EventCb as EventCb,
-    index_d_FxFn as FxFn,
-    index_d_Fx as Fx,
-    index_d_ElementCb as ElementCb,
-    index_d_ElementMatch as ElementMatch,
-    index_d_SelectType as SelectType,
-    index_d_Document as Document,
-    index_d_Selection as Selection,
+    index_d$1_Size as Size,
+    index_d$1_PropType as PropType,
+    index_d$1_Selectable as Selectable,
+    index_d$1_MatchFn as MatchFn,
+    index_d$1_Selector as Selector,
+    index_d$1_compile as compile,
+    index_d$1_Position as Position,
+    index_d$1_Stylable as Stylable,
+    index_d$1_StyleOptions as StyleOptions,
+    Style$1 as Style,
+    index_d$1_makeStyle as makeStyle,
+    index_d$1_ComputedStyle as ComputedStyle,
+    index_d$1_Sheet as Sheet,
+    index_d$1_defaultStyle as defaultStyle,
+    index_d$1_PosOptions as PosOptions,
+    index_d$1_SizeOptions as SizeOptions,
+    index_d$1_Element as Element,
+    index_d$1_Input as Input,
+    index_d$1_CheckBox as CheckBox,
+    index_d$1_Button as Button,
+    index_d$1_FieldSet as FieldSet,
+    index_d$1_UnorderedList as UnorderedList,
+    index_d$1_OrderedList as OrderedList,
+    index_d$1_PrefixType as PrefixType,
+    index_d$1_DataList as DataList,
+    index_d$1_selfClosingTags as selfClosingTags,
+    index_d$1_MakeElementFn as MakeElementFn,
+    index_d$1_elements as elements,
+    index_d$1_ElementInstallOptions as ElementInstallOptions,
+    index_d$1_configureElement as configureElement,
+    index_d$1_installElement as installElement,
+    index_d$1_parse as parse,
+    index_d$1_EventCb as EventCb,
+    index_d$1_FxFn as FxFn,
+    index_d$1_Fx as Fx,
+    index_d$1_ElementCb as ElementCb,
+    index_d$1_ElementMatch as ElementMatch,
+    index_d$1_SelectType as SelectType,
+    index_d$1_Document as Document,
+    index_d$1_Selection as Selection,
   };
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$1 as Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList$1 as DataList, DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text, TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, index_d as html, makeTable, showDropDown };
+declare type State = 'normal' | 'hover' | 'focus';
+interface TextOptions {
+    text: string;
+    x: number;
+    y: number;
+    width?: number;
+    height?: number;
+    style: Style;
+    hover?: Style;
+    focus?: Style;
+}
+interface Style {
+    fg?: GWU.color.ColorBase;
+    bg?: GWU.color.ColorBase;
+    align?: GWU.text.Align;
+    valign?: GWU.text.VAlign;
+}
+declare class Text {
+    static default: {
+        fg: string;
+        bg: number;
+        align: "left" | "center" | "right";
+        valign: "top" | "middle" | "bottom";
+    };
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    text: string;
+    activeStyle: Style;
+    normal: Style;
+    hover?: Style;
+    focus?: Style;
+    state: State;
+    _lines: string[];
+    constructor(opts: TextOptions);
+    contains(e: GWU.xy.XY): boolean;
+    setState(state: State): void;
+    fg(): GWU.color.ColorBase;
+    bg(): GWU.color.ColorBase;
+    align(): GWU.text.Align;
+    valign(): GWU.text.VAlign;
+    draw(buffer: GWU.canvas.DataBuffer): void;
+}
+
+declare class Term {
+    ui: UICore;
+    x: number;
+    y: number;
+    _defaultFg: GWU.color.ColorBase;
+    _defaultBg: GWU.color.ColorBase;
+    _fg: GWU.color.Color;
+    _bg: GWU.color.Color;
+    constructor(ui: UICore);
+    get buffer(): GWU.canvas.DataBuffer;
+    get width(): number;
+    get height(): number;
+    default(fg: GWU.color.ColorBase, bg: GWU.color.ColorBase): this;
+    fg(v: GWU.color.ColorBase): this;
+    bg(v: GWU.color.ColorBase): this;
+    dim(pct?: number): this;
+    bright(pct?: number): this;
+    inverse(): this;
+    reset(): this;
+    pos(x: number, y: number): this;
+    moveTo(x: number, y: number): this;
+    move(dx: number, dy: number): this;
+    up(n?: number): this;
+    down(n?: number): this;
+    left(n?: number): this;
+    right(n?: number): this;
+    nextLine(n?: number): this;
+    prevLine(n?: number): this;
+    col(n: number): this;
+    row(n: number): this;
+    clear(newDefaultBg?: GWU.color.ColorBase): this;
+    erase(newDefaultBg?: GWU.color.ColorBase): this;
+    eraseBelow(): this;
+    eraseAbove(): this;
+    eraseLine(): this;
+    eraseLineAbove(): this;
+    eraseLineBelow(): this;
+    text(text: string, width?: number, align?: GWU.text.Align): this;
+    border(w: number, h: number, bg?: GWU.color.ColorBase): this;
+    render(): this;
+}
+
+type index_d_State = State;
+type index_d_TextOptions = TextOptions;
+type index_d_Style = Style;
+type index_d_Text = Text;
+declare const index_d_Text: typeof Text;
+type index_d_Term = Term;
+declare const index_d_Term: typeof Term;
+declare namespace index_d {
+  export {
+    index_d_State as State,
+    index_d_TextOptions as TextOptions,
+    index_d_Style as Style,
+    index_d_Text as Text,
+    index_d_Term as Term,
+  };
+}
+
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$1 as Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList$1 as DataList, DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text$1 as Text, TextOptions$1 as TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, WidgetRunner, buildDialog, index_d$1 as html, makeTable, showDropDown, index_d as term };

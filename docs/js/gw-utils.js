@@ -3547,51 +3547,58 @@
         return (r << 8) + (g << 4) + b;
     }
     const colors = {};
-    class Color extends Int16Array {
+    class Color {
         constructor(r = -1, g = 0, b = 0, rand = 0, redRand = 0, greenRand = 0, blueRand = 0, dances = false) {
-            super(7);
             this.dances = false;
-            this.set([r, g, b, rand, redRand, greenRand, blueRand]);
+            this._data = new Int16Array([
+                r,
+                g,
+                b,
+                rand,
+                redRand,
+                greenRand,
+                blueRand,
+            ]);
             this.dances = dances;
         }
         get r() {
-            return Math.round(this[0] * 2.550001);
+            return Math.round(this._data[0] * 2.550001);
         }
         get _r() {
-            return this[0];
+            return this._data[0];
         }
         set _r(v) {
-            this[0] = v;
+            this._data[0] = v;
         }
         get g() {
-            return Math.round(this[1] * 2.550001);
+            return Math.round(this._data[1] * 2.550001);
         }
         get _g() {
-            return this[1];
+            return this._data[1];
         }
         set _g(v) {
-            this[1] = v;
+            this._data[1] = v;
         }
         get b() {
-            return Math.round(this[2] * 2.550001);
+            return Math.round(this._data[2] * 2.550001);
         }
         get _b() {
-            return this[2];
+            return this._data[2];
         }
         set _b(v) {
-            this[2] = v;
+            this._data[2] = v;
         }
         get _rand() {
-            return this[3];
+            return this._data[3];
         }
         get _redRand() {
-            return this[4];
+            return this._data[4];
         }
         get _greenRand() {
-            return this[5];
+            return this._data[5];
         }
         get _blueRand() {
-            return this[6];
+            return this._data[6];
         }
         // luminosity (0-100)
         get l() {
@@ -3649,8 +3656,8 @@
             const O = from$2(other);
             if (this.isNull())
                 return O.isNull();
-            return this.every((v, i) => {
-                return v == O[i];
+            return this._data.every((v, i) => {
+                return v == O._data[i];
             });
         }
         copy(other) {
@@ -3666,16 +3673,22 @@
                 other = from$2(other);
                 this.dances = other.dances;
             }
-            for (let i = 0; i < this.length; ++i) {
-                this[i] = other[i] || 0;
-            }
             if (other instanceof Color) {
                 this.name = other.name;
+                for (let i = 0; i < this._data.length; ++i) {
+                    this._data[i] = other._data[i] || 0;
+                }
             }
             else {
+                for (let i = 0; i < this._data.length; ++i) {
+                    this._data[i] = other[i] || 0;
+                }
                 this._changed();
             }
             return this;
+        }
+        set(other) {
+            return this.copy(other);
         }
         _changed() {
             this.name = undefined;
@@ -3688,8 +3701,8 @@
             return other;
         }
         assign(_r = -1, _g = 0, _b = 0, _rand = 0, _redRand = 0, _greenRand = 0, _blueRand = 0, dances) {
-            for (let i = 0; i < this.length; ++i) {
-                this[i] = arguments[i] || 0;
+            for (let i = 0; i < this._data.length; ++i) {
+                this._data[i] = arguments[i] || 0;
             }
             if (dances !== undefined) {
                 this.dances = dances;
@@ -3697,8 +3710,8 @@
             return this._changed();
         }
         assignRGB(_r = -1, _g = 0, _b = 0, _rand = 0, _redRand = 0, _greenRand = 0, _blueRand = 0, dances) {
-            for (let i = 0; i < this.length; ++i) {
-                this[i] = Math.round((arguments[i] || 0) / 2.55);
+            for (let i = 0; i < this._data.length; ++i) {
+                this._data[i] = Math.round((arguments[i] || 0) / 2.55);
             }
             if (dances !== undefined) {
                 this.dances = dances;
@@ -3706,13 +3719,13 @@
             return this._changed();
         }
         nullify() {
-            this[0] = -1;
+            this._data[0] = -1;
             this.dances = false;
             return this._changed();
         }
         blackOut() {
-            for (let i = 0; i < this.length; ++i) {
-                this[i] = 0;
+            for (let i = 0; i < this._data.length; ++i) {
+                this._data[i] = 0;
             }
             this.dances = false;
             return this._changed();
@@ -3752,8 +3765,8 @@
             }
             percent = Math.min(100, Math.max(0, percent));
             const keepPct = 100 - percent;
-            for (let i = 0; i < this.length; ++i) {
-                this[i] = Math.round((this[i] * keepPct + O[i] * percent) / 100);
+            for (let i = 0; i < this._data.length; ++i) {
+                this._data[i] = Math.round((this._data[i] * keepPct + O._data[i] * percent) / 100);
             }
             this.dances = this.dances || O.dances;
             return this._changed();
@@ -3767,7 +3780,7 @@
                 return;
             const keepPct = 100 - percent;
             for (let i = 0; i < 3; ++i) {
-                this[i] = Math.round((this[i] * keepPct + 100 * percent) / 100);
+                this._data[i] = Math.round((this._data[i] * keepPct + 100 * percent) / 100);
             }
             return this._changed();
         }
@@ -3780,7 +3793,7 @@
                 return;
             const keepPct = 100 - percent;
             for (let i = 0; i < 3; ++i) {
-                this[i] = Math.round((this[i] * keepPct + 0 * percent) / 100);
+                this._data[i] = Math.round((this._data[i] * keepPct + 0 * percent) / 100);
             }
             return this._changed();
         }
@@ -3790,7 +3803,7 @@
             if (this.dances && !clearDancing)
                 return;
             this.dances = false;
-            const d = this;
+            const d = this._data;
             if (d[3] + d[4] + d[5] + d[6]) {
                 const rand = cosmetic.number(this._rand);
                 const redRand = cosmetic.number(this._redRand);
@@ -3799,8 +3812,8 @@
                 this._r += rand + redRand;
                 this._g += rand + greenRand;
                 this._b += rand + blueRand;
-                for (let i = 3; i < this.length; ++i) {
-                    this[i] = 0;
+                for (let i = 3; i < d.length; ++i) {
+                    d[i] = 0;
                 }
                 return this._changed();
             }
@@ -3814,8 +3827,8 @@
             if (this.isNull()) {
                 this.blackOut();
             }
-            for (let i = 0; i < this.length; ++i) {
-                this[i] += Math.round((O[i] * percent) / 100);
+            for (let i = 0; i < this._data.length; ++i) {
+                this._data[i] += Math.round((O._data[i] * percent) / 100);
             }
             this.dances = this.dances || O.dances;
             return this._changed();
@@ -3824,23 +3837,26 @@
             if (this.isNull() || percent == 100)
                 return this;
             percent = Math.max(0, percent);
-            for (let i = 0; i < this.length; ++i) {
-                this[i] = Math.round((this[i] * percent) / 100);
+            for (let i = 0; i < this._data.length; ++i) {
+                this._data[i] = Math.round((this._data[i] * percent) / 100);
             }
             return this._changed();
         }
         multiply(other) {
             if (this.isNull())
                 return this;
-            let data = other;
-            if (!Array.isArray(other)) {
-                if (other.isNull())
-                    return this;
+            let data;
+            if (Array.isArray(other)) {
                 data = other;
             }
-            const len = Math.max(3, Math.min(this.length, data.length));
+            else {
+                if (other.isNull())
+                    return this;
+                data = other._data;
+            }
+            const len = Math.max(3, Math.min(this._data.length, data.length));
             for (let i = 0; i < len; ++i) {
-                this[i] = Math.round((this[i] * (data[i] || 0)) / 100);
+                this._data[i] = Math.round((this._data[i] * (data[i] || 0)) / 100);
             }
             return this._changed();
         }
@@ -3912,10 +3928,7 @@
         return c;
     }
     function fromNumber(val, base256 = false) {
-        const c = new Color();
-        for (let i = 0; i < c.length; ++i) {
-            c[i] = 0;
-        }
+        const c = new Color(0, 0, 0);
         if (val < 0) {
             c.assign(-1);
         }
@@ -6577,7 +6590,7 @@ void main() {
                     (100 - fadeToPercent) *
                         (distanceBetween(x, y, i, j) / radius));
                 for (k = 0; k < 3; ++k) {
-                    lightValue[k] = Math.floor((LIGHT_COMPONENTS[k] * lightMultiplier) / 100);
+                    lightValue[k] = Math.floor((LIGHT_COMPONENTS._data[k] * lightMultiplier) / 100);
                 }
                 site.addCellLight(i, j, lightValue, dispelShadows);
                 // if (dispelShadows) {
@@ -6597,7 +6610,11 @@ void main() {
         }
     }
     function intensity(light) {
-        return Math.max(light[0], light[1], light[2]);
+        let data = light;
+        if (light instanceof Color) {
+            data = light._data;
+        }
+        return Math.max(data[0], data[1], data[2]);
     }
     function isDarkLight(light, threshold = 20) {
         return intensity(light) <= threshold;
@@ -6718,7 +6735,7 @@ void main() {
                 light = light.toLight();
             }
             else if (!Array.isArray(light)) {
-                light = from$2(light);
+                light = from$2(light).toLight();
             }
             for (let i = 0; i < 3; ++i) {
                 this.ambient[i] = light[i];

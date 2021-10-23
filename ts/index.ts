@@ -7,3 +7,4 @@ export * from './flavor';
 export * from './sidebar';
 export * from './menu';
 export * as html from './html';
+export * as term from './term';

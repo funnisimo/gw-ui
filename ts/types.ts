@@ -51,6 +51,8 @@ export interface InputBoxOptions extends ConfirmOptions {
 export interface UICore {
     buffer: GWU.canvas.Buffer;
     loop: GWU.io.Loop;
+    readonly width: number;
+    readonly height: number;
 
     render(): void;
 

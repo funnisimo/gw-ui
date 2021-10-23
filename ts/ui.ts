@@ -24,6 +24,13 @@ export class UI implements UICore {
         this.loop = opts.loop || GWU.loop;
     }
 
+    get width(): number {
+        return this.canvas.width;
+    }
+    get height(): number {
+        return this.canvas.height;
+    }
+
     render() {
         this.buffer.render();
     }

@@ -12,7 +12,7 @@ export interface WidgetOptions {
 }
 
 export abstract class Widget {
-    bounds: GWU.xy.Bounds = new GWU.xy.Bounds(-1, -1, 0, 1);
+    bounds: GWU.xy.Bounds = new GWU.xy.Bounds(0, 0, 0, 1);
     activeStyle!: StyleOptions;
     _normalStyle: StyleOptions = {};
     _hoverStyle: StyleOptions = {};
@@ -20,6 +20,7 @@ export abstract class Widget {
 
     _focus = false;
     _hover = false;
+    needsDraw = true;
 
     constructor(x: number, y: number, opts: WidgetOptions = {}) {
         this.bounds.x = x;
@@ -37,7 +38,7 @@ export abstract class Widget {
         return this.bounds.contains(args[0], args[1]);
     }
 
-    normalStyle(opts: StyleOptions) {
+    style(opts: StyleOptions) {
         this._normalStyle = opts;
         this._updateStyle();
     }
@@ -75,11 +76,44 @@ export abstract class Widget {
         } else if (this._hover) {
             Object.assign(this.activeStyle, this._hoverStyle);
         }
+        this.needsDraw = true; // changed style or state
     }
 
-    abstract draw(buffer: GWU.canvas.DataBuffer): void;
+    abstract draw(
+        buffer: GWU.canvas.DataBuffer,
+        parentX?: number,
+        parentY?: number
+    ): void;
 
     mousemove(_e: GWU.io.Event, _term: Term): boolean {
         return false;
+    }
+}
+
+export class WidgetGroup extends Widget {
+    widgets: Widget[] = [];
+
+    constructor(x: number, y: number, opts: WidgetOptions = {}) {
+        super(x, y, opts);
+    }
+
+    contains(e: GWU.xy.XY): boolean;
+    contains(x: number, y: number): boolean;
+    contains(...args: any[]): boolean {
+        return this.widgets.some((w) => w.bounds.contains(args[0], args[1]));
+    }
+
+    draw(buffer: GWU.canvas.DataBuffer) {
+        this.widgets.forEach((w) => w.draw(buffer));
+    }
+
+    mousemove(e: GWU.io.Event, term: Term): boolean {
+        let handled = false;
+        this.widgets.forEach((w) => {
+            if (w.mousemove(e, term)) {
+                handled = true;
+            }
+        });
+        return handled;
     }
 }

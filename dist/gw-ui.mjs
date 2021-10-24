@@ -4833,12 +4833,13 @@ var index$1 = /*#__PURE__*/Object.freeze({
 
 class Widget {
     constructor(x, y, opts = {}) {
-        this.bounds = new GWU.xy.Bounds(-1, -1, 0, 1);
+        this.bounds = new GWU.xy.Bounds(0, 0, 0, 1);
         this._normalStyle = {};
         this._hoverStyle = {};
         this._focusStyle = {};
         this._focus = false;
         this._hover = false;
+        this.needsDraw = true;
         this.bounds.x = x;
         this.bounds.y = y;
         if (opts.style)
@@ -4852,7 +4853,7 @@ class Widget {
     contains(...args) {
         return this.bounds.contains(args[0], args[1]);
     }
-    normalStyle(opts) {
+    style(opts) {
         this._normalStyle = opts;
         this._updateStyle();
     }
@@ -4886,9 +4887,31 @@ class Widget {
         else if (this._hover) {
             Object.assign(this.activeStyle, this._hoverStyle);
         }
+        this.needsDraw = true; // changed style or state
     }
     mousemove(_e, _term) {
         return false;
+    }
+}
+class WidgetGroup extends Widget {
+    constructor(x, y, opts = {}) {
+        super(x, y, opts);
+        this.widgets = [];
+    }
+    contains(...args) {
+        return this.widgets.some((w) => w.bounds.contains(args[0], args[1]));
+    }
+    draw(buffer) {
+        this.widgets.forEach((w) => w.draw(buffer));
+    }
+    mousemove(e, term) {
+        let handled = false;
+        this.widgets.forEach((w) => {
+            if (w.mousemove(e, term)) {
+                handled = true;
+            }
+        });
+        return handled;
     }
 }
 
@@ -4912,10 +4935,13 @@ class Text extends Widget {
             this.bounds.height = this._lines.length;
         }
     }
-    draw(buffer) {
-        buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.activeStyle.bg, this.activeStyle.bg);
+    draw(buffer, parentX = 0, parentY = 0) {
+        if (!this.needsDraw)
+            return;
+        this.needsDraw = false;
+        buffer.fillRect(this.bounds.x + parentX, this.bounds.y + parentY, this.bounds.width, this.bounds.height, ' ', this.activeStyle.bg, this.activeStyle.bg);
         this._lines.forEach((line, i) => {
-            buffer.drawText(this.bounds.x, this.bounds.y + i, line, this.activeStyle.fg, -1, this.bounds.width, this.activeStyle.align);
+            buffer.drawText(this.bounds.x + parentX, this.bounds.y + i + parentY, line, this.activeStyle.fg, -1, this.bounds.width, this.activeStyle.align);
         });
     }
 }
@@ -5206,7 +5232,7 @@ class Term {
     // DRAW
     drawText(text, width, _align) {
         const widget = new Text(this.x, this.y, text, { width });
-        widget.normalStyle(this._style);
+        widget.style(this._style);
         widget.draw(this.buffer);
         return this;
     }
@@ -5244,7 +5270,7 @@ class Term {
     text(text, width, _align) {
         // TODO - if in a grid cell, adjust width and height based on grid
         const widget = new Text(this.x, this.y, text, { width });
-        widget.normalStyle(this._style);
+        widget.style(this._style);
         widget.hoverStyle(this._hoverStyle);
         widget.focusStyle(this._focusStyle);
         widget.draw(this.buffer);
@@ -5280,6 +5306,7 @@ Term.default = {
 var index = /*#__PURE__*/Object.freeze({
     __proto__: null,
     Widget: Widget,
+    WidgetGroup: WidgetGroup,
     Text: Text,
     Grid: Grid,
     Term: Term

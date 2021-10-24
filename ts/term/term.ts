@@ -290,7 +290,7 @@ export class Term {
 
     drawText(text: string, width?: number, _align?: GWU.text.Align): this {
         const widget = new Text(this.x, this.y, text, { width });
-        widget.normalStyle(this._style);
+        widget.style(this._style);
         widget.draw(this.buffer);
         return this;
     }
@@ -340,7 +340,7 @@ export class Term {
         // TODO - if in a grid cell, adjust width and height based on grid
 
         const widget = new Text(this.x, this.y, text, { width });
-        widget.normalStyle(this._style);
+        widget.style(this._style);
         widget.hoverStyle(this._hoverStyle);
         widget.focusStyle(this._focusStyle);
         widget.draw(this.buffer);

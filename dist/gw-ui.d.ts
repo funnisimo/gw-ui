@@ -1154,7 +1154,7 @@ declare class Text extends Widget {
     text: string;
     _lines: string[];
     constructor(x: number, y: number, text: string, opts?: TextOptions);
-    draw(buffer: GWU.canvas.DataBuffer): void;
+    draw(buffer: GWU.canvas.DataBuffer, parentX?: number, parentY?: number): void;
 }
 
 declare class Term {
@@ -1234,10 +1234,11 @@ declare abstract class Widget {
     _focusStyle: StyleOptions;
     _focus: boolean;
     _hover: boolean;
+    needsDraw: boolean;
     constructor(x: number, y: number, opts?: WidgetOptions);
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
-    normalStyle(opts: StyleOptions): void;
+    style(opts: StyleOptions): void;
     hoverStyle(opts: StyleOptions): void;
     focusStyle(opts: StyleOptions): void;
     get focused(): boolean;
@@ -1245,13 +1246,23 @@ declare abstract class Widget {
     get hovered(): boolean;
     set hovered(v: boolean);
     protected _updateStyle(): void;
-    abstract draw(buffer: GWU.canvas.DataBuffer): void;
+    abstract draw(buffer: GWU.canvas.DataBuffer, parentX?: number, parentY?: number): void;
     mousemove(_e: GWU.io.Event, _term: Term): boolean;
+}
+declare class WidgetGroup extends Widget {
+    widgets: Widget[];
+    constructor(x: number, y: number, opts?: WidgetOptions);
+    contains(e: GWU.xy.XY): boolean;
+    contains(x: number, y: number): boolean;
+    draw(buffer: GWU.canvas.DataBuffer): void;
+    mousemove(e: GWU.io.Event, term: Term): boolean;
 }
 
 type index_d_WidgetOptions = WidgetOptions;
 type index_d_Widget = Widget;
 declare const index_d_Widget: typeof Widget;
+type index_d_WidgetGroup = WidgetGroup;
+declare const index_d_WidgetGroup: typeof WidgetGroup;
 type index_d_TextOptions = TextOptions;
 type index_d_Text = Text;
 declare const index_d_Text: typeof Text;
@@ -1263,6 +1274,7 @@ declare namespace index_d {
   export {
     index_d_WidgetOptions as WidgetOptions,
     index_d_Widget as Widget,
+    index_d_WidgetGroup as WidgetGroup,
     index_d_TextOptions as TextOptions,
     index_d_Text as Text,
     index_d_Grid as Grid,

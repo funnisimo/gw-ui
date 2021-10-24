@@ -31,10 +31,13 @@ export class Text extends Widget {
         }
     }
 
-    draw(buffer: GWU.canvas.DataBuffer) {
+    draw(buffer: GWU.canvas.DataBuffer, parentX = 0, parentY = 0) {
+        if (!this.needsDraw) return;
+        this.needsDraw = false;
+
         buffer.fillRect(
-            this.bounds.x,
-            this.bounds.y,
+            this.bounds.x + parentX,
+            this.bounds.y + parentY,
             this.bounds.width,
             this.bounds.height,
             ' ',
@@ -43,8 +46,8 @@ export class Text extends Widget {
         );
         this._lines.forEach((line, i) => {
             buffer.drawText(
-                this.bounds.x,
-                this.bounds.y + i,
+                this.bounds.x + parentX,
+                this.bounds.y + i + parentY,
                 line,
                 this.activeStyle.fg,
                 -1,

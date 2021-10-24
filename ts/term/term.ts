@@ -1,28 +1,20 @@
 import * as GWU from 'gw-utils';
 import { UICore } from '../types';
 import { Grid } from './grid';
-import { Text } from './text';
-import { Style, StyleOptions } from './style';
+import * as Text from './text';
+import * as Style from './style';
 import { Widget } from './widget';
 
 export class Term {
-    static default: Style = {
-        fg: 'white',
-        bg: 'black',
-        align: 'left',
-        valign: 'top',
-    };
-
     ui: UICore;
     x = 0;
     y = 0;
 
     widgets: Widget[] = [];
+    styles = new Style.Sheet();
     _currentWidget: Widget | null = null;
 
-    _style!: Style;
-    _hoverStyle!: StyleOptions;
-    _focusStyle!: StyleOptions;
+    _style = new Style.Style();
 
     _grid: Grid | null = null;
 
@@ -44,59 +36,47 @@ export class Term {
     // COLOR
 
     reset(): this {
-        this._style = Object.assign({}, Term.default);
-        this._focusStyle = {};
-        this._hoverStyle = {};
+        this._style.copy(this.styles.get('*')!);
         return this;
     }
 
     fg(v: GWU.color.ColorBase): this {
-        this._style.fg = v;
+        this._style.set('fg', v);
         return this;
     }
 
     bg(v: GWU.color.ColorBase): this {
-        this._style.bg = v;
+        this._style.set('bg', v);
         return this;
     }
 
     dim(pct = 25, fg = true, bg = false): this {
-        if (fg) {
-            this._style.fg = GWU.color.from(this._style.fg).darken(pct);
-        }
-        if (bg) {
-            this._style.bg = GWU.color.from(this._style.bg).darken(pct);
-        }
+        this._style.dim(pct, fg, bg);
         return this;
     }
 
     bright(pct = 25, fg = true, bg = false): this {
-        if (fg) {
-            this._style.fg = GWU.color.from(this._style.fg).lighten(pct);
-        }
-        if (bg) {
-            this._style.bg = GWU.color.from(this._style.bg).lighten(pct);
-        }
+        this._style.bright(pct, fg, bg);
         return this;
     }
 
     invert(): this {
-        [this._style.fg, this._style.bg] = [this._style.bg, this._style.fg];
+        this._style.invert();
         return this;
     }
 
-    style(opts: StyleOptions): this {
-        this._style = Object.assign({}, Term.default, opts);
+    // STYLE
+
+    loadStyle(name: string): this {
+        const s = this.styles.get(name);
+        if (s) {
+            this._style.copy(s);
+        }
         return this;
     }
 
-    focusStyle(opts: StyleOptions): this {
-        this._focusStyle = opts;
-        return this;
-    }
-
-    hoverStyle(opts: StyleOptions): this {
-        this._hoverStyle = opts;
+    style(opts: Style.StyleOptions): this {
+        this._style.set(opts);
         return this;
     }
 
@@ -289,8 +269,10 @@ export class Term {
     // DRAW
 
     drawText(text: string, width?: number, _align?: GWU.text.Align): this {
-        const widget = new Text(this.x, this.y, text, { width });
-        widget.style(this._style);
+        const widget = new Text.Text(this, text, {
+            width,
+            style: this._style,
+        });
         widget.draw(this.buffer);
         return this;
     }
@@ -336,13 +318,10 @@ export class Term {
         return this.widgets.find((w) => w.contains(args[0], args[1])) || null;
     }
 
-    text(text: string, width?: number, _align?: GWU.text.Align): Text {
+    text(text: string, opts: Text.TextOptions = {}): Text.Text {
         // TODO - if in a grid cell, adjust width and height based on grid
-
-        const widget = new Text(this.x, this.y, text, { width });
-        widget.style(this._style);
-        widget.hoverStyle(this._hoverStyle);
-        widget.focusStyle(this._focusStyle);
+        // opts.style = opts.style || this._style;
+        const widget = new Text.Text(this, text, opts);
         widget.draw(this.buffer);
         this._currentWidget = widget;
         this.widgets.push(widget);

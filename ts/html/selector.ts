@@ -133,14 +133,17 @@ export class Selector {
 
     protected _matchFirst(): MatchFn {
         this.priority += 1; // prop
-        return (el: Selectable) => !!el.parent && el.parent.children[0] === el;
+        return (el: Selectable) =>
+            !!el.parent && !!el.parent.children && el.parent.children[0] === el;
     }
 
     protected _matchLast(): MatchFn {
         this.priority += 1; // prop
-        return (el: Selectable) =>
-            !!el.parent &&
-            el.parent.children[el.parent.children.length - 1] === el;
+        return (el: Selectable) => {
+            if (!el.parent) return false;
+            if (!el.parent.children) return false;
+            return el.parent.children[el.parent.children.length - 1] === el;
+        };
     }
 
     protected _matchNot(fn: MatchFn): MatchFn {

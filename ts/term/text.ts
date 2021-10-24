@@ -1,5 +1,6 @@
 import * as GWU from 'gw-utils';
 import { Widget, WidgetOptions } from './widget';
+import { Term } from './term';
 
 export interface TextOptions extends WidgetOptions {}
 
@@ -7,8 +8,8 @@ export class Text extends Widget {
     text = '';
     _lines: string[] = [];
 
-    constructor(x: number, y: number, text: string, opts: TextOptions = {}) {
-        super(x, y, opts);
+    constructor(term: Term, text: string, opts: TextOptions = {}) {
+        super(term, opts);
         this.text = text;
         this.bounds.width = opts.width || 0;
 
@@ -41,18 +42,18 @@ export class Text extends Widget {
             this.bounds.width,
             this.bounds.height,
             ' ',
-            this.activeStyle.bg,
-            this.activeStyle.bg
+            this._used.bg,
+            this._used.bg
         );
         this._lines.forEach((line, i) => {
             buffer.drawText(
                 this.bounds.x + parentX,
                 this.bounds.y + i + parentY,
                 line,
-                this.activeStyle.fg,
+                this._used.fg,
                 -1,
                 this.bounds.width,
-                this.activeStyle.align
+                this._used.align
             );
         });
     }

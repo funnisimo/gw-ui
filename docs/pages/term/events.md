@@ -12,7 +12,9 @@ const ui = new GWI.UI({ canvas, loop: LOOP });
 
 const term = new GWI.term.Term(ui);
 
-term.style({ fg: 'green' }).hoverStyle({ fg: 'lighter_blue' });
+term.styles
+    .add('text', { fg: 'green' })
+    .add('text:hover', { fg: 'lighter_blue' });
 
 term.pos(5, 5).text('Hello World.');
 term.pos(5, 7).text('More Text.');

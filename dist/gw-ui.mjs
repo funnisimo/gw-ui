@@ -2458,12 +2458,17 @@ class Selector {
     }
     _matchFirst() {
         this.priority += 1; // prop
-        return (el) => !!el.parent && el.parent.children[0] === el;
+        return (el) => !!el.parent && !!el.parent.children && el.parent.children[0] === el;
     }
     _matchLast() {
         this.priority += 1; // prop
-        return (el) => !!el.parent &&
-            el.parent.children[el.parent.children.length - 1] === el;
+        return (el) => {
+            if (!el.parent)
+                return false;
+            if (!el.parent.children)
+                return false;
+            return el.parent.children[el.parent.children.length - 1] === el;
+        };
     }
     _matchNot(fn) {
         return (el) => !fn(el);
@@ -2476,7 +2481,7 @@ function compile(text) {
     return new Selector(text);
 }
 
-class Style {
+class Style$1 {
     constructor(selector = '$', init) {
         this._dirty = false;
         this.selector = new Selector(selector);
@@ -2666,7 +2671,7 @@ class Style {
                 this[field] = value;
             }
         }
-        else if (key instanceof Style) {
+        else if (key instanceof Style$1) {
             setDirty = value || value === undefined ? true : false;
             Object.entries(key).forEach(([name, value]) => {
                 if (name === 'selector' || name === '_dirty')
@@ -2729,13 +2734,13 @@ function makeStyle(style, selector = '$') {
             opts[name] = baseParts;
         }
     });
-    return new Style(selector, opts);
+    return new Style$1(selector, opts);
 }
 // const NO_BOUNDS = ['fg', 'bg', 'depth', 'align', 'valign'];
 // export function affectsBounds(key: keyof StyleOptions): boolean {
 //     return !NO_BOUNDS.includes(key);
 // }
-class ComputedStyle extends Style {
+class ComputedStyle$1 extends Style$1 {
     // constructor(source: Stylable, sources?: Style[]) {
     constructor(sources) {
         super();
@@ -2757,12 +2762,12 @@ class ComputedStyle extends Style {
         this._dirty = v;
     }
 }
-class Sheet {
+class Sheet$1 {
     constructor(parentSheet) {
         this.rules = [];
         this._dirty = true;
         if (parentSheet === undefined) {
-            parentSheet = defaultStyle;
+            parentSheet = defaultStyle$1;
         }
         if (parentSheet) {
             this.rules = parentSheet.rules.slice();
@@ -2789,7 +2794,7 @@ class Sheet {
             throw new Error('Hierarchical selectors not supported.');
         // if 2 '.' - Error('Only single class rules supported.')
         // if '&' - Error('Not supported.')
-        let rule = new Style(selector, props);
+        let rule = new Style$1(selector, props);
         const existing = this.rules.findIndex((s) => s.selector.text === rule.selector.text);
         if (existing > -1) {
             const current = this.rules[existing];
@@ -2820,12 +2825,12 @@ class Sheet {
             sources.push(widgetStyle);
         }
         widgetStyle.dirty = false;
-        return new ComputedStyle(sources);
+        return new ComputedStyle$1(sources);
     }
 }
-const defaultStyle = new Sheet(null);
+const defaultStyle$1 = new Sheet$1(null);
 
-defaultStyle.add('*', {
+defaultStyle$1.add('*', {
     fg: 'white',
     bg: -1,
     align: 'left',
@@ -2852,7 +2857,7 @@ class Element {
         this.tag = tag;
         this._usedStyle = styles
             ? styles.computeFor(this)
-            : new ComputedStyle();
+            : new ComputedStyle$1();
     }
     contains(x, y) {
         if (typeof x === 'number')
@@ -3262,7 +3267,7 @@ class Element {
     }
     style(...args) {
         if (!this._style) {
-            this._style = new Style();
+            this._style = new Style$1();
         }
         if (args.length === 0)
             return this._style;
@@ -3294,7 +3299,7 @@ class Element {
     used(id) {
         if (!id)
             return this._usedStyle;
-        if (id instanceof ComputedStyle) {
+        if (id instanceof ComputedStyle$1) {
             this._usedStyle = id;
             this.dirty = true;
             return this;
@@ -3605,7 +3610,7 @@ function back(arr) {
  * @return {HTMLElement}      root element
  */
 function parse(data, options = {}) {
-    if (options instanceof Sheet) {
+    if (options instanceof Sheet$1) {
         options = { stylesheet: options };
     }
     var root = createElement('dummy', '', options.stylesheet);
@@ -3712,7 +3717,7 @@ function parse(data, options = {}) {
 // let t = parse('<div name="test" checked id=A>Test</div>');
 // console.log(t);
 
-defaultStyle.add('input', {
+defaultStyle$1.add('input', {
     fg: 'black',
     bg: 'gray',
 });
@@ -3928,7 +3933,7 @@ installElement('checkbox', (tag, sheet) => {
     return new CheckBox(tag, sheet);
 });
 
-defaultStyle.add('button', {
+defaultStyle$1.add('button', {
     fg: 'black',
     bg: 'gray',
 });
@@ -3985,7 +3990,7 @@ installElement('button', (tag, sheet) => {
     return new Button(tag, sheet);
 });
 
-defaultStyle.add('fieldset', {
+defaultStyle$1.add('fieldset', {
     margin: 1,
     border: 'dark_gray',
     fg: 'white',
@@ -4169,7 +4174,7 @@ installElement('datalist', (tag, sheet) => {
     return new DataList(tag, sheet);
 });
 
-defaultStyle.add('body', {
+defaultStyle$1.add('body', {
     bg: 'black',
 });
 class Document {
@@ -4177,7 +4182,7 @@ class Document {
         this._activeElement = null;
         this._done = false;
         this.ui = ui;
-        this.stylesheet = new Sheet();
+        this.stylesheet = new Sheet$1();
         this.body = new Element(rootTag);
         this.body.style({
             width: ui.buffer.width,
@@ -4809,11 +4814,11 @@ var index$1 = /*#__PURE__*/Object.freeze({
     __proto__: null,
     Selector: Selector,
     compile: compile,
-    Style: Style,
+    Style: Style$1,
     makeStyle: makeStyle,
-    ComputedStyle: ComputedStyle,
-    Sheet: Sheet,
-    defaultStyle: defaultStyle,
+    ComputedStyle: ComputedStyle$1,
+    Sheet: Sheet$1,
+    defaultStyle: defaultStyle$1,
     Element: Element,
     Input: Input,
     CheckBox: CheckBox,
@@ -4831,23 +4836,368 @@ var index$1 = /*#__PURE__*/Object.freeze({
     Selection: Selection
 });
 
+class Style {
+    constructor(selector = '$', init) {
+        this._dirty = false;
+        this.selector = new Selector(selector);
+        if (init) {
+            this.set(init);
+        }
+        this._dirty = false;
+    }
+    get dirty() {
+        return this._dirty;
+    }
+    set dirty(v) {
+        this._dirty = v;
+    }
+    get fg() {
+        return this._fg;
+    }
+    get bg() {
+        return this._bg;
+    }
+    // get border(): GWU.color.ColorBase | undefined {
+    //     return this._border;
+    // }
+    dim(pct = 25, fg = true, bg = false) {
+        if (fg) {
+            this._fg = GWU.color.from(this._fg).darken(pct);
+        }
+        if (bg) {
+            this._bg = GWU.color.from(this._bg).darken(pct);
+        }
+        return this;
+    }
+    bright(pct = 25, fg = true, bg = false) {
+        if (fg) {
+            this._fg = GWU.color.from(this._fg).lighten(pct);
+        }
+        if (bg) {
+            this._bg = GWU.color.from(this._bg).lighten(pct);
+        }
+        return this;
+    }
+    invert() {
+        [this._fg, this._bg] = [this._bg, this._fg];
+        return this;
+    }
+    get align() {
+        return this._align;
+    }
+    get valign() {
+        return this._valign;
+    }
+    // get position(): Position | undefined {
+    //     return this._position;
+    // }
+    // get minWidth(): number | undefined {
+    //     return this._minWidth;
+    // }
+    // get maxWidth(): number | undefined {
+    //     return this._maxWidth;
+    // }
+    // get width(): number | undefined {
+    //     return this._width;
+    // }
+    // get minHeight(): number | undefined {
+    //     return this._minHeight;
+    // }
+    // get maxHeight(): number | undefined {
+    //     return this._maxHeight;
+    // }
+    // get height(): number | undefined {
+    //     return this._height;
+    // }
+    // get x(): number | undefined {
+    //     return this._x;
+    // }
+    // get left(): number | undefined {
+    //     return this._left;
+    // }
+    // get right(): number | undefined {
+    //     return this._right;
+    // }
+    // get y(): number | undefined {
+    //     return this._y;
+    // }
+    // get top(): number | undefined {
+    //     return this._top;
+    // }
+    // get bottom(): number | undefined {
+    //     return this._bottom;
+    // }
+    // get padLeft(): number | undefined {
+    //     return this._padLeft;
+    // }
+    // get padRight(): number | undefined {
+    //     return this._padRight;
+    // }
+    // get padTop(): number | undefined {
+    //     return this._padTop;
+    // }
+    // get padBottom(): number | undefined {
+    //     return this._padBottom;
+    // }
+    // get marginLeft(): number | undefined {
+    //     return this._marginLeft;
+    // }
+    // get marginRight(): number | undefined {
+    //     return this._marginRight;
+    // }
+    // get marginTop(): number | undefined {
+    //     return this._marginTop;
+    // }
+    // get marginBottom(): number | undefined {
+    //     return this._marginBottom;
+    // }
+    get(key) {
+        const id = ('_' + key);
+        return this[id];
+    }
+    set(key, value, setDirty = true) {
+        if (typeof key === 'string') {
+            // if (key === 'padding') {
+            //     if (typeof value === 'number') {
+            //         value = [value];
+            //     } else if (typeof value === 'string') {
+            //         value = value.split(' ');
+            //     }
+            //     value = value.map((v: string | number) => {
+            //         if (typeof v === 'string') return Number.parseInt(v);
+            //         return v;
+            //     });
+            //     if (value.length == 1) {
+            //         this._padLeft =
+            //             this._padRight =
+            //             this._padTop =
+            //             this._padBottom =
+            //                 value[0];
+            //     } else if (value.length == 2) {
+            //         this._padLeft = this._padRight = value[1];
+            //         this._padTop = this._padBottom = value[0];
+            //     } else if (value.length == 3) {
+            //         this._padTop = value[0];
+            //         this._padRight = value[1];
+            //         this._padBottom = value[2];
+            //         this._padLeft = value[1];
+            //     } else if (value.length == 4) {
+            //         this._padTop = value[0];
+            //         this._padRight = value[1];
+            //         this._padBottom = value[2];
+            //         this._padLeft = value[3];
+            //     }
+            // } else if (key === 'margin') {
+            //     if (typeof value === 'number') {
+            //         value = [value];
+            //     } else if (typeof value === 'string') {
+            //         value = value.split(' ');
+            //     }
+            //     value = value.map((v: string | number) => {
+            //         if (typeof v === 'string') return Number.parseInt(v);
+            //         return v;
+            //     });
+            //     if (value.length == 1) {
+            //         this._marginLeft =
+            //             this._marginRight =
+            //             this._marginTop =
+            //             this._marginBottom =
+            //                 value[0];
+            //     } else if (value.length == 2) {
+            //         this._marginLeft = this._marginRight = value[1];
+            //         this._marginTop = this._marginBottom = value[0];
+            //     } else if (value.length == 3) {
+            //         this._marginTop = value[0];
+            //         this._marginRight = value[1];
+            //         this._marginBottom = value[2];
+            //         this._marginLeft = value[1];
+            //     } else if (value.length == 4) {
+            //         this._marginTop = value[0];
+            //         this._marginRight = value[1];
+            //         this._marginBottom = value[2];
+            //         this._marginLeft = value[3];
+            //     }
+            // } else {
+            const field = '_' + key;
+            if (typeof value === 'string') {
+                if (value.match(/^[+-]?\d+$/)) {
+                    value = Number.parseInt(value);
+                }
+                else if (value === 'true') {
+                    value = true;
+                }
+                else if (value === 'false') {
+                    value = false;
+                }
+            }
+            this[field] = value;
+            // }
+        }
+        else if (key instanceof Style) {
+            setDirty = value || value === undefined ? true : false;
+            Object.entries(key).forEach(([name, value]) => {
+                if (name === 'selector' || name === '_dirty')
+                    return;
+                if (value !== undefined && value !== null) {
+                    this[name] = value;
+                }
+                else if (value === null) {
+                    this.unset(name);
+                }
+            });
+        }
+        else {
+            setDirty = value || value === undefined ? true : false;
+            Object.entries(key).forEach(([name, value]) => {
+                if (value === null) {
+                    this.unset(name);
+                }
+                else {
+                    this.set(name, value, setDirty);
+                }
+            });
+        }
+        this.dirty || (this.dirty = setDirty);
+        return this;
+    }
+    unset(key) {
+        const field = key.startsWith('_') ? key : '_' + key;
+        delete this[field];
+        this.dirty = true;
+        return this;
+    }
+    clone() {
+        const other = new this.constructor();
+        other.copy(this);
+        return other;
+    }
+    copy(other) {
+        Object.assign(this, other);
+        return this;
+    }
+}
+// const NO_BOUNDS = ['fg', 'bg', 'depth', 'align', 'valign'];
+// export function affectsBounds(key: keyof StyleOptions): boolean {
+//     return !NO_BOUNDS.includes(key);
+// }
+class ComputedStyle extends Style {
+    // constructor(source: Stylable, sources?: Style[]) {
+    constructor(sources) {
+        super();
+        // obj: Stylable;
+        this.sources = [];
+        // this.obj = source;
+        if (sources) {
+            // sort low to high priority (highest should be this.obj._style, lowest = global default:'*')
+            sources.sort((a, b) => a.selector.priority - b.selector.priority);
+            this.sources = sources;
+        }
+        this.sources.forEach((s) => super.set(s));
+        this._dirty = false; // As far as I know I reflect all of the current source values.
+    }
+    get dirty() {
+        return this._dirty || this.sources.some((s) => s.dirty);
+    }
+    set dirty(v) {
+        this._dirty = v;
+    }
+}
+class Sheet {
+    constructor(parentSheet) {
+        this.rules = [];
+        this._dirty = true;
+        if (parentSheet === undefined) {
+            parentSheet = defaultStyle;
+        }
+        if (parentSheet) {
+            this.rules = parentSheet.rules.slice();
+        }
+    }
+    get dirty() {
+        return this._dirty;
+    }
+    set dirty(v) {
+        this._dirty = v;
+        if (!this._dirty) {
+            this.rules.forEach((r) => (r.dirty = false));
+        }
+    }
+    add(selector, props) {
+        if (selector.includes(',')) {
+            selector
+                .split(',')
+                .map((p) => p.trim())
+                .forEach((p) => this.add(p, props));
+            return this;
+        }
+        if (selector.includes(' '))
+            throw new Error('Hierarchical selectors not supported.');
+        // if 2 '.' - Error('Only single class rules supported.')
+        // if '&' - Error('Not supported.')
+        let rule = new Style(selector, props);
+        const existing = this.rules.findIndex((s) => s.selector.text === rule.selector.text);
+        if (existing > -1) {
+            const current = this.rules[existing];
+            current.set(rule);
+            rule = current;
+        }
+        else {
+            this.rules.push(rule);
+        }
+        // rulesChanged = true;
+        this.dirty = true;
+        return this;
+    }
+    get(selector) {
+        return this.rules.find((s) => s.selector.text === selector) || null;
+    }
+    remove(selector) {
+        const existing = this.rules.findIndex((s) => s.selector.text === selector);
+        if (existing > -1) {
+            this.rules.splice(existing, 1);
+            this.dirty = true;
+        }
+    }
+    computeFor(widget) {
+        const sources = this.rules.filter((r) => r.selector.matches(widget));
+        const widgetStyle = widget.style();
+        if (widgetStyle) {
+            sources.push(widgetStyle);
+        }
+        widgetStyle.dirty = false;
+        return new ComputedStyle(sources);
+    }
+}
+const defaultStyle = new Sheet(null);
+
+defaultStyle.add('*', {
+    fg: 'white',
+    bg: -1,
+    align: 'left',
+    valign: 'top',
+});
 class Widget {
-    constructor(x, y, opts = {}) {
+    constructor(term, opts = {}) {
+        this.tag = 'text';
         this.bounds = new GWU.xy.Bounds(0, 0, 0, 1);
-        this._normalStyle = {};
-        this._hoverStyle = {};
-        this._focusStyle = {};
-        this._focus = false;
-        this._hover = false;
+        this._style = new Style();
+        this.parent = null;
+        this.classes = [];
+        this._props = {};
+        this._attrs = {};
         this._needsDraw = true;
-        this.bounds.x = x;
-        this.bounds.y = y;
-        if (opts.style)
-            this._normalStyle = opts.style;
-        if (opts.focus)
-            this._focusStyle = opts.focus;
-        if (opts.hover)
-            this._hoverStyle = opts.hover;
+        this.term = term;
+        this.bounds.x = term.x;
+        this.bounds.y = term.y;
+        if (opts.style) {
+            this._style.set(opts.style);
+        }
+        if (opts.classes) {
+            if (typeof opts.classes === 'string') {
+                opts.classes = opts.classes.split(/ +/g);
+            }
+            this.classes = opts.classes.map((c) => c.trim());
+        }
         this._updateStyle();
     }
     get needsDraw() {
@@ -4856,43 +5206,43 @@ class Widget {
     set needsDraw(v) {
         this._needsDraw = v;
     }
+    attr(name, v) {
+        if (v === undefined)
+            return this._attrs[name];
+        this._attrs[name] = v;
+        return this;
+    }
+    prop(name, v) {
+        if (v === undefined)
+            return this._props[name] || false;
+        this._props[name] = v;
+        this._updateStyle();
+        return this;
+    }
     contains(...args) {
         return this.bounds.contains(args[0], args[1]);
     }
     style(opts) {
-        this._normalStyle = opts;
+        if (opts === undefined)
+            return this._style;
+        this._style.set(opts);
         this._updateStyle();
-    }
-    hoverStyle(opts) {
-        this._hoverStyle = opts;
-        this._updateStyle();
-    }
-    focusStyle(opts) {
-        this._focusStyle = opts;
-        this._updateStyle();
+        return this;
     }
     get focused() {
-        return this._focus;
+        return this.prop('focus');
     }
     set focused(v) {
-        this._focus = v;
-        this._updateStyle();
+        this.prop('focus', v);
     }
     get hovered() {
-        return this._hover;
+        return this.prop('hover');
     }
     set hovered(v) {
-        this._hover = v;
-        this._updateStyle();
+        this.prop('hover', v);
     }
     _updateStyle() {
-        this.activeStyle = Object.assign({}, this._normalStyle);
-        if (this._focus) {
-            Object.assign(this.activeStyle, this._focusStyle);
-        }
-        else if (this._hover) {
-            Object.assign(this.activeStyle, this._hoverStyle);
-        }
+        this._used = this.term.styles.computeFor(this);
         this.needsDraw = true; // changed style or state
     }
     mousemove(e, _term) {
@@ -4901,8 +5251,8 @@ class Widget {
     }
 }
 class WidgetGroup extends Widget {
-    constructor(x, y, opts = {}) {
-        super(x, y, opts);
+    constructor(term, opts = {}) {
+        super(term, opts);
         this.widgets = [];
     }
     get needsDraw() {
@@ -4935,8 +5285,8 @@ class WidgetGroup extends Widget {
 }
 
 class Text extends Widget {
-    constructor(x, y, text, opts = {}) {
-        super(x, y, opts);
+    constructor(term, text, opts = {}) {
+        super(term, opts);
         this.text = '';
         this._lines = [];
         this.text = text;
@@ -4958,9 +5308,9 @@ class Text extends Widget {
         if (!this.needsDraw)
             return;
         this.needsDraw = false;
-        buffer.fillRect(this.bounds.x + parentX, this.bounds.y + parentY, this.bounds.width, this.bounds.height, ' ', this.activeStyle.bg, this.activeStyle.bg);
+        buffer.fillRect(this.bounds.x + parentX, this.bounds.y + parentY, this.bounds.width, this.bounds.height, ' ', this._used.bg, this._used.bg);
         this._lines.forEach((line, i) => {
-            buffer.drawText(this.bounds.x + parentX, this.bounds.y + i + parentY, line, this.activeStyle.fg, -1, this.bounds.width, this.activeStyle.align);
+            buffer.drawText(this.bounds.x + parentX, this.bounds.y + i + parentY, line, this._used.fg, -1, this.bounds.width, this._used.align);
         });
     }
 }
@@ -5047,7 +5397,9 @@ class Term {
         this.x = 0;
         this.y = 0;
         this.widgets = [];
+        this.styles = new Sheet();
         this._currentWidget = null;
+        this._style = new Style();
         this._grid = null;
         this.ui = ui;
         this.reset();
@@ -5063,51 +5415,39 @@ class Term {
     }
     // COLOR
     reset() {
-        this._style = Object.assign({}, Term.default);
-        this._focusStyle = {};
-        this._hoverStyle = {};
+        this._style.copy(this.styles.get('*'));
         return this;
     }
     fg(v) {
-        this._style.fg = v;
+        this._style.set('fg', v);
         return this;
     }
     bg(v) {
-        this._style.bg = v;
+        this._style.set('bg', v);
         return this;
     }
     dim(pct = 25, fg = true, bg = false) {
-        if (fg) {
-            this._style.fg = GWU.color.from(this._style.fg).darken(pct);
-        }
-        if (bg) {
-            this._style.bg = GWU.color.from(this._style.bg).darken(pct);
-        }
+        this._style.dim(pct, fg, bg);
         return this;
     }
     bright(pct = 25, fg = true, bg = false) {
-        if (fg) {
-            this._style.fg = GWU.color.from(this._style.fg).lighten(pct);
-        }
-        if (bg) {
-            this._style.bg = GWU.color.from(this._style.bg).lighten(pct);
-        }
+        this._style.bright(pct, fg, bg);
         return this;
     }
     invert() {
-        [this._style.fg, this._style.bg] = [this._style.bg, this._style.fg];
+        this._style.invert();
+        return this;
+    }
+    // STYLE
+    loadStyle(name) {
+        const s = this.styles.get(name);
+        if (s) {
+            this._style.copy(s);
+        }
         return this;
     }
     style(opts) {
-        this._style = Object.assign({}, Term.default, opts);
-        return this;
-    }
-    focusStyle(opts) {
-        this._focusStyle = opts;
-        return this;
-    }
-    hoverStyle(opts) {
-        this._hoverStyle = opts;
+        this._style.set(opts);
         return this;
     }
     // POSITION
@@ -5250,8 +5590,10 @@ class Term {
     }
     // DRAW
     drawText(text, width, _align) {
-        const widget = new Text(this.x, this.y, text, { width });
-        widget.style(this._style);
+        const widget = new Text(this, text, {
+            width,
+            style: this._style,
+        });
         widget.draw(this.buffer);
         return this;
     }
@@ -5286,12 +5628,10 @@ class Term {
     widgetAt(...args) {
         return this.widgets.find((w) => w.contains(args[0], args[1])) || null;
     }
-    text(text, width, _align) {
+    text(text, opts = {}) {
         // TODO - if in a grid cell, adjust width and height based on grid
-        const widget = new Text(this.x, this.y, text, { width });
-        widget.style(this._style);
-        widget.hoverStyle(this._hoverStyle);
-        widget.focusStyle(this._focusStyle);
+        // opts.style = opts.style || this._style;
+        const widget = new Text(this, text, opts);
         widget.draw(this.buffer);
         this._currentWidget = widget;
         this.widgets.push(widget);
@@ -5317,12 +5657,6 @@ class Term {
         this.render();
     }
 }
-Term.default = {
-    fg: 'white',
-    bg: 'black',
-    align: 'left',
-    valign: 'top',
-};
 
 var index = /*#__PURE__*/Object.freeze({
     __proto__: null,

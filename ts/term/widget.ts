@@ -1,34 +1,51 @@
 import * as GWU from 'gw-utils';
-import { Style, StyleOptions } from './style';
+import * as Style from './style';
 import { Term } from './term';
 
 export interface WidgetOptions {
     width?: number;
     height?: number;
 
-    style?: StyleOptions;
-    hover?: StyleOptions;
-    focus?: StyleOptions;
+    style?: Style.StyleOptions;
+    classes?: string | string[];
 }
 
-export abstract class Widget {
-    bounds: GWU.xy.Bounds = new GWU.xy.Bounds(0, 0, 0, 1);
-    activeStyle!: StyleOptions;
-    _normalStyle: StyleOptions = {};
-    _hoverStyle: StyleOptions = {};
-    _focusStyle: StyleOptions = {};
+Style.defaultStyle.add('*', {
+    fg: 'white',
+    bg: -1,
+    align: 'left',
+    valign: 'top',
+});
 
-    _focus = false;
-    _hover = false;
+export abstract class Widget implements Style.Stylable {
+    tag: string = 'text';
+    term: Term;
+    bounds: GWU.xy.Bounds = new GWU.xy.Bounds(0, 0, 0, 1);
+
+    _style = new Style.Style();
+    _used!: Style.ComputedStyle;
+
+    parent: Widget | null = null;
+    classes: string[] = [];
+    _props: Record<string, boolean> = {};
+    _attrs: Record<string, string> = {};
     _needsDraw = true;
 
-    constructor(x: number, y: number, opts: WidgetOptions = {}) {
-        this.bounds.x = x;
-        this.bounds.y = y;
+    constructor(term: Term, opts: WidgetOptions = {}) {
+        this.term = term;
+        this.bounds.x = term.x;
+        this.bounds.y = term.y;
 
-        if (opts.style) this._normalStyle = opts.style;
-        if (opts.focus) this._focusStyle = opts.focus;
-        if (opts.hover) this._hoverStyle = opts.hover;
+        if (opts.style) {
+            this._style.set(opts.style);
+        }
+        if (opts.classes) {
+            if (typeof opts.classes === 'string') {
+                opts.classes = opts.classes.split(/ +/g);
+            }
+            this.classes = opts.classes.map((c) => c.trim());
+        }
+
         this._updateStyle();
     }
 
@@ -39,50 +56,55 @@ export abstract class Widget {
         this._needsDraw = v;
     }
 
+    attr(name: string): string;
+    attr(name: string, v: string): this;
+    attr(name: string, v?: string): string | this {
+        if (v === undefined) return this._attrs[name];
+        this._attrs[name] = v;
+        return this;
+    }
+
+    prop(name: string): boolean;
+    prop(name: string, v: boolean): this;
+    prop(name: string, v?: boolean): this | boolean {
+        if (v === undefined) return this._props[name] || false;
+        this._props[name] = v;
+        this._updateStyle();
+        return this;
+    }
+
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
     contains(...args: any[]): boolean {
         return this.bounds.contains(args[0], args[1]);
     }
 
-    style(opts: StyleOptions) {
-        this._normalStyle = opts;
-        this._updateStyle();
-    }
+    style(): Style.Style;
+    style(opts: Style.StyleOptions): this;
+    style(opts?: Style.StyleOptions): this | Style.Style {
+        if (opts === undefined) return this._style;
 
-    hoverStyle(opts: StyleOptions) {
-        this._hoverStyle = opts;
+        this._style.set(opts);
         this._updateStyle();
-    }
-
-    focusStyle(opts: StyleOptions) {
-        this._focusStyle = opts;
-        this._updateStyle();
+        return this;
     }
 
     get focused(): boolean {
-        return this._focus;
+        return this.prop('focus');
     }
     set focused(v: boolean) {
-        this._focus = v;
-        this._updateStyle();
+        this.prop('focus', v);
     }
 
     get hovered(): boolean {
-        return this._hover;
+        return this.prop('hover');
     }
     set hovered(v: boolean) {
-        this._hover = v;
-        this._updateStyle();
+        this.prop('hover', v);
     }
 
     protected _updateStyle() {
-        this.activeStyle = Object.assign({}, this._normalStyle) as Style;
-        if (this._focus) {
-            Object.assign(this.activeStyle, this._focusStyle);
-        } else if (this._hover) {
-            Object.assign(this.activeStyle, this._hoverStyle);
-        }
+        this._used = this.term.styles.computeFor(this);
         this.needsDraw = true; // changed style or state
     }
 
@@ -101,8 +123,8 @@ export abstract class Widget {
 export class WidgetGroup extends Widget {
     widgets: Widget[] = [];
 
-    constructor(x: number, y: number, opts: WidgetOptions = {}) {
-        super(x, y, opts);
+    constructor(term: Term, opts: WidgetOptions = {}) {
+        super(term, opts);
     }
 
     get needsDraw(): boolean {

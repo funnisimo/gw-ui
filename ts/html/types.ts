@@ -12,5 +12,5 @@ export interface Selectable {
     attr(name: string): string | undefined;
     prop(name: string): PropType | undefined;
     parent: Selectable | null;
-    children: Selectable[];
+    children?: Selectable[];
 }

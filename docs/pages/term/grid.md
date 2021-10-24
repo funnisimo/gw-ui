@@ -18,21 +18,20 @@ const data = [
     ['Kim', 'Dragonfruit', 'Tomato', 'Barley'],
 ];
 
+term.styles.add('.header', { bg: 'light_blue' });
+term.styles.add('.data:hover', { fg: 'red' });
+
 // move to 1,1 - start a grid with 4 13 width columns and 5 2 height rows
 term.pos(1, 1).grid().cols(4, 13).rows(5);
 
 data.forEach((row, i) => {
     term.row(i);
-    if (i == 0) {
-        term.style({ bg: 'light_blue' });
-    } else {
-        term.style({ bg: -1 });
-        term.hoverStyle({ fg: 'red' });
-    }
+    const classes = i == 0 ? 'header' : 'data';
+
     row.forEach((col, j) => {
         term.col(j);
         term.border(14, 3, 'light_blue', true);
-        term.move(2, 1).text(col);
+        term.move(2, 1).text(col, { classes });
     });
     term.endRow(2);
 });

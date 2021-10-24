@@ -3,11 +3,14 @@ import * as Style from './style';
 import { Term } from './term';
 
 export interface WidgetOptions {
+    id?: string;
+
     width?: number;
     height?: number;
 
     style?: Style.StyleOptions;
-    classes?: string | string[];
+    class?: string | string[];
+    tag?: string;
 }
 
 Style.defaultStyle.add('*', {
@@ -16,6 +19,8 @@ Style.defaultStyle.add('*', {
     align: 'left',
     valign: 'top',
 });
+
+export type PropType = boolean | number | string;
 
 export abstract class Widget implements Style.Stylable {
     tag: string = 'text';
@@ -27,7 +32,7 @@ export abstract class Widget implements Style.Stylable {
 
     parent: Widget | null = null;
     classes: string[] = [];
-    _props: Record<string, boolean> = {};
+    _props: Record<string, PropType> = {};
     _attrs: Record<string, string> = {};
     _needsDraw = true;
 
@@ -36,14 +41,20 @@ export abstract class Widget implements Style.Stylable {
         this.bounds.x = term.x;
         this.bounds.y = term.y;
 
+        if (opts.tag) {
+            this.tag = opts.tag;
+        }
+        if (opts.id) {
+            this.attr('id', opts.id);
+        }
         if (opts.style) {
             this._style.set(opts.style);
         }
-        if (opts.classes) {
-            if (typeof opts.classes === 'string') {
-                opts.classes = opts.classes.split(/ +/g);
+        if (opts.class) {
+            if (typeof opts.class === 'string') {
+                opts.class = opts.class.split(/ +/g);
             }
-            this.classes = opts.classes.map((c) => c.trim());
+            this.classes = opts.class.map((c) => c.trim());
         }
 
         this._updateStyle();
@@ -64,10 +75,10 @@ export abstract class Widget implements Style.Stylable {
         return this;
     }
 
-    prop(name: string): boolean;
-    prop(name: string, v: boolean): this;
-    prop(name: string, v?: boolean): this | boolean {
-        if (v === undefined) return this._props[name] || false;
+    prop(name: string): PropType | undefined;
+    prop(name: string, v: PropType): this;
+    prop(name: string, v?: PropType): this | PropType | undefined {
+        if (v === undefined) return this._props[name];
         this._props[name] = v;
         this._updateStyle();
         return this;
@@ -90,20 +101,20 @@ export abstract class Widget implements Style.Stylable {
     }
 
     get focused(): boolean {
-        return this.prop('focus');
+        return !!this.prop('focus');
     }
     set focused(v: boolean) {
         this.prop('focus', v);
     }
 
     get hovered(): boolean {
-        return this.prop('hover');
+        return !!this.prop('hover');
     }
     set hovered(v: boolean) {
         this.prop('hover', v);
     }
 
-    protected _updateStyle() {
+    _updateStyle() {
         this._used = this.term.styles.computeFor(this);
         this.needsDraw = true; // changed style or state
     }
@@ -121,14 +132,14 @@ export abstract class Widget implements Style.Stylable {
 }
 
 export class WidgetGroup extends Widget {
-    widgets: Widget[] = [];
+    children: Widget[] = [];
 
     constructor(term: Term, opts: WidgetOptions = {}) {
         super(term, opts);
     }
 
     get needsDraw(): boolean {
-        return this._needsDraw || this.widgets.some((w) => w.needsDraw);
+        return this._needsDraw || this.children.some((w) => w.needsDraw);
     }
     set needsDraw(v: boolean) {
         this._needsDraw = v;
@@ -137,24 +148,31 @@ export class WidgetGroup extends Widget {
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
     contains(...args: any[]): boolean {
-        return this.widgets.some((w) => w.contains(args[0], args[1]));
+        return this.children.some((w) => w.contains(args[0], args[1]));
     }
 
     widgetAt(e: GWU.xy.XY): Widget | null;
     widgetAt(x: number, y: number): Widget | null;
     widgetAt(...args: any[]): Widget | null {
-        return this.widgets.find((w) => w.contains(args[0], args[1])) || null;
+        return this.children.find((w) => w.contains(args[0], args[1])) || null;
+    }
+
+    _updateStyle() {
+        super._updateStyle();
+        if (this.children) {
+            this.children.forEach((c) => c._updateStyle());
+        }
     }
 
     draw(buffer: GWU.canvas.DataBuffer) {
         if (!this.needsDraw) return;
-        this.widgets.forEach((w) => w.draw(buffer));
+        this.children.forEach((w) => w.draw(buffer));
         this.needsDraw = false;
     }
 
     mousemove(e: GWU.io.Event, term: Term): boolean {
         let handled = false;
-        this.widgets.forEach((w) => {
+        this.children.forEach((w) => {
             if (w.mousemove(e, term)) {
                 handled = true;
             }

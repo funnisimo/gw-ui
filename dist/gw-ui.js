@@ -340,7 +340,7 @@
         }
     }
 
-    class Column {
+    class Column$1 {
         constructor(opts) {
             this.active = false;
             this.hovered = false;
@@ -378,7 +378,7 @@
             return GWU__namespace.text.truncate(v, this.width);
         }
     }
-    class Table extends Widget$1 {
+    class Table$1 extends Widget$1 {
         constructor(id, opts) {
             super(id, opts);
             this.data = null;
@@ -402,7 +402,7 @@
             this.headerBg = opts.headerBg || this.bg;
             let columnWidth = 0;
             if (opts.letters) {
-                this.columns.push(new Column({
+                this.columns.push(new Column$1({
                     width: 2,
                     value: (_data, index) => {
                         const letter = String.fromCharCode(97 + index);
@@ -413,7 +413,7 @@
             }
             if (opts.columns) {
                 opts.columns.forEach((c) => {
-                    const col = new Column(c);
+                    const col = new Column$1(c);
                     this.columns.push(col);
                     columnWidth += col.width;
                 });
@@ -611,10 +611,10 @@
         }
     }
     function makeTable(id, opts) {
-        return new Table(id, opts);
+        return new Table$1(id, opts);
     }
 
-    class List extends Table {
+    class List extends Table$1 {
         constructor(id, opts) {
             super(id, (() => {
                 // @ts-ignore
@@ -5215,14 +5215,20 @@
             this.term = term;
             this.bounds.x = term.x;
             this.bounds.y = term.y;
+            if (opts.tag) {
+                this.tag = opts.tag;
+            }
+            if (opts.id) {
+                this.attr('id', opts.id);
+            }
             if (opts.style) {
                 this._style.set(opts.style);
             }
-            if (opts.classes) {
-                if (typeof opts.classes === 'string') {
-                    opts.classes = opts.classes.split(/ +/g);
+            if (opts.class) {
+                if (typeof opts.class === 'string') {
+                    opts.class = opts.class.split(/ +/g);
                 }
-                this.classes = opts.classes.map((c) => c.trim());
+                this.classes = opts.class.map((c) => c.trim());
             }
             this._updateStyle();
         }
@@ -5240,7 +5246,7 @@
         }
         prop(name, v) {
             if (v === undefined)
-                return this._props[name] || false;
+                return this._props[name];
             this._props[name] = v;
             this._updateStyle();
             return this;
@@ -5256,13 +5262,13 @@
             return this;
         }
         get focused() {
-            return this.prop('focus');
+            return !!this.prop('focus');
         }
         set focused(v) {
             this.prop('focus', v);
         }
         get hovered() {
-            return this.prop('hover');
+            return !!this.prop('hover');
         }
         set hovered(v) {
             this.prop('hover', v);
@@ -5279,29 +5285,35 @@
     class WidgetGroup extends Widget {
         constructor(term, opts = {}) {
             super(term, opts);
-            this.widgets = [];
+            this.children = [];
         }
         get needsDraw() {
-            return this._needsDraw || this.widgets.some((w) => w.needsDraw);
+            return this._needsDraw || this.children.some((w) => w.needsDraw);
         }
         set needsDraw(v) {
             this._needsDraw = v;
         }
         contains(...args) {
-            return this.widgets.some((w) => w.contains(args[0], args[1]));
+            return this.children.some((w) => w.contains(args[0], args[1]));
         }
         widgetAt(...args) {
-            return this.widgets.find((w) => w.contains(args[0], args[1])) || null;
+            return this.children.find((w) => w.contains(args[0], args[1])) || null;
+        }
+        _updateStyle() {
+            super._updateStyle();
+            if (this.children) {
+                this.children.forEach((c) => c._updateStyle());
+            }
         }
         draw(buffer) {
             if (!this.needsDraw)
                 return;
-            this.widgets.forEach((w) => w.draw(buffer));
+            this.children.forEach((w) => w.draw(buffer));
             this.needsDraw = false;
         }
         mousemove(e, term) {
             let handled = false;
-            this.widgets.forEach((w) => {
+            this.children.forEach((w) => {
                 if (w.mousemove(e, term)) {
                     handled = true;
                 }
@@ -5415,6 +5427,142 @@
                 this.y += this._rowHeights[i];
             }
             return this;
+        }
+    }
+
+    class Column {
+        constructor(opts) {
+            this.format = GWU__namespace.IDENTITY;
+            this.width = opts.width;
+            if (typeof opts.format === 'function') {
+                this.format = opts.format;
+            }
+            else if (opts.format) {
+                this.format = GWU__namespace.text.compile(opts.format);
+            }
+            this.header = opts.header || '';
+            this.headerClass = opts.headerClass || '';
+            this.empty = opts.empty || '';
+            this.dataClass = opts.dataClass || '';
+        }
+        makeHeader(table) {
+            return new Text(table.term, this.header, {
+                class: this.headerClass,
+                tag: table.headerTag,
+                width: this.width,
+                height: table.rowHeight,
+            });
+        }
+        makeData(table, data, col, row) {
+            let text;
+            if (Array.isArray(data)) {
+                text = '' + (data[col] || this.empty);
+            }
+            else if (typeof data !== 'object') {
+                text = '' + data;
+            }
+            else {
+                text = this.format(data);
+            }
+            const widget = new Text(table.term, text, {
+                class: this.dataClass,
+                tag: table.dataTag,
+                width: this.width,
+                height: table.rowHeight,
+            });
+            widget.prop(col % 2 == 0 ? 'even' : 'odd', true);
+            widget.prop('row', row);
+            widget.prop('col', col);
+            return widget;
+        }
+    }
+    class Table extends WidgetGroup {
+        constructor(term, opts) {
+            super(term, opts);
+            this._data = [];
+            this.columns = [];
+            this.showHeader = false;
+            this.headerTag = 'th';
+            this.dataTag = 'td';
+            this.prefix = 'none';
+            this.select = 'cell';
+            this.rowHeight = 1;
+            this.tag = 'table';
+            this.bounds.width = 0;
+            opts.columns.forEach((o) => {
+                const col = new Column(o);
+                this.columns.push(col);
+                this.bounds.width += col.width;
+            });
+            this.rowHeight = opts.rowHeight || 1;
+            if (!opts.height && opts.data) {
+                opts.height = opts.data.length * this.rowHeight;
+            }
+            this.bounds.height = opts.height || this.rowHeight;
+            if (opts.header) {
+                this.showHeader = true;
+                this.bounds.height += 1;
+            }
+            if (opts.headerTag)
+                this.headerTag = opts.headerTag;
+            if (opts.dataTag)
+                this.dataTag = opts.dataTag;
+            if (opts.prefix)
+                this.prefix = opts.prefix;
+            if (opts.select)
+                this.select = opts.select;
+            if (opts.data) {
+                this.data(opts.data);
+            }
+        }
+        data(data) {
+            if (data === undefined)
+                return this._data;
+            this._data = data;
+            this.children = []; // get rid of old format...
+            let x = this.bounds.x;
+            let y = this.bounds.y;
+            if (this.showHeader) {
+                this.columns.forEach((col) => {
+                    this.term.pos(x, y);
+                    const th = col.makeHeader(this);
+                    this.children.push(th);
+                    x += col.width;
+                });
+                y += this.rowHeight;
+            }
+            this._data.forEach((obj, j) => {
+                if (y > this.bounds.bottom)
+                    return;
+                x = this.bounds.x;
+                this.columns.forEach((col, i) => {
+                    this.term.pos(x, y);
+                    const td = col.makeData(this, obj, i, j);
+                    this.children.push(td);
+                    x += col.width;
+                });
+                y += this.rowHeight;
+            });
+            this._updateStyle();
+            return this;
+        }
+        // draw(buffer: GWU.canvas.DataBuffer, parentX = 0, parentY = 0) {
+        // }
+        mousemove(e, term) {
+            let result = super.mousemove(e, term);
+            const hovered = this.children.find((c) => c.hovered);
+            if (hovered) {
+                if (this.select === 'none') {
+                    this.children.forEach((c) => (c.hovered = false));
+                }
+                else if (this.select === 'row') {
+                    this.children.forEach((c) => (c.hovered = hovered.prop('row') == c.prop('row')));
+                }
+                else if (this.select === 'column') {
+                    this.children.forEach((c) => (c.hovered = hovered.prop('col') == c.prop('col')));
+                }
+            }
+            return result;
         }
     }
 
@@ -5663,6 +5811,15 @@
             this.widgets.push(widget);
             return widget;
         }
+        table(opts) {
+            // TODO - if in a grid cell, adjust width and height based on grid
+            // opts.style = opts.style || this._style;
+            const widget = new Table(this, opts);
+            widget.draw(this.buffer);
+            this._currentWidget = widget;
+            this.widgets.push(widget);
+            return widget;
+        }
         // CONTROL
         render() {
             this.ui.render();
@@ -5690,6 +5847,8 @@
         WidgetGroup: WidgetGroup,
         Text: Text,
         Grid: Grid,
+        Column: Column,
+        Table: Table,
         Term: Term
     });
 
@@ -5698,7 +5857,7 @@
     exports.Box = Box;
     exports.Button = Button$1;
     exports.CellEntry = CellEntry;
-    exports.Column = Column;
+    exports.Column = Column$1;
     exports.Dialog = Dialog;
     exports.DialogBuilder = DialogBuilder;
     exports.DropDownButton = DropDownButton;
@@ -5711,7 +5870,7 @@
     exports.MenuButton = MenuButton;
     exports.Messages = Messages;
     exports.Sidebar = Sidebar;
-    exports.Table = Table;
+    exports.Table = Table$1;
     exports.Text = Text$1;
     exports.UI = UI;
     exports.Viewport = Viewport;

@@ -4,6 +4,7 @@ import { Grid } from './grid';
 import * as Text from './text';
 import * as Style from './style';
 import { Widget } from './widget';
+import * as Table from './table';
 
 export class Term {
     ui: UICore;
@@ -322,6 +323,16 @@ export class Term {
         // TODO - if in a grid cell, adjust width and height based on grid
         // opts.style = opts.style || this._style;
         const widget = new Text.Text(this, text, opts);
+        widget.draw(this.buffer);
+        this._currentWidget = widget;
+        this.widgets.push(widget);
+        return widget;
+    }
+
+    table(opts: Table.TableOptions): Table.Table {
+        // TODO - if in a grid cell, adjust width and height based on grid
+        // opts.style = opts.style || this._style;
+        const widget = new Table.Table(this, opts);
         widget.draw(this.buffer);
         this._currentWidget = widget;
         this.widgets.push(widget);

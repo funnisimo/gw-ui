@@ -113,7 +113,7 @@ declare class Input$1 extends Widget$1 {
 }
 
 declare type ValueFn = (data: any, index: number) => string;
-interface ColumnOptions {
+interface ColumnOptions$1 {
     width: number;
     value: string | ValueFn;
     header?: string;
@@ -127,7 +127,7 @@ interface ColumnOptions {
     hoverBg?: GWU.color.ColorBase;
 }
 declare type HoverType = 'none' | 'column' | 'row' | 'cell';
-interface TableOptions extends WidgetOptions$1 {
+interface TableOptions$1 extends WidgetOptions$1 {
     height: number;
     letters?: boolean;
     headers?: boolean;
@@ -137,15 +137,15 @@ interface TableOptions extends WidgetOptions$1 {
     wrap?: boolean;
     wrapColumns?: boolean;
     wrapRows?: boolean;
-    columns: ColumnOptions[];
+    columns: ColumnOptions$1[];
 }
 declare type ColorOption = GWU.color.ColorBase | null;
 declare type DataArray = any[];
 declare type DataList$1 = {
     next: any;
 };
-declare type DataType = DataArray | DataList$1 | null;
-declare class Column {
+declare type DataType$1 = DataArray | DataList$1 | null;
+declare class Column$1 {
     active: boolean;
     hovered: boolean;
     fg: ColorOption;
@@ -161,46 +161,46 @@ declare class Column {
     x: number;
     width: number;
     index: number;
-    constructor(opts: ColumnOptions);
+    constructor(opts: ColumnOptions$1);
     value(data: any, index: number): string;
 }
-declare class Table extends Widget$1 {
+declare class Table$1 extends Widget$1 {
     headers: boolean;
     letters: boolean;
     headerFg: GWU.color.ColorBase;
     headerBg: GWU.color.ColorBase;
     wrapColumns: boolean;
     wrapRows: boolean;
-    columns: Column[];
-    data: DataType;
+    columns: Column$1[];
+    data: DataType$1;
     hoverType: HoverType;
-    selectedColumn: Column | null;
+    selectedColumn: Column$1 | null;
     selectedIndex: number;
-    constructor(id: string, opts?: TableOptions);
-    init(opts: TableOptions): void;
-    setData(data: DataType): void;
+    constructor(id: string, opts?: TableOptions$1);
+    init(opts: TableOptions$1): void;
+    setData(data: DataType$1): void;
     selectRow(index: number): boolean;
     selectNextRow(wrap?: boolean): number;
     selectPrevRow(wrap?: boolean): number;
-    selectNextColumn(wrap?: boolean): Column | null;
-    selectPrevColumn(wrap?: boolean): Column | null;
+    selectNextColumn(wrap?: boolean): Column$1 | null;
+    selectPrevColumn(wrap?: boolean): Column$1 | null;
     get selectedData(): any | null;
     draw(buffer: GWU.canvas.DataBuffer): void;
-    drawColumn(buffer: GWU.canvas.DataBuffer, column: Column, x: number): void;
-    drawCell(buffer: GWU.canvas.DataBuffer, column: Column, data: any, index: number, x: number, y: number): void;
+    drawColumn(buffer: GWU.canvas.DataBuffer, column: Column$1, x: number): void;
+    drawCell(buffer: GWU.canvas.DataBuffer, column: Column$1, data: any, index: number, x: number, y: number): void;
     mousemove(e: GWU.io.Event, dialog: WidgetRunner): Promise<boolean>;
     dir(e: GWU.io.Event): boolean;
 }
-declare function makeTable(id: string, opts: TableOptions): Table;
+declare function makeTable(id: string, opts: TableOptions$1): Table$1;
 
-interface ListOptions extends ColumnOptions {
+interface ListOptions extends ColumnOptions$1 {
     height: number;
     hover?: boolean;
     headerFg?: GWU.color.ColorBase;
     headerBg?: GWU.color.ColorBase;
     wrap?: boolean;
 }
-declare class List extends Table {
+declare class List extends Table$1 {
     constructor(id: string, opts: ListOptions);
 }
 
@@ -531,12 +531,12 @@ interface Size {
     width: number;
     height: number;
 }
-declare type PropType = string | number | boolean;
+declare type PropType$1 = string | number | boolean;
 interface Selectable {
     tag: string;
     classes: string[];
     attr(name: string): string | undefined;
-    prop(name: string): PropType | undefined;
+    prop(name: string): PropType$1 | undefined;
     parent: Selectable | null;
     children?: Selectable[];
 }
@@ -566,7 +566,7 @@ declare function compile(text: string): Selector;
 declare type Position = 'static' | 'relative' | 'fixed' | 'absolute';
 interface Stylable$1 extends Selectable {
     style(): Style$1;
-    prop(name: string): PropType;
+    prop(name: string): PropType$1;
 }
 interface StyleOptions$1 {
     fg?: GWU.color.ColorBase;
@@ -686,7 +686,7 @@ declare type FxFn = () => void;
 declare type Fx = number;
 declare type ElementCb = (element: Element) => any;
 declare type ElementMatch = (element: Element) => boolean;
-declare type SelectType = string | Element | Element[] | Selection;
+declare type SelectType$1 = string | Element | Element[] | Selection;
 declare class Document {
     ui: UICore;
     body: Element;
@@ -695,8 +695,8 @@ declare class Document {
     stylesheet: Sheet$1;
     _done: boolean;
     constructor(ui: UICore, rootTag?: string);
-    $(id?: SelectType): Selection;
-    select(id?: SelectType): Selection;
+    $(id?: SelectType$1): Selection;
+    select(id?: SelectType$1): Selection;
     createElement(tag: string): Element;
     create(tag: string): Selection;
     rule(info: Record<string, StyleOptions$1>): this;
@@ -729,30 +729,30 @@ declare class Selection {
     get(index: number): Element;
     length(): number;
     slice(start: number, end?: number): Selection;
-    add(arg: SelectType): this;
+    add(arg: SelectType$1): this;
     clone(): this;
     forEach(cb: ElementCb): this;
-    after(content: SelectType): this;
-    append(content: SelectType): this;
-    appendTo(dest: SelectType): this;
-    before(content: SelectType): this;
+    after(content: SelectType$1): this;
+    append(content: SelectType$1): this;
+    appendTo(dest: SelectType$1): this;
+    before(content: SelectType$1): this;
     detach(): this;
     empty(): this;
-    insertAfter(target: SelectType): this;
-    insertBefore(target: SelectType): this;
-    prepend(content: SelectType): this;
-    prependTo(dest: SelectType): this;
+    insertAfter(target: SelectType$1): this;
+    insertBefore(target: SelectType$1): this;
+    prepend(content: SelectType$1): this;
+    prependTo(dest: SelectType$1): this;
     remove(_sub?: string): this;
-    replaceAll(target: SelectType): this;
-    replaceWith(content: SelectType): this;
+    replaceAll(target: SelectType$1): this;
+    replaceWith(content: SelectType$1): this;
     text(): string;
     text(t: string): this;
     data(): any;
     data(d: any): this;
     attr(id: string): string | undefined;
     attr(id: string, value: string): this;
-    prop(id: string): PropType | undefined;
-    prop(id: string, value: PropType): this;
+    prop(id: string): PropType$1 | undefined;
+    prop(id: string, value: PropType$1): this;
     addClass(id: string): this;
     hasClass(id: string): boolean;
     removeClass(id: string): this;
@@ -813,7 +813,7 @@ interface SizeOptions {
 declare class Element implements Selectable {
     tag: string;
     parent: Element | null;
-    _props: Record<string, PropType>;
+    _props: Record<string, PropType$1>;
     _attrs: Record<string, string>;
     classes: string[];
     children: Element[];
@@ -838,12 +838,12 @@ declare class Element implements Selectable {
     protected _attrInt(name: string, def?: number): number;
     protected _attrString(name: string): string;
     protected _attrBool(name: string): boolean;
-    prop(name: string): PropType;
-    prop(name: string, value: PropType): this;
-    protected _setProp(name: string, value: PropType): void;
+    prop(name: string): PropType$1;
+    prop(name: string, value: PropType$1): this;
+    protected _setProp(name: string, value: PropType$1): void;
     toggleProp(name: string): this;
-    val(): PropType;
-    val(v: PropType): this;
+    val(): PropType$1;
+    val(v: PropType$1): this;
     data(): any;
     data(doc: Document, v: any): this;
     protected _setData(_doc: Document, v: any): void;
@@ -909,7 +909,7 @@ declare class Element implements Selectable {
 declare class Input extends Element {
     constructor(tag: string, sheet?: Sheet$1);
     protected _setAttr(name: string, value: string): void;
-    protected _setProp(name: string, value: PropType): void;
+    protected _setProp(name: string, value: PropType$1): void;
     get isTypeNumber(): boolean;
     _calcContentWidth(): number;
     _calcContentHeight(): number;
@@ -948,7 +948,7 @@ declare class Button extends Element {
 }
 
 declare class FieldSet extends Element {
-    static default: Record<string, PropType>;
+    static default: Record<string, PropType$1>;
     constructor(tag: string, sheet?: Sheet$1);
     _drawBorder(buffer: GWU.canvas.DataBuffer): void;
 }
@@ -1015,7 +1015,6 @@ interface MyOptions {
 declare function parse(data: string, options?: MyOptions | Sheet$1): Element;
 
 type index_d$1_Size = Size;
-type index_d$1_PropType = PropType;
 type index_d$1_Selectable = Selectable;
 type index_d$1_MatchFn = MatchFn;
 type index_d$1_Selector = Selector;
@@ -1055,7 +1054,6 @@ type index_d$1_FxFn = FxFn;
 type index_d$1_Fx = Fx;
 type index_d$1_ElementCb = ElementCb;
 type index_d$1_ElementMatch = ElementMatch;
-type index_d$1_SelectType = SelectType;
 type index_d$1_Document = Document;
 declare const index_d$1_Document: typeof Document;
 type index_d$1_Selection = Selection;
@@ -1063,7 +1061,7 @@ declare const index_d$1_Selection: typeof Selection;
 declare namespace index_d$1 {
   export {
     index_d$1_Size as Size,
-    index_d$1_PropType as PropType,
+    PropType$1 as PropType,
     index_d$1_Selectable as Selectable,
     index_d$1_MatchFn as MatchFn,
     index_d$1_Selector as Selector,
@@ -1099,7 +1097,7 @@ declare namespace index_d$1 {
     index_d$1_Fx as Fx,
     index_d$1_ElementCb as ElementCb,
     index_d$1_ElementMatch as ElementMatch,
-    index_d$1_SelectType as SelectType,
+    SelectType$1 as SelectType,
     index_d$1_Document as Document,
     index_d$1_Selection as Selection,
   };
@@ -1109,7 +1107,7 @@ interface Stylable {
     tag: string;
     classes: string[];
     attr(name: string): string | undefined;
-    prop(name: string): PropType | undefined;
+    prop(name: string): PropType$1 | undefined;
     parent: Selectable | null;
     children?: Selectable[];
     style(): Style;
@@ -1197,6 +1195,57 @@ declare class Text extends Widget {
     draw(buffer: GWU.canvas.DataBuffer, parentX?: number, parentY?: number): void;
 }
 
+declare type FormatFn = GWU.text.Template;
+declare type Value = string | number;
+declare type SelectType = 'none' | 'column' | 'row' | 'cell';
+declare type DataObject = Record<string, any>;
+declare type DataItem = Value | Value[] | DataObject;
+declare type DataType = DataItem[];
+interface ColumnOptions {
+    width: number;
+    format: string | FormatFn;
+    header?: string;
+    headerClass?: string;
+    empty?: string;
+    dataClass?: string;
+}
+interface TableOptions extends WidgetOptions {
+    height?: number;
+    rowHeight?: number;
+    header?: boolean;
+    headerTag?: string;
+    dataTag?: string;
+    prefix?: PrefixType;
+    select?: SelectType;
+    columns: ColumnOptions[];
+    data?: DataType;
+}
+declare class Column {
+    width: number;
+    format: GWU.text.Template;
+    header: string;
+    headerClass: string;
+    dataClass: string;
+    empty: string;
+    constructor(opts: ColumnOptions);
+    makeHeader(table: Table): Text;
+    makeData(table: Table, data: DataItem, col: number, row: number): Text;
+}
+declare class Table extends WidgetGroup {
+    _data: DataType;
+    columns: Column[];
+    showHeader: boolean;
+    headerTag: string;
+    dataTag: string;
+    prefix: PrefixType;
+    select: SelectType;
+    rowHeight: number;
+    constructor(term: Term, opts: TableOptions);
+    data(): DataType;
+    data(data: DataType): this;
+    mousemove(e: GWU.io.Event, term: Term): boolean;
+}
+
 declare class Term {
     ui: UICore;
     x: number;
@@ -1251,17 +1300,21 @@ declare class Term {
     widgetAt(x: number, y: number): Widget | null;
     widgetAt(xy: GWU.xy.XY): Widget | null;
     text(text: string, opts?: TextOptions): Text;
+    table(opts: TableOptions): Table;
     render(): this;
     mousemove(e: GWU.io.Event): boolean;
     draw(): void;
 }
 
 interface WidgetOptions {
+    id?: string;
     width?: number;
     height?: number;
     style?: StyleOptions;
-    classes?: string | string[];
+    class?: string | string[];
+    tag?: string;
 }
+declare type PropType = boolean | number | string;
 declare abstract class Widget implements Stylable {
     tag: string;
     term: Term;
@@ -1270,7 +1323,7 @@ declare abstract class Widget implements Stylable {
     _used: ComputedStyle;
     parent: Widget | null;
     classes: string[];
-    _props: Record<string, boolean>;
+    _props: Record<string, PropType>;
     _attrs: Record<string, string>;
     _needsDraw: boolean;
     constructor(term: Term, opts?: WidgetOptions);
@@ -1278,8 +1331,8 @@ declare abstract class Widget implements Stylable {
     set needsDraw(v: boolean);
     attr(name: string): string;
     attr(name: string, v: string): this;
-    prop(name: string): boolean;
-    prop(name: string, v: boolean): this;
+    prop(name: string): PropType | undefined;
+    prop(name: string, v: PropType): this;
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
     style(): Style;
@@ -1288,12 +1341,12 @@ declare abstract class Widget implements Stylable {
     set focused(v: boolean);
     get hovered(): boolean;
     set hovered(v: boolean);
-    protected _updateStyle(): void;
+    _updateStyle(): void;
     abstract draw(buffer: GWU.canvas.DataBuffer, parentX?: number, parentY?: number): void;
     mousemove(e: GWU.io.Event, _term: Term): boolean;
 }
 declare class WidgetGroup extends Widget {
-    widgets: Widget[];
+    children: Widget[];
     constructor(term: Term, opts?: WidgetOptions);
     get needsDraw(): boolean;
     set needsDraw(v: boolean);
@@ -1301,11 +1354,13 @@ declare class WidgetGroup extends Widget {
     contains(x: number, y: number): boolean;
     widgetAt(e: GWU.xy.XY): Widget | null;
     widgetAt(x: number, y: number): Widget | null;
+    _updateStyle(): void;
     draw(buffer: GWU.canvas.DataBuffer): void;
     mousemove(e: GWU.io.Event, term: Term): boolean;
 }
 
 type index_d_WidgetOptions = WidgetOptions;
+type index_d_PropType = PropType;
 type index_d_Widget = Widget;
 declare const index_d_Widget: typeof Widget;
 type index_d_WidgetGroup = WidgetGroup;
@@ -1315,18 +1370,41 @@ type index_d_Text = Text;
 declare const index_d_Text: typeof Text;
 type index_d_Grid = Grid;
 declare const index_d_Grid: typeof Grid;
+type index_d_FormatFn = FormatFn;
+type index_d_Value = Value;
+type index_d_SelectType = SelectType;
+type index_d_DataObject = DataObject;
+type index_d_DataItem = DataItem;
+type index_d_DataType = DataType;
+type index_d_ColumnOptions = ColumnOptions;
+type index_d_TableOptions = TableOptions;
+type index_d_Column = Column;
+declare const index_d_Column: typeof Column;
+type index_d_Table = Table;
+declare const index_d_Table: typeof Table;
 type index_d_Term = Term;
 declare const index_d_Term: typeof Term;
 declare namespace index_d {
   export {
     index_d_WidgetOptions as WidgetOptions,
+    index_d_PropType as PropType,
     index_d_Widget as Widget,
     index_d_WidgetGroup as WidgetGroup,
     index_d_TextOptions as TextOptions,
     index_d_Text as Text,
     index_d_Grid as Grid,
+    index_d_FormatFn as FormatFn,
+    index_d_Value as Value,
+    index_d_SelectType as SelectType,
+    index_d_DataObject as DataObject,
+    index_d_DataItem as DataItem,
+    index_d_DataType as DataType,
+    index_d_ColumnOptions as ColumnOptions,
+    index_d_TableOptions as TableOptions,
+    index_d_Column as Column,
+    index_d_Table as Table,
     index_d_Term as Term,
   };
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$1 as Button, ButtonOptions, CellEntry, ColorOption, Column, ColumnOptions, ConfirmOptions, DataArray, DataList$1 as DataList, DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table, TableOptions, Text$1 as Text, TextOptions$1 as TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget$1 as Widget, WidgetOptions$1 as WidgetOptions, WidgetRunner, buildDialog, index_d$1 as html, makeTable, showDropDown, index_d as term };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$1 as Button, ButtonOptions, CellEntry, ColorOption, Column$1 as Column, ColumnOptions$1 as ColumnOptions, ConfirmOptions, DataArray, DataList$1 as DataList, DataType$1 as DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu, MenuButton, MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table$1 as Table, TableOptions$1 as TableOptions, Text$1 as Text, TextOptions$1 as TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget$1 as Widget, WidgetOptions$1 as WidgetOptions, WidgetRunner, buildDialog, index_d$1 as html, makeTable, showDropDown, index_d as term };

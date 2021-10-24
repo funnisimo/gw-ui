@@ -1255,7 +1255,7 @@
         }
         if (config.length == 0)
             return new Range(0, 0, 0);
-        const RE = /^(?:([+-]?\d*)[Dd](\d+)([+-]?\d*)|([+-]?\d+)-(\d+):?(\d+)?|([+-]?\d+)~(\d+)|([+-]?\d+\.?\d*))/g;
+        const RE = /^(?:([+-]?\d*)[Dd](\d+)([+-]?\d*)|([+-]?\d+)-(\d+):?(\d+)?|([+-]?\d+)~(\d+)|([+-]?\d+)\+|([+-]?\d+))$/g;
         let results;
         while ((results = RE.exec(config)) !== null) {
             if (results[2]) {
@@ -1278,7 +1278,11 @@
                 return new Range(base - 2 * std, base + 2 * std, 3);
             }
             else if (results[9]) {
-                const v = Number.parseFloat(results[9]);
+                const v = Number.parseInt(results[9]);
+                return new Range(v, Number.MAX_SAFE_INTEGER, 1);
+            }
+            else if (results[10]) {
+                const v = Number.parseInt(results[10]);
                 return new Range(v, v, 1);
             }
         }

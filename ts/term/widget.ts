@@ -12,15 +12,8 @@ export interface WidgetOptions {
 }
 
 export abstract class Widget {
-    static default: Style = {
-        fg: 'white',
-        bg: -1,
-        align: 'left' as GWU.text.Align,
-        valign: 'top' as GWU.text.VAlign,
-    };
-
     bounds: GWU.xy.Bounds = new GWU.xy.Bounds(-1, -1, 0, 1);
-    activeStyle!: Style;
+    activeStyle!: StyleOptions;
     _normalStyle: StyleOptions = {};
     _hoverStyle: StyleOptions = {};
     _focusStyle: StyleOptions = {};
@@ -29,13 +22,6 @@ export abstract class Widget {
     _hover = false;
 
     constructor(x: number, y: number, opts: WidgetOptions = {}) {
-        this.activeStyle = {
-            fg: 'white',
-            bg: -1,
-            align: 'left',
-            valign: 'top',
-        };
-
         this.bounds.x = x;
         this.bounds.y = y;
 
@@ -83,11 +69,7 @@ export abstract class Widget {
     }
 
     protected _updateStyle() {
-        this.activeStyle = Object.assign(
-            {},
-            Widget.default,
-            this._normalStyle
-        ) as Style;
+        this.activeStyle = Object.assign({}, this._normalStyle) as Style;
         if (this._focus) {
             Object.assign(this.activeStyle, this._focusStyle);
         } else if (this._hover) {

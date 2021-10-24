@@ -1143,8 +1143,9 @@ declare class Grid {
     nextCol(): this;
     row(n?: number): this;
     nextRow(): this;
-    protected _setX(): this;
-    protected _setY(): this;
+    setRowHeight(h: number): this;
+    protected _resetX(): this;
+    protected _resetY(): this;
 }
 
 declare class Term {
@@ -1188,17 +1189,18 @@ declare class Term {
     eraseLineAbove(): this;
     eraseLineBelow(): this;
     grid(): this;
+    endGrid(): this;
     cols(count: number, width: number): this;
     cols(widths: number[]): this;
     rows(count: number, width: number): this;
     rows(heights: number[]): this;
     startRow(n: number): this;
     nextCol(): this;
-    endRow(): this;
+    endRow(h?: number): this;
     col(n: number): this;
     row(n: number): this;
     drawText(text: string, width?: number, _align?: GWU.text.Align): this;
-    border(w: number, h: number, bg?: GWU.color.ColorBase): this;
+    border(w: number, h: number, bg?: GWU.color.ColorBase, ascii?: boolean): this;
     get(): Widget | null;
     widgetAt(x: number, y: number): Widget | null;
     widgetAt(xy: GWU.xy.XY): Widget | null;
@@ -1216,9 +1218,8 @@ interface WidgetOptions {
     focus?: StyleOptions;
 }
 declare abstract class Widget {
-    static default: Style;
     bounds: GWU.xy.Bounds;
-    activeStyle: Style;
+    activeStyle: StyleOptions;
     _normalStyle: StyleOptions;
     _hoverStyle: StyleOptions;
     _focusStyle: StyleOptions;

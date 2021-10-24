@@ -19,16 +19,25 @@ const data = [
 ];
 
 // move to 1,1 - start a grid with 4 13 width columns and 5 2 height rows
-term.pos(1, 1).grid().cols(4, 13).rows(5, 2);
+term.pos(1, 1).grid().cols(4, 13).rows(5);
 
 data.forEach((row, i) => {
     term.row(i);
+    if (i == 0) {
+        term.style({ bg: 'light_blue' });
+    } else {
+        term.style({ bg: -1 });
+        term.hoverStyle({ fg: 'red' });
+    }
     row.forEach((col, j) => {
         term.col(j);
-        term.border(14, 3, 'darker_blue');
-        term.move(2, 1).text(col, 'white');
+        term.border(14, 3, 'light_blue', true);
+        term.move(2, 1).text(col);
     });
+    term.endRow(2);
 });
 
-term.render();
+term.endGrid();
+
+LOOP.run(term);
 ```

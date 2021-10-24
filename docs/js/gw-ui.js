@@ -4865,12 +4865,6 @@
             this._focusStyle = {};
             this._focus = false;
             this._hover = false;
-            this.activeStyle = {
-                fg: 'white',
-                bg: -1,
-                align: 'left',
-                valign: 'top',
-            };
             this.bounds.x = x;
             this.bounds.y = y;
             if (opts.style)
@@ -4911,7 +4905,7 @@
             this._updateStyle();
         }
         _updateStyle() {
-            this.activeStyle = Object.assign({}, Widget.default, this._normalStyle);
+            this.activeStyle = Object.assign({}, this._normalStyle);
             if (this._focus) {
                 Object.assign(this.activeStyle, this._focusStyle);
             }
@@ -4923,12 +4917,6 @@
             return false;
         }
     }
-    Widget.default = {
-        fg: 'white',
-        bg: -1,
-        align: 'left',
-        valign: 'top',
-    };
 
     class Text extends Widget {
         constructor(x, y, text, opts = {}) {
@@ -4999,7 +4987,7 @@
             if (n === undefined)
                 n = this._col;
             this._col = GWU__namespace.clamp(n, 0, this._colWidths.length - 1);
-            return this._setX()._setY(); // move back to top of our current row
+            return this._resetX()._resetY(); // move back to top of our current row
         }
         nextCol() {
             return this.col(this._col + 1);
@@ -5008,19 +4996,25 @@
             if (n === undefined)
                 n = this._row;
             this._row = GWU__namespace.clamp(n, 0, this._rowHeights.length - 1);
-            return this._setY()._setX(); // move back to beginning of current column
+            return this._resetY()._resetX(); // move back to beginning of current column
         }
         nextRow() {
             return this.row(this._row + 1).col(0);
         }
-        _setX() {
+        setRowHeight(h) {
+            if (h < 0)
+                return this;
+            this._rowHeights[this._row] = h;
+            return this;
+        }
+        _resetX() {
             this.x = this._left;
             for (let i = 0; i < this._col; ++i) {
                 this.x += this._colWidths[i];
             }
             return this;
         }
-        _setY() {
+        _resetY() {
             this.y = this._top;
             for (let i = 0; i < this._row; ++i) {
                 this.y += this._rowHeights[i];
@@ -5175,6 +5169,10 @@
             this._grid = new Grid(this.x, this.y);
             return this;
         }
+        endGrid() {
+            this._grid = null;
+            return this;
+        }
         cols(...args) {
             if (!this._grid)
                 return this;
@@ -5206,7 +5204,13 @@
             this.pos(this._grid.x, this._grid.y);
             return this;
         }
-        endRow() {
+        // new row height
+        endRow(h) {
+            if (!this._grid)
+                return this;
+            if (h !== undefined && h > 0) {
+                this._grid.setRowHeight(h);
+            }
             return this;
         }
         // moves to specific column
@@ -5232,12 +5236,28 @@
             widget.draw(this.buffer);
             return this;
         }
-        border(w, h, bg) {
-            const c = bg || this._style.fg;
+        border(w, h, bg, ascii = false) {
+            bg = bg || this._style.fg;
             const buf = this.buffer;
-            GWU__namespace.xy.forBorder(this.x, this.y, w, h, (x, y) => {
-                buf.draw(x, y, ' ', c, c);
-            });
+            if (ascii) {
+                for (let i = 1; i < w; ++i) {
+                    buf.draw(this.x + i, this.y, '-', bg, -1);
+                    buf.draw(this.x + i, this.y + h - 1, '-', bg, -1);
+                }
+                for (let j = 1; j < h; ++j) {
+                    buf.draw(this.x, this.y + j, '|', bg, -1);
+                    buf.draw(this.x + w - 1, this.y + j, '|', bg, -1);
+                }
+                buf.draw(this.x, this.y, '+', bg);
+                buf.draw(this.x + w - 1, this.y, '+', bg);
+                buf.draw(this.x, this.y + h - 1, '+', bg);
+                buf.draw(this.x + w - 1, this.y + h - 1, '+', bg);
+            }
+            else {
+                GWU__namespace.xy.forBorder(this.x, this.y, w, h, (x, y) => {
+                    buf.draw(x, y, ' ', bg, bg);
+                });
+            }
             return this;
         }
         // WIDGETS
@@ -5248,6 +5268,7 @@
             return this.widgets.find((w) => w.contains(args[0], args[1])) || null;
         }
         text(text, width, _align) {
+            // TODO - if in a grid cell, adjust width and height based on grid
             const widget = new Text(this.x, this.y, text, { width });
             widget.normalStyle(this._style);
             widget.hoverStyle(this._hoverStyle);

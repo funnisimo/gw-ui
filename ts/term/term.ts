@@ -222,6 +222,11 @@ export class Term {
         return this;
     }
 
+    endGrid(): this {
+        this._grid = null;
+        return this;
+    }
+
     cols(count: number, width: number): this;
     cols(widths: number[]): this;
     cols(...args: any[]): this {
@@ -256,7 +261,12 @@ export class Term {
         return this;
     }
 
-    endRow(): this {
+    // new row height
+    endRow(h?: number): this {
+        if (!this._grid) return this;
+        if (h !== undefined && h > 0) {
+            this._grid.setRowHeight(h);
+        }
         return this;
     }
 
@@ -285,12 +295,32 @@ export class Term {
         return this;
     }
 
-    border(w: number, h: number, bg?: GWU.color.ColorBase): this {
-        const c = bg || this._style.fg;
+    border(
+        w: number,
+        h: number,
+        bg?: GWU.color.ColorBase,
+        ascii = false
+    ): this {
+        bg = bg || this._style.fg;
         const buf = this.buffer;
-        GWU.xy.forBorder(this.x, this.y, w, h, (x, y) => {
-            buf.draw(x, y, ' ', c, c);
-        });
+        if (ascii) {
+            for (let i = 1; i < w; ++i) {
+                buf.draw(this.x + i, this.y, '-', bg, -1);
+                buf.draw(this.x + i, this.y + h - 1, '-', bg, -1);
+            }
+            for (let j = 1; j < h; ++j) {
+                buf.draw(this.x, this.y + j, '|', bg, -1);
+                buf.draw(this.x + w - 1, this.y + j, '|', bg, -1);
+            }
+            buf.draw(this.x, this.y, '+', bg);
+            buf.draw(this.x + w - 1, this.y, '+', bg);
+            buf.draw(this.x, this.y + h - 1, '+', bg);
+            buf.draw(this.x + w - 1, this.y + h - 1, '+', bg);
+        } else {
+            GWU.xy.forBorder(this.x, this.y, w, h, (x, y) => {
+                buf.draw(x, y, ' ', bg, bg);
+            });
+        }
         return this;
     }
 
@@ -307,6 +337,8 @@ export class Term {
     }
 
     text(text: string, width?: number, _align?: GWU.text.Align): this {
+        // TODO - if in a grid cell, adjust width and height based on grid
+
         const widget = new Text(this.x, this.y, text, { width });
         widget.normalStyle(this._style);
         widget.hoverStyle(this._hoverStyle);

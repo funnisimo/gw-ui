@@ -5276,7 +5276,7 @@
             widget.draw(this.buffer);
             this._currentWidget = widget;
             this.widgets.push(widget);
-            return this;
+            return widget;
         }
         // CONTROL
         render() {

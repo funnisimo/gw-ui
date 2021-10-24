@@ -1148,6 +1148,15 @@ declare class Grid {
     protected _resetY(): this;
 }
 
+interface TextOptions extends WidgetOptions {
+}
+declare class Text extends Widget {
+    text: string;
+    _lines: string[];
+    constructor(x: number, y: number, text: string, opts?: TextOptions);
+    draw(buffer: GWU.canvas.DataBuffer): void;
+}
+
 declare class Term {
     static default: Style;
     ui: UICore;
@@ -1204,7 +1213,7 @@ declare class Term {
     get(): Widget | null;
     widgetAt(x: number, y: number): Widget | null;
     widgetAt(xy: GWU.xy.XY): Widget | null;
-    text(text: string, width?: number, _align?: GWU.text.Align): this;
+    text(text: string, width?: number, _align?: GWU.text.Align): Text;
     render(): this;
     mousemove(e: GWU.io.Event): boolean;
     draw(): void;
@@ -1238,15 +1247,6 @@ declare abstract class Widget {
     protected _updateStyle(): void;
     abstract draw(buffer: GWU.canvas.DataBuffer): void;
     mousemove(_e: GWU.io.Event, _term: Term): boolean;
-}
-
-interface TextOptions extends WidgetOptions {
-}
-declare class Text extends Widget {
-    text: string;
-    _lines: string[];
-    constructor(x: number, y: number, text: string, opts?: TextOptions);
-    draw(buffer: GWU.canvas.DataBuffer): void;
 }
 
 type index_d_WidgetOptions = WidgetOptions;

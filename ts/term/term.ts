@@ -336,7 +336,7 @@ export class Term {
         return this.widgets.find((w) => w.contains(args[0], args[1])) || null;
     }
 
-    text(text: string, width?: number, _align?: GWU.text.Align): this {
+    text(text: string, width?: number, _align?: GWU.text.Align): Text {
         // TODO - if in a grid cell, adjust width and height based on grid
 
         const widget = new Text(this.x, this.y, text, { width });
@@ -346,7 +346,7 @@ export class Term {
         widget.draw(this.buffer);
         this._currentWidget = widget;
         this.widgets.push(widget);
-        return this;
+        return widget;
     }
 
     // CONTROL

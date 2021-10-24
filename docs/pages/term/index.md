@@ -13,7 +13,7 @@ const term = new GWI.term.Term(ui);
 term.text('Hello World.');
 
 term.pos(3, 2).border(16, 5, 'red');
-term.pos(5, 4).fg('blue').bright(50).text('Hello again.').reset();
+term.pos(5, 4).fg('blue').bright(50).drawText('Hello again.').reset();
 
 term.render();
 ```
@@ -43,7 +43,7 @@ data.forEach((row, i) => {
         let x = 1 + j * 13;
         let y = 1 + i * 2;
         term.pos(x, y).border(14, 3, 'darker_blue');
-        term.pos(x + 2, y + 1).text(col, 'white');
+        term.pos(x + 2, y + 1).drawText(col, 'white');
     });
 });
 

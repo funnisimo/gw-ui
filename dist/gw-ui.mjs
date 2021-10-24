@@ -4839,7 +4839,7 @@ class Widget {
         this._focusStyle = {};
         this._focus = false;
         this._hover = false;
-        this.needsDraw = true;
+        this._needsDraw = true;
         this.bounds.x = x;
         this.bounds.y = y;
         if (opts.style)
@@ -4849,6 +4849,12 @@ class Widget {
         if (opts.hover)
             this._hoverStyle = opts.hover;
         this._updateStyle();
+    }
+    get needsDraw() {
+        return this._needsDraw;
+    }
+    set needsDraw(v) {
+        this._needsDraw = v;
     }
     contains(...args) {
         return this.bounds.contains(args[0], args[1]);
@@ -4889,7 +4895,8 @@ class Widget {
         }
         this.needsDraw = true; // changed style or state
     }
-    mousemove(_e, _term) {
+    mousemove(e, _term) {
+        this.hovered = this.contains(e);
         return false;
     }
 }
@@ -4898,11 +4905,23 @@ class WidgetGroup extends Widget {
         super(x, y, opts);
         this.widgets = [];
     }
+    get needsDraw() {
+        return this._needsDraw || this.widgets.some((w) => w.needsDraw);
+    }
+    set needsDraw(v) {
+        this._needsDraw = v;
+    }
     contains(...args) {
-        return this.widgets.some((w) => w.bounds.contains(args[0], args[1]));
+        return this.widgets.some((w) => w.contains(args[0], args[1]));
+    }
+    widgetAt(...args) {
+        return this.widgets.find((w) => w.contains(args[0], args[1])) || null;
     }
     draw(buffer) {
+        if (!this.needsDraw)
+            return;
         this.widgets.forEach((w) => w.draw(buffer));
+        this.needsDraw = false;
     }
     mousemove(e, term) {
         let handled = false;
@@ -4911,7 +4930,7 @@ class WidgetGroup extends Widget {
                 handled = true;
             }
         });
-        return handled;
+        return super.mousemove(e, term) || handled;
     }
 }
 
@@ -5285,11 +5304,13 @@ class Term {
     }
     // EVENTS
     mousemove(e) {
-        const w = this.widgetAt(e);
-        this.widgets.forEach((w2) => {
-            w2.hovered = w2 === w;
+        let handled = false;
+        this.widgets.forEach((w) => {
+            if (w.mousemove(e, this)) {
+                handled = true;
+            }
         });
-        return !!w && w.mousemove(e, this);
+        return handled;
     }
     draw() {
         this.widgets.forEach((w) => w.draw(this.buffer));

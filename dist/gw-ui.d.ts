@@ -1234,8 +1234,10 @@ declare abstract class Widget {
     _focusStyle: StyleOptions;
     _focus: boolean;
     _hover: boolean;
-    needsDraw: boolean;
+    _needsDraw: boolean;
     constructor(x: number, y: number, opts?: WidgetOptions);
+    get needsDraw(): boolean;
+    set needsDraw(v: boolean);
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
     style(opts: StyleOptions): void;
@@ -1247,13 +1249,17 @@ declare abstract class Widget {
     set hovered(v: boolean);
     protected _updateStyle(): void;
     abstract draw(buffer: GWU.canvas.DataBuffer, parentX?: number, parentY?: number): void;
-    mousemove(_e: GWU.io.Event, _term: Term): boolean;
+    mousemove(e: GWU.io.Event, _term: Term): boolean;
 }
 declare class WidgetGroup extends Widget {
     widgets: Widget[];
     constructor(x: number, y: number, opts?: WidgetOptions);
+    get needsDraw(): boolean;
+    set needsDraw(v: boolean);
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
+    widgetAt(e: GWU.xy.XY): Widget | null;
+    widgetAt(x: number, y: number): Widget | null;
     draw(buffer: GWU.canvas.DataBuffer): void;
     mousemove(e: GWU.io.Event, term: Term): boolean;
 }

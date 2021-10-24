@@ -20,7 +20,7 @@ export abstract class Widget {
 
     _focus = false;
     _hover = false;
-    needsDraw = true;
+    _needsDraw = true;
 
     constructor(x: number, y: number, opts: WidgetOptions = {}) {
         this.bounds.x = x;
@@ -30,6 +30,13 @@ export abstract class Widget {
         if (opts.focus) this._focusStyle = opts.focus;
         if (opts.hover) this._hoverStyle = opts.hover;
         this._updateStyle();
+    }
+
+    get needsDraw(): boolean {
+        return this._needsDraw;
+    }
+    set needsDraw(v: boolean) {
+        this._needsDraw = v;
     }
 
     contains(e: GWU.xy.XY): boolean;
@@ -85,7 +92,8 @@ export abstract class Widget {
         parentY?: number
     ): void;
 
-    mousemove(_e: GWU.io.Event, _term: Term): boolean {
+    mousemove(e: GWU.io.Event, _term: Term): boolean {
+        this.hovered = this.contains(e);
         return false;
     }
 }
@@ -97,14 +105,29 @@ export class WidgetGroup extends Widget {
         super(x, y, opts);
     }
 
+    get needsDraw(): boolean {
+        return this._needsDraw || this.widgets.some((w) => w.needsDraw);
+    }
+    set needsDraw(v: boolean) {
+        this._needsDraw = v;
+    }
+
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
     contains(...args: any[]): boolean {
-        return this.widgets.some((w) => w.bounds.contains(args[0], args[1]));
+        return this.widgets.some((w) => w.contains(args[0], args[1]));
+    }
+
+    widgetAt(e: GWU.xy.XY): Widget | null;
+    widgetAt(x: number, y: number): Widget | null;
+    widgetAt(...args: any[]): Widget | null {
+        return this.widgets.find((w) => w.contains(args[0], args[1])) || null;
     }
 
     draw(buffer: GWU.canvas.DataBuffer) {
+        if (!this.needsDraw) return;
         this.widgets.forEach((w) => w.draw(buffer));
+        this.needsDraw = false;
     }
 
     mousemove(e: GWU.io.Event, term: Term): boolean {
@@ -114,6 +137,6 @@ export class WidgetGroup extends Widget {
                 handled = true;
             }
         });
-        return handled;
+        return super.mousemove(e, term) || handled;
     }
 }

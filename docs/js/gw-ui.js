@@ -5470,7 +5470,7 @@
                 width: this.width,
                 height: table.rowHeight,
             });
-            widget.prop(col % 2 == 0 ? 'even' : 'odd', true);
+            widget.prop(row % 2 == 0 ? 'even' : 'odd', true);
             widget.prop('row', row);
             widget.prop('col', col);
             return widget;

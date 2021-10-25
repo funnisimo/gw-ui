@@ -1201,10 +1201,7 @@ declare type SelectType = 'none' | 'column' | 'row' | 'cell';
 declare type DataObject = Record<string, any>;
 declare type DataItem = Value | Value[] | DataObject;
 declare type DataType = DataItem[];
-interface BorderOptions {
-    color?: GWU.color.ColorBase;
-    ascii?: boolean;
-}
+declare type BorderType = 'ascii' | 'fill' | 'none';
 interface ColumnOptions {
     width: number;
     format: string | FormatFn;
@@ -1223,7 +1220,7 @@ interface TableOptions extends Omit<WidgetOptions, 'height'> {
     select?: SelectType;
     columns: ColumnOptions[];
     data?: DataType;
-    border?: BorderOptions;
+    border?: boolean | BorderType;
 }
 declare class Column {
     width: number;
@@ -1245,7 +1242,7 @@ declare class Table extends WidgetGroup {
     prefix: PrefixType;
     select: SelectType;
     rowHeight: number;
-    border: BorderOptions | null;
+    border: BorderType;
     size: number;
     constructor(term: Term, opts: TableOptions);
     data(): DataType;
@@ -1351,6 +1348,7 @@ declare abstract class Widget implements Stylable {
     set hovered(v: boolean);
     _updateStyle(): void;
     abstract draw(buffer: GWU.canvas.DataBuffer): void;
+    protected _drawFill(buffer: GWU.canvas.DataBuffer): this;
     mousemove(e: GWU.io.Event, _term: Term): boolean;
 }
 declare class WidgetGroup extends Widget {
@@ -1384,7 +1382,7 @@ type index_d_SelectType = SelectType;
 type index_d_DataObject = DataObject;
 type index_d_DataItem = DataItem;
 type index_d_DataType = DataType;
-type index_d_BorderOptions = BorderOptions;
+type index_d_BorderType = BorderType;
 type index_d_ColumnOptions = ColumnOptions;
 type index_d_TableOptions = TableOptions;
 type index_d_Column = Column;
@@ -1408,7 +1406,7 @@ declare namespace index_d {
     index_d_DataObject as DataObject,
     index_d_DataItem as DataItem,
     index_d_DataType as DataType,
-    index_d_BorderOptions as BorderOptions,
+    index_d_BorderType as BorderType,
     index_d_ColumnOptions as ColumnOptions,
     index_d_TableOptions as TableOptions,
     index_d_Column as Column,

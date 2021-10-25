@@ -10,6 +10,10 @@ Here is a look at the table options that are available:
 
 The id of the table.
 
+### tag : string
+
+The tag to put on the table. Useful for css styling.
+
 ### header : boolean
 
 If set, the table will draw headers for each column. If a column does not have a header set in its options, then the header will be empty.
@@ -42,6 +46,16 @@ If not set, the table will grow until it either shows all of its data or hits th
 
 If set, each row in the table will have this height. Defaults to 1.
 
+### select : 'row' | 'column' | 'cell' | 'none'
+
+What to select within the table. Valid values are: row, column, cell (default), and none.
+
+This is also what will be highlighted when the mouse hovers over the table.
+
+### border : 'ascii' | 'fill' | 'none'
+
+What type of border to draw around the cells. The border will be drawn in the table `fg` color.
+
 ### columns : (ColumnOptions | string)[]
 
 **NOTE:** If a string is provided for the column options, then that string is the format.
@@ -53,12 +67,6 @@ You configure table widgets by columns. Each column is configured using the foll
 -   format : The template to use for extracting the value from the data object. If not present, it will default as shown in the **data** section.
 -   dataClass : Additional classes (if any) to add to the data cells (it will automatically get "data")
 -   width : The width of the column (if not set, the table widget will try to set it)
-
-### select : 'row' | 'column' | 'cell' | 'none'
-
-What to select within the table. Valid values are: row, column, cell (default), and none.
-
-This is also what will be highlighted when the mouse hovers over the table.
 
 ### data: value[] | value[][] | object[]
 
@@ -117,7 +125,8 @@ const data = [
 term.pos(5, 5).table({
     header: true,
     select: 'row',
-    border: { color: 'red', ascii: true },
+    border: 'ascii',
+    style: { bg: 'dark_red', fg: 'red' },
     height: 6,
     columns: [
         { header: 'Name', width: 10 },

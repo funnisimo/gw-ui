@@ -11,10 +11,7 @@ export type DataObject = Record<string, any>;
 export type DataItem = Value | Value[] | DataObject;
 export type DataType = DataItem[];
 
-export interface BorderOptions {
-    color?: GWU.color.ColorBase;
-    ascii?: boolean;
-}
+export type BorderType = 'ascii' | 'fill' | 'none';
 
 export interface ColumnOptions {
     width: number; // must have
@@ -41,7 +38,7 @@ export interface TableOptions extends Omit<WidgetOptions, 'height'> {
     columns: ColumnOptions[]; // must have at least 1
 
     data?: DataType;
-    border?: BorderOptions;
+    border?: boolean | BorderType;
 }
 
 export class Column {
@@ -106,7 +103,7 @@ export class Table extends WidgetGroup {
     prefix: PrefixType = 'none';
     select: SelectType = 'cell';
     rowHeight = 1;
-    border: BorderOptions | null = null;
+    border: BorderType = 'none';
     size: number;
 
     constructor(term: Term, opts: TableOptions) {
@@ -122,7 +119,10 @@ export class Table extends WidgetGroup {
             this.bounds.width += col.width;
         });
 
-        if (opts.border) this.border = opts.border;
+        if (opts.border) {
+            if (opts.border === true) opts.border = 'ascii';
+            this.border = opts.border;
+        }
         this.rowHeight = opts.rowHeight || 1;
 
         this.bounds.height = 1;
@@ -172,6 +172,7 @@ export class Table extends WidgetGroup {
             y += this.rowHeight + borderAdj;
         });
         this.bounds.height = y - this.bounds.y;
+        this.bounds.width = x - this.bounds.x;
         this._updateStyle();
 
         return this;
@@ -180,16 +181,18 @@ export class Table extends WidgetGroup {
     draw(buffer: GWU.canvas.DataBuffer) {
         if (!this.needsDraw) return;
 
+        this._drawFill(buffer);
+
         this.children.forEach((w) => {
             if (w.prop('row')! >= this.size) return;
-            if (this.border) {
+            if (this.border !== 'none') {
                 this.term
                     .pos(w.bounds.x - 1, w.bounds.y - 1)
                     .border(
                         w.bounds.width + 2,
                         w.bounds.height + 2,
-                        this.border.color || this._used.fg,
-                        this.border.ascii
+                        this._used.fg,
+                        this.border == 'ascii'
                     );
             }
             w.draw(buffer);

@@ -5251,6 +5251,12 @@ class Widget {
         this._used = this.term.styles.computeFor(this);
         this.needsDraw = true; // changed style or state
     }
+    _drawFill(buffer) {
+        if (this._used.bg !== undefined && this._used.bg !== -1) {
+            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this._used.bg, this._used.bg);
+        }
+        return this;
+    }
     mousemove(e, _term) {
         this.hovered = this.contains(e);
         return false;
@@ -5321,7 +5327,7 @@ class Text extends Widget {
         if (!this.needsDraw)
             return;
         this.needsDraw = false;
-        buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this._used.bg, this._used.bg);
+        this._drawFill(buffer);
         let vOffset = 0;
         if (this._used.valign === 'bottom') {
             vOffset = this.bounds.height - this._lines.length;
@@ -5469,7 +5475,7 @@ class Table extends WidgetGroup {
         this.prefix = 'none';
         this.select = 'cell';
         this.rowHeight = 1;
-        this.border = null;
+        this.border = 'none';
         this.tag = 'table';
         this.size = opts.size || term.height;
         this.bounds.width = 0;
@@ -5478,8 +5484,11 @@ class Table extends WidgetGroup {
             this.columns.push(col);
             this.bounds.width += col.width;
         });
-        if (opts.border)
+        if (opts.border) {
+            if (opts.border === true)
+                opts.border = 'ascii';
             this.border = opts.border;
+        }
         this.rowHeight = opts.rowHeight || 1;
         this.bounds.height = 1;
         if (opts.header) {
@@ -5527,19 +5536,21 @@ class Table extends WidgetGroup {
             y += this.rowHeight + borderAdj;
         });
         this.bounds.height = y - this.bounds.y;
+        this.bounds.width = x - this.bounds.x;
         this._updateStyle();
         return this;
     }
     draw(buffer) {
         if (!this.needsDraw)
             return;
+        this._drawFill(buffer);
         this.children.forEach((w) => {
             if (w.prop('row') >= this.size)
                 return;
-            if (this.border) {
+            if (this.border !== 'none') {
                 this.term
                     .pos(w.bounds.x - 1, w.bounds.y - 1)
-                    .border(w.bounds.width + 2, w.bounds.height + 2, this.border.color || this._used.fg, this.border.ascii);
+                    .border(w.bounds.width + 2, w.bounds.height + 2, this._used.fg, this.border == 'ascii');
             }
             w.draw(buffer);
         });

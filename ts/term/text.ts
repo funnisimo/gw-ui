@@ -37,15 +37,7 @@ export class Text extends Widget {
         if (!this.needsDraw) return;
         this.needsDraw = false;
 
-        buffer.fillRect(
-            this.bounds.x,
-            this.bounds.y,
-            this.bounds.width,
-            this.bounds.height,
-            ' ',
-            this._used.bg,
-            this._used.bg
-        );
+        this._drawFill(buffer);
 
         let vOffset = 0;
         if (this._used.valign === 'bottom') {

@@ -121,6 +121,21 @@ export abstract class Widget implements Style.Stylable {
 
     abstract draw(buffer: GWU.canvas.DataBuffer): void;
 
+    protected _drawFill(buffer: GWU.canvas.DataBuffer): this {
+        if (this._used.bg !== undefined && this._used.bg !== -1) {
+            buffer.fillRect(
+                this.bounds.x,
+                this.bounds.y,
+                this.bounds.width,
+                this.bounds.height,
+                ' ',
+                this._used.bg,
+                this._used.bg
+            );
+        }
+        return this;
+    }
+
     mousemove(e: GWU.io.Event, _term: Term): boolean {
         this.hovered = this.contains(e);
         return false;

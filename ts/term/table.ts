@@ -63,11 +63,12 @@ export class Column {
     }
 
     makeHeader(table: Table): Text {
-        return new Text(table.term, this.header, {
+        return table.term.text(this.header, {
             class: this.headerClass,
             tag: table.headerTag,
             width: this.width,
             height: table.rowHeight,
+            depth: table.depth + 1,
         });
     }
 
@@ -81,11 +82,12 @@ export class Column {
             text = this.format(data);
         }
 
-        const widget = new Text(table.term, text, {
+        const widget = table.term.text(text, {
             class: this.dataClass,
             tag: table.dataTag,
             width: this.width,
             height: table.rowHeight,
+            depth: table.depth + 1,
         });
         widget.prop(row % 2 == 0 ? 'even' : 'odd', true);
         widget.prop('row', row);
@@ -201,7 +203,7 @@ export class Table extends WidgetGroup {
         return true;
     }
 
-    mousemove(e: GWU.io.Event, _term: Term): boolean {
+    mousemove(e: GWU.io.Event): boolean {
         const active = (this.hovered = this.contains(e));
         if (!active) {
             this.children.forEach((c) => (c.hovered = false));

@@ -2,15 +2,29 @@ import * as GWU from 'gw-utils';
 import * as Style from './style';
 import { Term } from './term';
 
+// return true if you want to stop the event from propagating
+export type EventCb = (
+    name: string,
+    widget: Widget,
+    io?: GWU.io.Event
+) => boolean; // | Promise<boolean>;
+
 export interface WidgetOptions {
     id?: string;
+    parent?: Widget;
 
+    x?: number;
+    y?: number;
     width?: number;
     height?: number;
 
     style?: Style.StyleOptions;
     class?: string | string[];
     tag?: string;
+
+    tabStop?: boolean;
+    action?: string;
+    depth?: number;
 }
 
 Style.defaultStyle.add('*', {
@@ -26,6 +40,8 @@ export abstract class Widget implements Style.Stylable {
     tag: string = 'text';
     term: Term;
     bounds: GWU.xy.Bounds = new GWU.xy.Bounds(0, 0, 0, 1);
+    depth = 0;
+    events: Record<string, EventCb[]> = {};
 
     _style = new Style.Style();
     _used!: Style.ComputedStyle;
@@ -41,11 +57,23 @@ export abstract class Widget implements Style.Stylable {
         this.bounds.x = term.x;
         this.bounds.y = term.y;
 
+        if (opts.x !== undefined) {
+            this.bounds.x = opts.x;
+        }
+        if (opts.y !== undefined) {
+            this.bounds.y = opts.y;
+        }
         if (opts.tag) {
             this.tag = opts.tag;
         }
         if (opts.id) {
             this.attr('id', opts.id);
+        }
+        if (opts.parent) {
+            this.parent = opts.parent;
+        }
+        if (opts.depth) {
+            this.depth = opts.depth;
         }
         if (opts.style) {
             this._style.set(opts.style);
@@ -55,6 +83,12 @@ export abstract class Widget implements Style.Stylable {
                 opts.class = opts.class.split(/ +/g);
             }
             this.classes = opts.class.map((c) => c.trim());
+        }
+        if (opts.tabStop) {
+            this.prop('tabStop', true);
+        }
+        if (opts.action) {
+            this.attr('action', opts.action);
         }
 
         this._updateStyle();
@@ -142,9 +176,65 @@ export abstract class Widget implements Style.Stylable {
         return false;
     }
 
-    mousemove(e: GWU.io.Event, _term: Term): boolean {
+    // Events
+
+    mousemove(e: GWU.io.Event): boolean {
         this.hovered = this.contains(e);
+        if (this.hovered) {
+            return this._fireEvent('mousemove', this, e);
+        }
         return false;
+    }
+
+    click(e: GWU.io.Event): boolean {
+        return this._bubbleEvent('click', this, e);
+    }
+
+    on(event: string, cb: EventCb): this {
+        let handlers = this.events[event];
+        if (!handlers) {
+            handlers = this.events[event] = [];
+        }
+        if (!handlers.includes(cb)) {
+            handlers.push(cb);
+        }
+        return this;
+    }
+
+    off(event: string, cb?: EventCb): this {
+        let handlers = this.events[event];
+        if (!handlers) return this;
+        if (cb) {
+            GWU.arrayDelete(handlers, cb);
+        } else {
+            handlers.length = 0; // clear all handlers
+        }
+        return this;
+    }
+
+    _fireEvent(
+        name: string,
+        source: Widget,
+        e?: Partial<GWU.io.Event>
+    ): boolean {
+        if (!e || !e.type) {
+            e = GWU.io.makeCustomEvent(name, e);
+        }
+        const handlers = this.events[name] || [];
+        let handled = handlers.reduce(
+            (out, h) => h(name, source, e as GWU.io.Event) || out,
+            false
+        );
+        return handled;
+    }
+
+    _bubbleEvent(name: string, source: Widget, e?: GWU.io.Event): boolean {
+        let current: Widget | null = this;
+        while (current) {
+            if (current._fireEvent(name, source, e)) return true;
+            current = current.parent;
+        }
+        return this.term.fireEvent(name, source, e);
     }
 }
 
@@ -194,13 +284,29 @@ export class WidgetGroup extends Widget {
         return result;
     }
 
-    mousemove(e: GWU.io.Event, term: Term): boolean {
+    mousemove(e: GWU.io.Event): boolean {
         let handled = false;
         this.children.forEach((w) => {
-            if (w.mousemove(e, term)) {
+            if (w.mousemove(e)) {
                 handled = true;
             }
         });
-        return super.mousemove(e, term) || handled;
+        return super.mousemove(e) || handled;
+    }
+
+    tick(_e: GWU.io.Event): void {}
+
+    // returns true if click is handled by this widget (stopPropagation)
+    click(_e: GWU.io.Event): boolean {
+        return false;
+    }
+    // returns true if key is used by widget and you want to stopPropagation
+    keypress(_e: GWU.io.Event): boolean {
+        return false;
+    }
+
+    // returns true if key is used by widget and you want to stopPropagation
+    dir(_e: GWU.io.Event): boolean {
+        return false;
     }
 }

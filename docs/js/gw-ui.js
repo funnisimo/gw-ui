@@ -2190,7 +2190,7 @@
         ui.finishLayer();
         menu.clearHighlight();
     }
-    class Menu extends Widget$1 {
+    class Menu$1 extends Widget$1 {
         constructor(id, opts) {
             super(id, opts);
             this.activeIndex = -1;
@@ -5206,6 +5206,8 @@
         constructor(term, opts = {}) {
             this.tag = 'text';
             this.bounds = new GWU__namespace.xy.Bounds(0, 0, 0, 1);
+            this.depth = 0;
+            this.events = {};
             this._style = new Style();
             this.parent = null;
             this.classes = [];
@@ -5215,11 +5217,23 @@
             this.term = term;
             this.bounds.x = term.x;
             this.bounds.y = term.y;
+            if (opts.x !== undefined) {
+                this.bounds.x = opts.x;
+            }
+            if (opts.y !== undefined) {
+                this.bounds.y = opts.y;
+            }
             if (opts.tag) {
                 this.tag = opts.tag;
             }
             if (opts.id) {
                 this.attr('id', opts.id);
+            }
+            if (opts.parent) {
+                this.parent = opts.parent;
+            }
+            if (opts.depth) {
+                this.depth = opts.depth;
             }
             if (opts.style) {
                 this._style.set(opts.style);
@@ -5229,6 +5243,12 @@
                     opts.class = opts.class.split(/ +/g);
                 }
                 this.classes = opts.class.map((c) => c.trim());
+            }
+            if (opts.tabStop) {
+                this.prop('tabStop', true);
+            }
+            if (opts.action) {
+                this.attr('action', opts.action);
             }
             this._updateStyle();
         }
@@ -5290,9 +5310,55 @@
             }
             return false;
         }
-        mousemove(e, _term) {
+        // Events
+        mousemove(e) {
             this.hovered = this.contains(e);
+            if (this.hovered) {
+                return this._fireEvent('mousemove', this, e);
+            }
             return false;
+        }
+        click(e) {
+            return this._bubbleEvent('click', this, e);
+        }
+        on(event, cb) {
+            let handlers = this.events[event];
+            if (!handlers) {
+                handlers = this.events[event] = [];
+            }
+            if (!handlers.includes(cb)) {
+                handlers.push(cb);
+            }
+            return this;
+        }
+        off(event, cb) {
+            let handlers = this.events[event];
+            if (!handlers)
+                return this;
+            if (cb) {
+                GWU__namespace.arrayDelete(handlers, cb);
+            }
+            else {
+                handlers.length = 0; // clear all handlers
+            }
+            return this;
+        }
+        _fireEvent(name, source, e) {
+            if (!e || !e.type) {
+                e = GWU__namespace.io.makeCustomEvent(name, e);
+            }
+            const handlers = this.events[name] || [];
+            let handled = handlers.reduce((out, h) => h(name, source, e) || out, false);
+            return handled;
+        }
+        _bubbleEvent(name, source, e) {
+            let current = this;
+            while (current) {
+                if (current._fireEvent(name, source, e))
+                    return true;
+                current = current.parent;
+            }
+            return this.term.fireEvent(name, source, e);
         }
     }
     class WidgetGroup extends Widget {
@@ -5329,14 +5395,27 @@
             });
             return result;
         }
-        mousemove(e, term) {
+        mousemove(e) {
             let handled = false;
             this.children.forEach((w) => {
-                if (w.mousemove(e, term)) {
+                if (w.mousemove(e)) {
                     handled = true;
                 }
             });
-            return super.mousemove(e, term) || handled;
+            return super.mousemove(e) || handled;
+        }
+        tick(_e) { }
+        // returns true if click is handled by this widget (stopPropagation)
+        click(_e) {
+            return false;
+        }
+        // returns true if key is used by widget and you want to stopPropagation
+        keypress(_e) {
+            return false;
+        }
+        // returns true if key is used by widget and you want to stopPropagation
+        dir(_e) {
+            return false;
         }
     }
 
@@ -5473,11 +5552,12 @@
             this.dataClass = opts.dataClass || '';
         }
         makeHeader(table) {
-            return new Text(table.term, this.header, {
+            return table.term.text(this.header, {
                 class: this.headerClass,
                 tag: table.headerTag,
                 width: this.width,
                 height: table.rowHeight,
+                depth: table.depth + 1,
             });
         }
         makeData(table, data, col, row) {
@@ -5491,11 +5571,12 @@
             else {
                 text = this.format(data);
             }
-            const widget = new Text(table.term, text, {
+            const widget = table.term.text(text, {
                 class: this.dataClass,
                 tag: table.dataTag,
                 width: this.width,
                 height: table.rowHeight,
+                depth: table.depth + 1,
             });
             widget.prop(row % 2 == 0 ? 'even' : 'odd', true);
             widget.prop('row', row);
@@ -5596,7 +5677,7 @@
             this.needsDraw = false;
             return true;
         }
-        mousemove(e, _term) {
+        mousemove(e) {
             const active = (this.hovered = this.contains(e));
             if (!active) {
                 this.children.forEach((c) => (c.hovered = false));
@@ -5618,13 +5699,50 @@
         }
     }
 
+    class Menu extends WidgetGroup {
+        constructor(term, opts) {
+            super(term, opts);
+            this.tag = opts.tag || 'menu';
+            this.buttonClass = opts.buttonClass || '';
+            this.buttonTag = opts.buttonTag || 'mi';
+            this._initButtons(opts.buttons);
+        }
+        _initButtons(buttons) {
+            this.children = [];
+            const entries = Object.entries(buttons);
+            if (this.bounds.width <= 0) {
+                this.bounds.width = entries.reduce((out, [key]) => Math.max(out, GWU__namespace.text.length(key)), 0);
+            }
+            entries.forEach(([key, value], i) => {
+                if (typeof value === 'string') {
+                    const menu = this.term
+                        .text(key, {
+                        x: this.bounds.x,
+                        y: this.bounds.y + i,
+                        class: this.buttonClass,
+                        tag: this.buttonTag,
+                        width: this.bounds.width,
+                        height: 1,
+                        depth: this.depth + 1,
+                    })
+                        .on('click', (_n, w, e) => {
+                        return this._bubbleEvent(value, w, e);
+                    });
+                    this.children.push(menu);
+                }
+            });
+        }
+    }
+
     class Term {
         constructor(ui) {
             this.x = 0;
             this.y = 0;
             this.widgets = [];
+            this.allWidgets = [];
             this.styles = new Sheet();
             this._currentWidget = null;
+            this.events = {};
             this._style = new Style();
             this._grid = null;
             this._needsRender = false;
@@ -5858,8 +5976,21 @@
         get() {
             return this._currentWidget;
         }
+        addWidget(w) {
+            if (!w.parent) {
+                this.widgets.push(w);
+            }
+            this.allWidgets.push(w);
+            this.allWidgets.sort((a, b) => b.depth - a.depth); // higher depts first
+            return this;
+        }
+        removeWidget(w) {
+            GWU__namespace.arrayDelete(this.widgets, w);
+            GWU__namespace.arrayDelete(this.allWidgets, w);
+            return this;
+        }
         widgetAt(...args) {
-            return this.widgets.find((w) => w.contains(args[0], args[1])) || null;
+            return (this.allWidgets.find((w) => w.contains(args[0], args[1])) || null);
         }
         text(text, opts = {}) {
             // TODO - if in a grid cell, adjust width and height based on grid
@@ -5867,7 +5998,7 @@
             const widget = new Text(this, text, opts);
             // widget.draw(this.buffer);
             this._currentWidget = widget;
-            this.widgets.push(widget);
+            this.addWidget(widget);
             this._needsRender = true;
             return widget;
         }
@@ -5877,7 +6008,14 @@
             const widget = new Table(this, opts);
             // widget.draw(this.buffer);
             this._currentWidget = widget;
-            this.widgets.push(widget);
+            this.addWidget(widget);
+            this._needsRender = true;
+            return widget;
+        }
+        menu(opts) {
+            const widget = new Menu(this, opts);
+            this._currentWidget = widget;
+            this.addWidget(widget);
             this._needsRender = true;
             return widget;
         }
@@ -5889,11 +6027,48 @@
             return this;
         }
         // EVENTS
+        on(event, cb) {
+            let handlers = this.events[event];
+            if (!handlers) {
+                handlers = this.events[event] = [];
+            }
+            if (!handlers.includes(cb)) {
+                handlers.push(cb);
+            }
+            return this;
+        }
+        off(event, cb) {
+            let handlers = this.events[event];
+            if (!handlers)
+                return this;
+            if (cb) {
+                GWU__namespace.arrayDelete(handlers, cb);
+            }
+            else {
+                handlers.length = 0; // clear all handlers
+            }
+            return this;
+        }
+        fireEvent(name, source, e) {
+            if (!e || !e.type) {
+                e = GWU__namespace.io.makeCustomEvent(name, e);
+            }
+            const handlers = this.events[name] || [];
+            let handled = handlers.reduce((out, h) => h(name, source, e) || out, false);
+            return handled;
+        }
         mousemove(e) {
             this.widgets.forEach((w) => {
-                w.mousemove(e, this);
+                w.mousemove(e);
             });
-            return false;
+            return false; // TODO - this._done
+        }
+        click(e) {
+            const w = this.widgetAt(e);
+            if (w) {
+                w.click(e);
+            }
+            return false; // TODO - this._done
         }
         draw() {
             let didSomething = this._needsRender;
@@ -5916,6 +6091,7 @@
         Grid: Grid,
         Column: Column,
         Table: Table,
+        Menu: Menu,
         Term: Term
     });
 
@@ -5933,7 +6109,7 @@
     exports.Input = Input$1;
     exports.ItemEntry = ItemEntry;
     exports.List = List;
-    exports.Menu = Menu;
+    exports.Menu = Menu$1;
     exports.MenuButton = MenuButton;
     exports.Messages = Messages;
     exports.Sidebar = Sidebar;

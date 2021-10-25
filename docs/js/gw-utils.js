@@ -3648,6 +3648,9 @@
         isNull() {
             return this._r < 0;
         }
+        isConst() {
+            return !!this.name;
+        }
         equals(other) {
             if (typeof other === 'string') {
                 if (!other.startsWith('#'))
@@ -3665,6 +3668,8 @@
             });
         }
         copy(other) {
+            if (this.isConst())
+                return this.clone().copy(other);
             if (other instanceof Color) {
                 this.dances = other.dances;
             }
@@ -3678,7 +3683,7 @@
                 this.dances = other.dances;
             }
             if (other instanceof Color) {
-                this.name = other.name;
+                // this.name = other.name;
                 for (let i = 0; i < this._data.length; ++i) {
                     this._data[i] = other._data[i] || 0;
                 }
@@ -3692,6 +3697,8 @@
             return this;
         }
         set(other) {
+            if (this.isConst())
+                return this.clone().set(other);
             return this.copy(other);
         }
         _changed() {
@@ -3702,9 +3709,12 @@
             // @ts-ignore
             const other = new this.constructor();
             other.copy(this);
+            other.name = undefined; // no longer a named color (not const);
             return other;
         }
         assign(_r = -1, _g = 0, _b = 0, _rand = 0, _redRand = 0, _greenRand = 0, _blueRand = 0, dances) {
+            if (this.isConst())
+                return this.clone().assign(...arguments);
             for (let i = 0; i < this._data.length; ++i) {
                 this._data[i] = arguments[i] || 0;
             }
@@ -3714,6 +3724,8 @@
             return this._changed();
         }
         assignRGB(_r = -1, _g = 0, _b = 0, _rand = 0, _redRand = 0, _greenRand = 0, _blueRand = 0, dances) {
+            if (this.isConst())
+                return this.clone().assignRGB(...arguments);
             for (let i = 0; i < this._data.length; ++i) {
                 this._data[i] = Math.round((arguments[i] || 0) / 2.55);
             }
@@ -3723,11 +3735,15 @@
             return this._changed();
         }
         nullify() {
+            if (this.isConst())
+                return this.clone().nullify();
             this._data[0] = -1;
             this.dances = false;
             return this._changed();
         }
         blackOut() {
+            if (this.isConst())
+                return this.clone().blackOut();
             for (let i = 0; i < this._data.length; ++i) {
                 this._data[i] = 0;
             }
@@ -3755,12 +3771,16 @@
         clamp() {
             if (this.isNull())
                 return this;
+            if (this.isConst())
+                return this.clone().clamp();
             this._r = Math.min(100, Math.max(0, this._r));
             this._g = Math.min(100, Math.max(0, this._g));
             this._b = Math.min(100, Math.max(0, this._b));
             return this._changed();
         }
         mix(other, percent) {
+            if (this.isConst())
+                return this.clone().mix(other, percent);
             const O = from$2(other);
             if (O.isNull())
                 return this;
@@ -3779,6 +3799,8 @@
         lighten(percent) {
             if (this.isNull())
                 return this;
+            if (this.isConst())
+                return this.clone().lighten(percent);
             percent = Math.min(100, Math.max(0, percent));
             if (percent <= 0)
                 return this;
@@ -3792,6 +3814,8 @@
         darken(percent) {
             if (this.isNull())
                 return this;
+            if (this.isConst())
+                return this.clone().darken(percent);
             percent = Math.min(100, Math.max(0, percent));
             if (percent <= 0)
                 return this;
@@ -3804,8 +3828,10 @@
         bake(clearDancing = false) {
             if (this.isNull())
                 return this;
+            if (this.isConst())
+                return this.clone().bake(clearDancing);
             if (this.dances && !clearDancing)
-                return;
+                return this;
             this.dances = false;
             const d = this._data;
             if (d[3] + d[4] + d[5] + d[6]) {
@@ -3825,6 +3851,8 @@
         }
         // Adds a color to this one
         add(other, percent = 100) {
+            if (this.isConst())
+                return this.clone().add(other, percent);
             const O = from$2(other);
             if (O.isNull())
                 return this;
@@ -3840,6 +3868,8 @@
         scale(percent) {
             if (this.isNull() || percent == 100)
                 return this;
+            if (this.isConst())
+                return this.clone().scale(percent);
             percent = Math.max(0, percent);
             for (let i = 0; i < this._data.length; ++i) {
                 this._data[i] = Math.round((this._data[i] * percent) / 100);
@@ -3849,6 +3879,8 @@
         multiply(other) {
             if (this.isNull())
                 return this;
+            if (this.isConst())
+                return this.clone().multiply(other);
             let data;
             if (Array.isArray(other)) {
                 data = other;
@@ -3868,6 +3900,8 @@
         normalize() {
             if (this.isNull())
                 return this;
+            if (this.isConst())
+                return this.clone().normalize();
             const max = Math.max(this._r, this._g, this._b);
             if (max <= 100)
                 return this;

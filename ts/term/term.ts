@@ -3,17 +3,20 @@ import { UICore } from '../types';
 import { Grid } from './grid';
 import * as Text from './text';
 import * as Style from './style';
-import { Widget } from './widget';
+import * as Widget from './widget';
 import * as Table from './table';
+import * as Menu from './menu';
 
 export class Term {
     ui: UICore;
     x = 0;
     y = 0;
 
-    widgets: Widget[] = [];
+    widgets: Widget.Widget[] = [];
+    allWidgets: Widget.Widget[] = [];
     styles = new Style.Sheet();
-    _currentWidget: Widget | null = null;
+    _currentWidget: Widget.Widget | null = null;
+    events: Record<string, Widget.EventCb[]> = {};
 
     _style = new Style.Style();
 
@@ -317,14 +320,31 @@ export class Term {
 
     // WIDGETS
 
-    get(): Widget | null {
+    get(): Widget.Widget | null {
         return this._currentWidget;
     }
 
-    widgetAt(x: number, y: number): Widget | null;
-    widgetAt(xy: GWU.xy.XY): Widget | null;
-    widgetAt(...args: any[]): Widget | null {
-        return this.widgets.find((w) => w.contains(args[0], args[1])) || null;
+    addWidget(w: Widget.Widget): this {
+        if (!w.parent) {
+            this.widgets.push(w);
+        }
+        this.allWidgets.push(w);
+        this.allWidgets.sort((a, b) => b.depth - a.depth); // higher depts first
+        return this;
+    }
+
+    removeWidget(w: Widget.Widget): this {
+        GWU.arrayDelete(this.widgets, w);
+        GWU.arrayDelete(this.allWidgets, w);
+        return this;
+    }
+
+    widgetAt(x: number, y: number): Widget.Widget | null;
+    widgetAt(xy: GWU.xy.XY): Widget.Widget | null;
+    widgetAt(...args: any[]): Widget.Widget | null {
+        return (
+            this.allWidgets.find((w) => w.contains(args[0], args[1])) || null
+        );
     }
 
     text(text: string, opts: Text.TextOptions = {}): Text.Text {
@@ -333,7 +353,7 @@ export class Term {
         const widget = new Text.Text(this, text, opts);
         // widget.draw(this.buffer);
         this._currentWidget = widget;
-        this.widgets.push(widget);
+        this.addWidget(widget);
         this._needsRender = true;
         return widget;
     }
@@ -344,7 +364,15 @@ export class Term {
         const widget = new Table.Table(this, opts);
         // widget.draw(this.buffer);
         this._currentWidget = widget;
-        this.widgets.push(widget);
+        this.addWidget(widget);
+        this._needsRender = true;
+        return widget;
+    }
+
+    menu(opts: Menu.MenuOptions): Menu.Menu {
+        const widget = new Menu.Menu(this, opts);
+        this._currentWidget = widget;
+        this.addWidget(widget);
         this._needsRender = true;
         return widget;
     }
@@ -360,12 +388,59 @@ export class Term {
 
     // EVENTS
 
+    on(event: string, cb: Widget.EventCb): this {
+        let handlers = this.events[event];
+        if (!handlers) {
+            handlers = this.events[event] = [];
+        }
+        if (!handlers.includes(cb)) {
+            handlers.push(cb);
+        }
+        return this;
+    }
+
+    off(event: string, cb?: Widget.EventCb): this {
+        let handlers = this.events[event];
+        if (!handlers) return this;
+        if (cb) {
+            GWU.arrayDelete(handlers, cb);
+        } else {
+            handlers.length = 0; // clear all handlers
+        }
+        return this;
+    }
+
+    fireEvent(
+        name: string,
+        source: Widget.Widget,
+        e?: Partial<GWU.io.Event>
+    ): boolean {
+        if (!e || !e.type) {
+            e = GWU.io.makeCustomEvent(name, e);
+        }
+        const handlers = this.events[name] || [];
+        let handled = handlers.reduce(
+            (out, h) => h(name, source, e as GWU.io.Event) || out,
+            false
+        );
+        return handled;
+    }
+
     mousemove(e: GWU.io.Event): boolean {
         this.widgets.forEach((w) => {
-            w.mousemove(e, this);
+            w.mousemove(e);
         });
 
-        return false;
+        return false; // TODO - this._done
+    }
+
+    click(e: GWU.io.Event): boolean {
+        const w = this.widgetAt(e);
+        if (w) {
+            w.click(e);
+        }
+
+        return false; // TODO - this._done
     }
 
     draw() {

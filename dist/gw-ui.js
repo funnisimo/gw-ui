@@ -5487,21 +5487,21 @@
             this.prefix = 'none';
             this.select = 'cell';
             this.rowHeight = 1;
+            this.border = null;
             this.tag = 'table';
+            this.size = opts.size || term.height;
             this.bounds.width = 0;
             opts.columns.forEach((o) => {
                 const col = new Column(o);
                 this.columns.push(col);
                 this.bounds.width += col.width;
             });
+            if (opts.border)
+                this.border = opts.border;
             this.rowHeight = opts.rowHeight || 1;
-            if (!opts.height && opts.data) {
-                opts.height = opts.data.length * this.rowHeight;
-            }
-            this.bounds.height = opts.height || this.rowHeight;
+            this.bounds.height = 1;
             if (opts.header) {
                 this.showHeader = true;
-                this.bounds.height += 1;
             }
             if (opts.headerTag)
                 this.headerTag = opts.headerTag;
@@ -5520,34 +5520,49 @@
                 return this._data;
             this._data = data;
             this.children = []; // get rid of old format...
-            let x = this.bounds.x;
-            let y = this.bounds.y;
+            const borderAdj = this.border ? 1 : 0;
+            let x = this.bounds.x + borderAdj;
+            let y = this.bounds.y + borderAdj;
             if (this.showHeader) {
                 this.columns.forEach((col) => {
                     this.term.pos(x, y);
                     const th = col.makeHeader(this);
                     this.children.push(th);
-                    x += col.width;
+                    x += col.width + borderAdj;
                 });
-                y += this.rowHeight;
+                y += this.rowHeight + borderAdj;
             }
             this._data.forEach((obj, j) => {
-                if (y > this.bounds.bottom)
+                if (j >= this.size)
                     return;
-                x = this.bounds.x;
+                x = this.bounds.x + borderAdj;
                 this.columns.forEach((col, i) => {
                     this.term.pos(x, y);
                     const td = col.makeData(this, obj, i, j);
                     this.children.push(td);
-                    x += col.width;
+                    x += col.width + borderAdj;
                 });
-                y += this.rowHeight;
+                y += this.rowHeight + borderAdj;
             });
+            this.bounds.height = y - this.bounds.y;
             this._updateStyle();
             return this;
         }
-        // draw(buffer: GWU.canvas.DataBuffer, parentX = 0, parentY = 0) {
-        // }
+        draw(buffer) {
+            if (!this.needsDraw)
+                return;
+            this.children.forEach((w) => {
+                if (w.prop('row') >= this.size)
+                    return;
+                if (this.border) {
+                    this.term
+                        .pos(w.bounds.x - 1, w.bounds.y - 1)
+                        .border(w.bounds.width + 2, w.bounds.height + 2, this.border.color || this._used.fg, this.border.ascii);
+                }
+                w.draw(buffer);
+            });
+            this.needsDraw = false;
+        }
         mousemove(e, term) {
             let result = super.mousemove(e, term);
             const hovered = this.children.find((c) => c.hovered);

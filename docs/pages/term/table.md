@@ -117,6 +117,8 @@ const data = [
 term.pos(5, 5).table({
     header: true,
     select: 'row',
+    border: { color: 'red', ascii: true },
+    height: 6,
     columns: [
         { header: 'Name', width: 10 },
         {

@@ -79,8 +79,11 @@ export abstract class Widget implements Style.Stylable {
     prop(name: string, v: PropType): this;
     prop(name: string, v?: PropType): this | PropType | undefined {
         if (v === undefined) return this._props[name];
-        this._props[name] = v;
-        this._updateStyle();
+        const current = this._props[name];
+        if (current !== v) {
+            this._props[name] = v;
+            this._updateStyle();
+        }
         return this;
     }
 
@@ -119,9 +122,11 @@ export abstract class Widget implements Style.Stylable {
         this.needsDraw = true; // changed style or state
     }
 
-    abstract draw(buffer: GWU.canvas.DataBuffer): void;
+    draw(_buffer: GWU.canvas.DataBuffer, _force = false): boolean {
+        return false;
+    }
 
-    protected _drawFill(buffer: GWU.canvas.DataBuffer): this {
+    protected _drawFill(buffer: GWU.canvas.DataBuffer): boolean {
         if (this._used.bg !== undefined && this._used.bg !== -1) {
             buffer.fillRect(
                 this.bounds.x,
@@ -132,8 +137,9 @@ export abstract class Widget implements Style.Stylable {
                 this._used.bg,
                 this._used.bg
             );
+            return true;
         }
-        return this;
+        return false;
     }
 
     mousemove(e: GWU.io.Event, _term: Term): boolean {
@@ -175,10 +181,17 @@ export class WidgetGroup extends Widget {
         }
     }
 
-    draw(buffer: GWU.canvas.DataBuffer) {
-        if (!this.needsDraw) return;
-        this.children.forEach((w) => w.draw(buffer));
+    draw(buffer: GWU.canvas.DataBuffer, force = false): boolean {
         this.needsDraw = false;
+        return this._drawChildren(buffer, force);
+    }
+
+    _drawChildren(buffer: GWU.canvas.DataBuffer, force = false): boolean {
+        let result = false;
+        this.children.forEach((w) => {
+            result = w.draw(buffer, force) || result;
+        });
+        return result;
     }
 
     mousemove(e: GWU.io.Event, term: Term): boolean {

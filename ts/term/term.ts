@@ -18,6 +18,7 @@ export class Term {
     _style = new Style.Style();
 
     _grid: Grid | null = null;
+    _needsRender = false;
 
     constructor(ui: UICore) {
         this.ui = ui;
@@ -133,6 +134,8 @@ export class Term {
     // just erase screen
     erase(color?: GWU.color.ColorBase): this {
         // remove all widgets
+        this._needsRender = true;
+
         if (color === undefined) {
             color = this._style.bg;
         }
@@ -151,6 +154,7 @@ export class Term {
             this._style.bg,
             this._style.bg
         );
+        this._needsRender = true;
         return this;
     }
 
@@ -165,6 +169,7 @@ export class Term {
             this._style.bg,
             this._style.bg
         );
+        this._needsRender = true;
         return this;
     }
 
@@ -184,6 +189,7 @@ export class Term {
                 this._style.bg
             );
         }
+        this._needsRender = true;
         return this;
     }
 
@@ -275,35 +281,37 @@ export class Term {
             style: this._style,
         });
         widget.draw(this.buffer);
+        this._needsRender = true;
         return this;
     }
 
     border(
         w: number,
         h: number,
-        bg?: GWU.color.ColorBase,
+        color?: GWU.color.ColorBase,
         ascii = false
     ): this {
-        bg = bg || this._style.fg;
+        color = color || this._style.fg;
         const buf = this.buffer;
         if (ascii) {
             for (let i = 1; i < w; ++i) {
-                buf.draw(this.x + i, this.y, '-', bg, -1);
-                buf.draw(this.x + i, this.y + h - 1, '-', bg, -1);
+                buf.draw(this.x + i, this.y, '-', color, -1);
+                buf.draw(this.x + i, this.y + h - 1, '-', color, -1);
             }
             for (let j = 1; j < h; ++j) {
-                buf.draw(this.x, this.y + j, '|', bg, -1);
-                buf.draw(this.x + w - 1, this.y + j, '|', bg, -1);
+                buf.draw(this.x, this.y + j, '|', color, -1);
+                buf.draw(this.x + w - 1, this.y + j, '|', color, -1);
             }
-            buf.draw(this.x, this.y, '+', bg);
-            buf.draw(this.x + w - 1, this.y, '+', bg);
-            buf.draw(this.x, this.y + h - 1, '+', bg);
-            buf.draw(this.x + w - 1, this.y + h - 1, '+', bg);
+            buf.draw(this.x, this.y, '+', color);
+            buf.draw(this.x + w - 1, this.y, '+', color);
+            buf.draw(this.x, this.y + h - 1, '+', color);
+            buf.draw(this.x + w - 1, this.y + h - 1, '+', color);
         } else {
             GWU.xy.forBorder(this.x, this.y, w, h, (x, y) => {
-                buf.draw(x, y, ' ', bg, bg);
+                buf.draw(x, y, ' ', color, color);
             });
         }
+        this._needsRender = true;
         return this;
     }
 
@@ -323,9 +331,10 @@ export class Term {
         // TODO - if in a grid cell, adjust width and height based on grid
         // opts.style = opts.style || this._style;
         const widget = new Text.Text(this, text, opts);
-        widget.draw(this.buffer);
+        // widget.draw(this.buffer);
         this._currentWidget = widget;
         this.widgets.push(widget);
+        this._needsRender = true;
         return widget;
     }
 
@@ -333,34 +342,41 @@ export class Term {
         // TODO - if in a grid cell, adjust width and height based on grid
         // opts.style = opts.style || this._style;
         const widget = new Table.Table(this, opts);
-        widget.draw(this.buffer);
+        // widget.draw(this.buffer);
         this._currentWidget = widget;
         this.widgets.push(widget);
+        this._needsRender = true;
         return widget;
     }
 
     // CONTROL
 
     render(): this {
-        this.ui.render();
+        if (this._needsRender) {
+            this.draw();
+        }
         return this;
     }
 
     // EVENTS
 
     mousemove(e: GWU.io.Event): boolean {
-        let handled = false;
         this.widgets.forEach((w) => {
-            if (w.mousemove(e, this)) {
-                handled = true;
-            }
+            w.mousemove(e, this);
         });
 
-        return handled;
+        return false;
     }
 
     draw() {
-        this.widgets.forEach((w) => w.draw(this.buffer));
-        this.render();
+        let didSomething = this._needsRender;
+        this.widgets.forEach((w) => {
+            didSomething = w.draw(this.buffer) || didSomething;
+        });
+        if (didSomething) {
+            console.log('draw');
+            this.ui.render();
+            this._needsRender = false;
+        }
     }
 }

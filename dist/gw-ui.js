@@ -5247,8 +5247,11 @@
         prop(name, v) {
             if (v === undefined)
                 return this._props[name];
-            this._props[name] = v;
-            this._updateStyle();
+            const current = this._props[name];
+            if (current !== v) {
+                this._props[name] = v;
+                this._updateStyle();
+            }
             return this;
         }
         contains(...args) {
@@ -5277,11 +5280,15 @@
             this._used = this.term.styles.computeFor(this);
             this.needsDraw = true; // changed style or state
         }
+        draw(_buffer, _force = false) {
+            return false;
+        }
         _drawFill(buffer) {
             if (this._used.bg !== undefined && this._used.bg !== -1) {
                 buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this._used.bg, this._used.bg);
+                return true;
             }
-            return this;
+            return false;
         }
         mousemove(e, _term) {
             this.hovered = this.contains(e);
@@ -5311,11 +5318,16 @@
                 this.children.forEach((c) => c._updateStyle());
             }
         }
-        draw(buffer) {
-            if (!this.needsDraw)
-                return;
-            this.children.forEach((w) => w.draw(buffer));
+        draw(buffer, force = false) {
             this.needsDraw = false;
+            return this._drawChildren(buffer, force);
+        }
+        _drawChildren(buffer, force = false) {
+            let result = false;
+            this.children.forEach((w) => {
+                result = w.draw(buffer, force) || result;
+            });
+            return result;
         }
         mousemove(e, term) {
             let handled = false;
@@ -5349,9 +5361,9 @@
                 this.bounds.height = this._lines.length;
             }
         }
-        draw(buffer) {
-            if (!this.needsDraw)
-                return;
+        draw(buffer, force = false) {
+            if (!this.needsDraw && !force)
+                return false;
             this.needsDraw = false;
             this._drawFill(buffer);
             let vOffset = 0;
@@ -5364,6 +5376,7 @@
             this._lines.forEach((line, i) => {
                 buffer.drawText(this.bounds.x, this.bounds.y + i + vOffset, line, this._used.fg, -1, this.bounds.width, this._used.align);
             });
+            return true;
         }
     }
 
@@ -5537,7 +5550,7 @@
                 return this._data;
             this._data = data;
             this.children = []; // get rid of old format...
-            const borderAdj = this.border ? 1 : 0;
+            const borderAdj = this.border !== 'none' ? 1 : 0;
             let x = this.bounds.x + borderAdj;
             let y = this.bounds.y + borderAdj;
             if (this.showHeader) {
@@ -5563,13 +5576,13 @@
             });
             this.bounds.height = y - this.bounds.y;
             this.bounds.width = x - this.bounds.x;
-            this._updateStyle();
+            this._updateStyle(); // sets this.needsDraw
             return this;
         }
-        draw(buffer) {
-            if (!this.needsDraw)
-                return;
-            this._drawFill(buffer);
+        draw(buffer, force = false) {
+            if (!this.needsDraw && !force)
+                return false;
+            force = this._drawFill(buffer) || force;
             this.children.forEach((w) => {
                 if (w.prop('row') >= this.size)
                     return;
@@ -5578,13 +5591,18 @@
                         .pos(w.bounds.x - 1, w.bounds.y - 1)
                         .border(w.bounds.width + 2, w.bounds.height + 2, this._used.fg, this.border == 'ascii');
                 }
-                w.draw(buffer);
+                w.draw(buffer, force);
             });
             this.needsDraw = false;
+            return true;
         }
-        mousemove(e, term) {
-            let result = super.mousemove(e, term);
-            const hovered = this.children.find((c) => c.hovered);
+        mousemove(e, _term) {
+            const active = (this.hovered = this.contains(e));
+            if (!active) {
+                this.children.forEach((c) => (c.hovered = false));
+                return false;
+            }
+            const hovered = this.children.find((c) => c.contains(e));
             if (hovered) {
                 if (this.select === 'none') {
                     this.children.forEach((c) => (c.hovered = false));
@@ -5596,7 +5614,7 @@
                     this.children.forEach((c) => (c.hovered = hovered.prop('col') == c.prop('col')));
                 }
             }
-            return result;
+            return true;
         }
     }
 
@@ -5609,6 +5627,7 @@
             this._currentWidget = null;
             this._style = new Style();
             this._grid = null;
+            this._needsRender = false;
             this.ui = ui;
             this.reset();
         }
@@ -5698,6 +5717,7 @@
         // just erase screen
         erase(color) {
             // remove all widgets
+            this._needsRender = true;
             if (color === undefined) {
                 color = this._style.bg;
             }
@@ -5707,11 +5727,13 @@
         eraseBelow() {
             // TODO - remove widgets below
             this.buffer.fillRect(0, this.y + 1, this.width, this.height - this.y - 1, ' ', this._style.bg, this._style.bg);
+            this._needsRender = true;
             return this;
         }
         eraseAbove() {
             // TODO - remove widgets above
             this.buffer.fillRect(0, 0, this.width, this.y - 1, ' ', this._style.bg, this._style.bg);
+            this._needsRender = true;
             return this;
         }
         eraseLine(n) {
@@ -5722,6 +5744,7 @@
                 // TODO - remove widgets on line
                 this.buffer.fillRect(0, n, this.width, 1, ' ', this._style.bg, this._style.bg);
             }
+            this._needsRender = true;
             return this;
         }
         eraseLineAbove() {
@@ -5803,30 +5826,32 @@
                 style: this._style,
             });
             widget.draw(this.buffer);
+            this._needsRender = true;
             return this;
         }
-        border(w, h, bg, ascii = false) {
-            bg = bg || this._style.fg;
+        border(w, h, color, ascii = false) {
+            color = color || this._style.fg;
             const buf = this.buffer;
             if (ascii) {
                 for (let i = 1; i < w; ++i) {
-                    buf.draw(this.x + i, this.y, '-', bg, -1);
-                    buf.draw(this.x + i, this.y + h - 1, '-', bg, -1);
+                    buf.draw(this.x + i, this.y, '-', color, -1);
+                    buf.draw(this.x + i, this.y + h - 1, '-', color, -1);
                 }
                 for (let j = 1; j < h; ++j) {
-                    buf.draw(this.x, this.y + j, '|', bg, -1);
-                    buf.draw(this.x + w - 1, this.y + j, '|', bg, -1);
+                    buf.draw(this.x, this.y + j, '|', color, -1);
+                    buf.draw(this.x + w - 1, this.y + j, '|', color, -1);
                 }
-                buf.draw(this.x, this.y, '+', bg);
-                buf.draw(this.x + w - 1, this.y, '+', bg);
-                buf.draw(this.x, this.y + h - 1, '+', bg);
-                buf.draw(this.x + w - 1, this.y + h - 1, '+', bg);
+                buf.draw(this.x, this.y, '+', color);
+                buf.draw(this.x + w - 1, this.y, '+', color);
+                buf.draw(this.x, this.y + h - 1, '+', color);
+                buf.draw(this.x + w - 1, this.y + h - 1, '+', color);
             }
             else {
                 GWU__namespace.xy.forBorder(this.x, this.y, w, h, (x, y) => {
-                    buf.draw(x, y, ' ', bg, bg);
+                    buf.draw(x, y, ' ', color, color);
                 });
             }
+            this._needsRender = true;
             return this;
         }
         // WIDGETS
@@ -5840,38 +5865,46 @@
             // TODO - if in a grid cell, adjust width and height based on grid
             // opts.style = opts.style || this._style;
             const widget = new Text(this, text, opts);
-            widget.draw(this.buffer);
+            // widget.draw(this.buffer);
             this._currentWidget = widget;
             this.widgets.push(widget);
+            this._needsRender = true;
             return widget;
         }
         table(opts) {
             // TODO - if in a grid cell, adjust width and height based on grid
             // opts.style = opts.style || this._style;
             const widget = new Table(this, opts);
-            widget.draw(this.buffer);
+            // widget.draw(this.buffer);
             this._currentWidget = widget;
             this.widgets.push(widget);
+            this._needsRender = true;
             return widget;
         }
         // CONTROL
         render() {
-            this.ui.render();
+            if (this._needsRender) {
+                this.draw();
+            }
             return this;
         }
         // EVENTS
         mousemove(e) {
-            let handled = false;
             this.widgets.forEach((w) => {
-                if (w.mousemove(e, this)) {
-                    handled = true;
-                }
+                w.mousemove(e, this);
             });
-            return handled;
+            return false;
         }
         draw() {
-            this.widgets.forEach((w) => w.draw(this.buffer));
-            this.render();
+            let didSomething = this._needsRender;
+            this.widgets.forEach((w) => {
+                didSomething = w.draw(this.buffer) || didSomething;
+            });
+            if (didSomething) {
+                console.log('draw');
+                this.ui.render();
+                this._needsRender = false;
+            }
         }
     }
 

@@ -1192,7 +1192,7 @@ declare class Text extends Widget {
     text: string;
     _lines: string[];
     constructor(term: Term, text: string, opts?: TextOptions);
-    draw(buffer: GWU.canvas.DataBuffer): void;
+    draw(buffer: GWU.canvas.DataBuffer, force?: boolean): boolean;
 }
 
 declare type FormatFn = GWU.text.Template;
@@ -1247,8 +1247,8 @@ declare class Table extends WidgetGroup {
     constructor(term: Term, opts: TableOptions);
     data(): DataType;
     data(data: DataType): this;
-    draw(buffer: GWU.canvas.DataBuffer): void;
-    mousemove(e: GWU.io.Event, term: Term): boolean;
+    draw(buffer: GWU.canvas.DataBuffer, force?: boolean): boolean;
+    mousemove(e: GWU.io.Event, _term: Term): boolean;
 }
 
 declare class Term {
@@ -1260,6 +1260,7 @@ declare class Term {
     _currentWidget: Widget | null;
     _style: Style;
     _grid: Grid | null;
+    _needsRender: boolean;
     constructor(ui: UICore);
     get buffer(): GWU.canvas.DataBuffer;
     get width(): number;
@@ -1300,7 +1301,7 @@ declare class Term {
     col(n: number): this;
     row(n: number): this;
     drawText(text: string, width?: number, _align?: GWU.text.Align): this;
-    border(w: number, h: number, bg?: GWU.color.ColorBase, ascii?: boolean): this;
+    border(w: number, h: number, color?: GWU.color.ColorBase, ascii?: boolean): this;
     get(): Widget | null;
     widgetAt(x: number, y: number): Widget | null;
     widgetAt(xy: GWU.xy.XY): Widget | null;
@@ -1347,8 +1348,8 @@ declare abstract class Widget implements Stylable {
     get hovered(): boolean;
     set hovered(v: boolean);
     _updateStyle(): void;
-    abstract draw(buffer: GWU.canvas.DataBuffer): void;
-    protected _drawFill(buffer: GWU.canvas.DataBuffer): this;
+    draw(_buffer: GWU.canvas.DataBuffer, _force?: boolean): boolean;
+    protected _drawFill(buffer: GWU.canvas.DataBuffer): boolean;
     mousemove(e: GWU.io.Event, _term: Term): boolean;
 }
 declare class WidgetGroup extends Widget {
@@ -1361,7 +1362,8 @@ declare class WidgetGroup extends Widget {
     widgetAt(e: GWU.xy.XY): Widget | null;
     widgetAt(x: number, y: number): Widget | null;
     _updateStyle(): void;
-    draw(buffer: GWU.canvas.DataBuffer): void;
+    draw(buffer: GWU.canvas.DataBuffer, force?: boolean): boolean;
+    _drawChildren(buffer: GWU.canvas.DataBuffer, force?: boolean): boolean;
     mousemove(e: GWU.io.Event, term: Term): boolean;
 }
 

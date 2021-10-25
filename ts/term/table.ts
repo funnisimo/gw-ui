@@ -146,7 +146,7 @@ export class Table extends WidgetGroup {
         this._data = data;
         this.children = []; // get rid of old format...
 
-        const borderAdj = this.border ? 1 : 0;
+        const borderAdj = this.border !== 'none' ? 1 : 0;
 
         let x = this.bounds.x + borderAdj;
         let y = this.bounds.y + borderAdj;
@@ -173,15 +173,15 @@ export class Table extends WidgetGroup {
         });
         this.bounds.height = y - this.bounds.y;
         this.bounds.width = x - this.bounds.x;
-        this._updateStyle();
+        this._updateStyle(); // sets this.needsDraw
 
         return this;
     }
 
-    draw(buffer: GWU.canvas.DataBuffer) {
-        if (!this.needsDraw) return;
+    draw(buffer: GWU.canvas.DataBuffer, force = false): boolean {
+        if (!this.needsDraw && !force) return false;
 
-        this._drawFill(buffer);
+        force = this._drawFill(buffer) || force;
 
         this.children.forEach((w) => {
             if (w.prop('row')! >= this.size) return;
@@ -195,15 +195,20 @@ export class Table extends WidgetGroup {
                         this.border == 'ascii'
                     );
             }
-            w.draw(buffer);
+            w.draw(buffer, force);
         });
         this.needsDraw = false;
+        return true;
     }
 
-    mousemove(e: GWU.io.Event, term: Term): boolean {
-        let result = super.mousemove(e, term);
+    mousemove(e: GWU.io.Event, _term: Term): boolean {
+        const active = (this.hovered = this.contains(e));
+        if (!active) {
+            this.children.forEach((c) => (c.hovered = false));
+            return false;
+        }
 
-        const hovered = this.children.find((c) => c.hovered);
+        const hovered = this.children.find((c) => c.contains(e));
 
         if (hovered) {
             if (this.select === 'none') {
@@ -218,6 +223,6 @@ export class Table extends WidgetGroup {
                 );
             }
         }
-        return result;
+        return true;
     }
 }

@@ -33,8 +33,8 @@ export class Text extends Widget {
         }
     }
 
-    draw(buffer: GWU.canvas.DataBuffer) {
-        if (!this.needsDraw) return;
+    draw(buffer: GWU.canvas.DataBuffer, force = false): boolean {
+        if (!this.needsDraw && !force) return false;
         this.needsDraw = false;
 
         this._drawFill(buffer);
@@ -57,5 +57,6 @@ export class Text extends Widget {
                 this._used.align
             );
         });
+        return true;
     }
 }

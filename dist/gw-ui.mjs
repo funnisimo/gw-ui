@@ -5305,24 +5305,32 @@ class Text extends Widget {
         this.bounds.width = opts.width || 0;
         this._lines = GWU.text.splitIntoLines(this.text, this.bounds.width > 0 ? this.bounds.width : 100);
         if (this.bounds.width <= 0) {
-            this.bounds.width = this._lines.reduce((out, line) => Math.max(out, line.length), 0);
+            this.bounds.width = this._lines.reduce((out, line) => Math.max(out, GWU.text.length(line)), 0);
         }
         if (opts.height) {
             if (this._lines.length > opts.height) {
                 this._lines.length = opts.height;
             }
+            this.bounds.height = opts.height;
         }
         else {
             this.bounds.height = this._lines.length;
         }
     }
-    draw(buffer, parentX = 0, parentY = 0) {
+    draw(buffer) {
         if (!this.needsDraw)
             return;
         this.needsDraw = false;
-        buffer.fillRect(this.bounds.x + parentX, this.bounds.y + parentY, this.bounds.width, this.bounds.height, ' ', this._used.bg, this._used.bg);
+        buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this._used.bg, this._used.bg);
+        let vOffset = 0;
+        if (this._used.valign === 'bottom') {
+            vOffset = this.bounds.height - this._lines.length;
+        }
+        else if (this._used.valign === 'middle') {
+            vOffset = Math.floor((this.bounds.height - this._lines.length) / 2);
+        }
         this._lines.forEach((line, i) => {
-            buffer.drawText(this.bounds.x + parentX, this.bounds.y + i + parentY, line, this._used.fg, -1, this.bounds.width, this._used.align);
+            buffer.drawText(this.bounds.x, this.bounds.y + i + vOffset, line, this._used.fg, -1, this.bounds.width, this._used.align);
         });
     }
 }

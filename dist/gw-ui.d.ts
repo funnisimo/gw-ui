@@ -1192,7 +1192,7 @@ declare class Text extends Widget {
     text: string;
     _lines: string[];
     constructor(term: Term, text: string, opts?: TextOptions);
-    draw(buffer: GWU.canvas.DataBuffer, parentX?: number, parentY?: number): void;
+    draw(buffer: GWU.canvas.DataBuffer): void;
 }
 
 declare type FormatFn = GWU.text.Template;
@@ -1350,7 +1350,7 @@ declare abstract class Widget implements Stylable {
     get hovered(): boolean;
     set hovered(v: boolean);
     _updateStyle(): void;
-    abstract draw(buffer: GWU.canvas.DataBuffer, parentX?: number, parentY?: number): void;
+    abstract draw(buffer: GWU.canvas.DataBuffer): void;
     mousemove(e: GWU.io.Event, _term: Term): boolean;
 }
 declare class WidgetGroup extends Widget {

@@ -119,11 +119,7 @@ export abstract class Widget implements Style.Stylable {
         this.needsDraw = true; // changed style or state
     }
 
-    abstract draw(
-        buffer: GWU.canvas.DataBuffer,
-        parentX?: number,
-        parentY?: number
-    ): void;
+    abstract draw(buffer: GWU.canvas.DataBuffer): void;
 
     mousemove(e: GWU.io.Event, _term: Term): boolean {
         this.hovered = this.contains(e);

@@ -344,7 +344,9 @@ export class Term {
     widgetAt(xy: GWU.xy.XY): Widget.Widget | null;
     widgetAt(...args: any[]): Widget.Widget | null {
         return (
-            this.allWidgets.find((w) => w.contains(args[0], args[1])) || null
+            this.allWidgets.find(
+                (w) => w.contains(args[0], args[1]) && !w.hidden
+            ) || null
         );
     }
 

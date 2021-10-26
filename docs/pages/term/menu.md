@@ -25,6 +25,8 @@ const ui = new GWI.UI({ canvas, loop: LOOP });
 
 const term = new GWI.term.Term(ui);
 
+term.styles.add('text:hover', { fg: 'red' });
+
 term.styles.add('mi', { fg: 'black', bg: 'gray', align: 'left' });
 term.styles.add('mi:hover', { fg: 'teal' });
 
@@ -36,7 +38,6 @@ term.pos(5, 5).menu({
         'Button 4': 'ACTION',
     },
 });
-
 const results = term.pos(25, 5).text('', { style: { fg: 'light_blue' } });
 
 term.on('ACTION', (name, w, ev) => {
@@ -62,20 +63,39 @@ const ui = new GWI.UI({ canvas, loop: LOOP });
 
 const term = new GWI.term.Term(ui);
 
+term.styles.add('text:hover', { fg: 'red' });
+
 term.styles.add('mi', { fg: 'black', bg: 'gray', align: 'left' });
 term.styles.add('mi:hover', { fg: 'teal' });
+term.styles.add('select', { bg: 'white', fg: 'black' });
 
-const menu = term.pos(5, 5).menu({
-    buttons: {
-        'Button 1': 'ACTION',
-        'Button 2': 'ACTION',
-        'Button 3': 'ACTION',
-        'Button 4': 'ACTION',
-    },
+const button = term.pos(5, 4).text('Click Me ' + '\u25bc', { tag: 'select' });
+term.pos(5, 6).text('Will hide Me ');
+
+const menu = term
+    .pos(5, 5)
+    .menu({
+        width: Math.max(button.bounds.width, 8),
+        buttons: {
+            'Button 1': 'ACTION',
+            'Button 2': 'ACTION',
+            'Button 3': 'ACTION',
+            'Button 4': 'ACTION',
+        },
+    })
+    .on('click', (name, w, e) => {
+        console.log('menu click');
+        menu.hidden = true;
+    });
+
+menu.hidden = true;
+
+button.on('click', (name, w, e) => {
+    menu.toggleProp('hidden');
 });
 
-term.on('click', (name, w, e) => {
-    menu.toggleProp('hidden');
+term.on('ACTION', (name, w, e) => {
+    console.log('Click! - ' + name);
 });
 
 LOOP.run(term);

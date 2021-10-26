@@ -90,9 +90,10 @@ export class Widget implements Style.Stylable {
         if (opts.action) {
             this.action = opts.action;
             this.on('click', (_n, w, e) => {
-                if (!this.action) return false;
-                this._bubbleEvent(this.action, w, e);
-                return true;
+                if (this.action) {
+                    this._bubbleEvent(this.action, w, e);
+                }
+                return false; // keep bubbling
             });
         }
 
@@ -201,14 +202,16 @@ export class Widget implements Style.Stylable {
     // Events
 
     mousemove(e: GWU.io.Event): boolean {
-        this.hovered = this.contains(e);
+        this.hovered = !e.defaultPrevented && !this.hidden && this.contains(e);
         if (this.hovered) {
-            return this._fireEvent('mousemove', this, e);
+            this._bubbleEvent('mousemove', this, e); // my parent(s) are all hovered too, but...
+            e.preventDefault(); // nobody else can be the hovered element (this is for people below me in the depth order)
         }
         return false;
     }
 
     click(e: GWU.io.Event): boolean {
+        if (this.hidden) return false;
         return this._bubbleEvent('click', this, e);
     }
 

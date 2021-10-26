@@ -5249,10 +5249,10 @@
             if (opts.action) {
                 this.action = opts.action;
                 this.on('click', (_n, w, e) => {
-                    if (!this.action)
-                        return false;
-                    this._bubbleEvent(this.action, w, e);
-                    return true;
+                    if (this.action) {
+                        this._bubbleEvent(this.action, w, e);
+                    }
+                    return false; // keep bubbling
                 });
             }
             this._updateStyle();
@@ -5334,13 +5334,16 @@
         }
         // Events
         mousemove(e) {
-            this.hovered = this.contains(e);
+            this.hovered = !e.defaultPrevented && !this.hidden && this.contains(e);
             if (this.hovered) {
-                return this._fireEvent('mousemove', this, e);
+                this._bubbleEvent('mousemove', this, e); // my parent(s) are all hovered too, but...
+                e.preventDefault(); // nobody else can be the hovered element (this is for people below me in the depth order)
             }
             return false;
         }
         click(e) {
+            if (this.hidden)
+                return false;
             return this._bubbleEvent('click', this, e);
         }
         on(event, cb) {
@@ -5775,7 +5778,7 @@
             }
             entries.forEach(([key, value], i) => {
                 if (typeof value === 'string') {
-                    const menu = this.term.text(key, {
+                    const menuItem = this.term.text(key, {
                         x: this.bounds.x,
                         y: this.bounds.y + i,
                         class: this.buttonClass,
@@ -5786,7 +5789,7 @@
                         parent: this,
                         action: value,
                     });
-                    this.children.push(menu);
+                    this.children.push(menuItem);
                 }
             });
         }
@@ -6080,7 +6083,7 @@
             return this;
         }
         widgetAt(...args) {
-            return (this.allWidgets.find((w) => w.contains(args[0], args[1])) || null);
+            return (this.allWidgets.find((w) => w.contains(args[0], args[1]) && !w.hidden) || null);
         }
         text(text, opts = {}) {
             // TODO - if in a grid cell, adjust width and height based on grid

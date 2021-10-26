@@ -2000,6 +2000,51 @@
         unite: unite
     });
 
+    class Event {
+        constructor(type, opts) {
+            this.target = null;
+            this.defaultPrevented = false;
+            // Key Event
+            this.key = '';
+            this.code = '';
+            this.shiftKey = false;
+            this.ctrlKey = false;
+            this.altKey = false;
+            this.metaKey = false;
+            // Dir Event extends KeyEvent
+            this.dir = null;
+            // Mouse Event
+            this.x = -1;
+            this.y = -1;
+            this.clientX = -1;
+            this.clientY = -1;
+            // Tick Event
+            this.dt = 0;
+            this.reset(type, opts);
+        }
+        preventDefault() {
+            this.defaultPrevented = true;
+        }
+        reset(type, opts) {
+            this.type = type;
+            this.target = null;
+            this.defaultPrevented = false;
+            this.shiftKey = false;
+            this.ctrlKey = false;
+            this.altKey = false;
+            this.metaKey = false;
+            this.key = '';
+            this.code = '';
+            this.x = -1;
+            this.y = -1;
+            this.dir = null;
+            this.dt = 0;
+            this.target = null;
+            if (opts) {
+                Object.assign(this, opts);
+            }
+        }
+    }
     let IOMAP = {};
     const DEAD_EVENTS = [];
     const KEYPRESS = 'keypress';
@@ -2070,22 +2115,10 @@
     }
     // CUSTOM
     function makeCustomEvent(type, opts) {
-        const ev = DEAD_EVENTS.pop() || {};
-        ev.shiftKey = false;
-        ev.ctrlKey = false;
-        ev.altKey = false;
-        ev.metaKey = false;
-        ev.key = '';
-        ev.code = '';
-        ev.x = -1;
-        ev.y = -1;
-        ev.dir = null;
-        ev.dt = 0;
-        ev.target = null;
-        if (opts) {
-            Object.assign(ev, opts);
-        }
-        ev.type = type;
+        const ev = DEAD_EVENTS.pop() || null;
+        if (!ev)
+            return new Event(type, opts);
+        ev.reset(type, opts);
         return ev;
     }
     // TICK
@@ -2113,7 +2146,7 @@
         if (e.altKey) {
             code = '/' + code;
         }
-        const ev = DEAD_EVENTS.pop() || {};
+        const ev = DEAD_EVENTS.pop() || new Event(KEYPRESS);
         ev.shiftKey = e.shiftKey;
         ev.ctrlKey = e.ctrlKey;
         ev.altKey = e.altKey;
@@ -2151,7 +2184,7 @@
     }
     // MOUSE
     function makeMouseEvent(e, x, y) {
-        const ev = DEAD_EVENTS.pop() || {};
+        const ev = DEAD_EVENTS.pop() || new Event(e.type);
         ev.shiftKey = e.shiftKey;
         ev.ctrlKey = e.ctrlKey;
         ev.altKey = e.altKey;
@@ -2422,6 +2455,7 @@
 
     var io = /*#__PURE__*/Object.freeze({
         __proto__: null,
+        Event: Event,
         KEYPRESS: KEYPRESS,
         MOUSEMOVE: MOUSEMOVE,
         CLICK: CLICK,
@@ -3554,6 +3588,7 @@
     class Color {
         constructor(r = -1, g = 0, b = 0, rand = 0, redRand = 0, greenRand = 0, blueRand = 0, dances = false) {
             this.dances = false;
+            this._const = false;
             this._data = new Int16Array([
                 r,
                 g,
@@ -3649,7 +3684,7 @@
             return this._r < 0;
         }
         isConst() {
-            return !!this.name;
+            return this._const;
         }
         equals(other) {
             if (typeof other === 'string') {
@@ -3683,7 +3718,7 @@
                 this.dances = other.dances;
             }
             if (other instanceof Color) {
-                // this.name = other.name;
+                this.name = other.name;
                 for (let i = 0; i < this._data.length; ++i) {
                     this._data[i] = other._data[i] || 0;
                 }
@@ -3709,7 +3744,6 @@
             // @ts-ignore
             const other = new this.constructor();
             other.copy(this);
-            other.name = undefined; // no longer a named color (not const);
             return other;
         }
         assign(_r = -1, _g = 0, _b = 0, _rand = 0, _redRand = 0, _greenRand = 0, _blueRand = 0, dances) {
@@ -4078,6 +4112,8 @@
             info = args[0];
         }
         const c = info instanceof Color ? info : make$4(info);
+        // @ts-ignore
+        c._const = true;
         colors[name] = c;
         c.name = name;
         return c;

@@ -40,7 +40,7 @@ export class Menu extends Widget.WidgetGroup {
         }
         entries.forEach(([key, value], i) => {
             if (typeof value === 'string') {
-                const menu = this.term.text(key, {
+                const menuItem = this.term.text(key, {
                     x: this.bounds.x,
                     y: this.bounds.y + i,
                     class: this.buttonClass,
@@ -51,7 +51,7 @@ export class Menu extends Widget.WidgetGroup {
                     parent: this,
                     action: value,
                 });
-                this.children.push(menu);
+                this.children.push(menuItem);
             }
         });
     }

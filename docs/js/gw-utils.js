@@ -5715,7 +5715,8 @@
             this._changed = new Int8Array(width * height);
         }
         draw(data) {
-            if (!data.changed)
+            // TODO - Remove?
+            if (data._data.every((style, i) => style === this._data[i]))
                 return false;
             data.changed = false;
             let changed = false;
@@ -5994,8 +5995,13 @@ void main() {
         //     return false;
         // }
         draw(data) {
-            if (!data.changed)
+            // TODO - remove?
+            if (data._data.every((style, i) => {
+                const index = 2 + i * VERTICES_PER_TILE;
+                return style === this._data[index];
+            })) {
                 return false;
+            }
             data._data.forEach((style, i) => {
                 const index = i * VERTICES_PER_TILE;
                 this._data[index + 2] = style;

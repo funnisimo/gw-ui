@@ -6,30 +6,39 @@ import * as Style from './style';
 import * as Widget from './widget';
 import * as Table from './table';
 import * as Menu from './menu';
+import * as Button from './button';
+import * as Border from './border';
 
 export class Term {
     ui: UICore;
-    x = 0;
-    y = 0;
+    opts: Record<string, any> = {};
 
-    widgets: Widget.Widget[] = [];
+    // widgets: Widget.Widget[] = [];
     allWidgets: Widget.Widget[] = [];
     styles = new Style.Sheet();
-    _currentWidget: Widget.Widget | null = null;
+    // _currentWidget: Widget.Widget | null = null;
     events: Record<string, Widget.EventCb[]> = {};
 
-    _style = new Style.Style();
-
     _grid: Grid | null = null;
-    _needsRender = false;
+    _needsDraw = false;
+    _buffer: GWU.canvas.Buffer | null = null;
+    body: Widget.WidgetGroup;
 
     constructor(ui: UICore) {
         this.ui = ui;
+        this.body = new Widget.WidgetGroup(this, {
+            tag: 'body',
+            id: 'BODY',
+            depth: -1,
+            width: ui.width,
+            height: ui.height,
+        });
+        this.allWidgets.push(this.body);
         this.reset();
     }
 
     get buffer(): GWU.canvas.DataBuffer {
-        return this.ui.buffer;
+        return this._buffer || this.ui.buffer;
     }
     get width(): number {
         return this.ui.width;
@@ -38,58 +47,80 @@ export class Term {
         return this.ui.height;
     }
 
+    get needsDraw(): boolean {
+        return this._needsDraw;
+    }
+    set needsDraw(v: boolean) {
+        this._needsDraw = v;
+    }
+
+    // RUN
+
+    show() {
+        if (this._buffer) return;
+        this._buffer = this.ui.startLayer();
+    }
+
+    hide() {
+        if (!this._buffer) return;
+        this.ui.finishLayer();
+        this._buffer = null;
+    }
+
     // COLOR
 
     reset(): this {
-        this._style.copy(this.styles.get('*')!);
+        this.opts = { x: 0, y: 0 };
         return this;
     }
 
     fg(v: GWU.color.ColorBase): this {
-        this._style.set('fg', v);
+        this.opts.fg = v;
         return this;
     }
 
     bg(v: GWU.color.ColorBase): this {
-        this._style.set('bg', v);
+        this.opts.bg = v;
         return this;
     }
 
     dim(pct = 25, fg = true, bg = false): this {
-        this._style.dim(pct, fg, bg);
+        if (fg) {
+            this.opts.fg = GWU.color.from(this.opts.fg || 'white').darken(pct);
+        }
+        if (bg) {
+            this.opts.bg = GWU.color.from(this.opts.bg || 'black').darken(pct);
+        }
         return this;
     }
 
     bright(pct = 25, fg = true, bg = false): this {
-        this._style.bright(pct, fg, bg);
+        if (fg) {
+            this.opts.fg = GWU.color.from(this.opts.fg || 'white').lighten(pct);
+        }
+        if (bg) {
+            this.opts.bg = GWU.color.from(this.opts.bg || 'black').lighten(pct);
+        }
         return this;
     }
 
     invert(): this {
-        this._style.invert();
+        [this.opts.fg, this.opts.bg] = [this.opts.bg, this.opts.fg];
         return this;
     }
 
     // STYLE
 
-    loadStyle(name: string): this {
-        const s = this.styles.get(name);
-        if (s) {
-            this._style.copy(s);
-        }
-        return this;
-    }
-
     style(opts: Style.StyleOptions): this {
-        this._style.set(opts);
+        Object.assign(this.opts, opts);
         return this;
     }
 
     // POSITION
 
     pos(x: number, y: number): this {
-        this.x = GWU.clamp(x, 0, this.width);
-        this.y = GWU.clamp(y, 0, this.height);
+        this.opts.x = GWU.clamp(x, 0, this.width);
+        this.opts.y = GWU.clamp(y, 0, this.height);
         return this;
     }
 
@@ -98,8 +129,8 @@ export class Term {
     }
 
     move(dx: number, dy: number): this {
-        this.x = GWU.clamp(this.x + dx, 0, this.width);
-        this.y = GWU.clamp(this.y + dy, 0, this.height);
+        this.opts.x = GWU.clamp(this.opts.x + dx, 0, this.width);
+        this.opts.y = GWU.clamp(this.opts.y + dy, 0, this.height);
         return this;
     }
 
@@ -120,95 +151,102 @@ export class Term {
     }
 
     nextLine(n = 1): this {
-        return this.pos(0, this.y + n);
+        return this.pos(0, this.opts.y + n);
     }
 
     prevLine(n = 1): this {
-        return this.pos(0, this.y - n);
+        return this.pos(0, this.opts.y - n);
     }
 
     // EDIT
 
     // erase and move back to top left
     clear(color?: GWU.color.ColorBase): this {
-        return this.erase(color).pos(0, 0);
-    }
-
-    // just erase screen
-    erase(color?: GWU.color.ColorBase): this {
-        // remove all widgets
-        this._needsRender = true;
-
-        if (color === undefined) {
-            color = this._style.bg;
+        this.body.children = [];
+        this.allWidgets = [this.body];
+        if (color) {
+            this.body.style().set('bg', color);
+        } else {
+            this.body.style().unset('bg');
         }
-        this.buffer.fill(' ', color, color);
         return this;
     }
 
-    eraseBelow(): this {
-        // TODO - remove widgets below
-        this.buffer.fillRect(
-            0,
-            this.y + 1,
-            this.width,
-            this.height - this.y - 1,
-            ' ',
-            this._style.bg,
-            this._style.bg
-        );
-        this._needsRender = true;
-        return this;
-    }
+    // // just erase screen
+    // erase(color?: GWU.color.ColorBase): this {
+    //     // remove all widgets
+    //     this._needsDraw = true;
 
-    eraseAbove(): this {
-        // TODO - remove widgets above
-        this.buffer.fillRect(
-            0,
-            0,
-            this.width,
-            this.y - 1,
-            ' ',
-            this._style.bg,
-            this._style.bg
-        );
-        this._needsRender = true;
-        return this;
-    }
+    //     if (color === undefined) {
+    //         color = this.opts.bg;
+    //     }
+    //     this.buffer.fill(' ', color, color);
+    //     return this;
+    // }
 
-    eraseLine(n: number): this {
-        if (n === undefined) {
-            n = this.y;
-        }
-        if (n >= 0 && n < this.height) {
-            // TODO - remove widgets on line
-            this.buffer.fillRect(
-                0,
-                n,
-                this.width,
-                1,
-                ' ',
-                this._style.bg,
-                this._style.bg
-            );
-        }
-        this._needsRender = true;
-        return this;
-    }
+    // eraseBelow(): this {
+    //     // TODO - remove widgets below
+    //     this.buffer.fillRect(
+    //         0,
+    //         this.y + 1,
+    //         this.width,
+    //         this.height - this.y - 1,
+    //         ' ',
+    //         this._style.bg,
+    //         this._style.bg
+    //     );
+    //     this._needsDraw = true;
+    //     return this;
+    // }
 
-    eraseLineAbove(): this {
-        return this.eraseLine(this.y - 1);
-    }
+    // eraseAbove(): this {
+    //     // TODO - remove widgets above
+    //     this.buffer.fillRect(
+    //         0,
+    //         0,
+    //         this.width,
+    //         this.y - 1,
+    //         ' ',
+    //         this._style.bg,
+    //         this._style.bg
+    //     );
+    //     this._needsDraw = true;
+    //     return this;
+    // }
 
-    eraseLineBelow(): this {
-        return this.eraseLine(this.y + 1);
-    }
+    // eraseLine(n: number): this {
+    //     if (n === undefined) {
+    //         n = this.y;
+    //     }
+    //     if (n >= 0 && n < this.height) {
+    //         // TODO - remove widgets on line
+    //         this.buffer.fillRect(
+    //             0,
+    //             n,
+    //             this.width,
+    //             1,
+    //             ' ',
+    //             this._style.bg,
+    //             this._style.bg
+    //         );
+    //     }
+    //     this._needsDraw = true;
+    //     return this;
+    // }
+
+    // eraseLineAbove(): this {
+    //     return this.eraseLine(this.y - 1);
+    // }
+
+    // eraseLineBelow(): this {
+    //     return this.eraseLine(this.y + 1);
+    // }
 
     // GRID
 
     // erases/clears current grid information
     grid(): this {
-        this._grid = new Grid(this.x, this.y);
+        this._grid = new Grid(this.opts.x, this.opts.y);
         return this;
     }
 
@@ -276,66 +314,29 @@ export class Term {
         return this;
     }
 
-    // DRAW
-
-    drawText(text: string, width?: number, _align?: GWU.text.Align): this {
-        const widget = new Text.Text(this, text, {
-            width,
-            style: this._style,
-        });
-        widget.draw(this.buffer);
-        this._needsRender = true;
-        return this;
-    }
-
-    border(
-        w: number,
-        h: number,
-        color?: GWU.color.ColorBase,
-        ascii = false
-    ): this {
-        color = color || this._style.fg;
-        const buf = this.buffer;
-        if (ascii) {
-            for (let i = 1; i < w; ++i) {
-                buf.draw(this.x + i, this.y, '-', color, -1);
-                buf.draw(this.x + i, this.y + h - 1, '-', color, -1);
-            }
-            for (let j = 1; j < h; ++j) {
-                buf.draw(this.x, this.y + j, '|', color, -1);
-                buf.draw(this.x + w - 1, this.y + j, '|', color, -1);
-            }
-            buf.draw(this.x, this.y, '+', color);
-            buf.draw(this.x + w - 1, this.y, '+', color);
-            buf.draw(this.x, this.y + h - 1, '+', color);
-            buf.draw(this.x + w - 1, this.y + h - 1, '+', color);
-        } else {
-            GWU.xy.forBorder(this.x, this.y, w, h, (x, y) => {
-                buf.draw(x, y, ' ', color, color);
-            });
-        }
-        this._needsRender = true;
-        return this;
-    }
-
     // WIDGETS
 
-    get(): Widget.Widget | null {
-        return this._currentWidget;
-    }
-
     addWidget(w: Widget.Widget): this {
-        if (!w.parent) {
-            this.widgets.push(w);
+        const index = this.allWidgets.findIndex((aw) => aw.depth <= w.depth);
+        if (index < 0) {
+            this.allWidgets.push(w);
+        } else {
+            this.allWidgets.splice(index, 0, w);
         }
-        this.allWidgets.push(w);
-        this.allWidgets.sort((a, b) => b.depth - a.depth); // higher depts first
+        if (!w.parent) {
+            this.body.addChild(w);
+        }
+        this.needsDraw = true;
         return this;
     }
 
     removeWidget(w: Widget.Widget): this {
-        GWU.arrayDelete(this.widgets, w);
+        // GWU.arrayDelete(this.widgets, w);
         GWU.arrayDelete(this.allWidgets, w);
+        this.needsDraw = true;
+        if (w.parent) {
+            w.parent.removeChild(w);
+        }
         return this;
     }
 
@@ -350,39 +351,55 @@ export class Term {
     text(text: string, opts: Text.TextOptions = {}): Text.Text {
         // TODO - if in a grid cell, adjust width and height based on grid
         // opts.style = opts.style || this._style;
-        const widget = new Text.Text(this, text, opts);
-        // widget.draw(this.buffer);
-        this._currentWidget = widget;
+
+        const _opts = Object.assign({}, this.opts, opts);
+        const widget = new Text.Text(this, text, _opts);
         this.addWidget(widget);
-        this._needsRender = true;
+        this._needsDraw = true;
         return widget;
     }
 
     table(opts: Table.TableOptions): Table.Table {
         // TODO - if in a grid cell, adjust width and height based on grid
         // opts.style = opts.style || this._style;
-        const widget = new Table.Table(this, opts);
-        // widget.draw(this.buffer);
-        this._currentWidget = widget;
+        const _opts = Object.assign({}, this.opts, opts);
+        const widget = new Table.Table(this, _opts);
         this.addWidget(widget);
-        this._needsRender = true;
+        this._needsDraw = true;
         return widget;
     }
 
     menu(opts: Menu.MenuOptions): Menu.Menu {
-        const widget = new Menu.Menu(this, opts);
-        this._currentWidget = widget;
+        const _opts = Object.assign({}, this.opts, opts);
+
+        const widget = new Menu.Menu(this, _opts);
         this.addWidget(widget);
-        this._needsRender = true;
+        this._needsDraw = true;
+        return widget;
+    }
+
+    button(opts: Button.ButtonOptions): Button.Button {
+        const _opts = Object.assign({}, this.opts, opts);
+
+        const widget = new Button.Button(this, _opts);
+        this.addWidget(widget);
+        this._needsDraw = true;
+        return widget;
+    }
+
+    border(opts: Border.BorderOptions): Border.Border {
+        const _opts = Object.assign({}, this.opts, opts);
+
+        const widget = new Border.Border(this, _opts);
+        this.addWidget(widget);
+        this._needsDraw = true;
         return widget;
     }
 
     // CONTROL
 
     render(): this {
-        if (this._needsRender) {
-            this.draw();
-        }
+        this.draw();
         return this;
     }
 
@@ -412,7 +429,7 @@ export class Term {
 
     fireEvent(
         name: string,
-        source: Widget.Widget,
+        source: Widget.Widget | null,
         e?: Partial<GWU.io.Event>
     ): boolean {
         if (!e || !e.type) {
@@ -427,7 +444,7 @@ export class Term {
     }
 
     mousemove(e: GWU.io.Event): boolean {
-        this.widgets.forEach((w) => {
+        this.allWidgets.forEach((w) => {
             w.mousemove(e);
         });
 
@@ -438,20 +455,34 @@ export class Term {
         const w = this.widgetAt(e);
         if (w) {
             w.click(e);
+        } else {
+            this.fireEvent('click', null, e);
         }
 
         return false; // TODO - this._done
     }
 
     draw() {
-        let didSomething = this._needsRender;
-        this.widgets.forEach((w) => {
-            didSomething = w.draw(this.buffer) || didSomething;
-        });
-        if (didSomething) {
-            console.log('draw');
-            this.ui.render();
-            this._needsRender = false;
+        if (this.styles.dirty) {
+            this._needsDraw = true;
+            this.allWidgets.forEach((w) => w._updateStyle());
+            this.styles.dirty = false;
         }
+        if (!this._needsDraw) return;
+        this._needsDraw = false;
+
+        if (!this._buffer) {
+            this.show();
+        }
+
+        this.ui.resetLayerBuffer();
+
+        // draw from low depth to high depth
+        for (let i = this.allWidgets.length - 1; i >= 0; --i) {
+            const w = this.allWidgets[i];
+            w.draw(this._buffer!);
+        }
+        console.log('draw');
+        this.ui.render();
     }
 }

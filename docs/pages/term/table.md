@@ -126,7 +126,8 @@ term.pos(5, 5).table({
     header: true,
     select: 'row',
     border: 'ascii',
-    style: { bg: 'dark_red', fg: 'red' },
+    // bg: 'dark_red',
+    fg: 'dark_red',
     height: 6,
     columns: [
         { header: 'Name', width: 10 },

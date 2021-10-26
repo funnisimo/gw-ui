@@ -36,7 +36,9 @@ term.pos(2, 3).text(
 );
 
 term.pos(2, 9).text('This one has some stylying and ΩredΩcolored text∆!', {
-    style: { fg: 'light_teal', bg: 'dark_gray', valign: 'bottom' },
+    fg: 'light_teal',
+    bg: 'dark_gray',
+    valign: 'bottom',
     height: 3,
 });
 

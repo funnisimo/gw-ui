@@ -30,7 +30,7 @@ data.forEach((row, i) => {
 
     row.forEach((col, j) => {
         term.col(j);
-        term.border(14, 3, 'light_blue', true);
+        term.border({ width: 14, height: 3, fg: 'light_blue', ascii: true });
         term.move(2, 1).text(col, { classes });
     });
     term.endRow(2);

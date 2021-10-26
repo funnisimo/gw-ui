@@ -40,19 +40,17 @@ export class Menu extends Widget.WidgetGroup {
         }
         entries.forEach(([key, value], i) => {
             if (typeof value === 'string') {
-                const menu = this.term
-                    .text(key, {
-                        x: this.bounds.x,
-                        y: this.bounds.y + i,
-                        class: this.buttonClass,
-                        tag: this.buttonTag,
-                        width: this.bounds.width,
-                        height: 1,
-                        depth: this.depth + 1,
-                    })
-                    .on('click', (_n, w, e) => {
-                        return this._bubbleEvent(value, w, e);
-                    });
+                const menu = this.term.text(key, {
+                    x: this.bounds.x,
+                    y: this.bounds.y + i,
+                    class: this.buttonClass,
+                    tag: this.buttonTag,
+                    width: this.bounds.width,
+                    height: 1,
+                    depth: this.depth + 1,
+                    parent: this,
+                    action: value,
+                });
                 this.children.push(menu);
             }
         });

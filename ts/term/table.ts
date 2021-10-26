@@ -3,6 +3,7 @@ import { WidgetGroup, WidgetOptions } from './widget';
 import { Term } from './term';
 import { PrefixType } from '../html';
 import { Text } from './text';
+import { drawBorder } from './border';
 
 export type FormatFn = GWU.text.Template; // (data: any, index: number) => string;
 export type Value = string | number;
@@ -180,26 +181,23 @@ export class Table extends WidgetGroup {
         return this;
     }
 
-    draw(buffer: GWU.canvas.DataBuffer, force = false): boolean {
-        if (!this.needsDraw && !force) return false;
-
-        force = this._drawFill(buffer) || force;
+    _draw(buffer: GWU.canvas.DataBuffer): boolean {
+        this._drawFill(buffer);
 
         this.children.forEach((w) => {
             if (w.prop('row')! >= this.size) return;
             if (this.border !== 'none') {
-                this.term
-                    .pos(w.bounds.x - 1, w.bounds.y - 1)
-                    .border(
-                        w.bounds.width + 2,
-                        w.bounds.height + 2,
-                        this._used.fg,
-                        this.border == 'ascii'
-                    );
+                drawBorder(
+                    buffer,
+                    w.bounds.x - 1,
+                    w.bounds.y - 1,
+                    w.bounds.width + 2,
+                    w.bounds.height + 2,
+                    this._used,
+                    this.border == 'ascii'
+                );
             }
-            w.draw(buffer, force);
         });
-        this.needsDraw = false;
         return true;
     }
 

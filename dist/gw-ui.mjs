@@ -186,7 +186,7 @@ class Text$1 extends Widget$1 {
     }
 }
 
-class Button$1 extends Widget$1 {
+class Button$2 extends Widget$1 {
     constructor(id, opts) {
         super(id, opts);
     }
@@ -1123,9 +1123,9 @@ class UI {
         const cancelOpts = Object.assign({}, opts.buttons, { text: 'CANCEL' }, opts.cancel);
         const builder = buildDialog(this, width, height)
             .with(textWidget, { x: 0, y: 0 })
-            .with(new Button$1('OK', okOpts), { x: 0, bottom: 0 });
+            .with(new Button$2('OK', okOpts), { x: 0, bottom: 0 });
         if (opts.allowCancel) {
-            builder.with(new Button$1('CANCEL', cancelOpts), {
+            builder.with(new Button$2('CANCEL', cancelOpts), {
                 right: 0,
                 bottom: 0,
             });
@@ -1221,10 +1221,10 @@ class UI {
         const builder = buildDialog(this, width, height)
             .with(promptWidget, { x: 0, y: 0 })
             .with(inputWidget, { bottom: 2, x: 0 })
-            .with(new Button$1('OK', okOpts), { bottom: 0, x: 0 })
+            .with(new Button$2('OK', okOpts), { bottom: 0, x: 0 })
             .addBox(opts.box);
         if (opts.allowCancel) {
-            builder.with(new Button$1('CANCEL', cancelOpts), {
+            builder.with(new Button$2('CANCEL', cancelOpts), {
                 bottom: 0,
                 right: 0,
             });
@@ -3937,13 +3937,13 @@ defaultStyle$1.add('button', {
     fg: 'black',
     bg: 'gray',
 });
-class Button extends Element {
+class Button$1 extends Element {
     constructor(tag, sheet) {
         super(tag, sheet);
         this.on('keypress', this.keypress.bind(this));
         this.on('click', this.click.bind(this));
         this.prop('tabindex', true);
-        Object.entries(Button.default).forEach(([key, value]) => {
+        Object.entries(Button$1.default).forEach(([key, value]) => {
             if (typeof value === 'boolean') {
                 this.prop(key, value);
             }
@@ -3983,11 +3983,11 @@ class Button extends Element {
         return true;
     }
 }
-Button.default = {
+Button$1.default = {
     clickfocus: false,
 };
 installElement('button', (tag, sheet) => {
-    return new Button(tag, sheet);
+    return new Button$1(tag, sheet);
 });
 
 defaultStyle$1.add('fieldset', {
@@ -4822,7 +4822,7 @@ var index$1 = /*#__PURE__*/Object.freeze({
     Element: Element,
     Input: Input,
     CheckBox: CheckBox,
-    Button: Button,
+    Button: Button$1,
     FieldSet: FieldSet,
     UnorderedList: UnorderedList,
     OrderedList: OrderedList,
@@ -5182,21 +5182,19 @@ class Widget {
         this.bounds = new GWU.xy.Bounds(0, 0, 0, 1);
         this.depth = 0;
         this.events = {};
+        this.action = '';
         this._style = new Style();
         this.parent = null;
         this.classes = [];
         this._props = {};
         this._attrs = {};
-        this._needsDraw = true;
         this.term = term;
-        this.bounds.x = term.x;
-        this.bounds.y = term.y;
-        if (opts.x !== undefined) {
-            this.bounds.x = opts.x;
-        }
-        if (opts.y !== undefined) {
-            this.bounds.y = opts.y;
-        }
+        // this.bounds.x = term.x;
+        // this.bounds.y = term.y;
+        this.bounds.x = opts.x || 0;
+        this.bounds.y = opts.y || 0;
+        this.bounds.width = opts.width || 0;
+        this.bounds.height = opts.height || 1;
         if (opts.tag) {
             this.tag = opts.tag;
         }
@@ -5209,9 +5207,7 @@ class Widget {
         if (opts.depth) {
             this.depth = opts.depth;
         }
-        if (opts.style) {
-            this._style.set(opts.style);
-        }
+        this._style.set(opts);
         if (opts.class) {
             if (typeof opts.class === 'string') {
                 opts.class = opts.class.split(/ +/g);
@@ -5224,13 +5220,16 @@ class Widget {
         if (opts.action) {
             this.attr('action', opts.action);
         }
+        if (opts.action) {
+            this.action = opts.action;
+            this.on('click', (_n, w, e) => {
+                if (!this.action)
+                    return false;
+                this._bubbleEvent(this.action, w, e);
+                return true;
+            });
+        }
         this._updateStyle();
-    }
-    get needsDraw() {
-        return this._needsDraw;
-    }
-    set needsDraw(v) {
-        this._needsDraw = v;
     }
     attr(name, v) {
         if (v === undefined)
@@ -5246,6 +5245,11 @@ class Widget {
             this._props[name] = v;
             this._updateStyle();
         }
+        return this;
+    }
+    toggleProp(name) {
+        const current = !!this._props[name];
+        this.prop(name, !current);
         return this;
     }
     contains(...args) {
@@ -5270,12 +5274,30 @@ class Widget {
     set hovered(v) {
         this.prop('hover', v);
     }
+    get hidden() {
+        let current = this;
+        while (current) {
+            if (current.prop('hidden'))
+                return true;
+            current = current.parent;
+        }
+        return false;
+    }
+    set hidden(v) {
+        this.prop('hidden', v);
+    }
     _updateStyle() {
         this._used = this.term.styles.computeFor(this);
-        this.needsDraw = true; // changed style or state
+        this.term.needsDraw = true; // changed style or state
     }
-    draw(_buffer, _force = false) {
-        return false;
+    draw(buffer) {
+        if (this.hidden)
+            return false;
+        return this._draw(buffer);
+    }
+    _draw(buffer) {
+        this._drawFill(buffer);
+        return true;
     }
     _drawFill(buffer) {
         if (this._used.bg !== undefined && this._used.bg !== -1) {
@@ -5322,7 +5344,7 @@ class Widget {
             e = GWU.io.makeCustomEvent(name, e);
         }
         const handlers = this.events[name] || [];
-        let handled = handlers.reduce((out, h) => h(name, source, e) || out, false);
+        let handled = handlers.reduce((out, h) => h(name, source || this, e) || out, false);
         return handled;
     }
     _bubbleEvent(name, source, e) {
@@ -5340,84 +5362,122 @@ class WidgetGroup extends Widget {
         super(term, opts);
         this.children = [];
     }
-    get needsDraw() {
-        return this._needsDraw || this.children.some((w) => w.needsDraw);
+    // contains(e: GWU.xy.XY): boolean;
+    // contains(x: number, y: number): boolean;
+    // contains(...args: any[]): boolean {
+    //     return this.children.some((w) => w.contains(args[0], args[1]));
+    // }
+    // widgetAt(e: GWU.xy.XY): Widget | null;
+    // widgetAt(x: number, y: number): Widget | null;
+    // widgetAt(...args: any[]): Widget | null {
+    //     return this.children.find((w) => w.contains(args[0], args[1])) || null;
+    // }
+    // _updateStyle() {
+    //     super._updateStyle();
+    //     if (this.children) {
+    //         this.children.forEach((c) => c._updateStyle());
+    //     }
+    // }
+    addChild(w) {
+        if (w.parent && w.parent !== this)
+            throw new Error('Trying to add child that already has a parent.');
+        if (!this.children.includes(w)) {
+            this.children.push(w);
+        }
+        w.parent = this;
+        return this;
     }
-    set needsDraw(v) {
-        this._needsDraw = v;
+    removeChild(w) {
+        if (!w.parent || w.parent !== this)
+            throw new Error('Removing child that does not have this widget as parent.');
+        GWU.arrayDelete(this.children, w);
+        w.parent = null;
+        return this;
     }
-    contains(...args) {
-        return this.children.some((w) => w.contains(args[0], args[1]));
-    }
-    widgetAt(...args) {
-        return this.children.find((w) => w.contains(args[0], args[1])) || null;
-    }
-    _updateStyle() {
-        super._updateStyle();
-        if (this.children) {
-            this.children.forEach((c) => c._updateStyle());
+}
+
+class Border extends Widget {
+    constructor(term, opts) {
+        super(term, opts);
+        this.ascii = false;
+        if (opts.ascii) {
+            this.ascii = true;
+        }
+        else if (opts.fg && opts.ascii !== false) {
+            this.ascii = true;
         }
     }
-    draw(buffer, force = false) {
-        this.needsDraw = false;
-        return this._drawChildren(buffer, force);
+    contains(..._args) {
+        return false;
     }
-    _drawChildren(buffer, force = false) {
-        let result = false;
-        this.children.forEach((w) => {
-            result = w.draw(buffer, force) || result;
+    _draw(buffer) {
+        const w = this.bounds.width;
+        const h = this.bounds.height;
+        const x = this.bounds.x;
+        const y = this.bounds.y;
+        const ascii = this.ascii;
+        drawBorder(buffer, x, y, w, h, this._used, ascii);
+        return true;
+    }
+}
+function drawBorder(buffer, x, y, w, h, style, ascii) {
+    const fg = style.fg;
+    const bg = style.bg;
+    if (ascii) {
+        for (let i = 1; i < w; ++i) {
+            buffer.draw(x + i, y, '-', fg, bg);
+            buffer.draw(x + i, y + h - 1, '-', fg, bg);
+        }
+        for (let j = 1; j < h; ++j) {
+            buffer.draw(x, y + j, '|', fg, bg);
+            buffer.draw(x + w - 1, y + j, '|', fg, bg);
+        }
+        buffer.draw(x, y, '+', fg, bg);
+        buffer.draw(x + w - 1, y, '+', fg, bg);
+        buffer.draw(x, y + h - 1, '+', fg, bg);
+        buffer.draw(x + w - 1, y + h - 1, '+', fg, bg);
+    }
+    else {
+        GWU.xy.forBorder(x, y, w, h, (x, y) => {
+            buffer.draw(x, y, ' ', bg, bg);
         });
-        return result;
-    }
-    mousemove(e) {
-        let handled = false;
-        this.children.forEach((w) => {
-            if (w.mousemove(e)) {
-                handled = true;
-            }
-        });
-        return super.mousemove(e) || handled;
-    }
-    tick(_e) { }
-    // returns true if click is handled by this widget (stopPropagation)
-    click(_e) {
-        return false;
-    }
-    // returns true if key is used by widget and you want to stopPropagation
-    keypress(_e) {
-        return false;
-    }
-    // returns true if key is used by widget and you want to stopPropagation
-    dir(_e) {
-        return false;
     }
 }
 
 class Text extends Widget {
     constructor(term, text, opts = {}) {
         super(term, opts);
-        this.text = '';
+        this._text = '';
         this._lines = [];
-        this.text = text;
+        this._fixedWidth = false;
+        this._fixedHeight = false;
+        this._fixedHeight = !!opts.height;
+        this._fixedWidth = !!opts.width;
         this.bounds.width = opts.width || 0;
-        this._lines = GWU.text.splitIntoLines(this.text, this.bounds.width > 0 ? this.bounds.width : 100);
-        if (this.bounds.width <= 0) {
+        this.bounds.height = opts.height || 1;
+        this.text(text);
+    }
+    text(v) {
+        if (v === undefined)
+            return this._text;
+        this._text = v;
+        let w = this._fixedWidth ? this.bounds.width : 100;
+        this._lines = GWU.text.splitIntoLines(this._text, w);
+        if (!this._fixedWidth) {
             this.bounds.width = this._lines.reduce((out, line) => Math.max(out, GWU.text.length(line)), 0);
         }
-        if (opts.height) {
-            if (this._lines.length > opts.height) {
-                this._lines.length = opts.height;
+        if (this._fixedHeight) {
+            if (this._lines.length > this.bounds.height) {
+                this._lines.length = this.bounds.height;
             }
-            this.bounds.height = opts.height;
         }
         else {
             this.bounds.height = this._lines.length;
         }
+        this.term.needsDraw = true;
+        return this;
     }
-    draw(buffer, force = false) {
-        if (!this.needsDraw && !force)
-            return false;
-        this.needsDraw = false;
+    _draw(buffer, _force = false) {
         this._drawFill(buffer);
         let vOffset = 0;
         if (this._used.valign === 'bottom') {
@@ -5430,6 +5490,12 @@ class Text extends Widget {
             buffer.drawText(this.bounds.x, this.bounds.y + i + vOffset, line, this._used.fg, -1, this.bounds.width, this._used.align);
         });
         return true;
+    }
+}
+
+class Button extends Widget {
+    constructor(term, opts) {
+        super(term, opts);
     }
 }
 
@@ -5634,21 +5700,15 @@ class Table extends WidgetGroup {
         this._updateStyle(); // sets this.needsDraw
         return this;
     }
-    draw(buffer, force = false) {
-        if (!this.needsDraw && !force)
-            return false;
-        force = this._drawFill(buffer) || force;
+    _draw(buffer) {
+        this._drawFill(buffer);
         this.children.forEach((w) => {
             if (w.prop('row') >= this.size)
                 return;
             if (this.border !== 'none') {
-                this.term
-                    .pos(w.bounds.x - 1, w.bounds.y - 1)
-                    .border(w.bounds.width + 2, w.bounds.height + 2, this._used.fg, this.border == 'ascii');
+                drawBorder(buffer, w.bounds.x - 1, w.bounds.y - 1, w.bounds.width + 2, w.bounds.height + 2, this._used, this.border == 'ascii');
             }
-            w.draw(buffer, force);
         });
-        this.needsDraw = false;
         return true;
     }
     mousemove(e) {
@@ -5689,8 +5749,7 @@ class Menu extends WidgetGroup {
         }
         entries.forEach(([key, value], i) => {
             if (typeof value === 'string') {
-                const menu = this.term
-                    .text(key, {
+                const menu = this.term.text(key, {
                     x: this.bounds.x,
                     y: this.bounds.y + i,
                     class: this.buttonClass,
@@ -5698,9 +5757,8 @@ class Menu extends WidgetGroup {
                     width: this.bounds.width,
                     height: 1,
                     depth: this.depth + 1,
-                })
-                    .on('click', (_n, w, e) => {
-                    return this._bubbleEvent(value, w, e);
+                    parent: this,
+                    action: value,
                 });
                 this.children.push(menu);
             }
@@ -5710,21 +5768,28 @@ class Menu extends WidgetGroup {
 
 class Term {
     constructor(ui) {
-        this.x = 0;
-        this.y = 0;
-        this.widgets = [];
+        this.opts = {};
+        // widgets: Widget.Widget[] = [];
         this.allWidgets = [];
         this.styles = new Sheet();
-        this._currentWidget = null;
+        // _currentWidget: Widget.Widget | null = null;
         this.events = {};
-        this._style = new Style();
         this._grid = null;
-        this._needsRender = false;
+        this._needsDraw = false;
+        this._buffer = null;
         this.ui = ui;
+        this.body = new WidgetGroup(this, {
+            tag: 'body',
+            id: 'BODY',
+            depth: -1,
+            width: ui.width,
+            height: ui.height,
+        });
+        this.allWidgets.push(this.body);
         this.reset();
     }
     get buffer() {
-        return this.ui.buffer;
+        return this._buffer || this.ui.buffer;
     }
     get width() {
         return this.ui.width;
@@ -5732,55 +5797,76 @@ class Term {
     get height() {
         return this.ui.height;
     }
+    get needsDraw() {
+        return this._needsDraw;
+    }
+    set needsDraw(v) {
+        this._needsDraw = v;
+    }
+    // RUN
+    show() {
+        if (this._buffer)
+            return;
+        this._buffer = this.ui.startLayer();
+    }
+    hide() {
+        if (!this._buffer)
+            return;
+        this.ui.finishLayer();
+        this._buffer = null;
+    }
     // COLOR
     reset() {
-        this._style.copy(this.styles.get('*'));
+        this.opts = { x: 0, y: 0 };
         return this;
     }
     fg(v) {
-        this._style.set('fg', v);
+        this.opts.fg = v;
         return this;
     }
     bg(v) {
-        this._style.set('bg', v);
+        this.opts.bg = v;
         return this;
     }
     dim(pct = 25, fg = true, bg = false) {
-        this._style.dim(pct, fg, bg);
-        return this;
-    }
-    bright(pct = 25, fg = true, bg = false) {
-        this._style.bright(pct, fg, bg);
-        return this;
-    }
-    invert() {
-        this._style.invert();
-        return this;
-    }
-    // STYLE
-    loadStyle(name) {
-        const s = this.styles.get(name);
-        if (s) {
-            this._style.copy(s);
+        if (fg) {
+            this.opts.fg = GWU.color.from(this.opts.fg || 'white').darken(pct);
+        }
+        if (bg) {
+            this.opts.bg = GWU.color.from(this.opts.bg || 'black').darken(pct);
         }
         return this;
     }
+    bright(pct = 25, fg = true, bg = false) {
+        if (fg) {
+            this.opts.fg = GWU.color.from(this.opts.fg || 'white').lighten(pct);
+        }
+        if (bg) {
+            this.opts.bg = GWU.color.from(this.opts.bg || 'black').lighten(pct);
+        }
+        return this;
+    }
+    invert() {
+        [this.opts.fg, this.opts.bg] = [this.opts.bg, this.opts.fg];
+        return this;
+    }
+    // STYLE
     style(opts) {
-        this._style.set(opts);
+        Object.assign(this.opts, opts);
         return this;
     }
     // POSITION
     pos(x, y) {
-        this.x = GWU.clamp(x, 0, this.width);
-        this.y = GWU.clamp(y, 0, this.height);
+        this.opts.x = GWU.clamp(x, 0, this.width);
+        this.opts.y = GWU.clamp(y, 0, this.height);
         return this;
     }
     moveTo(x, y) {
         return this.pos(x, y);
     }
     move(dx, dy) {
-        this.x = GWU.clamp(this.x + dx, 0, this.width);
-        this.y = GWU.clamp(this.y + dy, 0, this.height);
+        this.opts.x = GWU.clamp(this.opts.x + dx, 0, this.width);
+        this.opts.y = GWU.clamp(this.opts.y + dy, 0, this.height);
         return this;
     }
     up(n = 1) {
@@ -5796,59 +5882,91 @@ class Term {
         return this.move(n, 0);
     }
     nextLine(n = 1) {
-        return this.pos(0, this.y + n);
+        return this.pos(0, this.opts.y + n);
     }
     prevLine(n = 1) {
-        return this.pos(0, this.y - n);
+        return this.pos(0, this.opts.y - n);
     }
     // EDIT
     // erase and move back to top left
     clear(color) {
-        return this.erase(color).pos(0, 0);
-    }
-    // just erase screen
-    erase(color) {
-        // remove all widgets
-        this._needsRender = true;
-        if (color === undefined) {
-            color = this._style.bg;
+        this.body.children = [];
+        this.allWidgets = [this.body];
+        if (color) {
+            this.body.style().set('bg', color);
         }
-        this.buffer.fill(' ', color, color);
-        return this;
-    }
-    eraseBelow() {
-        // TODO - remove widgets below
-        this.buffer.fillRect(0, this.y + 1, this.width, this.height - this.y - 1, ' ', this._style.bg, this._style.bg);
-        this._needsRender = true;
-        return this;
-    }
-    eraseAbove() {
-        // TODO - remove widgets above
-        this.buffer.fillRect(0, 0, this.width, this.y - 1, ' ', this._style.bg, this._style.bg);
-        this._needsRender = true;
-        return this;
-    }
-    eraseLine(n) {
-        if (n === undefined) {
-            n = this.y;
+        else {
+            this.body.style().unset('bg');
         }
-        if (n >= 0 && n < this.height) {
-            // TODO - remove widgets on line
-            this.buffer.fillRect(0, n, this.width, 1, ' ', this._style.bg, this._style.bg);
-        }
-        this._needsRender = true;
         return this;
     }
-    eraseLineAbove() {
-        return this.eraseLine(this.y - 1);
-    }
-    eraseLineBelow() {
-        return this.eraseLine(this.y + 1);
-    }
+    // // just erase screen
+    // erase(color?: GWU.color.ColorBase): this {
+    //     // remove all widgets
+    //     this._needsDraw = true;
+    //     if (color === undefined) {
+    //         color = this.opts.bg;
+    //     }
+    //     this.buffer.fill(' ', color, color);
+    //     return this;
+    // }
+    // eraseBelow(): this {
+    //     // TODO - remove widgets below
+    //     this.buffer.fillRect(
+    //         0,
+    //         this.y + 1,
+    //         this.width,
+    //         this.height - this.y - 1,
+    //         ' ',
+    //         this._style.bg,
+    //         this._style.bg
+    //     );
+    //     this._needsDraw = true;
+    //     return this;
+    // }
+    // eraseAbove(): this {
+    //     // TODO - remove widgets above
+    //     this.buffer.fillRect(
+    //         0,
+    //         0,
+    //         this.width,
+    //         this.y - 1,
+    //         ' ',
+    //         this._style.bg,
+    //         this._style.bg
+    //     );
+    //     this._needsDraw = true;
+    //     return this;
+    // }
+    // eraseLine(n: number): this {
+    //     if (n === undefined) {
+    //         n = this.y;
+    //     }
+    //     if (n >= 0 && n < this.height) {
+    //         // TODO - remove widgets on line
+    //         this.buffer.fillRect(
+    //             0,
+    //             n,
+    //             this.width,
+    //             1,
+    //             ' ',
+    //             this._style.bg,
+    //             this._style.bg
+    //         );
+    //     }
+    //     this._needsDraw = true;
+    //     return this;
+    // }
+    // eraseLineAbove(): this {
+    //     return this.eraseLine(this.y - 1);
+    // }
+    // eraseLineBelow(): this {
+    //     return this.eraseLine(this.y + 1);
+    // }
     // GRID
     // erases/clears current grid information
     grid() {
-        this._grid = new Grid(this.x, this.y);
+        this._grid = new Grid(this.opts.x, this.opts.y);
         return this;
     }
     endGrid() {
@@ -5911,56 +6029,28 @@ class Term {
         this.pos(this._grid.x, this._grid.y);
         return this;
     }
-    // DRAW
-    drawText(text, width, _align) {
-        const widget = new Text(this, text, {
-            width,
-            style: this._style,
-        });
-        widget.draw(this.buffer);
-        this._needsRender = true;
-        return this;
-    }
-    border(w, h, color, ascii = false) {
-        color = color || this._style.fg;
-        const buf = this.buffer;
-        if (ascii) {
-            for (let i = 1; i < w; ++i) {
-                buf.draw(this.x + i, this.y, '-', color, -1);
-                buf.draw(this.x + i, this.y + h - 1, '-', color, -1);
-            }
-            for (let j = 1; j < h; ++j) {
-                buf.draw(this.x, this.y + j, '|', color, -1);
-                buf.draw(this.x + w - 1, this.y + j, '|', color, -1);
-            }
-            buf.draw(this.x, this.y, '+', color);
-            buf.draw(this.x + w - 1, this.y, '+', color);
-            buf.draw(this.x, this.y + h - 1, '+', color);
-            buf.draw(this.x + w - 1, this.y + h - 1, '+', color);
+    // WIDGETS
+    addWidget(w) {
+        const index = this.allWidgets.findIndex((aw) => aw.depth <= w.depth);
+        if (index < 0) {
+            this.allWidgets.push(w);
         }
         else {
-            GWU.xy.forBorder(this.x, this.y, w, h, (x, y) => {
-                buf.draw(x, y, ' ', color, color);
-            });
+            this.allWidgets.splice(index, 0, w);
         }
-        this._needsRender = true;
-        return this;
-    }
-    // WIDGETS
-    get() {
-        return this._currentWidget;
-    }
-    addWidget(w) {
         if (!w.parent) {
-            this.widgets.push(w);
+            this.body.addChild(w);
         }
-        this.allWidgets.push(w);
-        this.allWidgets.sort((a, b) => b.depth - a.depth); // higher depts first
+        this.needsDraw = true;
         return this;
     }
     removeWidget(w) {
-        GWU.arrayDelete(this.widgets, w);
+        // GWU.arrayDelete(this.widgets, w);
         GWU.arrayDelete(this.allWidgets, w);
+        this.needsDraw = true;
+        if (w.parent) {
+            w.parent.removeChild(w);
+        }
         return this;
     }
     widgetAt(...args) {
@@ -5969,35 +6059,45 @@ class Term {
     text(text, opts = {}) {
         // TODO - if in a grid cell, adjust width and height based on grid
         // opts.style = opts.style || this._style;
-        const widget = new Text(this, text, opts);
-        // widget.draw(this.buffer);
-        this._currentWidget = widget;
+        const _opts = Object.assign({}, this.opts, opts);
+        const widget = new Text(this, text, _opts);
         this.addWidget(widget);
-        this._needsRender = true;
+        this._needsDraw = true;
         return widget;
     }
     table(opts) {
         // TODO - if in a grid cell, adjust width and height based on grid
         // opts.style = opts.style || this._style;
-        const widget = new Table(this, opts);
-        // widget.draw(this.buffer);
-        this._currentWidget = widget;
+        const _opts = Object.assign({}, this.opts, opts);
+        const widget = new Table(this, _opts);
         this.addWidget(widget);
-        this._needsRender = true;
+        this._needsDraw = true;
         return widget;
     }
     menu(opts) {
-        const widget = new Menu(this, opts);
-        this._currentWidget = widget;
+        const _opts = Object.assign({}, this.opts, opts);
+        const widget = new Menu(this, _opts);
         this.addWidget(widget);
-        this._needsRender = true;
+        this._needsDraw = true;
+        return widget;
+    }
+    button(opts) {
+        const _opts = Object.assign({}, this.opts, opts);
+        const widget = new Button(this, _opts);
+        this.addWidget(widget);
+        this._needsDraw = true;
+        return widget;
+    }
+    border(opts) {
+        const _opts = Object.assign({}, this.opts, opts);
+        const widget = new Border(this, _opts);
+        this.addWidget(widget);
+        this._needsDraw = true;
         return widget;
     }
     // CONTROL
     render() {
-        if (this._needsRender) {
-            this.draw();
-        }
+        this.draw();
         return this;
     }
     // EVENTS
@@ -6032,7 +6132,7 @@ class Term {
         return handled;
     }
     mousemove(e) {
-        this.widgets.forEach((w) => {
+        this.allWidgets.forEach((w) => {
             w.mousemove(e);
         });
         return false; // TODO - this._done
@@ -6042,18 +6142,31 @@ class Term {
         if (w) {
             w.click(e);
         }
+        else {
+            this.fireEvent('click', null, e);
+        }
         return false; // TODO - this._done
     }
     draw() {
-        let didSomething = this._needsRender;
-        this.widgets.forEach((w) => {
-            didSomething = w.draw(this.buffer) || didSomething;
-        });
-        if (didSomething) {
-            console.log('draw');
-            this.ui.render();
-            this._needsRender = false;
+        if (this.styles.dirty) {
+            this._needsDraw = true;
+            this.allWidgets.forEach((w) => w._updateStyle());
+            this.styles.dirty = false;
         }
+        if (!this._needsDraw)
+            return;
+        this._needsDraw = false;
+        if (!this._buffer) {
+            this.show();
+        }
+        this.ui.resetLayerBuffer();
+        // draw from low depth to high depth
+        for (let i = this.allWidgets.length - 1; i >= 0; --i) {
+            const w = this.allWidgets[i];
+            w.draw(this._buffer);
+        }
+        console.log('draw');
+        this.ui.render();
     }
 }
 
@@ -6061,7 +6174,10 @@ var index = /*#__PURE__*/Object.freeze({
     __proto__: null,
     Widget: Widget,
     WidgetGroup: WidgetGroup,
+    Border: Border,
+    drawBorder: drawBorder,
     Text: Text,
+    Button: Button,
     Grid: Grid,
     Column: Column,
     Table: Table,
@@ -6069,4 +6185,4 @@ var index = /*#__PURE__*/Object.freeze({
     Term: Term
 });
 
-export { ActionButton, ActorEntry, Box, Button$1 as Button, CellEntry, Column$1 as Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input$1 as Input, ItemEntry, List, Menu$1 as Menu, MenuButton, Messages, Sidebar, Table$1 as Table, Text$1 as Text, UI, Viewport, Widget$1 as Widget, buildDialog, index$1 as html, makeTable, showDropDown, index as term };
+export { ActionButton, ActorEntry, Box, Button$2 as Button, CellEntry, Column$1 as Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input$1 as Input, ItemEntry, List, Menu$1 as Menu, MenuButton, Messages, Sidebar, Table$1 as Table, Text$1 as Text, UI, Viewport, Widget$1 as Widget, buildDialog, index$1 as html, makeTable, showDropDown, index as term };

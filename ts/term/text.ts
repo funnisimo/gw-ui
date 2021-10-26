@@ -5,38 +5,48 @@ import { Term } from './term';
 export interface TextOptions extends WidgetOptions {}
 
 export class Text extends Widget {
-    text = '';
+    _text = '';
     _lines: string[] = [];
+    _fixedWidth = false;
+    _fixedHeight = false;
 
     constructor(term: Term, text: string, opts: TextOptions = {}) {
         super(term, opts);
-        this.text = text;
+        this._fixedHeight = !!opts.height;
+        this._fixedWidth = !!opts.width;
         this.bounds.width = opts.width || 0;
+        this.bounds.height = opts.height || 1;
 
-        this._lines = GWU.text.splitIntoLines(
-            this.text,
-            this.bounds.width > 0 ? this.bounds.width : 100
-        );
-        if (this.bounds.width <= 0) {
+        this.text(text);
+    }
+
+    text(): string;
+    text(v: string): this;
+    text(v?: string): this | string {
+        if (v === undefined) return this._text;
+
+        this._text = v;
+        let w = this._fixedWidth ? this.bounds.width : 100;
+        this._lines = GWU.text.splitIntoLines(this._text, w);
+        if (!this._fixedWidth) {
             this.bounds.width = this._lines.reduce(
                 (out, line) => Math.max(out, GWU.text.length(line)),
                 0
             );
         }
-        if (opts.height) {
-            if (this._lines.length > opts.height) {
-                this._lines.length = opts.height;
+        if (this._fixedHeight) {
+            if (this._lines.length > this.bounds.height) {
+                this._lines.length = this.bounds.height;
             }
-            this.bounds.height = opts.height;
         } else {
             this.bounds.height = this._lines.length;
         }
+
+        this.term.needsDraw = true;
+        return this;
     }
 
-    draw(buffer: GWU.canvas.DataBuffer, force = false): boolean {
-        if (!this.needsDraw && !force) return false;
-        this.needsDraw = false;
-
+    _draw(buffer: GWU.canvas.DataBuffer, _force = false): boolean {
         this._drawFill(buffer);
 
         let vOffset = 0;

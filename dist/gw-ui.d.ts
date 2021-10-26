@@ -75,11 +75,11 @@ declare class Text$1 extends Widget$1 {
     draw(buffer: GWU.canvas.DataBuffer): void;
 }
 
-interface ButtonOptions extends WidgetOptions$1 {
+interface ButtonOptions$1 extends WidgetOptions$1 {
 }
-declare class Button$1 extends Widget$1 {
-    constructor(id: string, opts?: ButtonOptions);
-    init(opts: ButtonOptions): void;
+declare class Button$2 extends Widget$1 {
+    constructor(id: string, opts?: ButtonOptions$1);
+    init(opts: ButtonOptions$1): void;
     click(ev: GWU.io.Event, dialog: WidgetRunner): Promise<boolean>;
     keypress(ev: GWU.io.Event, dialog: WidgetRunner): Promise<boolean>;
 }
@@ -280,9 +280,9 @@ interface ConfirmOptions extends WidgetOptions$1 {
     pad?: number;
     padX?: number;
     padY?: number;
-    buttons?: ButtonOptions;
-    ok?: string | ButtonOptions;
-    cancel?: string | ButtonOptions;
+    buttons?: ButtonOptions$1;
+    ok?: string | ButtonOptions$1;
+    cancel?: string | ButtonOptions$1;
     box?: BoxOptions;
 }
 interface InputBoxOptions extends ConfirmOptions {
@@ -937,7 +937,7 @@ declare class CheckBox extends Element {
     click(document: Document, _element: Element, e?: GWU.io.Event): boolean;
 }
 
-declare class Button extends Element {
+declare class Button$1 extends Element {
     static default: {
         clickfocus: boolean;
     };
@@ -1031,8 +1031,6 @@ type index_d$1_Input = Input;
 declare const index_d$1_Input: typeof Input;
 type index_d$1_CheckBox = CheckBox;
 declare const index_d$1_CheckBox: typeof CheckBox;
-type index_d$1_Button = Button;
-declare const index_d$1_Button: typeof Button;
 type index_d$1_FieldSet = FieldSet;
 declare const index_d$1_FieldSet: typeof FieldSet;
 type index_d$1_UnorderedList = UnorderedList;
@@ -1078,7 +1076,7 @@ declare namespace index_d$1 {
     index_d$1_Element as Element,
     index_d$1_Input as Input,
     index_d$1_CheckBox as CheckBox,
-    index_d$1_Button as Button,
+    Button$1 as Button,
     index_d$1_FieldSet as FieldSet,
     index_d$1_UnorderedList as UnorderedList,
     index_d$1_OrderedList as OrderedList,
@@ -1188,10 +1186,14 @@ declare class Grid {
 interface TextOptions extends WidgetOptions {
 }
 declare class Text extends Widget {
-    text: string;
+    _text: string;
     _lines: string[];
+    _fixedWidth: boolean;
+    _fixedHeight: boolean;
     constructor(term: Term, text: string, opts?: TextOptions);
-    draw(buffer: GWU.canvas.DataBuffer, force?: boolean): boolean;
+    text(): string;
+    text(v: string): this;
+    _draw(buffer: GWU.canvas.DataBuffer, _force?: boolean): boolean;
 }
 
 declare type FormatFn = GWU.text.Template;
@@ -1246,7 +1248,7 @@ declare class Table extends WidgetGroup {
     constructor(term: Term, opts: TableOptions);
     data(): DataType;
     data(data: DataType): this;
-    draw(buffer: GWU.canvas.DataBuffer, force?: boolean): boolean;
+    _draw(buffer: GWU.canvas.DataBuffer): boolean;
     mousemove(e: GWU.io.Event): boolean;
 }
 
@@ -1268,29 +1270,50 @@ declare class Menu extends WidgetGroup {
     _initButtons(buttons: DropdownConfig): void;
 }
 
+interface ButtonOptions extends WidgetOptions {
+}
+declare class Button extends Widget {
+    constructor(term: Term, opts: ButtonOptions);
+}
+
+interface BorderOptions extends WidgetOptions {
+    width: number;
+    height: number;
+    ascii?: boolean;
+}
+declare class Border extends Widget {
+    ascii: boolean;
+    constructor(term: Term, opts: BorderOptions);
+    contains(e: GWU.xy.XY): boolean;
+    contains(x: number, y: number): boolean;
+    _draw(buffer: GWU.canvas.DataBuffer): boolean;
+}
+declare function drawBorder(buffer: GWU.canvas.DataBuffer, x: number, y: number, w: number, h: number, style: Style, ascii: boolean): void;
+
 declare class Term {
     ui: UICore;
-    x: number;
-    y: number;
-    widgets: Widget[];
+    opts: Record<string, any>;
     allWidgets: Widget[];
     styles: Sheet;
-    _currentWidget: Widget | null;
     events: Record<string, EventCb[]>;
-    _style: Style;
     _grid: Grid | null;
-    _needsRender: boolean;
+    _needsDraw: boolean;
+    _buffer: GWU.canvas.Buffer | null;
+    body: WidgetGroup;
     constructor(ui: UICore);
     get buffer(): GWU.canvas.DataBuffer;
     get width(): number;
     get height(): number;
+    get needsDraw(): boolean;
+    set needsDraw(v: boolean);
+    show(): void;
+    hide(): void;
     reset(): this;
     fg(v: GWU.color.ColorBase): this;
     bg(v: GWU.color.ColorBase): this;
     dim(pct?: number, fg?: boolean, bg?: boolean): this;
     bright(pct?: number, fg?: boolean, bg?: boolean): this;
     invert(): this;
-    loadStyle(name: string): this;
     style(opts: StyleOptions): this;
     pos(x: number, y: number): this;
     moveTo(x: number, y: number): this;
@@ -1302,12 +1325,6 @@ declare class Term {
     nextLine(n?: number): this;
     prevLine(n?: number): this;
     clear(color?: GWU.color.ColorBase): this;
-    erase(color?: GWU.color.ColorBase): this;
-    eraseBelow(): this;
-    eraseAbove(): this;
-    eraseLine(n: number): this;
-    eraseLineAbove(): this;
-    eraseLineBelow(): this;
     grid(): this;
     endGrid(): this;
     cols(count: number, width: number): this;
@@ -1319,9 +1336,6 @@ declare class Term {
     endRow(h?: number): this;
     col(n: number): this;
     row(n: number): this;
-    drawText(text: string, width?: number, _align?: GWU.text.Align): this;
-    border(w: number, h: number, color?: GWU.color.ColorBase, ascii?: boolean): this;
-    get(): Widget | null;
     addWidget(w: Widget): this;
     removeWidget(w: Widget): this;
     widgetAt(x: number, y: number): Widget | null;
@@ -1329,24 +1343,25 @@ declare class Term {
     text(text: string, opts?: TextOptions): Text;
     table(opts: TableOptions): Table;
     menu(opts: MenuOptions): Menu;
+    button(opts: ButtonOptions): Button;
+    border(opts: BorderOptions): Border;
     render(): this;
     on(event: string, cb: EventCb): this;
     off(event: string, cb?: EventCb): this;
-    fireEvent(name: string, source: Widget, e?: Partial<GWU.io.Event>): boolean;
+    fireEvent(name: string, source: Widget | null, e?: Partial<GWU.io.Event>): boolean;
     mousemove(e: GWU.io.Event): boolean;
     click(e: GWU.io.Event): boolean;
     draw(): void;
 }
 
-declare type EventCb = (name: string, widget: Widget, io?: GWU.io.Event) => boolean;
-interface WidgetOptions {
+declare type EventCb = (name: string, widget: Widget | null, io?: GWU.io.Event) => boolean;
+interface WidgetOptions extends StyleOptions {
     id?: string;
-    parent?: Widget;
+    parent?: WidgetGroup;
     x?: number;
     y?: number;
     width?: number;
     height?: number;
-    style?: StyleOptions;
     class?: string | string[];
     tag?: string;
     tabStop?: boolean;
@@ -1354,26 +1369,25 @@ interface WidgetOptions {
     depth?: number;
 }
 declare type PropType = boolean | number | string;
-declare abstract class Widget implements Stylable {
+declare class Widget implements Stylable {
     tag: string;
     term: Term;
     bounds: GWU.xy.Bounds;
     depth: number;
     events: Record<string, EventCb[]>;
+    action: string;
     _style: Style;
     _used: ComputedStyle;
-    parent: Widget | null;
+    parent: WidgetGroup | null;
     classes: string[];
     _props: Record<string, PropType>;
     _attrs: Record<string, string>;
-    _needsDraw: boolean;
     constructor(term: Term, opts?: WidgetOptions);
-    get needsDraw(): boolean;
-    set needsDraw(v: boolean);
     attr(name: string): string;
     attr(name: string, v: string): this;
     prop(name: string): PropType | undefined;
     prop(name: string, v: PropType): this;
+    toggleProp(name: string): this;
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
     style(): Style;
@@ -1382,33 +1396,24 @@ declare abstract class Widget implements Stylable {
     set focused(v: boolean);
     get hovered(): boolean;
     set hovered(v: boolean);
+    get hidden(): boolean;
+    set hidden(v: boolean);
     _updateStyle(): void;
-    draw(_buffer: GWU.canvas.DataBuffer, _force?: boolean): boolean;
+    draw(buffer: GWU.canvas.DataBuffer): boolean;
+    _draw(buffer: GWU.canvas.DataBuffer): boolean;
     protected _drawFill(buffer: GWU.canvas.DataBuffer): boolean;
     mousemove(e: GWU.io.Event): boolean;
     click(e: GWU.io.Event): boolean;
     on(event: string, cb: EventCb): this;
     off(event: string, cb?: EventCb): this;
-    _fireEvent(name: string, source: Widget, e?: Partial<GWU.io.Event>): boolean;
-    _bubbleEvent(name: string, source: Widget, e?: GWU.io.Event): boolean;
+    _fireEvent(name: string, source: Widget | null, e?: Partial<GWU.io.Event>): boolean;
+    _bubbleEvent(name: string, source: Widget | null, e?: GWU.io.Event): boolean;
 }
 declare class WidgetGroup extends Widget {
     children: Widget[];
     constructor(term: Term, opts?: WidgetOptions);
-    get needsDraw(): boolean;
-    set needsDraw(v: boolean);
-    contains(e: GWU.xy.XY): boolean;
-    contains(x: number, y: number): boolean;
-    widgetAt(e: GWU.xy.XY): Widget | null;
-    widgetAt(x: number, y: number): Widget | null;
-    _updateStyle(): void;
-    draw(buffer: GWU.canvas.DataBuffer, force?: boolean): boolean;
-    _drawChildren(buffer: GWU.canvas.DataBuffer, force?: boolean): boolean;
-    mousemove(e: GWU.io.Event): boolean;
-    tick(_e: GWU.io.Event): void;
-    click(_e: GWU.io.Event): boolean;
-    keypress(_e: GWU.io.Event): boolean;
-    dir(_e: GWU.io.Event): boolean;
+    addChild(w: Widget): this;
+    removeChild(w: Widget): this;
 }
 
 type index_d_EventCb = EventCb;
@@ -1418,9 +1423,16 @@ type index_d_Widget = Widget;
 declare const index_d_Widget: typeof Widget;
 type index_d_WidgetGroup = WidgetGroup;
 declare const index_d_WidgetGroup: typeof WidgetGroup;
+type index_d_BorderOptions = BorderOptions;
+type index_d_Border = Border;
+declare const index_d_Border: typeof Border;
+declare const index_d_drawBorder: typeof drawBorder;
 type index_d_TextOptions = TextOptions;
 type index_d_Text = Text;
 declare const index_d_Text: typeof Text;
+type index_d_ButtonOptions = ButtonOptions;
+type index_d_Button = Button;
+declare const index_d_Button: typeof Button;
 type index_d_Grid = Grid;
 declare const index_d_Grid: typeof Grid;
 type index_d_FormatFn = FormatFn;
@@ -1448,8 +1460,13 @@ declare namespace index_d {
     index_d_PropType as PropType,
     index_d_Widget as Widget,
     index_d_WidgetGroup as WidgetGroup,
+    index_d_BorderOptions as BorderOptions,
+    index_d_Border as Border,
+    index_d_drawBorder as drawBorder,
     index_d_TextOptions as TextOptions,
     index_d_Text as Text,
+    index_d_ButtonOptions as ButtonOptions,
+    index_d_Button as Button,
     index_d_Grid as Grid,
     index_d_FormatFn as FormatFn,
     index_d_Value as Value,
@@ -1468,4 +1485,4 @@ declare namespace index_d {
   };
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$1 as Button, ButtonOptions, CellEntry, ColorOption, Column$1 as Column, ColumnOptions$1 as ColumnOptions, ConfirmOptions, DataArray, DataList$1 as DataList, DataType$1 as DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu$1 as Menu, MenuButton, MenuOptions$1 as MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table$1 as Table, TableOptions$1 as TableOptions, Text$1 as Text, TextOptions$1 as TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget$1 as Widget, WidgetOptions$1 as WidgetOptions, WidgetRunner, buildDialog, index_d$1 as html, makeTable, showDropDown, index_d as term };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$2 as Button, ButtonOptions$1 as ButtonOptions, CellEntry, ColorOption, Column$1 as Column, ColumnOptions$1 as ColumnOptions, ConfirmOptions, DataArray, DataList$1 as DataList, DataType$1 as DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu$1 as Menu, MenuButton, MenuOptions$1 as MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table$1 as Table, TableOptions$1 as TableOptions, Text$1 as Text, TextOptions$1 as TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget$1 as Widget, WidgetOptions$1 as WidgetOptions, WidgetRunner, buildDialog, index_d$1 as html, makeTable, showDropDown, index_d as term };

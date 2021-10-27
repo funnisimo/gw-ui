@@ -1,8 +1,8 @@
 import * as GWU from 'gw-utils';
 
 import { UICore } from '../types';
-import { Size, PropType } from './types';
-import { Selector } from './selector';
+import { Size, PropType } from '../types';
+import { Selector } from '../selector';
 import * as Style from './style';
 import { Element, PosOptions } from './element';
 import { parse } from './parser';

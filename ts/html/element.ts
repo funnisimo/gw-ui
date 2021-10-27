@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { Size, PropType, Selectable } from './types';
+import { Size, PropType, Selectable } from '../types';
 import { EventCb, Document } from './document';
 import * as Style from './style';
 

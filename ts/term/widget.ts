@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import * as Style from './style';
+import * as Style from '../style';
 import { Term } from './term';
 
 // return true if you want to stop the event from propagating

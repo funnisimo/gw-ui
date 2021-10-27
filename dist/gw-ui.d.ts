@@ -1,6 +1,136 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 
+interface Size {
+    width: number;
+    height: number;
+}
+declare type PropType$1 = string | number | boolean;
+interface Selectable {
+    tag: string;
+    classes: string[];
+    attr(name: string): string | undefined;
+    prop(name: string): PropType$1 | undefined;
+    parent: Selectable | null;
+    children?: Selectable[];
+}
+interface UIWidget {
+}
+interface UILayer {
+    addWidget(w: UIWidget): void;
+    removeWidget(w: UIWidget): void;
+    readonly ui: UICore;
+    readonly buffer: GWU.canvas.DataBuffer;
+    show(): void;
+    hide(): void;
+    draw(): void;
+    click(e: GWU.io.Event): boolean;
+    mousemove(e: GWU.io.Event): boolean;
+    keypress(e: GWU.io.Event): boolean;
+    dir(e: GWU.io.Event): boolean;
+    tick(e: GWU.io.Event): boolean;
+}
+interface UICore {
+    buffer: GWU.canvas.Buffer;
+    loop: GWU.io.Loop;
+    readonly width: number;
+    readonly height: number;
+    render(): void;
+    startLayer(): GWU.canvas.Buffer;
+    resetLayerBuffer(): void;
+    finishLayer(): void;
+    fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
+}
+interface UISubject {
+    readonly map: GWM.map.Map;
+    readonly x: number;
+    readonly y: number;
+    readonly fov?: GWU.fov.FovTracker;
+    readonly memory?: GWM.memory.Memory;
+}
+
+declare type MatchFn = (el: Selectable) => boolean;
+declare type BuildFn = (next: MatchFn, e: Selectable) => boolean;
+declare class Selector {
+    text: string;
+    priority: number;
+    matchFn: MatchFn;
+    constructor(text: string);
+    protected _parse(text: string): MatchFn;
+    protected _parentMatch(): BuildFn;
+    protected _ancestorMatch(): BuildFn;
+    protected _matchElement(text: string): BuildFn;
+    protected _matchTag(tag: string): MatchFn | null;
+    protected _matchClass(cls: string): MatchFn;
+    protected _matchProp(prop: string): MatchFn;
+    protected _matchId(id: string): MatchFn;
+    protected _matchFirst(): MatchFn;
+    protected _matchLast(): MatchFn;
+    protected _matchNot(fn: MatchFn): MatchFn;
+    matches(obj: Selectable): boolean;
+}
+
+declare type StyleType = string | StyleOptions$1;
+interface Stylable$1 {
+    tag: string;
+    classes: string[];
+    attr(name: string): string | undefined;
+    prop(name: string): PropType$1 | undefined;
+    parent: Selectable | null;
+    children?: Selectable[];
+    style(): Style$1;
+}
+interface StyleOptions$1 {
+    fg?: GWU.color.ColorBase;
+    bg?: GWU.color.ColorBase;
+    align?: GWU.text.Align;
+    valign?: GWU.text.VAlign;
+}
+declare class Style$1 {
+    protected _fg?: GWU.color.ColorBase;
+    protected _bg?: GWU.color.ColorBase;
+    protected _border?: GWU.color.ColorBase;
+    protected _align?: GWU.text.Align;
+    protected _valign?: GWU.text.VAlign;
+    selector: Selector;
+    protected _dirty: boolean;
+    constructor(selector?: string, init?: StyleOptions$1);
+    get dirty(): boolean;
+    set dirty(v: boolean);
+    get fg(): GWU.color.ColorBase | undefined;
+    get bg(): GWU.color.ColorBase | undefined;
+    dim(pct?: number, fg?: boolean, bg?: boolean): this;
+    bright(pct?: number, fg?: boolean, bg?: boolean): this;
+    invert(): this;
+    get align(): GWU.text.Align | undefined;
+    get valign(): GWU.text.VAlign | undefined;
+    get(key: keyof Style$1): any;
+    set(opts: StyleOptions$1, setDirty?: boolean): this;
+    set(key: keyof StyleOptions$1, value: any, setDirty?: boolean): this;
+    unset(key: keyof Style$1): this;
+    clone(): this;
+    copy(other: Style$1): this;
+}
+declare function makeStyle$1(style: string, selector?: string): Style$1;
+declare class ComputedStyle$1 extends Style$1 {
+    sources: Style$1[];
+    constructor(sources?: Style$1[]);
+    get dirty(): boolean;
+    set dirty(v: boolean);
+}
+declare class Sheet$1 {
+    rules: Style$1[];
+    _dirty: boolean;
+    constructor(parentSheet?: Sheet$1 | null);
+    get dirty(): boolean;
+    set dirty(v: boolean);
+    add(selector: string, props: StyleOptions$1): this;
+    get(selector: string): Style$1 | null;
+    remove(selector: string): void;
+    computeFor(widget: Stylable$1): ComputedStyle$1;
+}
+declare const defaultStyle$1: Sheet$1;
+
 declare type VAlign = 'top' | 'middle' | 'bottom';
 interface PosOptions$1 {
     x?: number;
@@ -267,6 +397,10 @@ declare class DialogBuilder {
 }
 declare function buildDialog(ui: UICore, width?: number, height?: number): DialogBuilder;
 
+interface UIOptions {
+    canvas: GWU.canvas.BaseCanvas;
+    loop: GWU.io.Loop;
+}
 interface AlertOptions extends WidgetOptions$1 {
     duration?: number;
     waitForAck?: boolean;
@@ -288,31 +422,6 @@ interface ConfirmOptions extends WidgetOptions$1 {
 interface InputBoxOptions extends ConfirmOptions {
     prompt?: string | TextOptions$1;
     input?: InputOptions;
-}
-interface UICore {
-    buffer: GWU.canvas.Buffer;
-    loop: GWU.io.Loop;
-    readonly width: number;
-    readonly height: number;
-    render(): void;
-    startLayer(): GWU.canvas.Buffer;
-    resetLayerBuffer(): void;
-    finishLayer(): void;
-    fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
-    getInputAt(x: number, y: number, maxLength: number, opts?: InputOptions): Promise<string>;
-    alert(opts: number | AlertOptions, text: string, args: any): Promise<void>;
-}
-interface UISubject {
-    readonly map: GWM.map.Map;
-    readonly x: number;
-    readonly y: number;
-    readonly fov?: GWU.fov.FovTracker;
-    readonly memory?: GWM.memory.Memory;
-}
-
-interface UIOptions {
-    canvas: GWU.canvas.BaseCanvas;
-    loop: GWU.io.Loop;
 }
 declare class UI implements UICore {
     buffer: GWU.canvas.Buffer;
@@ -527,52 +636,11 @@ declare class Menu$1 extends Widget$1 {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-interface Size {
-    width: number;
-    height: number;
-}
-declare type PropType$1 = string | number | boolean;
-interface Selectable {
-    tag: string;
-    classes: string[];
-    attr(name: string): string | undefined;
-    prop(name: string): PropType$1 | undefined;
-    parent: Selectable | null;
-    children?: Selectable[];
-}
-
-declare type MatchFn = (el: Selectable) => boolean;
-declare type BuildFn = (next: MatchFn, e: Selectable) => boolean;
-declare class Selector {
-    text: string;
-    priority: number;
-    matchFn: MatchFn;
-    constructor(text: string);
-    protected _parse(text: string): MatchFn;
-    protected _parentMatch(): BuildFn;
-    protected _ancestorMatch(): BuildFn;
-    protected _matchElement(text: string): BuildFn;
-    protected _matchTag(tag: string): MatchFn | null;
-    protected _matchClass(cls: string): MatchFn;
-    protected _matchProp(prop: string): MatchFn;
-    protected _matchId(id: string): MatchFn;
-    protected _matchFirst(): MatchFn;
-    protected _matchLast(): MatchFn;
-    protected _matchNot(fn: MatchFn): MatchFn;
-    matches(obj: Selectable): boolean;
-}
-declare function compile(text: string): Selector;
-
 declare type Position = 'static' | 'relative' | 'fixed' | 'absolute';
-interface Stylable$1 extends Selectable {
-    style(): Style$1;
-    prop(name: string): PropType$1;
+interface Stylable extends Stylable$1 {
+    style(): Style;
 }
-interface StyleOptions$1 {
-    fg?: GWU.color.ColorBase;
-    bg?: GWU.color.ColorBase;
-    align?: GWU.text.Align;
-    valign?: GWU.text.VAlign;
+interface StyleOptions extends StyleOptions$1 {
     position?: Position;
     minWidth?: number;
     maxWidth?: number;
@@ -596,12 +664,8 @@ interface StyleOptions$1 {
     marginBottom?: number;
     border?: GWU.color.ColorBase;
 }
-declare class Style$1 {
-    protected _fg?: GWU.color.ColorBase;
-    protected _bg?: GWU.color.ColorBase;
+declare class Style extends Style$1 {
     protected _border?: GWU.color.ColorBase;
-    protected _align?: GWU.text.Align;
-    protected _valign?: GWU.text.VAlign;
     protected _position?: Position;
     protected _minWidth?: number;
     protected _maxWidth?: number;
@@ -623,16 +687,8 @@ declare class Style$1 {
     protected _marginRight?: number;
     protected _marginTop?: number;
     protected _marginBottom?: number;
-    selector: Selector;
-    protected _dirty: boolean;
-    constructor(selector?: string, init?: StyleOptions$1);
-    get dirty(): boolean;
-    set dirty(v: boolean);
-    get fg(): GWU.color.ColorBase | undefined;
-    get bg(): GWU.color.ColorBase | undefined;
+    constructor(selector?: string, init?: StyleOptions);
     get border(): GWU.color.ColorBase | undefined;
-    get align(): GWU.text.Align | undefined;
-    get valign(): GWU.text.VAlign | undefined;
     get position(): Position | undefined;
     get minWidth(): number | undefined;
     get maxWidth(): number | undefined;
@@ -654,32 +710,32 @@ declare class Style$1 {
     get marginRight(): number | undefined;
     get marginTop(): number | undefined;
     get marginBottom(): number | undefined;
-    get(key: keyof Style$1): any;
-    set(opts: StyleOptions$1, setDirty?: boolean): this;
-    set(key: keyof StyleOptions$1, value: any, setDirty?: boolean): this;
-    unset(key: keyof Style$1): this;
+    get(key: keyof Style): any;
+    set(opts: StyleOptions, setDirty?: boolean): this;
+    set(key: keyof StyleOptions, value: any, setDirty?: boolean): this;
+    unset(key: keyof Style): this;
     clone(): this;
-    copy(other: Style$1): this;
+    copy(other: Style): this;
 }
-declare function makeStyle(style: string, selector?: string): Style$1;
-declare class ComputedStyle$1 extends Style$1 {
-    sources: Style$1[];
-    constructor(sources?: Style$1[]);
+declare function makeStyle(style: string, selector?: string): Style;
+declare class ComputedStyle extends Style {
+    sources: Style[];
+    constructor(sources?: Style[]);
     get dirty(): boolean;
     set dirty(v: boolean);
 }
-declare class Sheet$1 {
-    rules: Style$1[];
+declare class Sheet {
+    rules: Style[];
     _dirty: boolean;
-    constructor(parentSheet?: Sheet$1 | null);
+    constructor(parentSheet?: Sheet | null);
     get dirty(): boolean;
     set dirty(v: boolean);
-    add(selector: string, props: StyleOptions$1): Style$1;
-    get(selector: string): Style$1 | null;
+    add(selector: string, props: StyleOptions): Style;
+    get(selector: string): Style | null;
     remove(selector: string): void;
-    computeFor(widget: Stylable$1): ComputedStyle$1;
+    computeFor(widget: Stylable): ComputedStyle;
 }
-declare const defaultStyle: Sheet$1;
+declare const defaultStyle: Sheet;
 
 declare type EventCb$1 = (document: Document, element: Element, io?: GWU.io.Event) => boolean;
 declare type FxFn = () => void;
@@ -692,16 +748,16 @@ declare class Document {
     body: Element;
     _activeElement: Element | null;
     children: Element[];
-    stylesheet: Sheet$1;
+    stylesheet: Sheet;
     _done: boolean;
     constructor(ui: UICore, rootTag?: string);
     $(id?: SelectType$1): Selection;
     select(id?: SelectType$1): Selection;
     createElement(tag: string): Element;
     create(tag: string): Selection;
-    rule(info: Record<string, StyleOptions$1>): this;
-    rule(rule: string): Style$1;
-    rule(rule: string, style: StyleOptions$1): this;
+    rule(info: Record<string, StyleOptions>): this;
+    rule(rule: string): Style;
+    rule(rule: string, style: StyleOptions): this;
     removeRule(rule: string): this;
     _attach(w: Element | Element[]): this;
     _detach(w: Element | Element[]): this;
@@ -757,11 +813,11 @@ declare class Selection {
     hasClass(id: string): boolean;
     removeClass(id: string): this;
     toggleClass(id: string): this;
-    style(): Style$1;
-    style(style: StyleOptions$1): this;
-    style(name: keyof Style$1): any;
-    style(name: keyof StyleOptions$1, value: any): this;
-    removeStyle(name: keyof Style$1): this;
+    style(): Style;
+    style(style: StyleOptions): this;
+    style(name: keyof Style): any;
+    style(name: keyof StyleOptions, value: any): this;
+    removeStyle(name: keyof Style): this;
     pos(): GWU.xy.XY | undefined;
     pos(left: number, top: number, position?: Omit<Position, 'static'>): this;
     pos(xy: PosOptions, position?: Omit<Position, 'static'>): this;
@@ -824,9 +880,9 @@ declare class Element implements Selectable {
     _lines: string[];
     _dirty: boolean;
     _attached: boolean;
-    _style: Style$1 | null;
-    _usedStyle: ComputedStyle$1;
-    constructor(tag: string, styles?: Sheet$1);
+    _style: Style | null;
+    _usedStyle: ComputedStyle;
+    constructor(tag: string, styles?: Sheet);
     contains(xy: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
     clone(): this;
@@ -870,14 +926,14 @@ declare class Element implements Selectable {
     _updateHeight(): number;
     _updateLeft(): void;
     _updateTop(parentBottom?: number): number;
-    style(): Style$1;
-    style(id: keyof Style$1): any;
-    style(props: StyleOptions$1): this;
-    style(id: keyof StyleOptions$1, val: any): this;
-    removeStyle(id: keyof Style$1): this;
-    used(): Style$1;
-    used(style: ComputedStyle$1): this;
-    used(id: keyof Style$1): any;
+    style(): Style;
+    style(id: keyof Style): any;
+    style(props: StyleOptions): this;
+    style(id: keyof StyleOptions, val: any): this;
+    removeStyle(id: keyof Style): this;
+    used(): Style;
+    used(style: ComputedStyle): this;
+    used(id: keyof Style): any;
     addClass(id: string): this;
     removeClass(id: string): this;
     toggleClass(id: string): this;
@@ -907,7 +963,7 @@ declare class Element implements Selectable {
 }
 
 declare class Input extends Element {
-    constructor(tag: string, sheet?: Sheet$1);
+    constructor(tag: string, sheet?: Sheet);
     protected _setAttr(name: string, value: string): void;
     protected _setProp(name: string, value: PropType$1): void;
     get isTypeNumber(): boolean;
@@ -927,7 +983,7 @@ declare class CheckBox extends Element {
         padCheck: string;
         value: string;
     };
-    constructor(tag: string, sheet?: Sheet$1);
+    constructor(tag: string, sheet?: Sheet);
     protected _setAttr(name: string, value: string): void;
     _calcContentWidth(): number;
     _calcContentHeight(): number;
@@ -941,7 +997,7 @@ declare class Button$1 extends Element {
     static default: {
         clickfocus: boolean;
     };
-    constructor(tag: string, sheet?: Sheet$1);
+    constructor(tag: string, sheet?: Sheet);
     protected _setAttr(name: string, value: string): void;
     keypress(document: Document, _element: Element, e?: GWU.io.Event): boolean;
     click(document: Document, _element: Element, e?: GWU.io.Event): boolean;
@@ -949,7 +1005,7 @@ declare class Button$1 extends Element {
 
 declare class FieldSet extends Element {
     static default: Record<string, PropType$1>;
-    constructor(tag: string, sheet?: Sheet$1);
+    constructor(tag: string, sheet?: Sheet);
     _drawBorder(buffer: GWU.canvas.DataBuffer): void;
 }
 
@@ -957,7 +1013,7 @@ declare class UnorderedList extends Element {
     static default: {
         bullet: string;
     };
-    constructor(tag: string, sheet?: Sheet$1);
+    constructor(tag: string, sheet?: Sheet);
     protected get indentWidth(): number;
     _calcContentWidth(): number;
     _calcContentHeight(): number;
@@ -967,7 +1023,7 @@ declare class UnorderedList extends Element {
     _drawChildren(buffer: GWU.canvas.DataBuffer): void;
 }
 declare class OrderedList extends UnorderedList {
-    constructor(tag: string, sheet?: Sheet$1);
+    constructor(tag: string, sheet?: Sheet);
     protected get indentWidth(): number;
     _drawBullet(buffer: GWU.canvas.DataBuffer, index: number, left: number, top: number, fg: GWU.color.ColorBase): void;
 }
@@ -981,7 +1037,7 @@ declare class DataList extends Element {
         prefix: PrefixType;
         width: number;
     };
-    constructor(tag: string, sheet?: Sheet$1);
+    constructor(tag: string, sheet?: Sheet);
     protected _setData(doc: Document, v: any): void;
     protected get indentWidth(): number;
     _calcContentWidth(): number;
@@ -994,7 +1050,7 @@ declare class DataList extends Element {
 }
 
 declare const selfClosingTags: Record<string, boolean>;
-declare type MakeElementFn = (tag: string, sheet?: Sheet$1) => Element;
+declare type MakeElementFn = (tag: string, sheet?: Sheet) => Element;
 declare const elements: Record<string, MakeElementFn>;
 interface ElementInstallOptions {
     selfClosing?: boolean;
@@ -1005,23 +1061,25 @@ declare function configureElement(tag: string, opts?: ElementInstallOptions): vo
 declare function installElement(tag: string, fn: MakeElementFn, opts?: ElementInstallOptions): void;
 interface MyOptions {
     lowerCaseTagName?: boolean;
-    stylesheet?: Sheet$1;
+    stylesheet?: Sheet;
 }
 /**
  * Parse a chuck of HTML source.
  * @param  {string} data      html
  * @return {HTMLElement}      root element
  */
-declare function parse(data: string, options?: MyOptions | Sheet$1): Element;
+declare function parse(data: string, options?: MyOptions | Sheet): Element;
 
-type index_d$1_Size = Size;
-type index_d$1_Selectable = Selectable;
-type index_d$1_MatchFn = MatchFn;
-type index_d$1_Selector = Selector;
-declare const index_d$1_Selector: typeof Selector;
-declare const index_d$1_compile: typeof compile;
 type index_d$1_Position = Position;
+type index_d$1_Stylable = Stylable;
+type index_d$1_StyleOptions = StyleOptions;
+type index_d$1_Style = Style;
+declare const index_d$1_Style: typeof Style;
 declare const index_d$1_makeStyle: typeof makeStyle;
+type index_d$1_ComputedStyle = ComputedStyle;
+declare const index_d$1_ComputedStyle: typeof ComputedStyle;
+type index_d$1_Sheet = Sheet;
+declare const index_d$1_Sheet: typeof Sheet;
 declare const index_d$1_defaultStyle: typeof defaultStyle;
 type index_d$1_PosOptions = PosOptions;
 type index_d$1_SizeOptions = SizeOptions;
@@ -1057,19 +1115,13 @@ type index_d$1_Selection = Selection;
 declare const index_d$1_Selection: typeof Selection;
 declare namespace index_d$1 {
   export {
-    index_d$1_Size as Size,
-    PropType$1 as PropType,
-    index_d$1_Selectable as Selectable,
-    index_d$1_MatchFn as MatchFn,
-    index_d$1_Selector as Selector,
-    index_d$1_compile as compile,
     index_d$1_Position as Position,
-    Stylable$1 as Stylable,
-    StyleOptions$1 as StyleOptions,
-    Style$1 as Style,
+    index_d$1_Stylable as Stylable,
+    index_d$1_StyleOptions as StyleOptions,
+    index_d$1_Style as Style,
     index_d$1_makeStyle as makeStyle,
-    ComputedStyle$1 as ComputedStyle,
-    Sheet$1 as Sheet,
+    index_d$1_ComputedStyle as ComputedStyle,
+    index_d$1_Sheet as Sheet,
     index_d$1_defaultStyle as defaultStyle,
     index_d$1_PosOptions as PosOptions,
     index_d$1_SizeOptions as SizeOptions,
@@ -1098,64 +1150,6 @@ declare namespace index_d$1 {
     index_d$1_Document as Document,
     index_d$1_Selection as Selection,
   };
-}
-
-interface Stylable {
-    tag: string;
-    classes: string[];
-    attr(name: string): string | undefined;
-    prop(name: string): PropType$1 | undefined;
-    parent: Selectable | null;
-    children?: Selectable[];
-    style(): Style;
-}
-interface StyleOptions {
-    fg?: GWU.color.ColorBase;
-    bg?: GWU.color.ColorBase;
-    align?: GWU.text.Align;
-    valign?: GWU.text.VAlign;
-}
-declare class Style {
-    protected _fg?: GWU.color.ColorBase;
-    protected _bg?: GWU.color.ColorBase;
-    protected _border?: GWU.color.ColorBase;
-    protected _align?: GWU.text.Align;
-    protected _valign?: GWU.text.VAlign;
-    selector: Selector;
-    protected _dirty: boolean;
-    constructor(selector?: string, init?: StyleOptions);
-    get dirty(): boolean;
-    set dirty(v: boolean);
-    get fg(): GWU.color.ColorBase | undefined;
-    get bg(): GWU.color.ColorBase | undefined;
-    dim(pct?: number, fg?: boolean, bg?: boolean): this;
-    bright(pct?: number, fg?: boolean, bg?: boolean): this;
-    invert(): this;
-    get align(): GWU.text.Align | undefined;
-    get valign(): GWU.text.VAlign | undefined;
-    get(key: keyof Style): any;
-    set(opts: StyleOptions, setDirty?: boolean): this;
-    set(key: keyof StyleOptions, value: any, setDirty?: boolean): this;
-    unset(key: keyof Style): this;
-    clone(): this;
-    copy(other: Style): this;
-}
-declare class ComputedStyle extends Style {
-    sources: Style[];
-    constructor(sources?: Style[]);
-    get dirty(): boolean;
-    set dirty(v: boolean);
-}
-declare class Sheet {
-    rules: Style[];
-    _dirty: boolean;
-    constructor(parentSheet?: Sheet | null);
-    get dirty(): boolean;
-    set dirty(v: boolean);
-    add(selector: string, props: StyleOptions): this;
-    get(selector: string): Style | null;
-    remove(selector: string): void;
-    computeFor(widget: Stylable): ComputedStyle;
 }
 
 declare class Grid {
@@ -1302,7 +1296,7 @@ declare class Border extends Widget {
     contains(x: number, y: number): boolean;
     _draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
-declare function drawBorder(buffer: GWU.canvas.DataBuffer, x: number, y: number, w: number, h: number, style: Style, ascii: boolean): void;
+declare function drawBorder(buffer: GWU.canvas.DataBuffer, x: number, y: number, w: number, h: number, style: Style$1, ascii: boolean): void;
 
 interface SelectOptions extends WidgetOptions {
     text: string;
@@ -1322,7 +1316,7 @@ declare class Term {
     ui: UICore;
     opts: Record<string, any>;
     allWidgets: Widget[];
-    styles: Sheet;
+    styles: Sheet$1;
     events: Record<string, EventCb[]>;
     _grid: Grid | null;
     _needsDraw: boolean;
@@ -1342,7 +1336,7 @@ declare class Term {
     dim(pct?: number, fg?: boolean, bg?: boolean): this;
     bright(pct?: number, fg?: boolean, bg?: boolean): this;
     invert(): this;
-    style(opts: StyleOptions): this;
+    style(opts: StyleOptions$1): this;
     pos(x: number, y: number): this;
     moveTo(x: number, y: number): this;
     move(dx: number, dy: number): this;
@@ -1384,7 +1378,7 @@ declare class Term {
 }
 
 declare type EventCb = (name: string, widget: Widget | null, io?: GWU.io.Event) => boolean;
-interface WidgetOptions extends StyleOptions {
+interface WidgetOptions extends StyleOptions$1 {
     id?: string;
     parent?: WidgetGroup;
     x?: number;
@@ -1398,15 +1392,15 @@ interface WidgetOptions extends StyleOptions {
     depth?: number;
 }
 declare type PropType = boolean | number | string;
-declare class Widget implements Stylable {
+declare class Widget implements Stylable$1 {
     tag: string;
     term: Term;
     bounds: GWU.xy.Bounds;
     depth: number;
     events: Record<string, EventCb[]>;
     action: string;
-    _style: Style;
-    _used: ComputedStyle;
+    _style: Style$1;
+    _used: ComputedStyle$1;
     parent: WidgetGroup | null;
     classes: string[];
     _props: Record<string, PropType>;
@@ -1420,8 +1414,8 @@ declare class Widget implements Stylable {
     incProp(name: string): this;
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
-    style(): Style;
-    style(opts: StyleOptions): this;
+    style(): Style$1;
+    style(opts: StyleOptions$1): this;
     addClass(c: string): this;
     removeClass(c: string): this;
     hasClass(c: string): boolean;
@@ -1539,4 +1533,4 @@ declare namespace index_d {
   };
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$2 as Button, ButtonOptions$1 as ButtonOptions, CellEntry, ColorOption, Column$1 as Column, ColumnOptions$1 as ColumnOptions, ConfirmOptions, DataArray, DataList$1 as DataList, DataType$1 as DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu$1 as Menu, MenuButton$1 as MenuButton, MenuOptions$1 as MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table$1 as Table, TableOptions$1 as TableOptions, Text$1 as Text, TextOptions$1 as TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget$1 as Widget, WidgetOptions$1 as WidgetOptions, WidgetRunner, buildDialog, index_d$1 as html, makeTable, showDropDown, index_d as term };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$2 as Button, ButtonOptions$1 as ButtonOptions, CellEntry, ColorOption, Column$1 as Column, ColumnOptions$1 as ColumnOptions, ComputedStyle$1 as ComputedStyle, ConfirmOptions, DataArray, DataList$1 as DataList, DataType$1 as DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu$1 as Menu, MenuButton$1 as MenuButton, MenuOptions$1 as MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, PropType$1 as PropType, Selectable, Sheet$1 as Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Stylable$1 as Stylable, Style$1 as Style, StyleOptions$1 as StyleOptions, StyleType, Table$1 as Table, TableOptions$1 as TableOptions, Text$1 as Text, TextOptions$1 as TextOptions, UI, UICore, UILayer, UIOptions, UISubject, UIWidget, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget$1 as Widget, WidgetOptions$1 as WidgetOptions, WidgetRunner, buildDialog, defaultStyle$1 as defaultStyle, index_d$1 as html, makeStyle$1 as makeStyle, makeTable, showDropDown, index_d as term };

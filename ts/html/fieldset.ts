@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { PropType } from './types';
+import { PropType } from '../types';
 import * as Style from './style';
 import * as Element from './element';
 import * as Parser from './parser';

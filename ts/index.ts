@@ -1,10 +1,13 @@
 export * from './types';
+export * from './style';
 export * from './ui';
 export * from './widget';
+
 export * from './message';
 export * from './viewport';
 export * from './flavor';
 export * from './sidebar';
 export * from './menu';
+
 export * as html from './html';
 export * as term from './term';

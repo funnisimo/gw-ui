@@ -2,7 +2,7 @@ import * as GWU from 'gw-utils';
 import { UICore } from '../types';
 import { Grid } from './grid';
 import * as Text from './text';
-import * as Style from './style';
+import * as Style from '../style';
 import * as Widget from './widget';
 import * as Table from './table';
 import * as Menu from './menu';

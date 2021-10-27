@@ -1,6 +1,5 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import * as Widget from './widget';
 
 // export interface GetInputOptions {
 //     fg?: GWU.color.ColorBase;
@@ -18,34 +17,43 @@ import * as Widget from './widget';
 //     max?: number;
 // }
 
-export interface AlertOptions extends Widget.WidgetOptions {
-    duration?: number;
-    waitForAck?: boolean;
-
-    pad?: number;
-    padX?: number;
-    padY?: number;
-
-    box?: Widget.BoxOptions;
+export interface Size {
+    width: number;
+    height: number;
 }
 
-export interface ConfirmOptions extends Widget.WidgetOptions {
-    allowCancel?: boolean;
+export type PropType = string | number | boolean;
 
-    pad?: number;
-    padX?: number;
-    padY?: number;
+export interface Selectable {
+    tag: string;
+    classes: string[];
 
-    buttons?: Widget.ButtonOptions;
-    ok?: string | Widget.ButtonOptions;
-    cancel?: string | Widget.ButtonOptions;
-
-    box?: Widget.BoxOptions;
+    attr(name: string): string | undefined;
+    prop(name: string): PropType | undefined;
+    parent: Selectable | null;
+    children?: Selectable[];
 }
 
-export interface InputBoxOptions extends ConfirmOptions {
-    prompt?: string | Widget.TextOptions;
-    input?: Widget.InputOptions;
+export interface UIWidget {}
+
+export interface UILayer {
+    addWidget(w: UIWidget): void;
+    removeWidget(w: UIWidget): void;
+
+    readonly ui: UICore;
+    readonly buffer: GWU.canvas.DataBuffer;
+
+    show(): void;
+    hide(): void;
+
+    draw(): void;
+
+    // events
+    click(e: GWU.io.Event): boolean;
+    mousemove(e: GWU.io.Event): boolean;
+    keypress(e: GWU.io.Event): boolean;
+    dir(e: GWU.io.Event): boolean;
+    tick(e: GWU.io.Event): boolean;
 }
 
 export interface UICore {
@@ -61,13 +69,13 @@ export interface UICore {
     finishLayer(): void;
 
     fadeTo(color?: GWU.color.ColorBase, duration?: number): Promise<void>;
-    getInputAt(
-        x: number,
-        y: number,
-        maxLength: number,
-        opts?: Widget.InputOptions
-    ): Promise<string>;
-    alert(opts: number | AlertOptions, text: string, args: any): Promise<void>;
+    // getInputAt(
+    //     x: number,
+    //     y: number,
+    //     maxLength: number,
+    //     opts?: Widget.InputOptions
+    // ): Promise<string>;
+    // alert(opts: number | AlertOptions, text: string, args: any): Promise<void>;
 }
 
 export interface UISubject {

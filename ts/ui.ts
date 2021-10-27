@@ -1,10 +1,40 @@
 import * as GWU from 'gw-utils';
-import { UICore, AlertOptions, ConfirmOptions, InputBoxOptions } from './types';
+import { UICore } from './types';
 import * as Widget from './widget';
 
 export interface UIOptions {
     canvas: GWU.canvas.BaseCanvas;
     loop: GWU.io.Loop;
+}
+
+export interface AlertOptions extends Widget.WidgetOptions {
+    duration?: number;
+    waitForAck?: boolean;
+
+    pad?: number;
+    padX?: number;
+    padY?: number;
+
+    box?: Widget.BoxOptions;
+}
+
+export interface ConfirmOptions extends Widget.WidgetOptions {
+    allowCancel?: boolean;
+
+    pad?: number;
+    padX?: number;
+    padY?: number;
+
+    buttons?: Widget.ButtonOptions;
+    ok?: string | Widget.ButtonOptions;
+    cancel?: string | Widget.ButtonOptions;
+
+    box?: Widget.BoxOptions;
+}
+
+export interface InputBoxOptions extends ConfirmOptions {
+    prompt?: string | Widget.TextOptions;
+    input?: Widget.InputOptions;
 }
 
 export class UI implements UICore {

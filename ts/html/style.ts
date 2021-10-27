@@ -1,6 +1,5 @@
 import * as GWU from 'gw-utils';
-import { Selectable, PropType } from './types';
-import { Selector } from './selector';
+import * as BaseStyle from '../style';
 
 // static - size/pos automatic (ignore TRBL)
 // relative - size automatic, pos = automatic + TRBL
@@ -8,18 +7,11 @@ import { Selector } from './selector';
 // absolute - size = self, pos = TRBL vs positioned parent (fixed, absolute)
 export type Position = 'static' | 'relative' | 'fixed' | 'absolute';
 
-export interface Stylable extends Selectable {
+export interface Stylable extends BaseStyle.Stylable {
     style(): Style;
-    prop(name: string): PropType;
 }
 
-export interface StyleOptions {
-    fg?: GWU.color.ColorBase;
-    bg?: GWU.color.ColorBase;
-    // depth?: number;
-
-    align?: GWU.text.Align;
-    valign?: GWU.text.VAlign;
+export interface StyleOptions extends BaseStyle.StyleOptions {
     position?: Position;
 
     minWidth?: number;
@@ -63,14 +55,10 @@ export interface StyleOptions {
     border?: GWU.color.ColorBase;
 }
 
-export class Style {
-    protected _fg?: GWU.color.ColorBase;
-    protected _bg?: GWU.color.ColorBase;
+export class Style extends BaseStyle.Style {
     protected _border?: GWU.color.ColorBase;
     // protected _depth?: number;
 
-    protected _align?: GWU.text.Align;
-    protected _valign?: GWU.text.VAlign;
     protected _position?: Position;
 
     protected _minWidth?: number;
@@ -99,30 +87,10 @@ export class Style {
     protected _marginTop?: number;
     protected _marginBottom?: number;
 
-    selector: Selector;
-    protected _dirty = false;
-
     constructor(selector = '$', init?: StyleOptions) {
-        this.selector = new Selector(selector);
-        if (init) {
-            this.set(init);
-        }
-        this._dirty = false;
+        super(selector, init);
     }
 
-    get dirty(): boolean {
-        return this._dirty;
-    }
-    set dirty(v: boolean) {
-        this._dirty = v;
-    }
-
-    get fg(): GWU.color.ColorBase | undefined {
-        return this._fg;
-    }
-    get bg(): GWU.color.ColorBase | undefined {
-        return this._bg;
-    }
     get border(): GWU.color.ColorBase | undefined {
         return this._border;
     }
@@ -130,12 +98,6 @@ export class Style {
     //     return this._depth;
     // }
 
-    get align(): GWU.text.Align | undefined {
-        return this._align;
-    }
-    get valign(): GWU.text.VAlign | undefined {
-        return this._valign;
-    }
     get position(): Position | undefined {
         return this._position;
     }
@@ -430,7 +392,7 @@ export class Sheet {
         // if 2 '.' - Error('Only single class rules supported.')
         // if '&' - Error('Not supported.')
 
-        let rule = new Style(selector, props);
+        let rule: Style = new Style(selector, props);
         const existing = this.rules.findIndex(
             (s) => s.selector.text === rule.selector.text
         );

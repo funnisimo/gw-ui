@@ -1,6 +1,6 @@
 import * as GWU from 'gw-utils';
 import { Term } from '.';
-import { Style } from './style';
+import { Style } from '../style';
 import * as Widget from './widget';
 
 export interface BorderOptions extends Widget.WidgetOptions {

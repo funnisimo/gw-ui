@@ -1,6 +1,503 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 
+class Selector {
+    constructor(text) {
+        this.priority = 0;
+        if (text.startsWith(':') || text.startsWith('.')) {
+            text = '*' + text;
+        }
+        this.text = text;
+        this.matchFn = this._parse(text);
+    }
+    _parse(text) {
+        const parts = text.split(/ +/g).map((p) => p.trim());
+        const matches = [];
+        for (let i = 0; i < parts.length; ++i) {
+            let p = parts[i];
+            if (p === '>') {
+                matches.push(this._parentMatch());
+                ++i;
+                p = parts[i];
+            }
+            else if (i > 0) {
+                matches.push(this._ancestorMatch());
+            }
+            matches.push(this._matchElement(p));
+        }
+        return matches.reduce((out, fn) => fn.bind(undefined, out), GWU.TRUE);
+    }
+    _parentMatch() {
+        return function parentM(next, e) {
+            // console.log('parent', e.parent);
+            if (!e.parent)
+                return false;
+            return next(e.parent);
+        };
+    }
+    _ancestorMatch() {
+        return function ancestorM(next, e) {
+            let current = e.parent;
+            while (current) {
+                if (next(current))
+                    return true;
+            }
+            return false;
+        };
+    }
+    _matchElement(text) {
+        const CSS_RE = /(?:(\w+|\*|\$)|#(\w+)|\.([^\.: ]+))|(?::(?:(?:not\(\.([^\)]+)\))|(?:not\(:([^\)]+)\))|([^\.: ]+)))/g;
+        const parts = [];
+        const re = new RegExp(CSS_RE, 'g');
+        let match = re.exec(text);
+        while (match) {
+            if (match[1]) {
+                const fn = this._matchTag(match[1]);
+                if (fn) {
+                    parts.push(fn);
+                }
+            }
+            else if (match[2]) {
+                parts.push(this._matchId(match[2]));
+            }
+            else if (match[3]) {
+                parts.push(this._matchClass(match[3]));
+            }
+            else if (match[4]) {
+                parts.push(this._matchNot(this._matchClass(match[4])));
+            }
+            else if (match[5]) {
+                parts.push(this._matchNot(this._matchProp(match[5])));
+            }
+            else {
+                parts.push(this._matchProp(match[6]));
+            }
+            match = re.exec(text);
+        }
+        return (next, e) => {
+            if (!parts.every((fn) => fn(e)))
+                return false;
+            return next(e);
+        };
+    }
+    _matchTag(tag) {
+        if (tag === '*')
+            return null;
+        if (tag === '$') {
+            this.priority += 10000;
+            return null;
+        }
+        this.priority += 10;
+        return (el) => el.tag === tag;
+    }
+    _matchClass(cls) {
+        this.priority += 100;
+        return (el) => el.classes.includes(cls);
+    }
+    _matchProp(prop) {
+        if (prop.startsWith('first')) {
+            return this._matchFirst();
+        }
+        else if (prop.startsWith('last')) {
+            return this._matchLast();
+        }
+        else if (prop === 'invalid') {
+            return this._matchNot(this._matchProp('valid'));
+        }
+        else if (prop === 'optional') {
+            return this._matchNot(this._matchProp('required'));
+        }
+        else if (prop === 'enabled') {
+            return this._matchNot(this._matchProp('disabled'));
+        }
+        else if (prop === 'unchecked') {
+            return this._matchNot(this._matchProp('checked'));
+        }
+        this.priority += 1; // prop
+        return (el) => !!el.prop(prop);
+    }
+    _matchId(id) {
+        this.priority += 1000;
+        return (el) => el.attr('id') === id;
+    }
+    _matchFirst() {
+        this.priority += 1; // prop
+        return (el) => !!el.parent && !!el.parent.children && el.parent.children[0] === el;
+    }
+    _matchLast() {
+        this.priority += 1; // prop
+        return (el) => {
+            if (!el.parent)
+                return false;
+            if (!el.parent.children)
+                return false;
+            return el.parent.children[el.parent.children.length - 1] === el;
+        };
+    }
+    _matchNot(fn) {
+        return (el) => !fn(el);
+    }
+    matches(obj) {
+        return this.matchFn(obj);
+    }
+}
+
+class Style$1 {
+    constructor(selector = '$', init) {
+        this._dirty = false;
+        this.selector = new Selector(selector);
+        if (init) {
+            this.set(init);
+        }
+        this._dirty = false;
+    }
+    get dirty() {
+        return this._dirty;
+    }
+    set dirty(v) {
+        this._dirty = v;
+    }
+    get fg() {
+        return this._fg;
+    }
+    get bg() {
+        return this._bg;
+    }
+    // get border(): GWU.color.ColorBase | undefined {
+    //     return this._border;
+    // }
+    dim(pct = 25, fg = true, bg = false) {
+        if (fg) {
+            this._fg = GWU.color.from(this._fg).darken(pct);
+        }
+        if (bg) {
+            this._bg = GWU.color.from(this._bg).darken(pct);
+        }
+        return this;
+    }
+    bright(pct = 25, fg = true, bg = false) {
+        if (fg) {
+            this._fg = GWU.color.from(this._fg).lighten(pct);
+        }
+        if (bg) {
+            this._bg = GWU.color.from(this._bg).lighten(pct);
+        }
+        return this;
+    }
+    invert() {
+        [this._fg, this._bg] = [this._bg, this._fg];
+        return this;
+    }
+    get align() {
+        return this._align;
+    }
+    get valign() {
+        return this._valign;
+    }
+    // get position(): Position | undefined {
+    //     return this._position;
+    // }
+    // get minWidth(): number | undefined {
+    //     return this._minWidth;
+    // }
+    // get maxWidth(): number | undefined {
+    //     return this._maxWidth;
+    // }
+    // get width(): number | undefined {
+    //     return this._width;
+    // }
+    // get minHeight(): number | undefined {
+    //     return this._minHeight;
+    // }
+    // get maxHeight(): number | undefined {
+    //     return this._maxHeight;
+    // }
+    // get height(): number | undefined {
+    //     return this._height;
+    // }
+    // get x(): number | undefined {
+    //     return this._x;
+    // }
+    // get left(): number | undefined {
+    //     return this._left;
+    // }
+    // get right(): number | undefined {
+    //     return this._right;
+    // }
+    // get y(): number | undefined {
+    //     return this._y;
+    // }
+    // get top(): number | undefined {
+    //     return this._top;
+    // }
+    // get bottom(): number | undefined {
+    //     return this._bottom;
+    // }
+    // get padLeft(): number | undefined {
+    //     return this._padLeft;
+    // }
+    // get padRight(): number | undefined {
+    //     return this._padRight;
+    // }
+    // get padTop(): number | undefined {
+    //     return this._padTop;
+    // }
+    // get padBottom(): number | undefined {
+    //     return this._padBottom;
+    // }
+    // get marginLeft(): number | undefined {
+    //     return this._marginLeft;
+    // }
+    // get marginRight(): number | undefined {
+    //     return this._marginRight;
+    // }
+    // get marginTop(): number | undefined {
+    //     return this._marginTop;
+    // }
+    // get marginBottom(): number | undefined {
+    //     return this._marginBottom;
+    // }
+    get(key) {
+        const id = ('_' + key);
+        return this[id];
+    }
+    set(key, value, setDirty = true) {
+        if (typeof key === 'string') {
+            // if (key === 'padding') {
+            //     if (typeof value === 'number') {
+            //         value = [value];
+            //     } else if (typeof value === 'string') {
+            //         value = value.split(' ');
+            //     }
+            //     value = value.map((v: string | number) => {
+            //         if (typeof v === 'string') return Number.parseInt(v);
+            //         return v;
+            //     });
+            //     if (value.length == 1) {
+            //         this._padLeft =
+            //             this._padRight =
+            //             this._padTop =
+            //             this._padBottom =
+            //                 value[0];
+            //     } else if (value.length == 2) {
+            //         this._padLeft = this._padRight = value[1];
+            //         this._padTop = this._padBottom = value[0];
+            //     } else if (value.length == 3) {
+            //         this._padTop = value[0];
+            //         this._padRight = value[1];
+            //         this._padBottom = value[2];
+            //         this._padLeft = value[1];
+            //     } else if (value.length == 4) {
+            //         this._padTop = value[0];
+            //         this._padRight = value[1];
+            //         this._padBottom = value[2];
+            //         this._padLeft = value[3];
+            //     }
+            // } else if (key === 'margin') {
+            //     if (typeof value === 'number') {
+            //         value = [value];
+            //     } else if (typeof value === 'string') {
+            //         value = value.split(' ');
+            //     }
+            //     value = value.map((v: string | number) => {
+            //         if (typeof v === 'string') return Number.parseInt(v);
+            //         return v;
+            //     });
+            //     if (value.length == 1) {
+            //         this._marginLeft =
+            //             this._marginRight =
+            //             this._marginTop =
+            //             this._marginBottom =
+            //                 value[0];
+            //     } else if (value.length == 2) {
+            //         this._marginLeft = this._marginRight = value[1];
+            //         this._marginTop = this._marginBottom = value[0];
+            //     } else if (value.length == 3) {
+            //         this._marginTop = value[0];
+            //         this._marginRight = value[1];
+            //         this._marginBottom = value[2];
+            //         this._marginLeft = value[1];
+            //     } else if (value.length == 4) {
+            //         this._marginTop = value[0];
+            //         this._marginRight = value[1];
+            //         this._marginBottom = value[2];
+            //         this._marginLeft = value[3];
+            //     }
+            // } else {
+            const field = '_' + key;
+            if (typeof value === 'string') {
+                if (value.match(/^[+-]?\d+$/)) {
+                    value = Number.parseInt(value);
+                }
+                else if (value === 'true') {
+                    value = true;
+                }
+                else if (value === 'false') {
+                    value = false;
+                }
+            }
+            this[field] = value;
+            // }
+        }
+        else if (key instanceof Style$1) {
+            setDirty = value || value === undefined ? true : false;
+            Object.entries(key).forEach(([name, value]) => {
+                if (name === 'selector' || name === '_dirty')
+                    return;
+                if (value !== undefined && value !== null) {
+                    this[name] = value;
+                }
+                else if (value === null) {
+                    this.unset(name);
+                }
+            });
+        }
+        else {
+            setDirty = value || value === undefined ? true : false;
+            Object.entries(key).forEach(([name, value]) => {
+                if (value === null) {
+                    this.unset(name);
+                }
+                else {
+                    this.set(name, value, setDirty);
+                }
+            });
+        }
+        this.dirty || (this.dirty = setDirty);
+        return this;
+    }
+    unset(key) {
+        const field = key.startsWith('_') ? key : '_' + key;
+        delete this[field];
+        this.dirty = true;
+        return this;
+    }
+    clone() {
+        const other = new this.constructor();
+        other.copy(this);
+        return other;
+    }
+    copy(other) {
+        Object.assign(this, other);
+        return this;
+    }
+}
+function makeStyle$1(style, selector = '$') {
+    const opts = {};
+    const parts = style
+        .trim()
+        .split(';')
+        .map((p) => p.trim());
+    parts.forEach((p) => {
+        const [name, base] = p.split(':').map((p) => p.trim());
+        if (!name)
+            return;
+        const baseParts = base.split(/ +/g);
+        if (baseParts.length == 1) {
+            // @ts-ignore
+            opts[name] = base;
+        }
+        else {
+            // @ts-ignore
+            opts[name] = baseParts;
+        }
+    });
+    return new Style$1(selector, opts);
+}
+// const NO_BOUNDS = ['fg', 'bg', 'depth', 'align', 'valign'];
+// export function affectsBounds(key: keyof StyleOptions): boolean {
+//     return !NO_BOUNDS.includes(key);
+// }
+class ComputedStyle$1 extends Style$1 {
+    // constructor(source: Stylable, sources?: Style[]) {
+    constructor(sources) {
+        super();
+        // obj: Stylable;
+        this.sources = [];
+        // this.obj = source;
+        if (sources) {
+            // sort low to high priority (highest should be this.obj._style, lowest = global default:'*')
+            sources.sort((a, b) => a.selector.priority - b.selector.priority);
+            this.sources = sources;
+        }
+        this.sources.forEach((s) => super.set(s));
+        this._dirty = false; // As far as I know I reflect all of the current source values.
+    }
+    get dirty() {
+        return this._dirty || this.sources.some((s) => s.dirty);
+    }
+    set dirty(v) {
+        this._dirty = v;
+    }
+}
+class Sheet$1 {
+    constructor(parentSheet) {
+        this.rules = [];
+        this._dirty = true;
+        if (parentSheet === undefined) {
+            parentSheet = defaultStyle$1;
+        }
+        if (parentSheet) {
+            this.rules = parentSheet.rules.slice();
+        }
+    }
+    get dirty() {
+        return this._dirty;
+    }
+    set dirty(v) {
+        this._dirty = v;
+        if (!this._dirty) {
+            this.rules.forEach((r) => (r.dirty = false));
+        }
+    }
+    add(selector, props) {
+        if (selector.includes(',')) {
+            selector
+                .split(',')
+                .map((p) => p.trim())
+                .forEach((p) => this.add(p, props));
+            return this;
+        }
+        if (selector.includes(' '))
+            throw new Error('Hierarchical selectors not supported.');
+        // if 2 '.' - Error('Only single class rules supported.')
+        // if '&' - Error('Not supported.')
+        let rule = new Style$1(selector, props);
+        const existing = this.rules.findIndex((s) => s.selector.text === rule.selector.text);
+        if (existing > -1) {
+            const current = this.rules[existing];
+            current.set(rule);
+            rule = current;
+        }
+        else {
+            this.rules.push(rule);
+        }
+        // rulesChanged = true;
+        this.dirty = true;
+        return this;
+    }
+    get(selector) {
+        return this.rules.find((s) => s.selector.text === selector) || null;
+    }
+    remove(selector) {
+        const existing = this.rules.findIndex((s) => s.selector.text === selector);
+        if (existing > -1) {
+            this.rules.splice(existing, 1);
+            this.dirty = true;
+        }
+    }
+    computeFor(widget) {
+        const sources = this.rules.filter((r) => r.selector.matches(widget));
+        const widgetStyle = widget.style();
+        if (widgetStyle) {
+            sources.push(widgetStyle);
+        }
+        widgetStyle.dirty = false;
+        return new ComputedStyle$1(sources);
+    }
+}
+const defaultStyle$1 = new Sheet$1(null);
+
 class Widget$1 {
     constructor(id, opts) {
         this.active = false;
@@ -2337,170 +2834,9 @@ class Menu$1 extends Widget$1 {
     }
 }
 
-class Selector {
-    constructor(text) {
-        this.priority = 0;
-        if (text.startsWith(':') || text.startsWith('.')) {
-            text = '*' + text;
-        }
-        this.text = text;
-        this.matchFn = this._parse(text);
-    }
-    _parse(text) {
-        const parts = text.split(/ +/g).map((p) => p.trim());
-        const matches = [];
-        for (let i = 0; i < parts.length; ++i) {
-            let p = parts[i];
-            if (p === '>') {
-                matches.push(this._parentMatch());
-                ++i;
-                p = parts[i];
-            }
-            else if (i > 0) {
-                matches.push(this._ancestorMatch());
-            }
-            matches.push(this._matchElement(p));
-        }
-        return matches.reduce((out, fn) => fn.bind(undefined, out), GWU.TRUE);
-    }
-    _parentMatch() {
-        return function parentM(next, e) {
-            // console.log('parent', e.parent);
-            if (!e.parent)
-                return false;
-            return next(e.parent);
-        };
-    }
-    _ancestorMatch() {
-        return function ancestorM(next, e) {
-            let current = e.parent;
-            while (current) {
-                if (next(current))
-                    return true;
-            }
-            return false;
-        };
-    }
-    _matchElement(text) {
-        const CSS_RE = /(?:(\w+|\*|\$)|#(\w+)|\.([^\.: ]+))|(?::(?:(?:not\(\.([^\)]+)\))|(?:not\(:([^\)]+)\))|([^\.: ]+)))/g;
-        const parts = [];
-        const re = new RegExp(CSS_RE, 'g');
-        let match = re.exec(text);
-        while (match) {
-            if (match[1]) {
-                const fn = this._matchTag(match[1]);
-                if (fn) {
-                    parts.push(fn);
-                }
-            }
-            else if (match[2]) {
-                parts.push(this._matchId(match[2]));
-            }
-            else if (match[3]) {
-                parts.push(this._matchClass(match[3]));
-            }
-            else if (match[4]) {
-                parts.push(this._matchNot(this._matchClass(match[4])));
-            }
-            else if (match[5]) {
-                parts.push(this._matchNot(this._matchProp(match[5])));
-            }
-            else {
-                parts.push(this._matchProp(match[6]));
-            }
-            match = re.exec(text);
-        }
-        return (next, e) => {
-            if (!parts.every((fn) => fn(e)))
-                return false;
-            return next(e);
-        };
-    }
-    _matchTag(tag) {
-        if (tag === '*')
-            return null;
-        if (tag === '$') {
-            this.priority += 10000;
-            return null;
-        }
-        this.priority += 10;
-        return (el) => el.tag === tag;
-    }
-    _matchClass(cls) {
-        this.priority += 100;
-        return (el) => el.classes.includes(cls);
-    }
-    _matchProp(prop) {
-        if (prop.startsWith('first')) {
-            return this._matchFirst();
-        }
-        else if (prop.startsWith('last')) {
-            return this._matchLast();
-        }
-        else if (prop === 'invalid') {
-            return this._matchNot(this._matchProp('valid'));
-        }
-        else if (prop === 'optional') {
-            return this._matchNot(this._matchProp('required'));
-        }
-        else if (prop === 'enabled') {
-            return this._matchNot(this._matchProp('disabled'));
-        }
-        else if (prop === 'unchecked') {
-            return this._matchNot(this._matchProp('checked'));
-        }
-        this.priority += 1; // prop
-        return (el) => !!el.prop(prop);
-    }
-    _matchId(id) {
-        this.priority += 1000;
-        return (el) => el.attr('id') === id;
-    }
-    _matchFirst() {
-        this.priority += 1; // prop
-        return (el) => !!el.parent && !!el.parent.children && el.parent.children[0] === el;
-    }
-    _matchLast() {
-        this.priority += 1; // prop
-        return (el) => {
-            if (!el.parent)
-                return false;
-            if (!el.parent.children)
-                return false;
-            return el.parent.children[el.parent.children.length - 1] === el;
-        };
-    }
-    _matchNot(fn) {
-        return (el) => !fn(el);
-    }
-    matches(obj) {
-        return this.matchFn(obj);
-    }
-}
-function compile(text) {
-    return new Selector(text);
-}
-
-class Style$1 {
+class Style extends Style$1 {
     constructor(selector = '$', init) {
-        this._dirty = false;
-        this.selector = new Selector(selector);
-        if (init) {
-            this.set(init);
-        }
-        this._dirty = false;
-    }
-    get dirty() {
-        return this._dirty;
-    }
-    set dirty(v) {
-        this._dirty = v;
-    }
-    get fg() {
-        return this._fg;
-    }
-    get bg() {
-        return this._bg;
+        super(selector, init);
     }
     get border() {
         return this._border;
@@ -2508,12 +2844,6 @@ class Style$1 {
     // get depth(): number | undefined {
     //     return this._depth;
     // }
-    get align() {
-        return this._align;
-    }
-    get valign() {
-        return this._valign;
-    }
     get position() {
         return this._position;
     }
@@ -2671,7 +3001,7 @@ class Style$1 {
                 this[field] = value;
             }
         }
-        else if (key instanceof Style$1) {
+        else if (key instanceof Style) {
             setDirty = value || value === undefined ? true : false;
             Object.entries(key).forEach(([name, value]) => {
                 if (name === 'selector' || name === '_dirty')
@@ -2734,13 +3064,13 @@ function makeStyle(style, selector = '$') {
             opts[name] = baseParts;
         }
     });
-    return new Style$1(selector, opts);
+    return new Style(selector, opts);
 }
 // const NO_BOUNDS = ['fg', 'bg', 'depth', 'align', 'valign'];
 // export function affectsBounds(key: keyof StyleOptions): boolean {
 //     return !NO_BOUNDS.includes(key);
 // }
-class ComputedStyle$1 extends Style$1 {
+class ComputedStyle extends Style {
     // constructor(source: Stylable, sources?: Style[]) {
     constructor(sources) {
         super();
@@ -2762,12 +3092,12 @@ class ComputedStyle$1 extends Style$1 {
         this._dirty = v;
     }
 }
-class Sheet$1 {
+class Sheet {
     constructor(parentSheet) {
         this.rules = [];
         this._dirty = true;
         if (parentSheet === undefined) {
-            parentSheet = defaultStyle$1;
+            parentSheet = defaultStyle;
         }
         if (parentSheet) {
             this.rules = parentSheet.rules.slice();
@@ -2794,7 +3124,7 @@ class Sheet$1 {
             throw new Error('Hierarchical selectors not supported.');
         // if 2 '.' - Error('Only single class rules supported.')
         // if '&' - Error('Not supported.')
-        let rule = new Style$1(selector, props);
+        let rule = new Style(selector, props);
         const existing = this.rules.findIndex((s) => s.selector.text === rule.selector.text);
         if (existing > -1) {
             const current = this.rules[existing];
@@ -2825,12 +3155,12 @@ class Sheet$1 {
             sources.push(widgetStyle);
         }
         widgetStyle.dirty = false;
-        return new ComputedStyle$1(sources);
+        return new ComputedStyle(sources);
     }
 }
-const defaultStyle$1 = new Sheet$1(null);
+const defaultStyle = new Sheet(null);
 
-defaultStyle$1.add('*', {
+defaultStyle.add('*', {
     fg: 'white',
     bg: -1,
     align: 'left',
@@ -2857,7 +3187,7 @@ class Element {
         this.tag = tag;
         this._usedStyle = styles
             ? styles.computeFor(this)
-            : new ComputedStyle$1();
+            : new ComputedStyle();
     }
     contains(x, y) {
         if (typeof x === 'number')
@@ -3267,7 +3597,7 @@ class Element {
     }
     style(...args) {
         if (!this._style) {
-            this._style = new Style$1();
+            this._style = new Style();
         }
         if (args.length === 0)
             return this._style;
@@ -3299,7 +3629,7 @@ class Element {
     used(id) {
         if (!id)
             return this._usedStyle;
-        if (id instanceof ComputedStyle$1) {
+        if (id instanceof ComputedStyle) {
             this._usedStyle = id;
             this.dirty = true;
             return this;
@@ -3610,7 +3940,7 @@ function back(arr) {
  * @return {HTMLElement}      root element
  */
 function parse(data, options = {}) {
-    if (options instanceof Sheet$1) {
+    if (options instanceof Sheet) {
         options = { stylesheet: options };
     }
     var root = createElement('dummy', '', options.stylesheet);
@@ -3717,7 +4047,7 @@ function parse(data, options = {}) {
 // let t = parse('<div name="test" checked id=A>Test</div>');
 // console.log(t);
 
-defaultStyle$1.add('input', {
+defaultStyle.add('input', {
     fg: 'black',
     bg: 'gray',
 });
@@ -3933,7 +4263,7 @@ installElement('checkbox', (tag, sheet) => {
     return new CheckBox(tag, sheet);
 });
 
-defaultStyle$1.add('button', {
+defaultStyle.add('button', {
     fg: 'black',
     bg: 'gray',
 });
@@ -3990,7 +4320,7 @@ installElement('button', (tag, sheet) => {
     return new Button$1(tag, sheet);
 });
 
-defaultStyle$1.add('fieldset', {
+defaultStyle.add('fieldset', {
     margin: 1,
     border: 'dark_gray',
     fg: 'white',
@@ -4174,7 +4504,7 @@ installElement('datalist', (tag, sheet) => {
     return new DataList(tag, sheet);
 });
 
-defaultStyle$1.add('body', {
+defaultStyle.add('body', {
     bg: 'black',
 });
 class Document {
@@ -4182,7 +4512,7 @@ class Document {
         this._activeElement = null;
         this._done = false;
         this.ui = ui;
-        this.stylesheet = new Sheet$1();
+        this.stylesheet = new Sheet();
         this.body = new Element(rootTag);
         this.body.style({
             width: ui.buffer.width,
@@ -4812,13 +5142,11 @@ class Selection {
 
 var index$1 = /*#__PURE__*/Object.freeze({
     __proto__: null,
-    Selector: Selector,
-    compile: compile,
-    Style: Style$1,
+    Style: Style,
     makeStyle: makeStyle,
-    ComputedStyle: ComputedStyle$1,
-    Sheet: Sheet$1,
-    defaultStyle: defaultStyle$1,
+    ComputedStyle: ComputedStyle,
+    Sheet: Sheet,
+    defaultStyle: defaultStyle,
     Element: Element,
     Input: Input,
     CheckBox: CheckBox,
@@ -4836,341 +5164,7 @@ var index$1 = /*#__PURE__*/Object.freeze({
     Selection: Selection
 });
 
-class Style {
-    constructor(selector = '$', init) {
-        this._dirty = false;
-        this.selector = new Selector(selector);
-        if (init) {
-            this.set(init);
-        }
-        this._dirty = false;
-    }
-    get dirty() {
-        return this._dirty;
-    }
-    set dirty(v) {
-        this._dirty = v;
-    }
-    get fg() {
-        return this._fg;
-    }
-    get bg() {
-        return this._bg;
-    }
-    // get border(): GWU.color.ColorBase | undefined {
-    //     return this._border;
-    // }
-    dim(pct = 25, fg = true, bg = false) {
-        if (fg) {
-            this._fg = GWU.color.from(this._fg).darken(pct);
-        }
-        if (bg) {
-            this._bg = GWU.color.from(this._bg).darken(pct);
-        }
-        return this;
-    }
-    bright(pct = 25, fg = true, bg = false) {
-        if (fg) {
-            this._fg = GWU.color.from(this._fg).lighten(pct);
-        }
-        if (bg) {
-            this._bg = GWU.color.from(this._bg).lighten(pct);
-        }
-        return this;
-    }
-    invert() {
-        [this._fg, this._bg] = [this._bg, this._fg];
-        return this;
-    }
-    get align() {
-        return this._align;
-    }
-    get valign() {
-        return this._valign;
-    }
-    // get position(): Position | undefined {
-    //     return this._position;
-    // }
-    // get minWidth(): number | undefined {
-    //     return this._minWidth;
-    // }
-    // get maxWidth(): number | undefined {
-    //     return this._maxWidth;
-    // }
-    // get width(): number | undefined {
-    //     return this._width;
-    // }
-    // get minHeight(): number | undefined {
-    //     return this._minHeight;
-    // }
-    // get maxHeight(): number | undefined {
-    //     return this._maxHeight;
-    // }
-    // get height(): number | undefined {
-    //     return this._height;
-    // }
-    // get x(): number | undefined {
-    //     return this._x;
-    // }
-    // get left(): number | undefined {
-    //     return this._left;
-    // }
-    // get right(): number | undefined {
-    //     return this._right;
-    // }
-    // get y(): number | undefined {
-    //     return this._y;
-    // }
-    // get top(): number | undefined {
-    //     return this._top;
-    // }
-    // get bottom(): number | undefined {
-    //     return this._bottom;
-    // }
-    // get padLeft(): number | undefined {
-    //     return this._padLeft;
-    // }
-    // get padRight(): number | undefined {
-    //     return this._padRight;
-    // }
-    // get padTop(): number | undefined {
-    //     return this._padTop;
-    // }
-    // get padBottom(): number | undefined {
-    //     return this._padBottom;
-    // }
-    // get marginLeft(): number | undefined {
-    //     return this._marginLeft;
-    // }
-    // get marginRight(): number | undefined {
-    //     return this._marginRight;
-    // }
-    // get marginTop(): number | undefined {
-    //     return this._marginTop;
-    // }
-    // get marginBottom(): number | undefined {
-    //     return this._marginBottom;
-    // }
-    get(key) {
-        const id = ('_' + key);
-        return this[id];
-    }
-    set(key, value, setDirty = true) {
-        if (typeof key === 'string') {
-            // if (key === 'padding') {
-            //     if (typeof value === 'number') {
-            //         value = [value];
-            //     } else if (typeof value === 'string') {
-            //         value = value.split(' ');
-            //     }
-            //     value = value.map((v: string | number) => {
-            //         if (typeof v === 'string') return Number.parseInt(v);
-            //         return v;
-            //     });
-            //     if (value.length == 1) {
-            //         this._padLeft =
-            //             this._padRight =
-            //             this._padTop =
-            //             this._padBottom =
-            //                 value[0];
-            //     } else if (value.length == 2) {
-            //         this._padLeft = this._padRight = value[1];
-            //         this._padTop = this._padBottom = value[0];
-            //     } else if (value.length == 3) {
-            //         this._padTop = value[0];
-            //         this._padRight = value[1];
-            //         this._padBottom = value[2];
-            //         this._padLeft = value[1];
-            //     } else if (value.length == 4) {
-            //         this._padTop = value[0];
-            //         this._padRight = value[1];
-            //         this._padBottom = value[2];
-            //         this._padLeft = value[3];
-            //     }
-            // } else if (key === 'margin') {
-            //     if (typeof value === 'number') {
-            //         value = [value];
-            //     } else if (typeof value === 'string') {
-            //         value = value.split(' ');
-            //     }
-            //     value = value.map((v: string | number) => {
-            //         if (typeof v === 'string') return Number.parseInt(v);
-            //         return v;
-            //     });
-            //     if (value.length == 1) {
-            //         this._marginLeft =
-            //             this._marginRight =
-            //             this._marginTop =
-            //             this._marginBottom =
-            //                 value[0];
-            //     } else if (value.length == 2) {
-            //         this._marginLeft = this._marginRight = value[1];
-            //         this._marginTop = this._marginBottom = value[0];
-            //     } else if (value.length == 3) {
-            //         this._marginTop = value[0];
-            //         this._marginRight = value[1];
-            //         this._marginBottom = value[2];
-            //         this._marginLeft = value[1];
-            //     } else if (value.length == 4) {
-            //         this._marginTop = value[0];
-            //         this._marginRight = value[1];
-            //         this._marginBottom = value[2];
-            //         this._marginLeft = value[3];
-            //     }
-            // } else {
-            const field = '_' + key;
-            if (typeof value === 'string') {
-                if (value.match(/^[+-]?\d+$/)) {
-                    value = Number.parseInt(value);
-                }
-                else if (value === 'true') {
-                    value = true;
-                }
-                else if (value === 'false') {
-                    value = false;
-                }
-            }
-            this[field] = value;
-            // }
-        }
-        else if (key instanceof Style) {
-            setDirty = value || value === undefined ? true : false;
-            Object.entries(key).forEach(([name, value]) => {
-                if (name === 'selector' || name === '_dirty')
-                    return;
-                if (value !== undefined && value !== null) {
-                    this[name] = value;
-                }
-                else if (value === null) {
-                    this.unset(name);
-                }
-            });
-        }
-        else {
-            setDirty = value || value === undefined ? true : false;
-            Object.entries(key).forEach(([name, value]) => {
-                if (value === null) {
-                    this.unset(name);
-                }
-                else {
-                    this.set(name, value, setDirty);
-                }
-            });
-        }
-        this.dirty || (this.dirty = setDirty);
-        return this;
-    }
-    unset(key) {
-        const field = key.startsWith('_') ? key : '_' + key;
-        delete this[field];
-        this.dirty = true;
-        return this;
-    }
-    clone() {
-        const other = new this.constructor();
-        other.copy(this);
-        return other;
-    }
-    copy(other) {
-        Object.assign(this, other);
-        return this;
-    }
-}
-// const NO_BOUNDS = ['fg', 'bg', 'depth', 'align', 'valign'];
-// export function affectsBounds(key: keyof StyleOptions): boolean {
-//     return !NO_BOUNDS.includes(key);
-// }
-class ComputedStyle extends Style {
-    // constructor(source: Stylable, sources?: Style[]) {
-    constructor(sources) {
-        super();
-        // obj: Stylable;
-        this.sources = [];
-        // this.obj = source;
-        if (sources) {
-            // sort low to high priority (highest should be this.obj._style, lowest = global default:'*')
-            sources.sort((a, b) => a.selector.priority - b.selector.priority);
-            this.sources = sources;
-        }
-        this.sources.forEach((s) => super.set(s));
-        this._dirty = false; // As far as I know I reflect all of the current source values.
-    }
-    get dirty() {
-        return this._dirty || this.sources.some((s) => s.dirty);
-    }
-    set dirty(v) {
-        this._dirty = v;
-    }
-}
-class Sheet {
-    constructor(parentSheet) {
-        this.rules = [];
-        this._dirty = true;
-        if (parentSheet === undefined) {
-            parentSheet = defaultStyle;
-        }
-        if (parentSheet) {
-            this.rules = parentSheet.rules.slice();
-        }
-    }
-    get dirty() {
-        return this._dirty;
-    }
-    set dirty(v) {
-        this._dirty = v;
-        if (!this._dirty) {
-            this.rules.forEach((r) => (r.dirty = false));
-        }
-    }
-    add(selector, props) {
-        if (selector.includes(',')) {
-            selector
-                .split(',')
-                .map((p) => p.trim())
-                .forEach((p) => this.add(p, props));
-            return this;
-        }
-        if (selector.includes(' '))
-            throw new Error('Hierarchical selectors not supported.');
-        // if 2 '.' - Error('Only single class rules supported.')
-        // if '&' - Error('Not supported.')
-        let rule = new Style(selector, props);
-        const existing = this.rules.findIndex((s) => s.selector.text === rule.selector.text);
-        if (existing > -1) {
-            const current = this.rules[existing];
-            current.set(rule);
-            rule = current;
-        }
-        else {
-            this.rules.push(rule);
-        }
-        // rulesChanged = true;
-        this.dirty = true;
-        return this;
-    }
-    get(selector) {
-        return this.rules.find((s) => s.selector.text === selector) || null;
-    }
-    remove(selector) {
-        const existing = this.rules.findIndex((s) => s.selector.text === selector);
-        if (existing > -1) {
-            this.rules.splice(existing, 1);
-            this.dirty = true;
-        }
-    }
-    computeFor(widget) {
-        const sources = this.rules.filter((r) => r.selector.matches(widget));
-        const widgetStyle = widget.style();
-        if (widgetStyle) {
-            sources.push(widgetStyle);
-        }
-        widgetStyle.dirty = false;
-        return new ComputedStyle(sources);
-    }
-}
-const defaultStyle = new Sheet(null);
-
-defaultStyle.add('*', {
+defaultStyle$1.add('*', {
     fg: 'white',
     bg: -1,
     align: 'left',
@@ -5183,7 +5177,7 @@ class Widget {
         this.depth = 0;
         this.events = {};
         this.action = '';
-        this._style = new Style();
+        this._style = new Style$1();
         this.parent = null;
         this.classes = [];
         this._props = {};
@@ -5974,7 +5968,7 @@ class Term {
         this.opts = {};
         // widgets: Widget.Widget[] = [];
         this.allWidgets = [];
-        this.styles = new Sheet();
+        this.styles = new Sheet$1();
         // _currentWidget: Widget.Widget | null = null;
         this.events = {};
         this._grid = null;
@@ -6391,4 +6385,4 @@ var index = /*#__PURE__*/Object.freeze({
     Term: Term
 });
 
-export { ActionButton, ActorEntry, Box, Button$2 as Button, CellEntry, Column$1 as Column, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input$1 as Input, ItemEntry, List, Menu$1 as Menu, MenuButton$1 as MenuButton, Messages, Sidebar, Table$1 as Table, Text$1 as Text, UI, Viewport, Widget$1 as Widget, buildDialog, index$1 as html, makeTable, showDropDown, index as term };
+export { ActionButton, ActorEntry, Box, Button$2 as Button, CellEntry, Column$1 as Column, ComputedStyle$1 as ComputedStyle, Dialog, DialogBuilder, DropDownButton, EntryBase, Flavor, Input$1 as Input, ItemEntry, List, Menu$1 as Menu, MenuButton$1 as MenuButton, Messages, Sheet$1 as Sheet, Sidebar, Style$1 as Style, Table$1 as Table, Text$1 as Text, UI, Viewport, Widget$1 as Widget, buildDialog, defaultStyle$1 as defaultStyle, index$1 as html, makeStyle$1 as makeStyle, makeTable, showDropDown, index as term };

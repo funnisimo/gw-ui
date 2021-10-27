@@ -1,6 +1,6 @@
 import * as GWU from 'gw-utils';
-import { Selectable, PropType } from '../html/types';
-import { Selector } from '../html/selector';
+import { Selectable, PropType } from './types';
+import { Selector } from './selector';
 
 export type StyleType = string | StyleOptions;
 

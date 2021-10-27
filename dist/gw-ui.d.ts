@@ -1344,7 +1344,7 @@ declare class Select extends Widget {
     _initMenu(opts: SelectOptions): void;
 }
 
-declare class Term {
+declare class Term implements UILayer {
     ui: UICore;
     opts: Record<string, any>;
     allWidgets: Widget[];
@@ -1406,6 +1406,9 @@ declare class Term {
     fireEvent(name: string, source: UIWidget | null, e?: Partial<GWU.io.Event>): boolean;
     mousemove(e: GWU.io.Event): boolean;
     click(e: GWU.io.Event): boolean;
+    keypress(_e: GWU.io.Event): boolean;
+    dir(_e: GWU.io.Event): boolean;
+    tick(_e: GWU.io.Event): boolean;
     draw(): void;
 }
 

@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { UICore, UIWidget, EventCb } from '../types';
+import { UICore, UIWidget, EventCb, UILayer } from '../types';
 import { Grid } from './grid';
 import * as Text from './text';
 import * as Style from '../style';
@@ -10,7 +10,7 @@ import * as Button from './button';
 import * as Border from './border';
 import * as Select from './select';
 
-export class Term {
+export class Term implements UILayer {
     ui: UICore;
     opts: Record<string, any> = {};
 
@@ -466,6 +466,16 @@ export class Term {
         }
 
         return false; // TODO - this._done
+    }
+
+    keypress(_e: GWU.io.Event): boolean {
+        return false;
+    }
+    dir(_e: GWU.io.Event): boolean {
+        return false;
+    }
+    tick(_e: GWU.io.Event): boolean {
+        return false;
     }
 
     draw() {

@@ -6360,6 +6360,15 @@
             }
             return false; // TODO - this._done
         }
+        keypress(_e) {
+            return false;
+        }
+        dir(_e) {
+            return false;
+        }
+        tick(_e) {
+            return false;
+        }
         draw() {
             if (this.styles.dirty) {
                 this._needsDraw = true;

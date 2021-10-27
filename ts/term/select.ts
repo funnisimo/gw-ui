@@ -11,7 +11,7 @@ export interface SelectOptions extends Widget.WidgetOptions {
     buttonTag?: string;
 }
 
-export class Select extends Widget.WidgetGroup {
+export class Select extends Widget.Widget {
     dropdown!: Text.Text;
     menu!: Menu.Menu;
 

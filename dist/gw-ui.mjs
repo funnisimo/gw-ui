@@ -5177,6 +5177,7 @@ class Widget {
         this.depth = 0;
         this.events = {};
         this.action = '';
+        this.children = [];
         this._style = new Style$1();
         this.parent = null;
         this.classes = [];
@@ -5345,6 +5346,28 @@ class Widget {
         }
         return false;
     }
+    // Children
+    addChild(w, beforeIndex = -1) {
+        if (w.parent && w.parent !== this)
+            throw new Error('Trying to add child that already has a parent.');
+        if (!this.children.includes(w)) {
+            if (beforeIndex < 0 || beforeIndex >= this.children.length) {
+                this.children.push(w);
+            }
+            else {
+                this.children.splice(beforeIndex, 0, w);
+            }
+        }
+        w.parent = this;
+        return this;
+    }
+    removeChild(w) {
+        if (!w.parent || w.parent !== this)
+            throw new Error('Removing child that does not have this widget as parent.');
+        GWU.arrayDelete(this.children, w);
+        w.parent = null;
+        return this;
+    }
     // Events
     mouseenter(e) {
         if (!this.contains(e))
@@ -5386,6 +5409,15 @@ class Widget {
             return false;
         return this._bubbleEvent('click', this, e);
     }
+    keypress(_e) {
+        return false;
+    }
+    dir(_e) {
+        return false;
+    }
+    tick(_e) {
+        return false;
+    }
     on(event, cb) {
         let handlers = this.events[event];
         if (!handlers) {
@@ -5424,49 +5456,6 @@ class Widget {
             current = current.parent;
         }
         return this.term.fireEvent(name, source, e);
-    }
-}
-class WidgetGroup extends Widget {
-    constructor(term, opts = {}) {
-        super(term, opts);
-        this.children = [];
-    }
-    // contains(e: GWU.xy.XY): boolean;
-    // contains(x: number, y: number): boolean;
-    // contains(...args: any[]): boolean {
-    //     return this.children.some((w) => w.contains(args[0], args[1]));
-    // }
-    // widgetAt(e: GWU.xy.XY): Widget | null;
-    // widgetAt(x: number, y: number): Widget | null;
-    // widgetAt(...args: any[]): Widget | null {
-    //     return this.children.find((w) => w.contains(args[0], args[1])) || null;
-    // }
-    // _updateStyle() {
-    //     super._updateStyle();
-    //     if (this.children) {
-    //         this.children.forEach((c) => c._updateStyle());
-    //     }
-    // }
-    addChild(w, beforeIndex = -1) {
-        if (w.parent && w.parent !== this)
-            throw new Error('Trying to add child that already has a parent.');
-        if (!this.children.includes(w)) {
-            if (beforeIndex < 0 || beforeIndex >= this.children.length) {
-                this.children.push(w);
-            }
-            else {
-                this.children.splice(beforeIndex, 0, w);
-            }
-        }
-        w.parent = this;
-        return this;
-    }
-    removeChild(w) {
-        if (!w.parent || w.parent !== this)
-            throw new Error('Removing child that does not have this widget as parent.');
-        GWU.arrayDelete(this.children, w);
-        w.parent = null;
-        return this;
     }
 }
 
@@ -5698,7 +5687,7 @@ class Column {
         return widget;
     }
 }
-class Table extends WidgetGroup {
+class Table extends Widget {
     constructor(term, opts) {
         super(term, opts);
         this._data = [];
@@ -5807,7 +5796,7 @@ class Table extends WidgetGroup {
     }
 }
 
-class Menu extends WidgetGroup {
+class Menu extends Widget {
     constructor(term, opts) {
         super(term, opts);
         this.tag = opts.tag || 'menu';
@@ -5854,7 +5843,7 @@ class Menu extends WidgetGroup {
         });
     }
 }
-class MenuButton extends WidgetGroup {
+class MenuButton extends Widget {
     constructor(term, opts) {
         super(term, opts);
         this.tag = opts.tag || 'mi';
@@ -5914,7 +5903,7 @@ class MenuButton extends WidgetGroup {
 }
 
 // import * as GWU from 'gw-utils';
-class Select extends WidgetGroup {
+class Select extends Widget {
     constructor(term, opts) {
         super(term, opts);
         this.tag = opts.tag || 'select';
@@ -5975,7 +5964,7 @@ class Term {
         this._needsDraw = false;
         this._buffer = null;
         this.ui = ui;
-        this.body = new WidgetGroup(this, {
+        this.body = new Widget(this, {
             tag: 'body',
             id: 'BODY',
             depth: -1,
@@ -6371,7 +6360,6 @@ class Term {
 var index = /*#__PURE__*/Object.freeze({
     __proto__: null,
     Widget: Widget,
-    WidgetGroup: WidgetGroup,
     Border: Border,
     drawBorder: drawBorder,
     Text: Text,

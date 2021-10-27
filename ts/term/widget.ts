@@ -1,17 +1,11 @@
 import * as GWU from 'gw-utils';
 import * as Style from '../style';
+import { EventCb, UIWidget } from '../types';
 import { Term } from './term';
-
-// return true if you want to stop the event from propagating
-export type EventCb = (
-    name: string,
-    widget: Widget | null,
-    io?: GWU.io.Event
-) => boolean; // | Promise<boolean>;
 
 export interface WidgetOptions extends Style.StyleOptions {
     id?: string;
-    parent?: WidgetGroup;
+    parent?: Widget;
 
     x?: number;
     y?: number;
@@ -35,18 +29,19 @@ Style.defaultStyle.add('*', {
 
 export type PropType = boolean | number | string;
 
-export class Widget implements Style.Stylable {
+export class Widget implements UIWidget, Style.Stylable {
     tag: string = 'text';
     term: Term;
     bounds: GWU.xy.Bounds = new GWU.xy.Bounds(0, 0, 0, 1);
     depth = 0;
     events: Record<string, EventCb[]> = {};
     action: string = '';
+    children: Widget[] = [];
 
     _style = new Style.Style();
     _used!: Style.ComputedStyle;
 
-    parent: WidgetGroup | null = null;
+    parent: Widget | null = null;
     classes: string[] = [];
     _props: Record<string, PropType> = {};
     _attrs: Record<string, string> = {};
@@ -225,7 +220,7 @@ export class Widget implements Style.Stylable {
         return this._draw(buffer);
     }
 
-    _draw(buffer: GWU.canvas.DataBuffer): boolean {
+    protected _draw(buffer: GWU.canvas.DataBuffer): boolean {
         this._drawFill(buffer);
         return true;
     }
@@ -244,6 +239,32 @@ export class Widget implements Style.Stylable {
             return true;
         }
         return false;
+    }
+
+    // Children
+
+    addChild(w: Widget, beforeIndex = -1): this {
+        if (w.parent && w.parent !== this)
+            throw new Error('Trying to add child that already has a parent.');
+        if (!this.children.includes(w)) {
+            if (beforeIndex < 0 || beforeIndex >= this.children.length) {
+                this.children.push(w);
+            } else {
+                this.children.splice(beforeIndex, 0, w);
+            }
+        }
+        w.parent = this;
+        return this;
+    }
+
+    removeChild(w: Widget): this {
+        if (!w.parent || w.parent !== this)
+            throw new Error(
+                'Removing child that does not have this widget as parent.'
+            );
+        GWU.arrayDelete(this.children, w);
+        w.parent = null;
+        return this;
     }
 
     // Events
@@ -286,6 +307,16 @@ export class Widget implements Style.Stylable {
         return this._bubbleEvent('click', this, e);
     }
 
+    keypress(_e: GWU.io.Event): boolean {
+        return false;
+    }
+    dir(_e: GWU.io.Event): boolean {
+        return false;
+    }
+    tick(_e: GWU.io.Event): boolean {
+        return false;
+    }
+
     on(event: string, cb: EventCb): this {
         let handlers = this.events[event];
         if (!handlers) {
@@ -310,7 +341,7 @@ export class Widget implements Style.Stylable {
 
     _fireEvent(
         name: string,
-        source: Widget | null,
+        source: UIWidget | null,
         e?: Partial<GWU.io.Event>
     ): boolean {
         if (!e || !e.type) {
@@ -326,7 +357,7 @@ export class Widget implements Style.Stylable {
 
     _bubbleEvent(
         name: string,
-        source: Widget | null,
+        source: UIWidget | null,
         e?: GWU.io.Event
     ): boolean {
         let current: Widget | null = this;
@@ -336,94 +367,4 @@ export class Widget implements Style.Stylable {
         }
         return this.term.fireEvent(name, source, e);
     }
-}
-
-export class WidgetGroup extends Widget {
-    children: Widget[] = [];
-
-    constructor(term: Term, opts: WidgetOptions = {}) {
-        super(term, opts);
-    }
-
-    // contains(e: GWU.xy.XY): boolean;
-    // contains(x: number, y: number): boolean;
-    // contains(...args: any[]): boolean {
-    //     return this.children.some((w) => w.contains(args[0], args[1]));
-    // }
-
-    // widgetAt(e: GWU.xy.XY): Widget | null;
-    // widgetAt(x: number, y: number): Widget | null;
-    // widgetAt(...args: any[]): Widget | null {
-    //     return this.children.find((w) => w.contains(args[0], args[1])) || null;
-    // }
-
-    // _updateStyle() {
-    //     super._updateStyle();
-    //     if (this.children) {
-    //         this.children.forEach((c) => c._updateStyle());
-    //     }
-    // }
-
-    addChild(w: Widget, beforeIndex = -1): this {
-        if (w.parent && w.parent !== this)
-            throw new Error('Trying to add child that already has a parent.');
-        if (!this.children.includes(w)) {
-            if (beforeIndex < 0 || beforeIndex >= this.children.length) {
-                this.children.push(w);
-            } else {
-                this.children.splice(beforeIndex, 0, w);
-            }
-        }
-        w.parent = this;
-        return this;
-    }
-
-    removeChild(w: Widget): this {
-        if (!w.parent || w.parent !== this)
-            throw new Error(
-                'Removing child that does not have this widget as parent.'
-            );
-        GWU.arrayDelete(this.children, w);
-        w.parent = null;
-        return this;
-    }
-
-    // draw(buffer: GWU.canvas.DataBuffer): boolean {
-    //     if (this.prop('hidden')) return false;
-    //     return this._drawChildren(buffer);
-    // }
-
-    // _drawChildren(buffer: GWU.canvas.DataBuffer): boolean {
-    //     let result = false;
-    //     this.children.forEach((w) => {
-    //         result = w.draw(buffer) || result;
-    //     });
-    //     return result;
-    // }
-
-    // mousemove(e: GWU.io.Event): boolean {
-    //     let handled = false;
-    //     this.children.forEach((w) => {
-    //         if (w.mousemove(e)) {
-    //             handled = true;
-    //         }
-    //     });
-    //     return super.mousemove(e) || handled;
-    // }
-
-    // tick(_e: GWU.io.Event): void {}
-
-    // // returns true if click is handled by this widget (stopPropagation)
-    // click(_e: GWU.io.Event): boolean {
-    //     return false;
-    // }
-    // // returns true if key is used by widget and you want to stopPropagation
-    // keypress(_e: GWU.io.Event): boolean {
-    //     return false;
-    // }
-
-    // // returns true if key is used by widget and you want to stopPropagation
-    // dir(_e: GWU.io.Event): boolean {
-    //     return false;
-    // }
 }

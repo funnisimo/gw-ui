@@ -17,7 +17,7 @@ export interface MenuOptions extends Widget.WidgetOptions {
     minWidth?: number;
 }
 
-export class Menu extends Widget.WidgetGroup {
+export class Menu extends Widget.Widget {
     buttonClass: string | string[];
     buttonTag: string;
 
@@ -82,7 +82,7 @@ export interface MenuButtonOptions extends Widget.WidgetOptions {
     buttonTag?: string;
 }
 
-export class MenuButton extends Widget.WidgetGroup {
+export class MenuButton extends Widget.Widget {
     button!: Text.Text;
     menu!: Menu;
 

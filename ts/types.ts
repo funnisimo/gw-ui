@@ -34,7 +34,55 @@ export interface Selectable {
     children?: Selectable[];
 }
 
-export interface UIWidget {}
+// return true if you want to stop the event from propagating
+export type EventCb = (
+    name: string,
+    widget: UIWidget | null,
+    io?: GWU.io.Event
+) => boolean; // | Promise<boolean>;
+
+export interface UIWidget {
+    readonly tag: string;
+    readonly bounds: GWU.xy.Bounds;
+    readonly depth: number;
+    // readonly events: Record<string, EventCb[]>;
+    // readonly action: string;
+
+    parent: UIWidget | null;
+    // readonly classes: string[];
+
+    attr(name: string): string;
+    attr(name: string, v: string): this;
+
+    prop(name: string): PropType | undefined;
+    prop(name: string, v: PropType): this;
+    toggleProp(name: string): this;
+
+    contains(e: GWU.xy.XY): boolean;
+    contains(x: number, y: number): boolean;
+
+    addClass(c: string): this;
+    removeClass(c: string): this;
+    hasClass(c: string): boolean;
+    toggleClass(c: string): this;
+
+    focused: boolean;
+    hovered: boolean;
+    hidden: boolean;
+
+    draw(buffer: GWU.canvas.DataBuffer): void;
+
+    mouseenter(e: GWU.io.Event): void;
+    mousemove(e: GWU.io.Event): boolean;
+    mouseleave(e: GWU.io.Event): void;
+    click(e: GWU.io.Event): boolean;
+    keypress(e: GWU.io.Event): boolean;
+    dir(e: GWU.io.Event): boolean;
+    tick(e: GWU.io.Event): boolean;
+
+    on(event: string, cb: EventCb): this;
+    off(event: string, cb?: EventCb): this;
+}
 
 export interface UILayer {
     addWidget(w: UIWidget): void;

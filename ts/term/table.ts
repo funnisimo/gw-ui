@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { WidgetGroup, WidgetOptions } from './widget';
+import { Widget, WidgetOptions } from './widget';
 import { Term } from './term';
 import { PrefixType } from '../html';
 import { Text } from './text';
@@ -97,7 +97,7 @@ export class Column {
     }
 }
 
-export class Table extends WidgetGroup {
+export class Table extends Widget {
     _data: DataType = [];
     columns: Column[] = [];
     showHeader = false;

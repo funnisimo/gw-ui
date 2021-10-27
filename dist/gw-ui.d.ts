@@ -14,7 +14,36 @@ interface Selectable {
     parent: Selectable | null;
     children?: Selectable[];
 }
+declare type EventCb$1 = (name: string, widget: UIWidget | null, io?: GWU.io.Event) => boolean;
 interface UIWidget {
+    readonly tag: string;
+    readonly bounds: GWU.xy.Bounds;
+    readonly depth: number;
+    parent: UIWidget | null;
+    attr(name: string): string;
+    attr(name: string, v: string): this;
+    prop(name: string): PropType$1 | undefined;
+    prop(name: string, v: PropType$1): this;
+    toggleProp(name: string): this;
+    contains(e: GWU.xy.XY): boolean;
+    contains(x: number, y: number): boolean;
+    addClass(c: string): this;
+    removeClass(c: string): this;
+    hasClass(c: string): boolean;
+    toggleClass(c: string): this;
+    focused: boolean;
+    hovered: boolean;
+    hidden: boolean;
+    draw(buffer: GWU.canvas.DataBuffer): void;
+    mouseenter(e: GWU.io.Event): void;
+    mousemove(e: GWU.io.Event): boolean;
+    mouseleave(e: GWU.io.Event): void;
+    click(e: GWU.io.Event): boolean;
+    keypress(e: GWU.io.Event): boolean;
+    dir(e: GWU.io.Event): boolean;
+    tick(e: GWU.io.Event): boolean;
+    on(event: string, cb: EventCb$1): this;
+    off(event: string, cb?: EventCb$1): this;
 }
 interface UILayer {
     addWidget(w: UIWidget): void;
@@ -737,7 +766,7 @@ declare class Sheet {
 }
 declare const defaultStyle: Sheet;
 
-declare type EventCb$1 = (document: Document, element: Element, io?: GWU.io.Event) => boolean;
+declare type EventCb = (document: Document, element: Element, io?: GWU.io.Event) => boolean;
 declare type FxFn = () => void;
 declare type Fx = number;
 declare type ElementCb = (element: Element) => any;
@@ -845,8 +874,8 @@ declare class Selection {
     toggle(): this;
     toggle(ms: number): this;
     toggle(visible: boolean): this;
-    on(event: string, cb: EventCb$1): this;
-    off(event: string, cb?: EventCb$1): this;
+    on(event: string, cb: EventCb): this;
+    off(event: string, cb?: EventCb): this;
     fire(event: string, e?: GWU.io.Event): this;
 }
 
@@ -873,7 +902,7 @@ declare class Element implements Selectable {
     _attrs: Record<string, string>;
     classes: string[];
     children: Element[];
-    events: Record<string, EventCb$1[]>;
+    events: Record<string, EventCb[]>;
     _data: any | null;
     _bounds: GWU.xy.Bounds;
     _text: string;
@@ -957,8 +986,8 @@ declare class Element implements Selectable {
     _drawContent(buffer: GWU.canvas.DataBuffer): void;
     _drawChildren(buffer: GWU.canvas.DataBuffer): void;
     _drawText(buffer: GWU.canvas.DataBuffer): void;
-    on(event: string, cb: EventCb$1): this;
-    off(event: string, cb?: EventCb$1): this;
+    on(event: string, cb: EventCb): this;
+    off(event: string, cb?: EventCb): this;
     elementFromPoint(x: number, y: number): Element | null;
 }
 
@@ -1105,6 +1134,7 @@ type index_d$1_ElementInstallOptions = ElementInstallOptions;
 declare const index_d$1_configureElement: typeof configureElement;
 declare const index_d$1_installElement: typeof installElement;
 declare const index_d$1_parse: typeof parse;
+type index_d$1_EventCb = EventCb;
 type index_d$1_FxFn = FxFn;
 type index_d$1_Fx = Fx;
 type index_d$1_ElementCb = ElementCb;
@@ -1141,7 +1171,7 @@ declare namespace index_d$1 {
     index_d$1_configureElement as configureElement,
     index_d$1_installElement as installElement,
     index_d$1_parse as parse,
-    EventCb$1 as EventCb,
+    index_d$1_EventCb as EventCb,
     index_d$1_FxFn as FxFn,
     index_d$1_Fx as Fx,
     index_d$1_ElementCb as ElementCb,
@@ -1228,7 +1258,7 @@ declare class Column {
     makeHeader(table: Table): Text;
     makeData(table: Table, data: DataItem, col: number, row: number): Text;
 }
-declare class Table extends WidgetGroup {
+declare class Table extends Widget {
     _data: DataType;
     columns: Column[];
     showHeader: boolean;
@@ -1258,7 +1288,7 @@ interface MenuOptions extends WidgetOptions {
     buttonTag?: string;
     minWidth?: number;
 }
-declare class Menu extends WidgetGroup {
+declare class Menu extends Widget {
     buttonClass: string | string[];
     buttonTag: string;
     constructor(term: Term, opts: MenuOptions);
@@ -1270,7 +1300,7 @@ interface MenuButtonOptions extends WidgetOptions {
     buttonClass?: string | string[];
     buttonTag?: string;
 }
-declare class MenuButton extends WidgetGroup {
+declare class MenuButton extends Widget {
     button: Text;
     menu: Menu;
     constructor(term: Term, opts: MenuButtonOptions);
@@ -1304,7 +1334,7 @@ interface SelectOptions extends WidgetOptions {
     buttonClass?: string | string[];
     buttonTag?: string;
 }
-declare class Select extends WidgetGroup {
+declare class Select extends Widget {
     dropdown: Text;
     menu: Menu;
     constructor(term: Term, opts: SelectOptions);
@@ -1317,11 +1347,11 @@ declare class Term {
     opts: Record<string, any>;
     allWidgets: Widget[];
     styles: Sheet$1;
-    events: Record<string, EventCb[]>;
+    events: Record<string, EventCb$1[]>;
     _grid: Grid | null;
     _needsDraw: boolean;
     _buffer: GWU.canvas.Buffer | null;
-    body: WidgetGroup;
+    body: Widget;
     constructor(ui: UICore);
     get buffer(): GWU.canvas.DataBuffer;
     get width(): number;
@@ -1369,18 +1399,17 @@ declare class Term {
     border(opts: BorderOptions): Border;
     select(opts: SelectOptions): Select;
     render(): this;
-    on(event: string, cb: EventCb): this;
-    off(event: string, cb?: EventCb): this;
-    fireEvent(name: string, source: Widget | null, e?: Partial<GWU.io.Event>): boolean;
+    on(event: string, cb: EventCb$1): this;
+    off(event: string, cb?: EventCb$1): this;
+    fireEvent(name: string, source: UIWidget | null, e?: Partial<GWU.io.Event>): boolean;
     mousemove(e: GWU.io.Event): boolean;
     click(e: GWU.io.Event): boolean;
     draw(): void;
 }
 
-declare type EventCb = (name: string, widget: Widget | null, io?: GWU.io.Event) => boolean;
 interface WidgetOptions extends StyleOptions$1 {
     id?: string;
-    parent?: WidgetGroup;
+    parent?: Widget;
     x?: number;
     y?: number;
     width?: number;
@@ -1392,16 +1421,17 @@ interface WidgetOptions extends StyleOptions$1 {
     depth?: number;
 }
 declare type PropType = boolean | number | string;
-declare class Widget implements Stylable$1 {
+declare class Widget implements UIWidget, Stylable$1 {
     tag: string;
     term: Term;
     bounds: GWU.xy.Bounds;
     depth: number;
-    events: Record<string, EventCb[]>;
+    events: Record<string, EventCb$1[]>;
     action: string;
+    children: Widget[];
     _style: Style$1;
     _used: ComputedStyle$1;
-    parent: WidgetGroup | null;
+    parent: Widget | null;
     classes: string[];
     _props: Record<string, PropType>;
     _attrs: Record<string, string>;
@@ -1428,31 +1458,27 @@ declare class Widget implements Stylable$1 {
     set hidden(v: boolean);
     _updateStyle(): void;
     draw(buffer: GWU.canvas.DataBuffer): boolean;
-    _draw(buffer: GWU.canvas.DataBuffer): boolean;
+    protected _draw(buffer: GWU.canvas.DataBuffer): boolean;
     protected _drawFill(buffer: GWU.canvas.DataBuffer): boolean;
+    addChild(w: Widget, beforeIndex?: number): this;
+    removeChild(w: Widget): this;
     mouseenter(e: GWU.io.Event): void;
     mousemove(e: GWU.io.Event): boolean;
     mouseleave(e: GWU.io.Event): void;
     click(e: GWU.io.Event): boolean;
-    on(event: string, cb: EventCb): this;
-    off(event: string, cb?: EventCb): this;
-    _fireEvent(name: string, source: Widget | null, e?: Partial<GWU.io.Event>): boolean;
-    _bubbleEvent(name: string, source: Widget | null, e?: GWU.io.Event): boolean;
-}
-declare class WidgetGroup extends Widget {
-    children: Widget[];
-    constructor(term: Term, opts?: WidgetOptions);
-    addChild(w: Widget, beforeIndex?: number): this;
-    removeChild(w: Widget): this;
+    keypress(_e: GWU.io.Event): boolean;
+    dir(_e: GWU.io.Event): boolean;
+    tick(_e: GWU.io.Event): boolean;
+    on(event: string, cb: EventCb$1): this;
+    off(event: string, cb?: EventCb$1): this;
+    _fireEvent(name: string, source: UIWidget | null, e?: Partial<GWU.io.Event>): boolean;
+    _bubbleEvent(name: string, source: UIWidget | null, e?: GWU.io.Event): boolean;
 }
 
-type index_d_EventCb = EventCb;
 type index_d_WidgetOptions = WidgetOptions;
 type index_d_PropType = PropType;
 type index_d_Widget = Widget;
 declare const index_d_Widget: typeof Widget;
-type index_d_WidgetGroup = WidgetGroup;
-declare const index_d_WidgetGroup: typeof WidgetGroup;
 type index_d_BorderOptions = BorderOptions;
 type index_d_Border = Border;
 declare const index_d_Border: typeof Border;
@@ -1495,11 +1521,9 @@ type index_d_Term = Term;
 declare const index_d_Term: typeof Term;
 declare namespace index_d {
   export {
-    index_d_EventCb as EventCb,
     index_d_WidgetOptions as WidgetOptions,
     index_d_PropType as PropType,
     index_d_Widget as Widget,
-    index_d_WidgetGroup as WidgetGroup,
     index_d_BorderOptions as BorderOptions,
     index_d_Border as Border,
     index_d_drawBorder as drawBorder,
@@ -1533,4 +1557,4 @@ declare namespace index_d {
   };
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$2 as Button, ButtonOptions$1 as ButtonOptions, CellEntry, ColorOption, Column$1 as Column, ColumnOptions$1 as ColumnOptions, ComputedStyle$1 as ComputedStyle, ConfirmOptions, DataArray, DataList$1 as DataList, DataType$1 as DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu$1 as Menu, MenuButton$1 as MenuButton, MenuOptions$1 as MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, PropType$1 as PropType, Selectable, Sheet$1 as Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Stylable$1 as Stylable, Style$1 as Style, StyleOptions$1 as StyleOptions, StyleType, Table$1 as Table, TableOptions$1 as TableOptions, Text$1 as Text, TextOptions$1 as TextOptions, UI, UICore, UILayer, UIOptions, UISubject, UIWidget, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget$1 as Widget, WidgetOptions$1 as WidgetOptions, WidgetRunner, buildDialog, defaultStyle$1 as defaultStyle, index_d$1 as html, makeStyle$1 as makeStyle, makeTable, showDropDown, index_d as term };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$2 as Button, ButtonOptions$1 as ButtonOptions, CellEntry, ColorOption, Column$1 as Column, ColumnOptions$1 as ColumnOptions, ComputedStyle$1 as ComputedStyle, ConfirmOptions, DataArray, DataList$1 as DataList, DataType$1 as DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventCb$1 as EventCb, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu$1 as Menu, MenuButton$1 as MenuButton, MenuOptions$1 as MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, PropType$1 as PropType, Selectable, Sheet$1 as Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Stylable$1 as Stylable, Style$1 as Style, StyleOptions$1 as StyleOptions, StyleType, Table$1 as Table, TableOptions$1 as TableOptions, Text$1 as Text, TextOptions$1 as TextOptions, UI, UICore, UILayer, UIOptions, UISubject, UIWidget, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget$1 as Widget, WidgetOptions$1 as WidgetOptions, WidgetRunner, buildDialog, defaultStyle$1 as defaultStyle, index_d$1 as html, makeStyle$1 as makeStyle, makeTable, showDropDown, index_d as term };

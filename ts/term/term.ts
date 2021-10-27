@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { UICore } from '../types';
+import { UICore, UIWidget, EventCb } from '../types';
 import { Grid } from './grid';
 import * as Text from './text';
 import * as Style from '../style';
@@ -18,16 +18,16 @@ export class Term {
     allWidgets: Widget.Widget[] = [];
     styles = new Style.Sheet();
     // _currentWidget: Widget.Widget | null = null;
-    events: Record<string, Widget.EventCb[]> = {};
+    events: Record<string, EventCb[]> = {};
 
     _grid: Grid | null = null;
     _needsDraw = false;
     _buffer: GWU.canvas.Buffer | null = null;
-    body: Widget.WidgetGroup;
+    body: Widget.Widget;
 
     constructor(ui: UICore) {
         this.ui = ui;
-        this.body = new Widget.WidgetGroup(this, {
+        this.body = new Widget.Widget(this, {
             tag: 'body',
             id: 'BODY',
             depth: -1,
@@ -411,7 +411,7 @@ export class Term {
 
     // EVENTS
 
-    on(event: string, cb: Widget.EventCb): this {
+    on(event: string, cb: EventCb): this {
         let handlers = this.events[event];
         if (!handlers) {
             handlers = this.events[event] = [];
@@ -422,7 +422,7 @@ export class Term {
         return this;
     }
 
-    off(event: string, cb?: Widget.EventCb): this {
+    off(event: string, cb?: EventCb): this {
         let handlers = this.events[event];
         if (!handlers) return this;
         if (cb) {
@@ -435,7 +435,7 @@ export class Term {
 
     fireEvent(
         name: string,
-        source: Widget.Widget | null,
+        source: UIWidget | null,
         e?: Partial<GWU.io.Event>
     ): boolean {
         if (!e || !e.type) {

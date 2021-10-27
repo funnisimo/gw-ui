@@ -25,6 +25,7 @@ interface UIWidget {
     prop(name: string): PropType$1 | undefined;
     prop(name: string, v: PropType$1): this;
     toggleProp(name: string): this;
+    incProp(name: string): this;
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
     addClass(c: string): this;
@@ -46,13 +47,14 @@ interface UIWidget {
     off(event: string, cb?: EventCb$1): this;
 }
 interface UILayer {
-    addWidget(w: UIWidget): void;
-    removeWidget(w: UIWidget): void;
     readonly ui: UICore;
     readonly buffer: GWU.canvas.DataBuffer;
+    readonly body: UIWidget;
     show(): void;
     hide(): void;
     draw(): void;
+    addWidget(w: UIWidget): void;
+    removeWidget(w: UIWidget): void;
     click(e: GWU.io.Event): boolean;
     mousemove(e: GWU.io.Event): boolean;
     keypress(e: GWU.io.Event): boolean;
@@ -1471,8 +1473,8 @@ declare class Widget implements UIWidget, Stylable$1 {
     tick(_e: GWU.io.Event): boolean;
     on(event: string, cb: EventCb$1): this;
     off(event: string, cb?: EventCb$1): this;
-    _fireEvent(name: string, source: UIWidget | null, e?: Partial<GWU.io.Event>): boolean;
-    _bubbleEvent(name: string, source: UIWidget | null, e?: GWU.io.Event): boolean;
+    protected _fireEvent(name: string, source: UIWidget | null, e?: Partial<GWU.io.Event>): boolean;
+    protected _bubbleEvent(name: string, source: UIWidget | null, e?: GWU.io.Event): boolean;
 }
 
 type index_d_WidgetOptions = WidgetOptions;

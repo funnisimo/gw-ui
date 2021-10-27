@@ -57,6 +57,7 @@ export interface UIWidget {
     prop(name: string): PropType | undefined;
     prop(name: string, v: PropType): this;
     toggleProp(name: string): this;
+    incProp(name: string): this;
 
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
@@ -85,16 +86,18 @@ export interface UIWidget {
 }
 
 export interface UILayer {
-    addWidget(w: UIWidget): void;
-    removeWidget(w: UIWidget): void;
-
     readonly ui: UICore;
     readonly buffer: GWU.canvas.DataBuffer;
+    readonly body: UIWidget;
 
     show(): void;
     hide(): void;
 
     draw(): void;
+
+    // widgets
+    addWidget(w: UIWidget): void;
+    removeWidget(w: UIWidget): void;
 
     // events
     click(e: GWU.io.Event): boolean;

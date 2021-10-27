@@ -339,7 +339,7 @@ export class Widget implements UIWidget, Style.Stylable {
         return this;
     }
 
-    _fireEvent(
+    protected _fireEvent(
         name: string,
         source: UIWidget | null,
         e?: Partial<GWU.io.Event>
@@ -355,7 +355,7 @@ export class Widget implements UIWidget, Style.Stylable {
         return handled;
     }
 
-    _bubbleEvent(
+    protected _bubbleEvent(
         name: string,
         source: UIWidget | null,
         e?: GWU.io.Event

@@ -8,6 +8,7 @@ import * as Table from './table';
 import * as Menu from './menu';
 import * as Button from './button';
 import * as Border from './border';
+import * as Select from './select';
 
 export class Term {
     ui: UICore;
@@ -357,7 +358,6 @@ export class Term {
         const _opts = Object.assign({}, this.opts, opts);
         const widget = new Text.Text(this, text, _opts);
         this.addWidget(widget);
-        this._needsDraw = true;
         return widget;
     }
 
@@ -367,7 +367,6 @@ export class Term {
         const _opts = Object.assign({}, this.opts, opts);
         const widget = new Table.Table(this, _opts);
         this.addWidget(widget);
-        this._needsDraw = true;
         return widget;
     }
 
@@ -376,7 +375,6 @@ export class Term {
 
         const widget = new Menu.Menu(this, _opts);
         this.addWidget(widget);
-        this._needsDraw = true;
         return widget;
     }
 
@@ -385,7 +383,6 @@ export class Term {
 
         const widget = new Button.Button(this, _opts);
         this.addWidget(widget);
-        this._needsDraw = true;
         return widget;
     }
 
@@ -394,7 +391,14 @@ export class Term {
 
         const widget = new Border.Border(this, _opts);
         this.addWidget(widget);
-        this._needsDraw = true;
+        return widget;
+    }
+
+    select(opts: Select.SelectOptions): Select.Select {
+        const _opts = Object.assign({}, this.opts, opts);
+
+        const widget = new Select.Select(this, _opts);
+        this.addWidget(widget);
         return widget;
     }
 

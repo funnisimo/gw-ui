@@ -115,6 +115,7 @@ export class Widget implements Style.Stylable {
         const current = this._props[name];
         if (current !== v) {
             this._props[name] = v;
+            // console.log(`${this.tag}.${name}=${v}`);
             this._updateStyle();
         }
         return this;
@@ -123,6 +124,18 @@ export class Widget implements Style.Stylable {
     toggleProp(name: string): this {
         const current = !!this._props[name];
         this.prop(name, !current);
+        return this;
+    }
+
+    incProp(name: string): this {
+        let current = this.prop(name) || 0;
+        if (typeof current === 'boolean') {
+            current = current ? 1 : 0;
+        } else if (typeof current === 'string') {
+            current = Number.parseInt(current) || 0;
+        }
+        ++current;
+        this.prop(name, current);
         return this;
     }
 
@@ -139,6 +152,40 @@ export class Widget implements Style.Stylable {
 
         this._style.set(opts);
         this._updateStyle();
+        return this;
+    }
+
+    addClass(c: string): this {
+        const all = c.split(/ +/g);
+        all.forEach((a) => {
+            if (this.classes.includes(a)) return;
+            this.classes.push(a);
+        });
+        return this;
+    }
+
+    removeClass(c: string): this {
+        const all = c.split(/ +/g);
+        all.forEach((a) => {
+            GWU.arrayDelete(this.classes, a);
+        });
+        return this;
+    }
+
+    hasClass(c: string): boolean {
+        const all = c.split(/ +/g);
+        return GWU.arrayIncludesAll(this.classes, all);
+    }
+
+    toggleClass(c: string): this {
+        const all = c.split(/ +/g);
+        all.forEach((a) => {
+            if (this.classes.includes(a)) {
+                GWU.arrayDelete(this.classes, a);
+            } else {
+                this.classes.push(a);
+            }
+        });
         return this;
     }
 
@@ -201,13 +248,37 @@ export class Widget implements Style.Stylable {
 
     // Events
 
+    mouseenter(e: GWU.io.Event): void {
+        if (!this.contains(e)) return;
+        if (this.hovered) return;
+        this.hovered = true;
+        this._fireEvent('mouseenter', this, e);
+        if (this.parent) {
+            this.parent.mouseenter(e);
+        }
+    }
+
     mousemove(e: GWU.io.Event): boolean {
-        this.hovered = !e.defaultPrevented && !this.hidden && this.contains(e);
-        if (this.hovered) {
-            this._bubbleEvent('mousemove', this, e); // my parent(s) are all hovered too, but...
-            e.preventDefault(); // nobody else can be the hovered element (this is for people below me in the depth order)
+        if (this.hidden) return false;
+
+        if (this.contains(e) && !e.defaultPrevented) {
+            this.mouseenter(e);
+            this._fireEvent('mousemove', this, e);
+            e.preventDefault();
+        } else {
+            this.mouseleave(e);
         }
         return false;
+    }
+
+    mouseleave(e: GWU.io.Event): void {
+        if (this.contains(e)) return;
+        if (!this.hovered) return;
+        this.hovered = false;
+        this._fireEvent('mouseleave', this, e);
+        if (this.parent) {
+            this.parent.mouseleave(e);
+        }
     }
 
     click(e: GWU.io.Event): boolean {
@@ -293,11 +364,15 @@ export class WidgetGroup extends Widget {
     //     }
     // }
 
-    addChild(w: Widget): this {
+    addChild(w: Widget, beforeIndex = -1): this {
         if (w.parent && w.parent !== this)
             throw new Error('Trying to add child that already has a parent.');
         if (!this.children.includes(w)) {
-            this.children.push(w);
+            if (beforeIndex < 0 || beforeIndex >= this.children.length) {
+                this.children.push(w);
+            } else {
+                this.children.splice(beforeIndex, 0, w);
+            }
         }
         w.parent = this;
         return this;

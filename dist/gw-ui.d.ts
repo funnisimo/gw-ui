@@ -467,34 +467,34 @@ declare class Sidebar extends Widget$1 {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-declare type ActionFn = (e: GWU.io.Event, ui: UICore, button: MenuButton) => boolean | Promise<boolean>;
+declare type ActionFn = (e: GWU.io.Event, ui: UICore, button: MenuButton$1) => boolean | Promise<boolean>;
 interface Rec$1<T> {
     [keys: string]: T;
 }
 declare type DropdownConfig$1 = Rec$1<ButtonConfig$1>;
 declare type ActionConfig$1 = string;
 declare type ButtonConfig$1 = ActionConfig$1 | DropdownConfig$1;
-declare class MenuButton {
+declare class MenuButton$1 {
     text: string;
     hovered: boolean;
     x: number;
     constructor(text: string);
     get width(): number;
 }
-declare class ActionButton extends MenuButton {
+declare class ActionButton extends MenuButton$1 {
     action: string;
     constructor(text: string, action: string);
 }
-declare class DropDownButton extends MenuButton {
+declare class DropDownButton extends MenuButton$1 {
     bounds: GWU.xy.Bounds;
-    buttons: MenuButton[];
+    buttons: MenuButton$1[];
     menu: Menu$1;
     parent: DropDownButton | null;
     constructor(menu: Menu$1, parent: DropDownButton | null, text: string, buttons: ButtonConfig$1);
     addButton(text: string, config: ButtonConfig$1): void;
     setBounds(buffer: GWU.canvas.DataBuffer, px: number, py: number, pw: number): void;
     contains(e: GWU.io.Event): boolean;
-    buttonAt(e: GWU.io.Event): MenuButton | null;
+    buttonAt(e: GWU.io.Event): MenuButton$1 | null;
     draw(buffer: GWU.canvas.DataBuffer): void;
 }
 declare function showDropDown(dialog: WidgetRunner, menu: Menu$1, button: DropDownButton): Promise<void>;
@@ -506,7 +506,7 @@ interface MenuOptions$1 extends WidgetOptions$1 {
     buttons: ButtonConfig$1;
 }
 declare class Menu$1 extends Widget$1 {
-    buttons: MenuButton[];
+    buttons: MenuButton$1[];
     separator: string;
     lead: string;
     dropFg: GWU.color.Color;
@@ -520,7 +520,7 @@ declare class Menu$1 extends Widget$1 {
     deactivate(): void;
     mousemove(e: GWU.io.Event, dialog: WidgetRunner): boolean;
     clearHighlight(): void;
-    getButtonAt(x: number, _y: number): MenuButton | null;
+    getButtonAt(x: number, _y: number): MenuButton$1 | null;
     click(e: GWU.io.Event, dialog: WidgetRunner): Promise<boolean>;
     keypress(e: GWU.io.Event, dialog: WidgetRunner): Promise<boolean>;
     protected _addButton(text: string, config: ButtonConfig$1): void;
@@ -1262,12 +1262,26 @@ interface MenuOptions extends WidgetOptions {
     buttons: DropdownConfig;
     buttonClass?: string | string[];
     buttonTag?: string;
+    minWidth?: number;
 }
 declare class Menu extends WidgetGroup {
     buttonClass: string | string[];
     buttonTag: string;
     constructor(term: Term, opts: MenuOptions);
-    _initButtons(buttons: DropdownConfig): void;
+    _initButtons(opts: MenuOptions): void;
+}
+interface MenuButtonOptions extends WidgetOptions {
+    text: string;
+    buttons: DropdownConfig;
+    buttonClass?: string | string[];
+    buttonTag?: string;
+}
+declare class MenuButton extends WidgetGroup {
+    button: Text;
+    menu: Menu;
+    constructor(term: Term, opts: MenuButtonOptions);
+    _initButton(opts: MenuButtonOptions): void;
+    _initMenu(opts: MenuButtonOptions): void;
 }
 
 interface ButtonOptions extends WidgetOptions {
@@ -1289,6 +1303,20 @@ declare class Border extends Widget {
     _draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 declare function drawBorder(buffer: GWU.canvas.DataBuffer, x: number, y: number, w: number, h: number, style: Style, ascii: boolean): void;
+
+interface SelectOptions extends WidgetOptions {
+    text: string;
+    buttons: DropdownConfig;
+    buttonClass?: string | string[];
+    buttonTag?: string;
+}
+declare class Select extends WidgetGroup {
+    dropdown: Text;
+    menu: Menu;
+    constructor(term: Term, opts: SelectOptions);
+    _initText(opts: SelectOptions): void;
+    _initMenu(opts: SelectOptions): void;
+}
 
 declare class Term {
     ui: UICore;
@@ -1345,6 +1373,7 @@ declare class Term {
     menu(opts: MenuOptions): Menu;
     button(opts: ButtonOptions): Button;
     border(opts: BorderOptions): Border;
+    select(opts: SelectOptions): Select;
     render(): this;
     on(event: string, cb: EventCb): this;
     off(event: string, cb?: EventCb): this;
@@ -1388,10 +1417,15 @@ declare class Widget implements Stylable {
     prop(name: string): PropType | undefined;
     prop(name: string, v: PropType): this;
     toggleProp(name: string): this;
+    incProp(name: string): this;
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
     style(): Style;
     style(opts: StyleOptions): this;
+    addClass(c: string): this;
+    removeClass(c: string): this;
+    hasClass(c: string): boolean;
+    toggleClass(c: string): this;
     get focused(): boolean;
     set focused(v: boolean);
     get hovered(): boolean;
@@ -1402,7 +1436,9 @@ declare class Widget implements Stylable {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
     _draw(buffer: GWU.canvas.DataBuffer): boolean;
     protected _drawFill(buffer: GWU.canvas.DataBuffer): boolean;
+    mouseenter(e: GWU.io.Event): void;
     mousemove(e: GWU.io.Event): boolean;
+    mouseleave(e: GWU.io.Event): void;
     click(e: GWU.io.Event): boolean;
     on(event: string, cb: EventCb): this;
     off(event: string, cb?: EventCb): this;
@@ -1412,7 +1448,7 @@ declare class Widget implements Stylable {
 declare class WidgetGroup extends Widget {
     children: Widget[];
     constructor(term: Term, opts?: WidgetOptions);
-    addChild(w: Widget): this;
+    addChild(w: Widget, beforeIndex?: number): this;
     removeChild(w: Widget): this;
 }
 
@@ -1448,9 +1484,19 @@ type index_d_Column = Column;
 declare const index_d_Column: typeof Column;
 type index_d_Table = Table;
 declare const index_d_Table: typeof Table;
+type index_d_Rec<_0> = Rec<_0>;
+type index_d_DropdownConfig = DropdownConfig;
+type index_d_ActionConfig = ActionConfig;
+type index_d_ButtonConfig = ButtonConfig;
 type index_d_MenuOptions = MenuOptions;
 type index_d_Menu = Menu;
 declare const index_d_Menu: typeof Menu;
+type index_d_MenuButtonOptions = MenuButtonOptions;
+type index_d_MenuButton = MenuButton;
+declare const index_d_MenuButton: typeof MenuButton;
+type index_d_SelectOptions = SelectOptions;
+type index_d_Select = Select;
+declare const index_d_Select: typeof Select;
 type index_d_Term = Term;
 declare const index_d_Term: typeof Term;
 declare namespace index_d {
@@ -1479,10 +1525,18 @@ declare namespace index_d {
     index_d_TableOptions as TableOptions,
     index_d_Column as Column,
     index_d_Table as Table,
+    index_d_Rec as Rec,
+    index_d_DropdownConfig as DropdownConfig,
+    index_d_ActionConfig as ActionConfig,
+    index_d_ButtonConfig as ButtonConfig,
     index_d_MenuOptions as MenuOptions,
     index_d_Menu as Menu,
+    index_d_MenuButtonOptions as MenuButtonOptions,
+    index_d_MenuButton as MenuButton,
+    index_d_SelectOptions as SelectOptions,
+    index_d_Select as Select,
     index_d_Term as Term,
   };
 }
 
-export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$2 as Button, ButtonOptions$1 as ButtonOptions, CellEntry, ColorOption, Column$1 as Column, ColumnOptions$1 as ColumnOptions, ConfirmOptions, DataArray, DataList$1 as DataList, DataType$1 as DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu$1 as Menu, MenuButton, MenuOptions$1 as MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table$1 as Table, TableOptions$1 as TableOptions, Text$1 as Text, TextOptions$1 as TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget$1 as Widget, WidgetOptions$1 as WidgetOptions, WidgetRunner, buildDialog, index_d$1 as html, makeTable, showDropDown, index_d as term };
+export { ActionButton, ActionFn, ActorEntry, AlertOptions, Box, BoxOptions, Button$2 as Button, ButtonOptions$1 as ButtonOptions, CellEntry, ColorOption, Column$1 as Column, ColumnOptions$1 as ColumnOptions, ConfirmOptions, DataArray, DataList$1 as DataList, DataType$1 as DataType, Dialog, DialogBuilder, DropDownButton, EntryBase, EventCallback, EventHandlers, Flavor, FlavorOptions, HoverType, Input$1 as Input, InputBoxOptions, InputOptions, ItemEntry, List, ListOptions, Menu$1 as Menu, MenuButton$1 as MenuButton, MenuOptions$1 as MenuOptions, MessageOptions, Messages, PosOptions$1 as PosOptions, Sidebar, SidebarEntry, SidebarOptions, Table$1 as Table, TableOptions$1 as TableOptions, Text$1 as Text, TextOptions$1 as TextOptions, UI, UICore, UIOptions, UISubject, VAlign, ValueFn, ViewFilterFn, Viewport, ViewportOptions, Widget$1 as Widget, WidgetOptions$1 as WidgetOptions, WidgetRunner, buildDialog, index_d$1 as html, makeTable, showDropDown, index_d as term };

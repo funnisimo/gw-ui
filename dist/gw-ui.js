@@ -1946,7 +1946,7 @@
         }
     }
 
-    class MenuButton {
+    class MenuButton$1 {
         constructor(text) {
             this.hovered = false;
             this.x = 999;
@@ -1956,13 +1956,13 @@
             return this.text.length;
         }
     }
-    class ActionButton extends MenuButton {
+    class ActionButton extends MenuButton$1 {
         constructor(text, action) {
             super(text);
             this.action = action;
         }
     }
-    class DropDownButton extends MenuButton {
+    class DropDownButton extends MenuButton$1 {
         constructor(menu, parent, text, buttons) {
             super(text);
             this.buttons = [];
@@ -5269,6 +5269,7 @@
             const current = this._props[name];
             if (current !== v) {
                 this._props[name] = v;
+                // console.log(`${this.tag}.${name}=${v}`);
                 this._updateStyle();
             }
             return this;
@@ -5276,6 +5277,18 @@
         toggleProp(name) {
             const current = !!this._props[name];
             this.prop(name, !current);
+            return this;
+        }
+        incProp(name) {
+            let current = this.prop(name) || 0;
+            if (typeof current === 'boolean') {
+                current = current ? 1 : 0;
+            }
+            else if (typeof current === 'string') {
+                current = Number.parseInt(current) || 0;
+            }
+            ++current;
+            this.prop(name, current);
             return this;
         }
         contains(...args) {
@@ -5286,6 +5299,38 @@
                 return this._style;
             this._style.set(opts);
             this._updateStyle();
+            return this;
+        }
+        addClass(c) {
+            const all = c.split(/ +/g);
+            all.forEach((a) => {
+                if (this.classes.includes(a))
+                    return;
+                this.classes.push(a);
+            });
+            return this;
+        }
+        removeClass(c) {
+            const all = c.split(/ +/g);
+            all.forEach((a) => {
+                GWU__namespace.arrayDelete(this.classes, a);
+            });
+            return this;
+        }
+        hasClass(c) {
+            const all = c.split(/ +/g);
+            return GWU__namespace.arrayIncludesAll(this.classes, all);
+        }
+        toggleClass(c) {
+            const all = c.split(/ +/g);
+            all.forEach((a) => {
+                if (this.classes.includes(a)) {
+                    GWU__namespace.arrayDelete(this.classes, a);
+                }
+                else {
+                    this.classes.push(a);
+                }
+            });
             return this;
         }
         get focused() {
@@ -5333,13 +5378,40 @@
             return false;
         }
         // Events
+        mouseenter(e) {
+            if (!this.contains(e))
+                return;
+            if (this.hovered)
+                return;
+            this.hovered = true;
+            this._fireEvent('mouseenter', this, e);
+            if (this.parent) {
+                this.parent.mouseenter(e);
+            }
+        }
         mousemove(e) {
-            this.hovered = !e.defaultPrevented && !this.hidden && this.contains(e);
-            if (this.hovered) {
-                this._bubbleEvent('mousemove', this, e); // my parent(s) are all hovered too, but...
-                e.preventDefault(); // nobody else can be the hovered element (this is for people below me in the depth order)
+            if (this.hidden)
+                return false;
+            if (this.contains(e) && !e.defaultPrevented) {
+                this.mouseenter(e);
+                this._fireEvent('mousemove', this, e);
+                e.preventDefault();
+            }
+            else {
+                this.mouseleave(e);
             }
             return false;
+        }
+        mouseleave(e) {
+            if (this.contains(e))
+                return;
+            if (!this.hovered)
+                return;
+            this.hovered = false;
+            this._fireEvent('mouseleave', this, e);
+            if (this.parent) {
+                this.parent.mouseleave(e);
+            }
         }
         click(e) {
             if (this.hidden)
@@ -5407,11 +5479,16 @@
         //         this.children.forEach((c) => c._updateStyle());
         //     }
         // }
-        addChild(w) {
+        addChild(w, beforeIndex = -1) {
             if (w.parent && w.parent !== this)
                 throw new Error('Trying to add child that already has a parent.');
             if (!this.children.includes(w)) {
-                this.children.push(w);
+                if (beforeIndex < 0 || beforeIndex >= this.children.length) {
+                    this.children.push(w);
+                }
+                else {
+                    this.children.splice(beforeIndex, 0, w);
+                }
             }
             w.parent = this;
             return this;
@@ -5768,30 +5845,153 @@
             this.tag = opts.tag || 'menu';
             this.buttonClass = opts.buttonClass || '';
             this.buttonTag = opts.buttonTag || 'mi';
-            this._initButtons(opts.buttons);
+            this._initButtons(opts);
+            this.bounds.height = this.children.length;
         }
-        _initButtons(buttons) {
+        _initButtons(opts) {
             this.children = [];
+            const buttons = opts.buttons;
             const entries = Object.entries(buttons);
             if (this.bounds.width <= 0) {
-                this.bounds.width = entries.reduce((out, [key]) => Math.max(out, GWU__namespace.text.length(key)), 0);
+                this.bounds.width = Math.max(opts.minWidth || 0, entries.reduce((out, [key, value]) => {
+                    const textLen = GWU__namespace.text.length(key) +
+                        (typeof value === 'string' ? 0 : 2);
+                    return Math.max(out, textLen);
+                }, 0));
             }
             entries.forEach(([key, value], i) => {
+                const opts = {
+                    x: this.bounds.x,
+                    y: this.bounds.y + i,
+                    class: this.buttonClass,
+                    tag: this.buttonTag,
+                    width: this.bounds.width,
+                    height: 1,
+                    depth: this.depth + 1,
+                    parent: this,
+                };
                 if (typeof value === 'string') {
-                    const menuItem = this.term.text(key, {
-                        x: this.bounds.x,
-                        y: this.bounds.y + i,
-                        class: this.buttonClass,
-                        tag: this.buttonTag,
-                        width: this.bounds.width,
-                        height: 1,
-                        depth: this.depth + 1,
-                        parent: this,
-                        action: value,
-                    });
+                    opts.action = value;
+                    const menuItem = this.term.text(key, opts);
+                    this.children.push(menuItem);
+                }
+                else {
+                    const menuOpts = opts;
+                    menuOpts.text = key;
+                    menuOpts.buttons = value;
+                    const menuItem = new MenuButton(this.term, menuOpts);
+                    this.term.addWidget(menuItem);
                     this.children.push(menuItem);
                 }
             });
+        }
+    }
+    class MenuButton extends WidgetGroup {
+        constructor(term, opts) {
+            super(term, opts);
+            this.tag = opts.tag || 'mi';
+            this._initButton(opts);
+            this._initMenu(opts);
+            this.bounds.height = 1;
+        }
+        _initButton(opts) {
+            this.button = this.term
+                .text(opts.text + ' \u25b6', {
+                x: this.bounds.x,
+                y: this.bounds.y,
+                class: opts.class,
+                tag: opts.tag || 'mi',
+                width: this.bounds.width,
+                height: 1,
+                depth: this.depth + 1,
+                parent: this,
+            })
+                .on('mouseenter', () => {
+                this.menu.hidden = false;
+                return false;
+            })
+                .on('mouseleave', (_n, _w, e) => {
+                if (!this.menu.contains(e)) {
+                    this.menu.hidden = true;
+                }
+                return false;
+            });
+            this.addChild(this.button, 0);
+        }
+        _initMenu(opts) {
+            this.menu = this.term
+                .menu({
+                x: this.bounds.x + this.button.bounds.width,
+                y: this.bounds.y,
+                class: opts.buttonClass,
+                tag: opts.buttonTag || 'select',
+                height: opts.height,
+                buttons: opts.buttons,
+                depth: this.depth + 1,
+                parent: this,
+            })
+                .on('click', () => {
+                this.menu.hidden = true;
+                return false;
+            })
+                .on('mouseleave', (_n, _w, e) => {
+                if (!this.button.contains(e)) {
+                    this.menu.hidden = true;
+                }
+                return false;
+            });
+            this.menu.hidden = true;
+            this.addChild(this.menu);
+        }
+    }
+
+    // import * as GWU from 'gw-utils';
+    class Select extends WidgetGroup {
+        constructor(term, opts) {
+            super(term, opts);
+            this.tag = opts.tag || 'select';
+            this._initText(opts);
+            this._initMenu(opts);
+            this.bounds.height = 1; // just the text component
+        }
+        _initText(opts) {
+            this.dropdown = this.term
+                .text(opts.text + ' \u25bc', {
+                x: this.bounds.x,
+                y: this.bounds.y,
+                class: opts.class,
+                tag: opts.tag || 'select',
+                width: this.bounds.width,
+                height: 1,
+                depth: this.depth + 1,
+                parent: this,
+            })
+                .on('click', () => {
+                this.menu.toggleProp('hidden');
+                return false;
+            });
+            this.addChild(this.dropdown, 0);
+        }
+        _initMenu(opts) {
+            this.menu = this.term
+                .menu({
+                x: this.bounds.x,
+                y: this.bounds.y + 1,
+                class: opts.buttonClass,
+                tag: opts.buttonTag || 'select',
+                width: opts.width,
+                minWidth: this.dropdown.bounds.width,
+                height: opts.height,
+                buttons: opts.buttons,
+                depth: this.depth + 1,
+                parent: this,
+            })
+                .on('click', () => {
+                this.menu.hidden = true;
+                return false;
+            });
+            this.menu.hidden = true;
+            this.addChild(this.menu);
         }
     }
 
@@ -6091,7 +6291,6 @@
             const _opts = Object.assign({}, this.opts, opts);
             const widget = new Text(this, text, _opts);
             this.addWidget(widget);
-            this._needsDraw = true;
             return widget;
         }
         table(opts) {
@@ -6100,28 +6299,30 @@
             const _opts = Object.assign({}, this.opts, opts);
             const widget = new Table(this, _opts);
             this.addWidget(widget);
-            this._needsDraw = true;
             return widget;
         }
         menu(opts) {
             const _opts = Object.assign({}, this.opts, opts);
             const widget = new Menu(this, _opts);
             this.addWidget(widget);
-            this._needsDraw = true;
             return widget;
         }
         button(opts) {
             const _opts = Object.assign({}, this.opts, opts);
             const widget = new Button(this, _opts);
             this.addWidget(widget);
-            this._needsDraw = true;
             return widget;
         }
         border(opts) {
             const _opts = Object.assign({}, this.opts, opts);
             const widget = new Border(this, _opts);
             this.addWidget(widget);
-            this._needsDraw = true;
+            return widget;
+        }
+        select(opts) {
+            const _opts = Object.assign({}, this.opts, opts);
+            const widget = new Select(this, _opts);
+            this.addWidget(widget);
             return widget;
         }
         // CONTROL
@@ -6211,6 +6412,8 @@
         Column: Column,
         Table: Table,
         Menu: Menu,
+        MenuButton: MenuButton,
+        Select: Select,
         Term: Term
     });
 
@@ -6229,7 +6432,7 @@
     exports.ItemEntry = ItemEntry;
     exports.List = List;
     exports.Menu = Menu$1;
-    exports.MenuButton = MenuButton;
+    exports.MenuButton = MenuButton$1;
     exports.Messages = Messages;
     exports.Sidebar = Sidebar;
     exports.Table = Table$1;

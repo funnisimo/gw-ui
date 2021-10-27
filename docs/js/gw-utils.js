@@ -56,6 +56,9 @@
     function arraysIntersect(a, b) {
         return a.some((av) => b.includes(av));
     }
+    function arrayIncludesAll(a, b) {
+        return b.every((av) => a.includes(av));
+    }
     function arrayDelete(a, b) {
         const index = a.indexOf(b);
         if (index < 0)
@@ -2152,6 +2155,7 @@
         ev.altKey = e.altKey;
         ev.metaKey = e.metaKey;
         ev.type = KEYPRESS;
+        ev.defaultPrevented = false;
         ev.key = key;
         ev.code = code;
         ev.x = -1;
@@ -2193,6 +2197,7 @@
         if (e.buttons && e.type !== 'mouseup') {
             ev.type = CLICK;
         }
+        ev.defaultPrevented = false;
         ev.key = '';
         ev.code = '';
         ev.x = x;
@@ -7069,6 +7074,7 @@ void main() {
     exports.ZERO = ZERO;
     exports.arrayDelete = arrayDelete;
     exports.arrayFindRight = arrayFindRight;
+    exports.arrayIncludesAll = arrayIncludesAll;
     exports.arrayNext = arrayNext;
     exports.arrayPrev = arrayPrev;
     exports.arraysIntersect = arraysIntersect;

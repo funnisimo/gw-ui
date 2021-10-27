@@ -5,4 +5,5 @@ export * from './button';
 export * from './grid';
 export * from './table';
 export * from './menu';
+export * from './select';
 export * from './term';

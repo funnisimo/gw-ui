@@ -33,7 +33,17 @@ term.styles.add('mi:hover', { fg: 'teal' });
 term.pos(5, 5).menu({
     buttons: {
         'Button 1': 'ACTION',
-        'Button 2': 'ACTION',
+        'Button 2': {
+            'Sub Button 1': 'ACTION',
+            'Sub Button 2': 'ACTION',
+            'Sub Button 3': {
+                'Sub Sub 1': 'ACTION',
+                'Sub Sub 2': 'ACTION',
+                'Sub Sub 3': 'ACTION',
+                'Sub Sub 4': 'ACTION',
+            },
+            'Sub Button 4': 'ACTION',
+        },
         'Button 3': 'ACTION',
         'Button 4': 'ACTION',
     },
@@ -95,7 +105,17 @@ button.on('click', (name, w, e) => {
 });
 
 term.on('ACTION', (name, w, e) => {
-    console.log('Click! - ' + name);
+    console.log('Click! - ' + w.text());
+});
+
+term.pos(25, 4).select({
+    text: 'Click Me too!',
+    buttons: {
+        'Button 1': 'ACTION',
+        'Button 2': 'ACTION',
+        'Button 3': 'ACTION',
+        'Button 4': 'ACTION',
+    },
 });
 
 LOOP.run(term);

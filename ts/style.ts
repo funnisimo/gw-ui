@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { Selectable, PropType } from './types';
+import { UIStyle, UIStylesheet, StyleOptions, UIStylable } from './types';
 import { Selector } from './selector';
 
 export type StyleType = string | StyleOptions;
@@ -9,68 +9,68 @@ export type StyleType = string | StyleOptions;
 // fixed - size = self, pos = TRBL vs root
 // absolute - size = self, pos = TRBL vs positioned parent (fixed, absolute)
 
-export interface Stylable {
-    tag: string;
-    classes: string[];
+// export interface Stylable {
+//     tag: string;
+//     classes: string[];
 
-    attr(name: string): string | undefined;
-    prop(name: string): PropType | undefined;
-    parent: Selectable | null;
-    children?: Selectable[];
+//     attr(name: string): string | undefined;
+//     prop(name: string): PropType | undefined;
+//     parent: UIWidget | null;
+//     children?: UIWidget[];
 
-    style(): Style;
-}
+//     style(): Style;
+// }
 
-export interface StyleOptions {
-    fg?: GWU.color.ColorBase;
-    bg?: GWU.color.ColorBase;
-    // depth?: number;
+// export interface StyleOptions {
+//     fg?: GWU.color.ColorBase;
+//     bg?: GWU.color.ColorBase;
+//     // depth?: number;
 
-    align?: GWU.text.Align;
-    valign?: GWU.text.VAlign;
+//     align?: GWU.text.Align;
+//     valign?: GWU.text.VAlign;
 
-    // minWidth?: number;
-    // maxWidth?: number;
-    // width?: number;
+//     // minWidth?: number;
+//     // maxWidth?: number;
+//     // width?: number;
 
-    // minHeight?: number;
-    // maxHeight?: number;
-    // height?: number;
+//     // minHeight?: number;
+//     // maxHeight?: number;
+//     // height?: number;
 
-    // left?: number;
-    // right?: number;
+//     // left?: number;
+//     // right?: number;
 
-    // top?: number;
-    // bottom?: number;
+//     // top?: number;
+//     // bottom?: number;
 
-    // //        all,     [t+b, l+r],        [t, r+l,b],               [t, r, b, l]
-    // padding?:
-    //     | number
-    //     | [number]
-    //     | [number, number]
-    //     | [number, number, number]
-    //     | [number, number, number, number];
-    // padLeft?: number;
-    // padRight?: number;
-    // padTop?: number;
-    // padBottom?: number;
+//     // //        all,     [t+b, l+r],        [t, r+l,b],               [t, r, b, l]
+//     // padding?:
+//     //     | number
+//     //     | [number]
+//     //     | [number, number]
+//     //     | [number, number, number]
+//     //     | [number, number, number, number];
+//     // padLeft?: number;
+//     // padRight?: number;
+//     // padTop?: number;
+//     // padBottom?: number;
 
-    // //        all,     [t+b, l+r],        [t, l+r, b],               [t, r, b, l]
-    // margin?:
-    //     | number
-    //     | [number]
-    //     | [number, number]
-    //     | [number, number, number]
-    //     | [number, number, number, number];
-    // marginLeft?: number;
-    // marginRight?: number;
-    // marginTop?: number;
-    // marginBottom?: number;
+//     // //        all,     [t+b, l+r],        [t, l+r, b],               [t, r, b, l]
+//     // margin?:
+//     //     | number
+//     //     | [number]
+//     //     | [number, number]
+//     //     | [number, number, number]
+//     //     | [number, number, number, number];
+//     // marginLeft?: number;
+//     // marginRight?: number;
+//     // marginTop?: number;
+//     // marginBottom?: number;
 
-    // border?: GWU.color.ColorBase;
-}
+//     // border?: GWU.color.ColorBase;
+// }
 
-export class Style {
+export class Style implements UIStyle {
     protected _fg?: GWU.color.ColorBase;
     protected _bg?: GWU.color.ColorBase;
     protected _border?: GWU.color.ColorBase;
@@ -398,10 +398,10 @@ export function makeStyle(style: string, selector = '$'): Style {
 
 export class ComputedStyle extends Style {
     // obj: Stylable;
-    sources: Style[] = [];
+    sources: UIStyle[] = [];
 
     // constructor(source: Stylable, sources?: Style[]) {
-    constructor(sources?: Style[]) {
+    constructor(sources?: UIStyle[]) {
         super();
         // this.obj = source;
         if (sources) {
@@ -422,8 +422,8 @@ export class ComputedStyle extends Style {
     }
 }
 
-export class Sheet {
-    rules: Style[] = [];
+export class Sheet implements UIStylesheet {
+    rules: UIStyle[] = [];
     _dirty = true;
 
     constructor(parentSheet?: Sheet | null) {
@@ -459,7 +459,7 @@ export class Sheet {
         // if 2 '.' - Error('Only single class rules supported.')
         // if '&' - Error('Not supported.')
 
-        let rule = new Style(selector, props);
+        let rule: UIStyle = new Style(selector, props);
         const existing = this.rules.findIndex(
             (s) => s.selector.text === rule.selector.text
         );
@@ -476,7 +476,7 @@ export class Sheet {
         return this;
     }
 
-    get(selector: string): Style | null {
+    get(selector: string): UIStyle | null {
         return this.rules.find((s) => s.selector.text === selector) || null;
     }
 
@@ -491,7 +491,7 @@ export class Sheet {
         }
     }
 
-    computeFor(widget: Stylable): ComputedStyle {
+    computeFor(widget: UIStylable): UIStyle {
         const sources = this.rules.filter((r) => r.selector.matches(widget));
         const widgetStyle = widget.style();
         if (widgetStyle) {

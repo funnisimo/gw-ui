@@ -1,28 +1,22 @@
 import * as UTILS from '../../test/utils';
 import * as GWU from 'gw-utils';
-import * as Widget from './index';
-import { UICore } from '../types';
+import * as Button from './button';
+import * as Layer from '../layer';
 
 describe('Button Widget', () => {
-    let ui: UICore;
-    let dialog: UTILS.MockWidgetRunner;
+    let layer: Layer.Layer;
 
     beforeEach(() => {
-        ui = UTILS.mockUI(100, 40);
-        dialog = UTILS.mockDialog(ui);
-    });
-
-    test('create - text required', () => {
-        expect(() => new Widget.Button('ID', { fg: 'red' })).toThrow();
+        layer = UTILS.mockLayer(50, 30);
     });
 
     test('create', () => {
-        let widget = new Widget.Button('ID', { text: 'Button' });
-        expect(widget.bounds.x).toEqual(-1);
-        expect(widget.bounds.y).toEqual(-1);
+        let widget = new Button.Button(layer, { id: 'ID', text: 'Button' });
+        expect(widget.bounds.x).toEqual(0);
+        expect(widget.bounds.y).toEqual(0);
         expect(widget.bounds.width).toEqual(6);
         expect(widget.bounds.height).toEqual(1);
-        expect(widget.text).toEqual('Button');
+        expect(widget.text()).toEqual('Button');
 
         widget.bounds.x = widget.bounds.y = 0;
 
@@ -34,12 +28,11 @@ describe('Button Widget', () => {
     });
 
     test('hover', () => {
-        let widget = new Widget.Button('ID', {
+        let widget = new Button.Button(layer, {
+            id: 'ID',
             text: 'Button',
             fg: 'red',
             bg: 'gray',
-            activeFg: 'blue',
-            activeBg: 'light_gray',
             x: 0,
             y: 0,
         });
@@ -54,14 +47,14 @@ describe('Button Widget', () => {
         expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.red);
         expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.gray);
 
-        widget.mousemove(UTILS.mousemove(0, 0), dialog);
+        widget.mousemove(UTILS.mousemove(0, 0));
         expect(widget.hovered).toBeTruthy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
-        expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.blue);
-        expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.light_gray);
+        expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.red);
+        expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.gray);
 
-        widget.mousemove(UTILS.mousemove(10, 10), dialog);
+        widget.mousemove(UTILS.mousemove(10, 10));
         expect(widget.hovered).toBeFalsy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
@@ -70,12 +63,11 @@ describe('Button Widget', () => {
     });
 
     test('hover - wide + tall', () => {
-        let widget = new Widget.Button('ID', {
+        let widget = new Button.Button(layer, {
+            id: 'ID',
             text: 'Button',
             fg: 'red',
             bg: 'gray',
-            activeFg: 'blue',
-            activeBg: 'light_gray',
             width: 10,
             height: 2,
             x: 0,
@@ -84,92 +76,110 @@ describe('Button Widget', () => {
 
         const buffer = new GWU.canvas.DataBuffer(40, 40);
         widget.draw(buffer);
-        expect(UTILS.getBufferText(buffer, 0, 1, 10)).toEqual('Button');
-        expect(buffer.info(0, 1).fg).toEqual(GWU.color.colors.red);
-        expect(buffer.info(0, 1).bg).toEqual(GWU.color.colors.gray);
+        expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
+        expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.red.toInt());
+        expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.gray.toInt());
+        expect(buffer.info(0, 1).bg).toEqual(GWU.color.colors.gray.toInt());
 
-        widget.mousemove(UTILS.mousemove(0, 0), dialog);
+        widget.mousemove(UTILS.mousemove(0, 0));
         expect(widget.hovered).toBeTruthy();
         widget.draw(buffer);
-        expect(UTILS.getBufferText(buffer, 0, 1, 10)).toEqual('Button');
-        expect(buffer.info(0, 1).fg).toEqual(GWU.color.colors.blue);
-        expect(buffer.info(0, 1).bg).toEqual(GWU.color.colors.light_gray);
+        expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
+        expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.red.toInt());
+        expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.gray.toInt());
+        expect(buffer.info(0, 1).bg).toEqual(GWU.color.colors.gray.toInt());
 
-        widget.mousemove(UTILS.mousemove(10, 10), dialog);
+        widget.mousemove(UTILS.mousemove(10, 10));
         expect(widget.hovered).toBeFalsy();
         widget.draw(buffer);
-        expect(UTILS.getBufferText(buffer, 0, 1, 10)).toEqual('Button');
-        expect(buffer.info(0, 1).fg).toEqual(GWU.color.colors.red);
-        expect(buffer.info(0, 1).bg).toEqual(GWU.color.colors.gray);
+        expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
+        expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.red.toInt());
+        expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.gray.toInt());
+        expect(buffer.info(0, 1).bg).toEqual(GWU.color.colors.gray.toInt());
     });
 
     test('Enter', async () => {
-        let widget = new Widget.Button('ID', {
+        let widget = new Button.Button(layer, {
+            id: 'ID',
             width: 10,
             text: 'Test',
             x: 0,
             y: 0,
         });
 
-        expect(widget.keypress(UTILS.keypress('Enter'), dialog)).toBeTruthy();
-        expect(dialog.fireAction).toHaveBeenCalledWith('ID', widget);
-
-        dialog.fireAction.mockClear();
-        dialog.fireAction.mockResolvedValue(void 0);
-
-        const r = widget.keypress(UTILS.keypress('Enter'), dialog);
         // @ts-ignore
-        expect(r.then).toBeDefined(); // function
-        expect(dialog.fireAction).toHaveBeenCalledWith('ID', widget);
+        jest.spyOn(widget, '_fireEvent');
 
-        expect(await r).toBeTruthy();
+        expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
+        // @ts-ignore
+        expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget);
 
-        dialog.fireAction.mockClear();
-        dialog.fireAction.mockReturnValue(void 0);
+        // @ts-ignore
+        widget._fireEvent.mockClear();
+        // @ts-ignore
+        widget._fireEvent.mockResolvedValue(void 0);
 
-        widget = new Widget.Button('ID', {
+        expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
+        expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget);
+
+        // @ts-ignore
+        widget._fireEvent.mockClear();
+        // @ts-ignore
+        widget._fireEvent.mockReturnValue(void 0);
+
+        widget = new Button.Button(layer, {
+            id: 'ID',
             width: 10,
             text: 'Test',
             action: 'DONE',
         });
 
-        expect(widget.keypress(UTILS.keypress('Enter'), dialog)).toBeTruthy();
-        expect(dialog.fireAction).toHaveBeenCalledWith('DONE', widget);
+        // @ts-ignore
+        jest.spyOn(widget, '_fireEvent');
+
+        expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
+        expect(widget._fireEvent).toHaveBeenCalledWith('DONE', widget);
     });
 
     test('Click', async () => {
-        let widget = new Widget.Button('ID', {
+        let widget = new Button.Button(layer, {
+            id: 'ID',
             width: 10,
             text: 'Test',
             x: 0,
             y: 0,
         });
 
-        expect(widget.keypress(UTILS.keypress('Enter'), dialog)).toBeTruthy();
-        expect(dialog.fireAction).toHaveBeenCalledWith('ID', widget);
+        jest.spyOn(widget, '_fireEvent');
 
-        dialog.fireAction.mockClear();
-        dialog.fireAction.mockResolvedValue(void 0);
+        expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
+        expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget);
 
-        const r = widget.click(UTILS.click(0, 0), dialog);
         // @ts-ignore
-        expect(r.then).toBeDefined(); // function
-        expect(dialog.fireAction).toHaveBeenCalledWith('ID', widget);
+        widget._fireEvent.mockClear();
+        // @ts-ignore
+        widget._fireEvent.mockResolvedValue(void 0);
 
-        expect(await r).toBeTruthy();
+        expect(widget.click(UTILS.click(0, 0))).toBeTruthy();
+        // @ts-ignore
+        expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget);
 
-        dialog.fireAction.mockClear();
-        dialog.fireAction.mockReturnValue(void 0);
+        // @ts-ignore
+        widget._fireEvent.mockClear();
+        // @ts-ignore
+        widget._fireEvent.mockReturnValue(void 0);
 
-        widget = new Widget.Button('ID', {
+        widget = new Button.Button(layer, {
+            id: 'ID',
             width: 10,
             text: 'Test',
             action: 'DONE',
             x: 0,
             y: 0,
         });
+        jest.spyOn(widget, '_fireEvent');
 
-        expect(widget.click(UTILS.click(0, 0), dialog)).toBeTruthy();
-        expect(dialog.fireAction).toHaveBeenCalledWith('DONE', widget);
+        expect(widget.click(UTILS.click(0, 0))).toBeTruthy();
+        expect(widget._fireEvent).toHaveBeenCalledWith('DONE', widget);
     });
 });

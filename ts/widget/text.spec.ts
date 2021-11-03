@@ -1,44 +1,69 @@
+import 'jest-extended';
 import * as UTILS from '../../test/utils';
 import * as GWU from 'gw-utils';
-import * as Widget from './index';
+import * as Text from './text';
+import * as Layer from '../layer';
 
 describe('Text Widget', () => {
-    test('text width', () => {
+    let layer: Layer.Layer;
+
+    beforeEach(() => {
+        layer = UTILS.mockLayer(50, 30);
+    });
+
+    test('text create', () => {
         // Takes everything
-        let widget = new Widget.Text('TEST', {
+        let widget = new Text.Text(layer, {
+            id: 'TEST',
             text: 'Testing a long message.',
         });
-        expect(widget.text).toEqual('Testing a long message.');
+        expect(widget.text()).toEqual('Testing a long message.');
         expect(widget.bounds.width).toEqual(23);
         expect(widget.bounds.height).toEqual(1);
-        expect(widget.bounds.x).toEqual(-1);
-        expect(widget.bounds.y).toEqual(-1);
+        expect(widget.bounds.x).toEqual(0);
+        expect(widget.bounds.y).toEqual(0);
+
+        expect(widget.parent).toBe(layer.body);
+        expect(layer._depthOrder).toContain(widget);
+        expect(layer._attachOrder).toContain(widget);
+    });
+
+    test('text width', () => {
+        // Takes everything
+        let widget = layer.text('Testing a long message.', { id: 'TEST' });
+        expect(widget.text()).toEqual('Testing a long message.');
+        expect(widget.bounds.width).toEqual(23);
+        expect(widget.bounds.height).toEqual(1);
+        expect(widget.bounds.x).toEqual(0);
+        expect(widget.bounds.y).toEqual(0);
 
         // Truncates
-        widget = new Widget.Text('TEST', {
-            text: 'Testing a long message.',
+        widget = layer.text('Testing a long message.', {
+            id: 'TEST',
             width: 20,
+            height: 1,
         });
-        expect(widget.text).toEqual('Testing a long messa');
+        expect(widget.text()).toEqual('Testing a long message.');
+        expect(widget._lines).toEqual(['Testing a long']);
         expect(widget.bounds.width).toEqual(20);
         expect(widget.bounds.height).toEqual(1);
-        expect(widget.bounds.x).toEqual(-1);
-        expect(widget.bounds.y).toEqual(-1);
+        expect(widget.bounds.x).toEqual(0);
+        expect(widget.bounds.y).toEqual(0);
 
         // Wraps
-        widget = new Widget.Text('TEST', {
-            text: 'Testing a long message.',
-            wrap: 20,
+        widget = layer.text('Testing a long message.', {
+            id: 'TEST',
+            width: 20,
             x: 0,
             y: 0,
         });
-        expect(widget.text).toEqual('Testing a long message.');
+        expect(widget.text()).toEqual('Testing a long message.');
         expect(widget.bounds.width).toEqual(20);
         expect(widget.bounds.height).toEqual(2);
         expect(widget.bounds.x).toEqual(0);
         expect(widget.bounds.y).toEqual(0);
 
-        expect(widget.lines).toEqual(['Testing a long', 'message.']);
+        expect(widget._lines).toEqual(['Testing a long', 'message.']);
 
         const buffer = new GWU.canvas.DataBuffer(100, 40);
         widget.draw(buffer);
@@ -48,14 +73,14 @@ describe('Text Widget', () => {
     });
 
     test('draw', () => {
-        const widget = new Widget.Text('TEST', {
-            text: 'Test',
+        const widget = layer.text('Test', {
+            id: 'TEST',
             fg: 'red',
             x: 0,
             y: 0,
         });
-        expect(widget.text).toEqual('Test');
-        expect(widget.lines).toEqual(['Test']);
+        expect(widget.text()).toEqual('Test');
+        expect(widget._lines).toEqual(['Test']);
         expect(widget.bounds.x).toEqual(0);
         expect(widget.bounds.y).toEqual(0);
         expect(widget.bounds.width).toEqual(4);

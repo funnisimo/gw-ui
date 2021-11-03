@@ -1,208 +1,478 @@
 import * as GWU from 'gw-utils';
-import { UICore } from '../types';
+import * as Style from '../style';
+import { UIStyle, StyleOptions, PropType, UIStylable } from '../types';
+import { Layer } from '../layer';
 
-export type VAlign = 'top' | 'middle' | 'bottom';
+// return true if you want to stop the event from propagating
+export type EventCb = (
+    name: string,
+    widget: Widget | null,
+    args?: any
+) => boolean; // | Promise<boolean>;
 
-export interface PosOptions {
-    x?: number;
-    y?: number;
-    right?: number;
-    bottom?: number;
-}
+export interface WidgetOptions extends StyleOptions {
+    id?: string;
+    disabled?: boolean;
+    hidden?: boolean;
 
-export interface WidgetRunner {
-    readonly ui: UICore;
-    fireAction(action: string, widget: Widget): void | Promise<void>;
-    requestRedraw(): void;
-}
-
-export interface WidgetOptions {
     x?: number;
     y?: number;
     width?: number;
     height?: number;
 
-    fg?: GWU.color.ColorBase;
-    bg?: GWU.color.ColorBase;
-
-    activeFg?: GWU.color.ColorBase;
-    activeBg?: GWU.color.ColorBase;
-
-    hoverFg?: GWU.color.ColorBase;
-    hoverBg?: GWU.color.ColorBase;
-
-    text?: string;
-
-    align?: GWU.text.Align;
-    valign?: VAlign;
+    class?: string | string[];
+    tag?: string;
 
     tabStop?: boolean;
     action?: string;
     depth?: number;
 }
 
-export abstract class Widget {
-    bounds: GWU.xy.Bounds;
+export interface SetParentOptions {
+    left?: number;
+    right?: number;
+    top?: number;
+    bottom?: number;
 
-    active = false;
-    hovered = false;
-    tabStop = false;
+    beforeIndex?: number;
+}
 
-    depth = 0;
+Style.defaultStyle.add('*', {
+    fg: 'white',
+    bg: -1,
+    align: 'left',
+    valign: 'top',
+});
 
-    fg: GWU.color.ColorBase = 0xfff;
-    bg: GWU.color.ColorBase = -1;
+export class Widget implements UIStylable {
+    tag: string = 'text';
+    layer: Layer;
+    bounds: GWU.xy.Bounds = new GWU.xy.Bounds(0, 0, 0, 1);
+    _depth = 0;
+    events: Record<string, EventCb[]> = {};
+    // action: string = '';
+    children: Widget[] = [];
 
-    activeFg: GWU.color.ColorBase = 0xfff;
-    activeBg: GWU.color.ColorBase = -1;
+    _style = new Style.Style();
+    _used!: UIStyle;
 
-    hoverFg: GWU.color.ColorBase = 0xfff;
-    hoverBg: GWU.color.ColorBase = -1;
+    _parent: Widget | null = null;
+    classes: string[] = [];
+    _props: Record<string, PropType> = {};
+    _attrs: Record<string, PropType> = {};
 
-    id: string;
-    text: string = '';
+    constructor(term: Layer, opts: WidgetOptions = {}) {
+        this.layer = term;
+        // this.bounds.x = term.x;
+        // this.bounds.y = term.y;
 
-    align: GWU.text.Align = 'left';
-    valign: VAlign = 'middle';
+        this.bounds.x = opts.x || 0;
+        this.bounds.y = opts.y || 0;
+        this.bounds.width = opts.width || 0;
+        this.bounds.height = opts.height || 1;
 
-    // parent!: WidgetContainer;
-    action!: string;
+        if (opts.tag) {
+            this.tag = opts.tag;
+        }
+        if (opts.id) {
+            this.attr('id', opts.id);
+            this.attr('action', opts.id);
+        }
+        if (opts.depth !== undefined) {
+            this._depth = opts.depth;
+        }
+        this._style.set(opts);
+        if (opts.class) {
+            if (typeof opts.class === 'string') {
+                opts.class = opts.class.split(/ +/g);
+            }
+            this.classes = opts.class.map((c) => c.trim());
+        }
+        if (opts.tabStop) {
+            this.prop('tabStop', true);
+        }
+        if (opts.action) {
+        }
+        if (opts.disabled) {
+            this.prop('disabled', true);
+        }
+        if (opts.hidden) {
+            this.prop('hidden', true);
+        }
 
-    constructor(id: string, opts?: WidgetOptions) {
-        this.bounds = new GWU.xy.Bounds(-1, -1, -1, -1); // nothing set
-        this.id = id;
-        if (opts) this.init(opts);
-        this.reset();
+        if (opts.action) {
+            this.attr('action', opts.action);
+        }
+        if (this.attr('action')) {
+            this.on('click', (_n, w, e) => {
+                const action = this._attrStr('action');
+                if (action) {
+                    this._bubbleEvent(action, w, e);
+                }
+                return false; // keep bubbling
+            });
+        }
+
+        this.layer.attach(this);
+        this.updateStyle();
     }
 
-    init(opts: WidgetOptions) {
-        if (opts.x !== undefined) this.bounds.x = opts.x;
-        if (opts.y !== undefined) this.bounds.y = opts.y;
-        if (opts.width !== undefined) this.bounds.width = opts.width;
-        if (opts.height !== undefined) this.bounds.height = opts.height;
-        if (opts.depth !== undefined) this.depth = opts.depth;
-
-        if (opts.text) {
-            this.text = opts.text;
-            if (this.bounds.width <= 0) this.bounds.width = opts.text.length;
-            if (this.bounds.height <= 0) this.bounds.height = 1;
-        }
-        if (this.bounds.height <= 0) this.bounds.height = 1;
-        if (opts.fg !== undefined) {
-            this.fg = opts.fg;
-            this.activeFg = opts.fg;
-            this.hoverFg = opts.fg;
-        }
-        if (opts.bg !== undefined) {
-            this.bg = opts.bg;
-            this.activeBg = opts.bg;
-            this.hoverBg = opts.bg;
-        }
-        if (opts.activeFg !== undefined) {
-            this.activeFg = opts.activeFg;
-            this.hoverFg = opts.activeFg;
-        }
-        if (opts.activeBg !== undefined) {
-            this.activeBg = opts.activeBg;
-            this.hoverBg = opts.activeBg;
-        }
-        if (opts.hoverFg !== undefined) this.hoverFg = opts.hoverFg;
-        if (opts.hoverBg !== undefined) this.hoverBg = opts.hoverBg;
-
-        if (opts.tabStop !== undefined) this.tabStop = opts.tabStop;
-        this.action = opts.action || this.id;
+    get depth(): number {
+        return this._depth;
+    }
+    set depth(v: number) {
+        this._depth = v;
+        this.layer.sortWidgets();
     }
 
-    reset() {}
-
-    activate(_reverse = false) {
-        this.active = true;
+    get parent(): Widget | null {
+        return this._parent;
     }
-    deactivate() {
-        this.active = false;
+    set parent(v: Widget | null) {
+        this.setParent(v);
+    }
+    setParent(v: Widget | null, opts: SetParentOptions = {}) {
+        if (this._parent) {
+            this._parent._removeChild(this);
+        }
+        this._parent = v;
+        if (this._parent) {
+            this.depth = this._depth || this._parent.depth + 1;
+            this._parent._addChild(this, opts);
+        }
+    }
+
+    text(): string;
+    text(v: string): this;
+    text(v?: string): this | string {
+        if (v === undefined) return this._attrStr('text');
+        this.attr('text', v);
+        return this;
+    }
+
+    attr(name: string): PropType;
+    attr(name: string, v: PropType): this;
+    attr(name: string, v?: PropType): PropType | this {
+        if (v === undefined) return this._attrs[name];
+        this._attrs[name] = v;
+        return this;
+    }
+
+    _attrInt(name: string): number {
+        const n = this._attrs[name] || 0;
+        if (typeof n === 'number') return n;
+        if (typeof n === 'string') return Number.parseInt(n);
+        return n ? 1 : 0;
+    }
+
+    _attrStr(name: string): string {
+        const n = this._attrs[name] || '';
+        if (typeof n === 'string') return n;
+        if (typeof n === 'number') return '' + n;
+        return n ? 'true' : 'false';
+    }
+
+    _attrBool(name: string): boolean {
+        return !!this._attrs[name];
+    }
+
+    prop(name: string): PropType | undefined;
+    prop(name: string, v: PropType): this;
+    prop(name: string, v?: PropType): this | PropType | undefined {
+        if (v === undefined) return this._props[name];
+        const current = this._props[name];
+        if (current !== v) {
+            this._setProp(name, v);
+        }
+        return this;
+    }
+
+    _setProp(name: string, v: PropType): void {
+        this._props[name] = v;
+        // console.log(`${this.tag}.${name}=${v}`);
+        this.updateStyle();
+    }
+
+    _propInt(name: string): number {
+        const n = this._props[name] || 0;
+        if (typeof n === 'number') return n;
+        if (typeof n === 'string') return Number.parseInt(n);
+        return n ? 1 : 0;
+    }
+
+    _propStr(name: string): string {
+        const n = this._props[name] || '';
+        if (typeof n === 'string') return n;
+        if (typeof n === 'number') return '' + n;
+        return n ? 'true' : 'false';
+    }
+
+    _propBool(name: string): boolean {
+        return !!this._props[name];
+    }
+
+    toggleProp(name: string): this {
+        const current = !!this._props[name];
+        this.prop(name, !current);
+        return this;
+    }
+
+    incProp(name: string, n = 1): this {
+        let current = this.prop(name) || 0;
+        if (typeof current === 'boolean') {
+            current = current ? 1 : 0;
+        } else if (typeof current === 'string') {
+            current = Number.parseInt(current) || 0;
+        }
+        current += n;
+        this.prop(name, current);
+        return this;
     }
 
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
-    contains(x: GWU.xy.XY | number, y?: number): boolean {
-        if (arguments.length == 1) return this.bounds.contains(x as GWU.xy.XY);
-        return this.bounds.contains(x as number, y!);
+    contains(...args: any[]): boolean {
+        return this.bounds.contains(args[0], args[1]);
     }
 
-    // EVENTS
+    style(): Style.Style;
+    style(opts: StyleOptions): this;
+    style(opts?: StyleOptions): this | Style.Style {
+        if (opts === undefined) return this._style;
 
-    // returns true if mouse is over this widget
-    mousemove(
-        e: GWU.io.Event,
-        _dialog: WidgetRunner
-    ): boolean | Promise<boolean> {
-        this.hovered = this.contains(e);
-        return this.hovered;
+        this._style.set(opts);
+        this.updateStyle();
+        return this;
     }
 
-    tick(_e: GWU.io.Event, _dialog: WidgetRunner): void | Promise<void> {}
+    addClass(c: string): this {
+        const all = c.split(/ +/g);
+        all.forEach((a) => {
+            if (this.classes.includes(a)) return;
+            this.classes.push(a);
+        });
+        return this;
+    }
 
-    // returns true if click is handled by this widget (stopPropagation)
-    click(_e: GWU.io.Event, _dialog: WidgetRunner): boolean | Promise<boolean> {
+    removeClass(c: string): this {
+        const all = c.split(/ +/g);
+        all.forEach((a) => {
+            GWU.arrayDelete(this.classes, a);
+        });
+        return this;
+    }
+
+    hasClass(c: string): boolean {
+        const all = c.split(/ +/g);
+        return GWU.arrayIncludesAll(this.classes, all);
+    }
+
+    toggleClass(c: string): this {
+        const all = c.split(/ +/g);
+        all.forEach((a) => {
+            if (this.classes.includes(a)) {
+                GWU.arrayDelete(this.classes, a);
+            } else {
+                this.classes.push(a);
+            }
+        });
+        return this;
+    }
+
+    get focused(): boolean {
+        return !!this.prop('focus');
+    }
+
+    // @return true to stop the focus change event
+    focus(reverse = false): boolean {
+        if (this.prop('focus')) return true;
+
+        this.prop('focus', true);
+        return this._fireEvent('focus', this, { reverse });
+    }
+
+    // @return true to stop the focus change event
+    blur(reverse = false): boolean {
+        if (!this.prop('focus')) return false;
+        this.prop('focus', false);
+        return this._fireEvent('blur', this, { reverse });
+    }
+
+    get hovered(): boolean {
+        return !!this.prop('hover');
+    }
+    set hovered(v: boolean) {
+        this.prop('hover', v);
+    }
+
+    get hidden(): boolean {
+        let current: Widget | null = this;
+        while (current) {
+            if (current.prop('hidden')) return true;
+            current = current.parent;
+        }
         return false;
     }
-
-    // returns true if key is used by widget and you want to stopPropagation
-    keypress(
-        _e: GWU.io.Event,
-        _dialog: WidgetRunner
-    ): boolean | Promise<boolean> {
-        return false;
+    set hidden(v: boolean) {
+        this.prop('hidden', v);
     }
 
-    // returns true if key is used by widget and you want to stopPropagation
-    dir(_e: GWU.io.Event, _dialog: WidgetRunner): boolean | Promise<boolean> {
-        return false;
+    updateStyle() {
+        this._used = this.layer.styles.computeFor(this);
+        this.layer.needsDraw = true; // changed style or state
     }
 
-    // DRAW
+    draw(buffer: GWU.canvas.DataBuffer): boolean {
+        if (this.hidden) return false;
+        return this._draw(buffer);
+    }
 
-    draw(buffer: GWU.canvas.DataBuffer): void {
-        const fg = this.active
-            ? this.activeFg
-            : this.hovered
-            ? this.hoverFg
-            : this.fg;
-        const bg = this.active
-            ? this.activeBg
-            : this.hovered
-            ? this.hoverBg
-            : this.bg;
-        const textLen = GWU.text.length(this.text);
+    protected _draw(buffer: GWU.canvas.DataBuffer): boolean {
+        this._drawFill(buffer);
+        return true;
+    }
 
-        if (this.bounds.width > textLen || this.bounds.height > 1) {
-            buffer.fillRect(
-                this.bounds.x,
-                this.bounds.y,
-                this.bounds.width,
-                this.bounds.height,
-                ' ',
-                fg,
-                bg
-            );
+    protected _drawFill(buffer: GWU.canvas.DataBuffer): void {
+        buffer.fillRect(
+            this.bounds.x,
+            this.bounds.y,
+            this.bounds.width,
+            this.bounds.height,
+            ' ',
+            this._used.bg,
+            this._used.bg
+        );
+    }
+
+    // Children
+    childAt(xy: GWU.xy.XY): Widget | null;
+    childAt(x: number, y: number): Widget | null;
+    childAt(...args: any[]): Widget | null {
+        return this.children.find((c) => c.contains(args[0], args[1])) || null;
+    }
+
+    _addChild(w: Widget, opts?: SetParentOptions): this {
+        let beforeIndex = -1;
+        if (opts && opts.beforeIndex !== undefined) {
+            beforeIndex = opts.beforeIndex;
         }
 
-        let x = this.bounds.x;
-        if (this.align == 'center') {
-            x += Math.floor((this.bounds.width - textLen) / 2);
-        } else if (this.align == 'right') {
-            x += this.bounds.width - textLen;
-        }
-
-        let y = this.bounds.y; // 'top'
-        if (this.bounds.height > 1) {
-            if (this.valign == 'middle') {
-                y += Math.floor(this.bounds.height / 2);
-            } else if (this.valign == 'bottom') {
-                y += this.bounds.height - 1;
+        if (w._parent && w._parent !== this)
+            throw new Error('Trying to add child that already has a parent.');
+        if (!this.children.includes(w)) {
+            if (beforeIndex < 0 || beforeIndex >= this.children.length) {
+                this.children.push(w);
+            } else {
+                this.children.splice(beforeIndex, 0, w);
             }
         }
+        w._parent = this;
+        return this;
+    }
 
-        buffer.drawText(x, y, this.text, fg, bg);
+    _removeChild(w: Widget): this {
+        if (!w._parent || w._parent !== this)
+            throw new Error(
+                'Removing child that does not have this widget as parent.'
+            );
+
+        w._parent = null;
+        GWU.arrayDelete(this.children, w);
+        return this;
+    }
+
+    resize(w: number, h: number): this {
+        this.bounds.width = w || this.bounds.width;
+        this.bounds.height = h || this.bounds.height;
+        this.layer.needsDraw = true;
+        return this;
+    }
+
+    // Events
+
+    mouseenter(e: GWU.io.Event): void {
+        if (!this.contains(e)) return;
+        if (this.hovered) return;
+        this.hovered = true;
+        this._fireEvent('mouseenter', this, e);
+        if (this._parent) {
+            this._parent.mouseenter(e);
+        }
+    }
+
+    mousemove(e: GWU.io.Event): boolean {
+        if (this.contains(e) && !e.defaultPrevented && !this.hidden) {
+            this.mouseenter(e);
+            this._bubbleEvent('mousemove', this, e);
+            e.preventDefault();
+        } else {
+            this.mouseleave(e);
+        }
+        return false;
+    }
+
+    mouseleave(e: GWU.io.Event): void {
+        if (this.contains(e)) return;
+        if (!this.hovered) return;
+        this.hovered = false;
+        this._fireEvent('mouseleave', this, e);
+        if (this._parent) {
+            this._parent.mouseleave(e);
+        }
+    }
+
+    click(e: GWU.io.Event): boolean {
+        if (this.hidden) return false;
+        return this._bubbleEvent('click', this, e);
+    }
+
+    keypress(e: GWU.io.Event): boolean {
+        return this._bubbleEvent('keypress', this, e);
+    }
+    dir(e: GWU.io.Event): boolean {
+        return this._bubbleEvent('dir', this, e);
+    }
+    tick(e: GWU.io.Event): boolean {
+        return this._fireEvent('tick', this, e);
+    }
+
+    on(event: string, cb: EventCb): this {
+        let handlers = this.events[event];
+        if (!handlers) {
+            handlers = this.events[event] = [];
+        }
+        if (!handlers.includes(cb)) {
+            handlers.push(cb);
+        }
+        return this;
+    }
+
+    off(event: string, cb?: EventCb): this {
+        let handlers = this.events[event];
+        if (!handlers) return this;
+        if (cb) {
+            GWU.arrayDelete(handlers, cb);
+        } else {
+            handlers.length = 0; // clear all handlers
+        }
+        return this;
+    }
+
+    _fireEvent(name: string, source: Widget | null, args?: any): boolean {
+        const handlers = this.events[name] || [];
+        let handled = handlers.reduce(
+            (out, h) => h(name, source || this, args) || out,
+            false
+        );
+        return handled;
+    }
+
+    _bubbleEvent(name: string, source: Widget | null, args?: any): boolean {
+        let current: Widget | null = this;
+        while (current) {
+            if (current._fireEvent(name, source, args)) return true;
+            current = current.parent;
+        }
+        return false;
     }
 }

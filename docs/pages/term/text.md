@@ -22,30 +22,31 @@ const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
 SHOW(canvas.node);
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
+const layer = ui.startNewLayer();
 
-const term = new GWI.term.Term(ui);
+layer.styles.add('.fun', { fg: 'dark_green' });
+layer.styles.add('.fun:hover', { fg: 'dark_red' });
 
-term.styles.add('.fun', { fg: 'dark_green' });
-term.styles.add('.fun:hover', { fg: 'dark_red' });
+layer.pos(2, 1).text('This is the most basic text widget.');
 
-term.pos(2, 1).text('This is the most basic text widget.');
+layer
+    .pos(2, 3)
+    .text(
+        'This one will wrap the text at the given width.  It will use the GWU.text.splitIntoLines funciton to do this.',
+        { width: 25 }
+    );
 
-term.pos(2, 3).text(
-    'This one will wrap the text at the given width.  It will use the GWU.text.splitIntoLines funciton to do this.',
-    { width: 25 }
-);
-
-term.pos(2, 9).text('This one has some stylying and ΩredΩcolored text∆!', {
+layer.pos(2, 9).text('This one has some stylying and ΩredΩcolored text∆!', {
     fg: 'light_teal',
     bg: 'dark_gray',
     valign: 'bottom',
     height: 3,
 });
 
-term.pos(2, 13).text(
-    'This one is styled with a class.  This allows it to have hover effects.',
-    { class: 'fun' }
-);
-
-LOOP.run(term);
+layer
+    .pos(2, 13)
+    .text(
+        'This one is styled with a class.  This allows it to have hover effects.',
+        { class: 'fun' }
+    );
 ```

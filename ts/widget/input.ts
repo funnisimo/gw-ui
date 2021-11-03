@@ -1,103 +1,122 @@
 import * as GWU from 'gw-utils';
+import { Layer } from '../layer';
+import * as Text from './text';
+import { installWidget } from './make';
 import * as Widget from './widget';
+import { PropType } from '../types';
 
-export interface InputOptions extends Omit<Widget.WidgetOptions, 'text'> {
-    errorFg?: GWU.color.ColorBase;
+export interface InputOptions extends Omit<Text.TextOptions, 'text'> {
+    text?: string; // don't have to have text
+    id: string; // have to have id
+    placeholder?: string;
 
-    hint?: string;
-    hintFg?: GWU.color.ColorBase;
-
-    default?: string;
     minLength?: number;
+    maxLength?: number;
 
     numbersOnly?: boolean;
     min?: number;
     max?: number;
+
+    required?: boolean;
+    disabled?: boolean;
 }
 
-export class Input extends Widget.Widget {
-    hint!: string;
-    hintFg!: GWU.color.ColorBase;
-    errorFg!: GWU.color.ColorBase;
-    default!: string;
-    minLength!: number;
-    numbersOnly!: boolean;
-    min!: number;
-    max!: number;
+export class Input extends Text.Text {
+    placeholder = '';
 
-    constructor(id: string, opts?: InputOptions) {
-        super(id, opts);
-    }
+    default: string;
+    minLength = 0;
+    maxLength = 0;
 
-    init(opts: InputOptions) {
-        this.minLength = opts.minLength || 1;
+    numbersOnly = false;
+    min = 0;
+    max = 0;
 
-        if (!opts.width) {
-            opts.width = Math.max(this.minLength, 10);
+    constructor(layer: Layer, opts: InputOptions) {
+        super(
+            layer,
+            (() => {
+                opts.text = opts.text || '';
+                opts.tag = opts.tag || 'input';
+                opts.action = opts.action || opts.id;
+                opts.width =
+                    opts.width ||
+                    opts.maxLength ||
+                    Math.max(opts.minLength || 0, 10);
+                return opts as Text.TextOptions;
+            })()
+        );
+
+        this.default = this._text;
+        if (opts.placeholder) this.placeholder = opts.placeholder;
+        if (opts.numbersOnly) {
+            this.numbersOnly = true;
+            this.min = opts.min || 0;
+            this.max = opts.max || 0;
+        } else {
+            this.minLength = opts.minLength || 0;
+            this.maxLength = opts.maxLength || 0;
         }
-        opts.tabStop = GWU.first(opts.tabStop, true); // Need to receive input
-        super.init(opts);
-
-        this.default = opts.default || '';
-
-        this.errorFg = opts.errorFg || this.fg;
-        this.hint = opts.hint || '';
-        this.hintFg = opts.hintFg || this.errorFg;
-
-        this.numbersOnly = opts.numbersOnly || false;
-        this.min = GWU.first(opts.min, Number.MIN_SAFE_INTEGER);
-        this.max = GWU.first(opts.max, Number.MAX_SAFE_INTEGER);
-
-        if (this.bounds.width <= 0) {
-            if (this.hint) this.bounds.width = this.hint.length;
-            if (this.default) this.bounds.width = this.default.length;
+        if (opts.required) {
+            this.attr('required', true);
+            this.prop('required', true);
         }
-        if (this.bounds.height <= 0) {
-            this.bounds.height = 1;
+        if (opts.disabled) {
+            this.attr('disabled', true);
+            this.prop('disabled', true);
         }
 
-        this.reset();
+        this.prop('valid', this.isValid()); // redo b/c rules are now set
+        this.on('blur', () => this._fireEvent('change', this));
     }
 
     reset() {
-        this.text = this.default;
+        this.text(this.default);
+    }
+
+    _setProp(name: string, v: PropType): void {
+        super._setProp(name, v);
+        this._props.valid = this.isValid();
     }
 
     isValid(): boolean {
+        const t = this._text || '';
         if (this.numbersOnly) {
-            const val = Number.parseInt(this.text);
+            const val = Number.parseInt(t);
             if (this.min !== undefined && val < this.min) return false;
             if (this.max !== undefined && val > this.max) return false;
             return val > 0;
         }
-        return this.text.length >= this.minLength;
+        const minLength = Math.max(
+            this.minLength,
+            this.prop('required') ? 1 : 0
+        );
+        return (
+            t.length >= minLength &&
+            (!this.maxLength || t.length <= this.maxLength)
+        );
     }
 
-    get value(): string | number {
-        if (this.numbersOnly) return Number.parseInt(this.text);
-        return this.text;
-    }
-
-    keypress(
-        ev: GWU.io.Event,
-        dialog: Widget.WidgetRunner
-    ): boolean | Promise<boolean> {
-        const textEntryBounds = this.numbersOnly ? ['0', '9'] : [' ', '~'];
-
+    keypress(ev: GWU.io.Event): boolean {
         if (!ev.key) return false;
 
+        const textEntryBounds = this.numbersOnly ? ['0', '9'] : [' ', '~'];
+
         if (ev.key === 'Enter' && this.isValid()) {
-            const r = dialog.fireAction(this.action, this);
-            if (r) return r.then(() => true);
+            const action = this._attrStr('action');
+            if (action && action.length) {
+                this._fireEvent(action, this);
+            } else {
+                this.layer.nextTabStop();
+            }
             return true;
         }
         if (ev.key == 'Delete' || ev.key == 'Backspace') {
-            if (this.text.length) {
-                this.text = GWU.text.spliceRaw(
-                    this.text,
-                    this.text.length - 1,
-                    1
+            if (this._text.length) {
+                this.text(
+                    GWU.text.spliceRaw(this._text, this._text.length - 1, 1)
                 );
+                this._fireEvent('input', this);
             }
             return true;
         } else if (ev.key.length > 1) {
@@ -108,35 +127,69 @@ export class Input extends Widget.Widget {
         // eat/use all other keys
         if (ev.key >= textEntryBounds[0] && ev.key <= textEntryBounds[1]) {
             // allow only permitted input
-            if (this.text.length < this.bounds.width) {
-                this.text += ev.key;
+            if (!this.maxLength || this._text.length < this.maxLength) {
+                this.text(this._text + ev.key);
+                this._fireEvent('input', this);
             }
         }
         return true;
     }
 
-    draw(buffer: GWU.canvas.DataBuffer) {
-        const x = this.bounds.x;
-        const y = this.bounds.y;
+    text(): string;
+    text(v: string): this;
+    text(v?: string): this | string {
+        if (v === undefined) return this._text;
+        super.text(v);
+        this.prop('empty', this._text.length === 0);
+        this.prop('valid', this.isValid());
+        return this;
+    }
 
-        const fg = this.active
-            ? this.activeFg
-            : this.hovered
-            ? this.hoverFg
-            : this.fg;
-        const bg = this.active
-            ? this.activeBg
-            : this.hovered
-            ? this.hoverBg
-            : this.bg;
+    _draw(buffer: GWU.canvas.DataBuffer, _force = false): boolean {
+        this._drawFill(buffer);
 
-        buffer.fillRect(x, y, this.bounds.width, 1, ' ', fg, bg);
-
-        if (!this.text.length && this.hint && this.hint.length) {
-            buffer.drawText(x, y, this.hint, this.hintFg);
-        } else {
-            const color = this.isValid() ? fg : this.errorFg;
-            buffer.drawText(x, y, this.text, color);
+        let vOffset = 0;
+        if (this._used.valign === 'bottom') {
+            vOffset = this.bounds.height - this._lines.length;
+        } else if (this._used.valign === 'middle') {
+            vOffset = Math.floor((this.bounds.height - this._lines.length) / 2);
         }
+
+        let show = this._text;
+        if (this._text.length > this.bounds.width) {
+            show = this._text.slice(this._text.length - this.bounds.width);
+        }
+
+        buffer.drawText(
+            this.bounds.x,
+            this.bounds.y + vOffset,
+            show,
+            this._used.fg,
+            -1,
+            this.bounds.width,
+            this._used.align
+        );
+        return true;
     }
 }
+
+installWidget('input', (l, opts) => new Input(l, opts));
+
+// extend Layer
+
+export type AddInputOptions = InputOptions &
+    Widget.SetParentOptions & { parent?: Widget.Widget };
+
+declare module '../layer' {
+    interface Layer {
+        input(opts: AddInputOptions): Input;
+    }
+}
+Layer.prototype.input = function (opts: AddInputOptions): Input {
+    const options = Object.assign({}, this._opts, opts);
+    const list = new Input(this, options);
+    if (opts.parent) {
+        list.setParent(opts.parent, opts);
+    }
+    return list;
+};

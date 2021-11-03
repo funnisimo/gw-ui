@@ -1,75 +1,107 @@
 import * as GWU from 'gw-utils';
-import * as Widget from './widget';
+import { Widget, WidgetOptions, SetParentOptions } from './widget';
+import { installWidget } from './make';
+import { Layer } from '../layer';
 
-export interface TextOptions extends Widget.WidgetOptions {
-    wrap?: number;
+export interface TextOptions extends WidgetOptions {
+    text: string;
 }
 
-export class Text extends Widget.Widget {
-    lines!: string[];
-    wrap!: boolean;
+export class Text extends Widget {
+    _text = '';
+    _lines: string[] = [];
+    _fixedWidth = false;
+    _fixedHeight = false;
 
-    constructor(id: string, opts?: TextOptions) {
-        super(id, opts);
+    constructor(layer: Layer, opts: TextOptions) {
+        super(layer, opts);
+        this._fixedHeight = !!opts.height;
+        this._fixedWidth = !!opts.width;
+        this.bounds.width = opts.width || 0;
+        this.bounds.height = opts.height || 1;
+
+        this.text(opts.text);
     }
 
-    init(opts: TextOptions) {
-        // if (!opts.text)
-        //     throw new Error(
-        //         'Must have text value in config for Text widget - ' + this.id
-        //     );
+    text(): string;
+    text(v: string): this;
+    text(v?: string): this | string {
+        if (v === undefined) return this._text;
 
-        this.text = opts.text || '';
-        if (opts.wrap) {
-            this.wrap = true;
-            opts.width = opts.wrap;
-            this.lines = GWU.text.splitIntoLines(
-                this.text,
-                // @ts-ignore
-                opts.width
+        this._text = v;
+        let w = this._fixedWidth ? this.bounds.width : 100;
+        this._lines = GWU.text.splitIntoLines(this._text, w);
+        if (!this._fixedWidth) {
+            this.bounds.width = this._lines.reduce(
+                (out, line) => Math.max(out, GWU.text.length(line)),
+                0
             );
-        } else {
-            const textLen = GWU.text.length(this.text);
-            opts.width = opts.width || textLen || 10;
-            if (opts.width < textLen) {
-                opts.text = GWU.text.truncate(this.text, opts.width);
+        }
+        if (this._fixedHeight) {
+            if (this._lines.length > this.bounds.height) {
+                this._lines.length = this.bounds.height;
             }
-            this.lines = [this.text];
+        } else {
+            this.bounds.height = this._lines.length;
         }
 
-        opts.height = Math.max(this.lines.length, opts.height || 1);
-
-        super.init(opts);
+        this.layer.needsDraw = true;
+        return this;
     }
 
-    setText(text: string) {
-        this.text = text;
-        if (this.wrap) {
-            this.lines = GWU.text.splitIntoLines(this.text, this.bounds.width);
-        } else {
-            const textLen = GWU.text.length(this.text);
-            if (textLen > this.bounds.width) {
-                this.text = GWU.text.truncate(this.text, this.bounds.width);
-            }
-            this.lines = [this.text];
+    resize(w: number, h: number): this {
+        super.resize(w, h);
+        this._fixedWidth = w > 0;
+        this._fixedHeight = h > 0;
+        this.text(this._text);
+        return this;
+    }
+
+    _draw(buffer: GWU.canvas.DataBuffer): boolean {
+        this._drawFill(buffer);
+
+        let vOffset = 0;
+        if (this._used.valign === 'bottom') {
+            vOffset = this.bounds.height - this._lines.length;
+        } else if (this._used.valign === 'middle') {
+            vOffset = Math.floor((this.bounds.height - this._lines.length) / 2);
         }
-    }
 
-    // TODO - get text() {}, set text(v:string) { // do lines stuff }
-
-    draw(buffer: GWU.canvas.DataBuffer) {
-        const fg = this.active ? this.activeFg : this.fg;
-        const bg = this.active ? this.activeBg : this.bg;
-
-        this.lines.forEach((line, i) => {
+        this._lines.forEach((line, i) => {
             buffer.drawText(
                 this.bounds.x,
-                this.bounds.y + i,
+                this.bounds.y + i + vOffset,
                 line,
-                fg,
-                bg,
-                this.bounds.width
+                this._used.fg,
+                -1,
+                this.bounds.width,
+                this._used.align
             );
         });
+        return true;
     }
 }
+
+installWidget('text', (l, opts) => new Text(l, opts));
+
+// extend Layer
+
+export type AddTextOptions = Omit<TextOptions, 'text'> &
+    SetParentOptions & { parent?: Widget };
+
+declare module '../layer' {
+    interface Layer {
+        text(text: string, opts?: AddTextOptions): Text;
+    }
+}
+Layer.prototype.text = function (
+    text: string,
+    opts: AddTextOptions = {}
+): Text {
+    const options: TextOptions = Object.assign({}, this._opts, opts, { text });
+    const list = new Text(this, options);
+    if (opts.parent) {
+        list.setParent(opts.parent, opts);
+    }
+    return list;
+};

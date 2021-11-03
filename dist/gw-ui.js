@@ -168,7 +168,60 @@
         }
     }
 
-    class Style$1 {
+    // static - size/pos automatic (ignore TRBL)
+    // relative - size automatic, pos = automatic + TRBL
+    // fixed - size = self, pos = TRBL vs root
+    // absolute - size = self, pos = TRBL vs positioned parent (fixed, absolute)
+    // export interface Stylable {
+    //     tag: string;
+    //     classes: string[];
+    //     attr(name: string): string | undefined;
+    //     prop(name: string): PropType | undefined;
+    //     parent: UIWidget | null;
+    //     children?: UIWidget[];
+    //     style(): Style;
+    // }
+    // export interface StyleOptions {
+    //     fg?: GWU.color.ColorBase;
+    //     bg?: GWU.color.ColorBase;
+    //     // depth?: number;
+    //     align?: GWU.text.Align;
+    //     valign?: GWU.text.VAlign;
+    //     // minWidth?: number;
+    //     // maxWidth?: number;
+    //     // width?: number;
+    //     // minHeight?: number;
+    //     // maxHeight?: number;
+    //     // height?: number;
+    //     // left?: number;
+    //     // right?: number;
+    //     // top?: number;
+    //     // bottom?: number;
+    //     // //        all,     [t+b, l+r],        [t, r+l,b],               [t, r, b, l]
+    //     // padding?:
+    //     //     | number
+    //     //     | [number]
+    //     //     | [number, number]
+    //     //     | [number, number, number]
+    //     //     | [number, number, number, number];
+    //     // padLeft?: number;
+    //     // padRight?: number;
+    //     // padTop?: number;
+    //     // padBottom?: number;
+    //     // //        all,     [t+b, l+r],        [t, l+r, b],               [t, r, b, l]
+    //     // margin?:
+    //     //     | number
+    //     //     | [number]
+    //     //     | [number, number]
+    //     //     | [number, number, number]
+    //     //     | [number, number, number, number];
+    //     // marginLeft?: number;
+    //     // marginRight?: number;
+    //     // marginTop?: number;
+    //     // marginBottom?: number;
+    //     // border?: GWU.color.ColorBase;
+    // }
+    class Style {
         constructor(selector = '$', init) {
             this._dirty = false;
             this.selector = new Selector(selector);
@@ -365,7 +418,7 @@
                 this[field] = value;
                 // }
             }
-            else if (key instanceof Style$1) {
+            else if (key instanceof Style) {
                 setDirty = value || value === undefined ? true : false;
                 Object.entries(key).forEach(([name, value]) => {
                     if (name === 'selector' || name === '_dirty')
@@ -408,7 +461,7 @@
             return this;
         }
     }
-    function makeStyle$1(style, selector = '$') {
+    function makeStyle(style, selector = '$') {
         const opts = {};
         const parts = style
             .trim()
@@ -428,13 +481,13 @@
                 opts[name] = baseParts;
             }
         });
-        return new Style$1(selector, opts);
+        return new Style(selector, opts);
     }
     // const NO_BOUNDS = ['fg', 'bg', 'depth', 'align', 'valign'];
     // export function affectsBounds(key: keyof StyleOptions): boolean {
     //     return !NO_BOUNDS.includes(key);
     // }
-    class ComputedStyle$1 extends Style$1 {
+    class ComputedStyle extends Style {
         // constructor(source: Stylable, sources?: Style[]) {
         constructor(sources) {
             super();
@@ -456,12 +509,12 @@
             this._dirty = v;
         }
     }
-    class Sheet$1 {
+    class Sheet {
         constructor(parentSheet) {
             this.rules = [];
             this._dirty = true;
             if (parentSheet === undefined) {
-                parentSheet = defaultStyle$1;
+                parentSheet = defaultStyle;
             }
             if (parentSheet) {
                 this.rules = parentSheet.rules.slice();
@@ -488,7 +541,7 @@
                 throw new Error('Hierarchical selectors not supported.');
             // if 2 '.' - Error('Only single class rules supported.')
             // if '&' - Error('Not supported.')
-            let rule = new Style$1(selector, props);
+            let rule = new Style(selector, props);
             const existing = this.rules.findIndex((s) => s.selector.text === rule.selector.text);
             if (existing > -1) {
                 const current = this.rules[existing];
@@ -519,284 +572,1229 @@
                 sources.push(widgetStyle);
             }
             widgetStyle.dirty = false;
-            return new ComputedStyle$1(sources);
+            return new ComputedStyle(sources);
         }
     }
-    const defaultStyle$1 = new Sheet$1(null);
+    const defaultStyle = new Sheet(null);
 
-    class Widget$1 {
-        constructor(id, opts) {
-            this.active = false;
-            this.hovered = false;
-            this.tabStop = false;
-            this.depth = 0;
-            this.fg = 0xfff;
-            this.bg = -1;
-            this.activeFg = 0xfff;
-            this.activeBg = -1;
-            this.hoverFg = 0xfff;
-            this.hoverBg = -1;
-            this.text = '';
-            this.align = 'left';
-            this.valign = 'middle';
-            this.bounds = new GWU__namespace.xy.Bounds(-1, -1, -1, -1); // nothing set
-            this.id = id;
-            if (opts)
-                this.init(opts);
-            this.reset();
-        }
-        init(opts) {
-            if (opts.x !== undefined)
-                this.bounds.x = opts.x;
-            if (opts.y !== undefined)
-                this.bounds.y = opts.y;
-            if (opts.width !== undefined)
-                this.bounds.width = opts.width;
-            if (opts.height !== undefined)
-                this.bounds.height = opts.height;
-            if (opts.depth !== undefined)
-                this.depth = opts.depth;
-            if (opts.text) {
-                this.text = opts.text;
-                if (this.bounds.width <= 0)
-                    this.bounds.width = opts.text.length;
-                if (this.bounds.height <= 0)
-                    this.bounds.height = 1;
+    defaultStyle.add('*', {
+        fg: 'white',
+        bg: -1,
+        align: 'left',
+        valign: 'top',
+    });
+    class Widget {
+        constructor(term, opts = {}) {
+            this.tag = 'text';
+            this.bounds = new GWU__namespace.xy.Bounds(0, 0, 0, 1);
+            this._depth = 0;
+            this.events = {};
+            // action: string = '';
+            this.children = [];
+            this._style = new Style();
+            this._parent = null;
+            this.classes = [];
+            this._props = {};
+            this._attrs = {};
+            this.layer = term;
+            // this.bounds.x = term.x;
+            // this.bounds.y = term.y;
+            this.bounds.x = opts.x || 0;
+            this.bounds.y = opts.y || 0;
+            this.bounds.width = opts.width || 0;
+            this.bounds.height = opts.height || 1;
+            if (opts.tag) {
+                this.tag = opts.tag;
             }
-            if (this.bounds.height <= 0)
-                this.bounds.height = 1;
-            if (opts.fg !== undefined) {
-                this.fg = opts.fg;
-                this.activeFg = opts.fg;
-                this.hoverFg = opts.fg;
+            if (opts.id) {
+                this.attr('id', opts.id);
+                this.attr('action', opts.id);
             }
-            if (opts.bg !== undefined) {
-                this.bg = opts.bg;
-                this.activeBg = opts.bg;
-                this.hoverBg = opts.bg;
+            if (opts.depth !== undefined) {
+                this._depth = opts.depth;
             }
-            if (opts.activeFg !== undefined) {
-                this.activeFg = opts.activeFg;
-                this.hoverFg = opts.activeFg;
-            }
-            if (opts.activeBg !== undefined) {
-                this.activeBg = opts.activeBg;
-                this.hoverBg = opts.activeBg;
-            }
-            if (opts.hoverFg !== undefined)
-                this.hoverFg = opts.hoverFg;
-            if (opts.hoverBg !== undefined)
-                this.hoverBg = opts.hoverBg;
-            if (opts.tabStop !== undefined)
-                this.tabStop = opts.tabStop;
-            this.action = opts.action || this.id;
-        }
-        reset() { }
-        activate(_reverse = false) {
-            this.active = true;
-        }
-        deactivate() {
-            this.active = false;
-        }
-        contains(x, y) {
-            if (arguments.length == 1)
-                return this.bounds.contains(x);
-            return this.bounds.contains(x, y);
-        }
-        // EVENTS
-        // returns true if mouse is over this widget
-        mousemove(e, _dialog) {
-            this.hovered = this.contains(e);
-            return this.hovered;
-        }
-        tick(_e, _dialog) { }
-        // returns true if click is handled by this widget (stopPropagation)
-        click(_e, _dialog) {
-            return false;
-        }
-        // returns true if key is used by widget and you want to stopPropagation
-        keypress(_e, _dialog) {
-            return false;
-        }
-        // returns true if key is used by widget and you want to stopPropagation
-        dir(_e, _dialog) {
-            return false;
-        }
-        // DRAW
-        draw(buffer) {
-            const fg = this.active
-                ? this.activeFg
-                : this.hovered
-                    ? this.hoverFg
-                    : this.fg;
-            const bg = this.active
-                ? this.activeBg
-                : this.hovered
-                    ? this.hoverBg
-                    : this.bg;
-            const textLen = GWU__namespace.text.length(this.text);
-            if (this.bounds.width > textLen || this.bounds.height > 1) {
-                buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', fg, bg);
-            }
-            let x = this.bounds.x;
-            if (this.align == 'center') {
-                x += Math.floor((this.bounds.width - textLen) / 2);
-            }
-            else if (this.align == 'right') {
-                x += this.bounds.width - textLen;
-            }
-            let y = this.bounds.y; // 'top'
-            if (this.bounds.height > 1) {
-                if (this.valign == 'middle') {
-                    y += Math.floor(this.bounds.height / 2);
+            this._style.set(opts);
+            if (opts.class) {
+                if (typeof opts.class === 'string') {
+                    opts.class = opts.class.split(/ +/g);
                 }
-                else if (this.valign == 'bottom') {
-                    y += this.bounds.height - 1;
-                }
+                this.classes = opts.class.map((c) => c.trim());
             }
-            buffer.drawText(x, y, this.text, fg, bg);
+            if (opts.tabStop) {
+                this.prop('tabStop', true);
+            }
+            if (opts.action) ;
+            if (opts.disabled) {
+                this.prop('disabled', true);
+            }
+            if (opts.hidden) {
+                this.prop('hidden', true);
+            }
+            if (opts.action) {
+                this.attr('action', opts.action);
+            }
+            if (this.attr('action')) {
+                this.on('click', (_n, w, e) => {
+                    const action = this._attrStr('action');
+                    if (action) {
+                        this._bubbleEvent(action, w, e);
+                    }
+                    return false; // keep bubbling
+                });
+            }
+            this.layer.attach(this);
+            this.updateStyle();
         }
-    }
-
-    class Text$1 extends Widget$1 {
-        constructor(id, opts) {
-            super(id, opts);
+        get depth() {
+            return this._depth;
         }
-        init(opts) {
-            // if (!opts.text)
-            //     throw new Error(
-            //         'Must have text value in config for Text widget - ' + this.id
-            //     );
-            this.text = opts.text || '';
-            if (opts.wrap) {
-                this.wrap = true;
-                opts.width = opts.wrap;
-                this.lines = GWU__namespace.text.splitIntoLines(this.text, 
-                // @ts-ignore
-                opts.width);
-            }
-            else {
-                const textLen = GWU__namespace.text.length(this.text);
-                opts.width = opts.width || textLen || 10;
-                if (opts.width < textLen) {
-                    opts.text = GWU__namespace.text.truncate(this.text, opts.width);
-                }
-                this.lines = [this.text];
-            }
-            opts.height = Math.max(this.lines.length, opts.height || 1);
-            super.init(opts);
+        set depth(v) {
+            this._depth = v;
+            this.layer.sortWidgets();
         }
-        setText(text) {
-            this.text = text;
-            if (this.wrap) {
-                this.lines = GWU__namespace.text.splitIntoLines(this.text, this.bounds.width);
+        get parent() {
+            return this._parent;
+        }
+        set parent(v) {
+            this.setParent(v);
+        }
+        setParent(v, opts = {}) {
+            if (this._parent) {
+                this._parent._removeChild(this);
             }
-            else {
-                const textLen = GWU__namespace.text.length(this.text);
-                if (textLen > this.bounds.width) {
-                    this.text = GWU__namespace.text.truncate(this.text, this.bounds.width);
-                }
-                this.lines = [this.text];
+            this._parent = v;
+            if (this._parent) {
+                this.depth = this._depth || this._parent.depth + 1;
+                this._parent._addChild(this, opts);
             }
         }
-        // TODO - get text() {}, set text(v:string) { // do lines stuff }
-        draw(buffer) {
-            const fg = this.active ? this.activeFg : this.fg;
-            const bg = this.active ? this.activeBg : this.bg;
-            this.lines.forEach((line, i) => {
-                buffer.drawText(this.bounds.x, this.bounds.y + i, line, fg, bg, this.bounds.width);
+        text(v) {
+            if (v === undefined)
+                return this._attrStr('text');
+            this.attr('text', v);
+            return this;
+        }
+        attr(name, v) {
+            if (v === undefined)
+                return this._attrs[name];
+            this._attrs[name] = v;
+            return this;
+        }
+        _attrInt(name) {
+            const n = this._attrs[name] || 0;
+            if (typeof n === 'number')
+                return n;
+            if (typeof n === 'string')
+                return Number.parseInt(n);
+            return n ? 1 : 0;
+        }
+        _attrStr(name) {
+            const n = this._attrs[name] || '';
+            if (typeof n === 'string')
+                return n;
+            if (typeof n === 'number')
+                return '' + n;
+            return n ? 'true' : 'false';
+        }
+        _attrBool(name) {
+            return !!this._attrs[name];
+        }
+        prop(name, v) {
+            if (v === undefined)
+                return this._props[name];
+            const current = this._props[name];
+            if (current !== v) {
+                this._setProp(name, v);
+            }
+            return this;
+        }
+        _setProp(name, v) {
+            this._props[name] = v;
+            // console.log(`${this.tag}.${name}=${v}`);
+            this.updateStyle();
+        }
+        _propInt(name) {
+            const n = this._props[name] || 0;
+            if (typeof n === 'number')
+                return n;
+            if (typeof n === 'string')
+                return Number.parseInt(n);
+            return n ? 1 : 0;
+        }
+        _propStr(name) {
+            const n = this._props[name] || '';
+            if (typeof n === 'string')
+                return n;
+            if (typeof n === 'number')
+                return '' + n;
+            return n ? 'true' : 'false';
+        }
+        _propBool(name) {
+            return !!this._props[name];
+        }
+        toggleProp(name) {
+            const current = !!this._props[name];
+            this.prop(name, !current);
+            return this;
+        }
+        incProp(name, n = 1) {
+            let current = this.prop(name) || 0;
+            if (typeof current === 'boolean') {
+                current = current ? 1 : 0;
+            }
+            else if (typeof current === 'string') {
+                current = Number.parseInt(current) || 0;
+            }
+            current += n;
+            this.prop(name, current);
+            return this;
+        }
+        contains(...args) {
+            return this.bounds.contains(args[0], args[1]);
+        }
+        style(opts) {
+            if (opts === undefined)
+                return this._style;
+            this._style.set(opts);
+            this.updateStyle();
+            return this;
+        }
+        addClass(c) {
+            const all = c.split(/ +/g);
+            all.forEach((a) => {
+                if (this.classes.includes(a))
+                    return;
+                this.classes.push(a);
             });
+            return this;
         }
-    }
-
-    class Button$2 extends Widget$1 {
-        constructor(id, opts) {
-            super(id, opts);
+        removeClass(c) {
+            const all = c.split(/ +/g);
+            all.forEach((a) => {
+                GWU__namespace.arrayDelete(this.classes, a);
+            });
+            return this;
         }
-        init(opts) {
-            if (!opts.text)
-                throw new Error('Must have text value in config for Button widget - ' + this.id);
-            opts.tabStop = GWU__namespace.first(opts.tabStop, true); // Can receive input (Enter)
-            super.init(opts);
+        hasClass(c) {
+            const all = c.split(/ +/g);
+            return GWU__namespace.arrayIncludesAll(this.classes, all);
         }
-        async click(ev, dialog) {
-            if (!this.contains(ev))
+        toggleClass(c) {
+            const all = c.split(/ +/g);
+            all.forEach((a) => {
+                if (this.classes.includes(a)) {
+                    GWU__namespace.arrayDelete(this.classes, a);
+                }
+                else {
+                    this.classes.push(a);
+                }
+            });
+            return this;
+        }
+        get focused() {
+            return !!this.prop('focus');
+        }
+        // @return true to stop the focus change event
+        focus(reverse = false) {
+            if (this.prop('focus'))
+                return true;
+            this.prop('focus', true);
+            return this._fireEvent('focus', this, { reverse });
+        }
+        // @return true to stop the focus change event
+        blur(reverse = false) {
+            if (!this.prop('focus'))
                 return false;
-            await dialog.fireAction(this.action, this);
+            this.prop('focus', false);
+            return this._fireEvent('blur', this, { reverse });
+        }
+        get hovered() {
+            return !!this.prop('hover');
+        }
+        set hovered(v) {
+            this.prop('hover', v);
+        }
+        get hidden() {
+            let current = this;
+            while (current) {
+                if (current.prop('hidden'))
+                    return true;
+                current = current.parent;
+            }
+            return false;
+        }
+        set hidden(v) {
+            this.prop('hidden', v);
+        }
+        updateStyle() {
+            this._used = this.layer.styles.computeFor(this);
+            this.layer.needsDraw = true; // changed style or state
+        }
+        draw(buffer) {
+            if (this.hidden)
+                return false;
+            return this._draw(buffer);
+        }
+        _draw(buffer) {
+            this._drawFill(buffer);
             return true;
         }
-        async keypress(ev, dialog) {
-            if (!ev.key)
+        _drawFill(buffer) {
+            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this._used.bg, this._used.bg);
+        }
+        childAt(...args) {
+            return this.children.find((c) => c.contains(args[0], args[1])) || null;
+        }
+        _addChild(w, opts) {
+            let beforeIndex = -1;
+            if (opts && opts.beforeIndex !== undefined) {
+                beforeIndex = opts.beforeIndex;
+            }
+            if (w._parent && w._parent !== this)
+                throw new Error('Trying to add child that already has a parent.');
+            if (!this.children.includes(w)) {
+                if (beforeIndex < 0 || beforeIndex >= this.children.length) {
+                    this.children.push(w);
+                }
+                else {
+                    this.children.splice(beforeIndex, 0, w);
+                }
+            }
+            w._parent = this;
+            return this;
+        }
+        _removeChild(w) {
+            if (!w._parent || w._parent !== this)
+                throw new Error('Removing child that does not have this widget as parent.');
+            w._parent = null;
+            GWU__namespace.arrayDelete(this.children, w);
+            return this;
+        }
+        resize(w, h) {
+            this.bounds.width = w || this.bounds.width;
+            this.bounds.height = h || this.bounds.height;
+            this.layer.needsDraw = true;
+            return this;
+        }
+        // Events
+        mouseenter(e) {
+            if (!this.contains(e))
+                return;
+            if (this.hovered)
+                return;
+            this.hovered = true;
+            this._fireEvent('mouseenter', this, e);
+            if (this._parent) {
+                this._parent.mouseenter(e);
+            }
+        }
+        mousemove(e) {
+            if (this.contains(e) && !e.defaultPrevented && !this.hidden) {
+                this.mouseenter(e);
+                this._bubbleEvent('mousemove', this, e);
+                e.preventDefault();
+            }
+            else {
+                this.mouseleave(e);
+            }
+            return false;
+        }
+        mouseleave(e) {
+            if (this.contains(e))
+                return;
+            if (!this.hovered)
+                return;
+            this.hovered = false;
+            this._fireEvent('mouseleave', this, e);
+            if (this._parent) {
+                this._parent.mouseleave(e);
+            }
+        }
+        click(e) {
+            if (this.hidden)
                 return false;
-            if (ev.key === 'Enter') {
-                await dialog.fireAction(this.action, this);
+            return this._bubbleEvent('click', this, e);
+        }
+        keypress(e) {
+            return this._bubbleEvent('keypress', this, e);
+        }
+        dir(e) {
+            return this._bubbleEvent('dir', this, e);
+        }
+        tick(e) {
+            return this._fireEvent('tick', this, e);
+        }
+        on(event, cb) {
+            let handlers = this.events[event];
+            if (!handlers) {
+                handlers = this.events[event] = [];
+            }
+            if (!handlers.includes(cb)) {
+                handlers.push(cb);
+            }
+            return this;
+        }
+        off(event, cb) {
+            let handlers = this.events[event];
+            if (!handlers)
+                return this;
+            if (cb) {
+                GWU__namespace.arrayDelete(handlers, cb);
+            }
+            else {
+                handlers.length = 0; // clear all handlers
+            }
+            return this;
+        }
+        _fireEvent(name, source, args) {
+            const handlers = this.events[name] || [];
+            let handled = handlers.reduce((out, h) => h(name, source || this, args) || out, false);
+            return handled;
+        }
+        _bubbleEvent(name, source, args) {
+            let current = this;
+            while (current) {
+                if (current._fireEvent(name, source, args))
+                    return true;
+                current = current.parent;
+            }
+            return false;
+        }
+    }
+
+    class Layer {
+        constructor(ui) {
+            this.needsDraw = true;
+            this.result = undefined;
+            this._attachOrder = [];
+            this._depthOrder = [];
+            this._focusWidget = null;
+            this._hasTabStop = false;
+            this.timers = {};
+            this._opts = {};
+            this.ui = ui;
+            this.buffer = ui.canvas.buffer.clone();
+            this.styles = new Sheet(ui.styles);
+            this.body = new Widget(this, {
+                tag: 'body',
+                id: 'BODY',
+                depth: -1,
+                width: this.buffer.width,
+                height: this.buffer.height,
+            });
+        }
+        get width() {
+            return this.ui.width;
+        }
+        get height() {
+            return this.ui.height;
+        }
+        // Style and Opts
+        reset() {
+            this._opts = { x: 0, y: 0 };
+            return this;
+        }
+        fg(v) {
+            this._opts.fg = v;
+            return this;
+        }
+        bg(v) {
+            this._opts.bg = v;
+            return this;
+        }
+        dim(pct = 25, fg = true, bg = false) {
+            if (fg) {
+                this._opts.fg = GWU__namespace.color
+                    .from(this._opts.fg || 'white')
+                    .darken(pct);
+            }
+            if (bg) {
+                this._opts.bg = GWU__namespace.color
+                    .from(this._opts.bg || 'black')
+                    .darken(pct);
+            }
+            return this;
+        }
+        bright(pct = 25, fg = true, bg = false) {
+            if (fg) {
+                this._opts.fg = GWU__namespace.color
+                    .from(this._opts.fg || 'white')
+                    .lighten(pct);
+            }
+            if (bg) {
+                this._opts.bg = GWU__namespace.color
+                    .from(this._opts.bg || 'black')
+                    .lighten(pct);
+            }
+            return this;
+        }
+        invert() {
+            [this._opts.fg, this._opts.bg] = [this._opts.bg, this._opts.fg];
+            return this;
+        }
+        // STYLE
+        style(opts) {
+            Object.assign(this._opts, opts);
+            return this;
+        }
+        // POSITION
+        pos(x, y) {
+            this._opts.x = GWU__namespace.clamp(x, 0, this.width);
+            this._opts.y = GWU__namespace.clamp(y, 0, this.height);
+            return this;
+        }
+        moveTo(x, y) {
+            return this.pos(x, y);
+        }
+        move(dx, dy) {
+            this._opts.x = GWU__namespace.clamp(this._opts.x + dx, 0, this.width);
+            this._opts.y = GWU__namespace.clamp(this._opts.y + dy, 0, this.height);
+            return this;
+        }
+        up(n = 1) {
+            return this.move(0, -n);
+        }
+        down(n = 1) {
+            return this.move(0, n);
+        }
+        left(n = 1) {
+            return this.move(-n, 0);
+        }
+        right(n = 1) {
+            return this.move(n, 0);
+        }
+        nextLine(n = 1) {
+            return this.pos(0, this._opts.y + n);
+        }
+        prevLine(n = 1) {
+            return this.pos(0, this._opts.y - n);
+        }
+        // EDIT
+        // erase and move back to top left
+        clear(color) {
+            this.body.children = [];
+            this._depthOrder = [this.body];
+            if (color) {
+                this.body.style().set('bg', color);
+            }
+            else {
+                this.body.style().unset('bg');
+            }
+            return this;
+        }
+        // Effects
+        fadeTo(_color, _duration) {
+            throw new Error('Method not implemented.');
+        }
+        // Widgets
+        // create(tag: string, opts: any): UIWidget {
+        //     const options = Object.assign({ tag }, this._opts, opts);
+        //     const widget = createWidget(tag, this, options);
+        //     this.addWidget(widget);
+        //     return widget;
+        // }
+        sortWidgets() {
+            this._depthOrder.sort((a, b) => b.depth - a.depth);
+            return this;
+        }
+        attach(w) {
+            if (!this._attachOrder.includes(w)) {
+                const index = this._depthOrder.findIndex((aw) => aw.depth <= w.depth);
+                if (index < 0) {
+                    this._depthOrder.push(w);
+                }
+                else {
+                    this._depthOrder.splice(index, 0, w);
+                }
+                this._attachOrder.push(w);
+                this.needsDraw = true;
+            }
+            if (!w.parent && w !== this.body && this.body) {
+                w.setParent(this.body);
+                this.needsDraw = true;
+            }
+            this._hasTabStop = this._hasTabStop || w._propBool('tabStop');
+            return this;
+        }
+        detach(w) {
+            // GWU.arrayDelete(this.widgets, w);
+            w.setParent(null);
+            GWU__namespace.arrayDelete(this._depthOrder, w);
+            GWU__namespace.arrayDelete(this._attachOrder, w);
+            if (this._focusWidget === w) {
+                this._hasTabStop = this.nextTabStop();
+            }
+            this.needsDraw = true;
+            return this;
+        }
+        widgetAt(...args) {
+            return (this._depthOrder.find((w) => w.contains(args[0], args[1]) && !w.hidden) || this.body);
+        }
+        get focusWidget() {
+            return this._focusWidget;
+        }
+        setFocusWidget(w, reverse = false) {
+            if (w === this._focusWidget)
+                return;
+            if (this._focusWidget && this._focusWidget.blur(reverse))
+                return;
+            if (w && w.focus(reverse))
+                return;
+            this._focusWidget = w;
+        }
+        getWidget(id) {
+            return this._depthOrder.find((w) => w.attr('id') === id) || null;
+        }
+        nextTabStop() {
+            if (!this.focusWidget) {
+                this.setFocusWidget(this._attachOrder.find((w) => !!w.prop('tabStop') && !w.prop('disabled') && !w.hidden) || null);
+                return !!this.focusWidget;
+            }
+            const next = GWU__namespace.arrayNext(this._attachOrder, this.focusWidget, (w) => !!w.prop('tabStop') && !w.prop('disabled') && !w.hidden);
+            if (next) {
+                this.setFocusWidget(next);
                 return true;
             }
             return false;
         }
+        prevTabStop() {
+            if (!this.focusWidget) {
+                this.setFocusWidget(this._attachOrder.find((w) => !!w.prop('tabStop') && !w.prop('disabled') && !w.hidden) || null);
+                return !!this.focusWidget;
+            }
+            const prev = GWU__namespace.arrayPrev(this._attachOrder, this.focusWidget, (w) => !!w.prop('tabStop') && !w.prop('disabled') && !w.hidden);
+            if (prev) {
+                this.setFocusWidget(prev, true);
+                return true;
+            }
+            return false;
+        }
+        // EVENTS
+        on(event, cb) {
+            this.body.on(event, cb);
+            return this;
+        }
+        off(event, cb) {
+            this.body.off(event, cb);
+            return this;
+        }
+        mousemove(e) {
+            this._depthOrder.forEach((w) => {
+                w.mousemove(e);
+            });
+            return false; // TODO - this._done
+        }
+        click(e) {
+            const w = this.widgetAt(e);
+            if (w.prop('tabStop') && !w.prop('disabled')) {
+                this.setFocusWidget(w);
+            }
+            w.click(e);
+            return false; // TODO - this._done
+        }
+        keypress(e) {
+            if (!e.key)
+                return false;
+            if (this.focusWidget) {
+                if (this.focusWidget.keypress(e)) {
+                    return false;
+                }
+            }
+            //         const fn =
+            //             this.eventHandlers[e.key] ||
+            //             this.eventHandlers[e.code] ||
+            //             this.eventHandlers.keypress;
+            //         if (fn) {
+            //             if (await fn(e, this, this.focusWidget)) {
+            //                 return this.done;
+            //             }
+            //         }
+            if (e.key === 'Tab') {
+                // Next widget
+                this.nextTabStop();
+                return false; // not done
+            }
+            else if (e.key === 'TAB') {
+                // Prev Widget
+                this.prevTabStop();
+                return false; // not done
+            }
+            //         return this.done;
+            return false;
+        }
+        dir(e) {
+            const target = this.focusWidget || this.body;
+            target.dir(e);
+            // return this.done;
+            return false;
+        }
+        tick(e) {
+            const dt = e.dt;
+            let promises = [];
+            Object.entries(this.timers).forEach(([action, time]) => {
+                time -= dt;
+                if (time <= 0) {
+                    delete this.timers[action];
+                    promises.push(this.body._fireEvent(action, this.body));
+                }
+                else {
+                    this.timers[action] = time;
+                }
+            });
+            for (let w of this._depthOrder) {
+                w.tick(e);
+            }
+            //         return this.done;
+            return false;
+        }
+        draw() {
+            if (this._hasTabStop && !this._focusWidget) {
+                this.nextTabStop();
+            }
+            if (this.styles.dirty) {
+                this.needsDraw = true;
+                this._depthOrder.forEach((w) => w.updateStyle());
+                this.styles.dirty = false;
+            }
+            if (!this.needsDraw)
+                return;
+            this.needsDraw = false;
+            this.ui.copyUIBuffer(this.buffer);
+            // draw from low depth to high depth
+            for (let i = this._depthOrder.length - 1; i >= 0; --i) {
+                const w = this._depthOrder[i];
+                w.draw(this.buffer);
+            }
+            console.log('draw');
+            this.buffer.render();
+        }
+        // LOOP
+        setTimeout(action, time) {
+            this.timers[action] = time;
+        }
+        clearTimeout(action) {
+            delete this.timers[action];
+        }
+        finish(result) {
+            this.result = result;
+            this.ui.finishLayer(this);
+        }
     }
 
-    class Input$1 extends Widget$1 {
-        constructor(id, opts) {
-            super(id, opts);
+    // export interface AlertOptions extends Widget.WidgetOptions {
+    //     duration?: number;
+    //     waitForAck?: boolean;
+    //     pad?: number;
+    //     padX?: number;
+    //     padY?: number;
+    //     box?: Widget.BoxOptions;
+    // }
+    // export interface ConfirmOptions extends Widget.WidgetOptions {
+    //     allowCancel?: boolean;
+    //     pad?: number;
+    //     padX?: number;
+    //     padY?: number;
+    //     buttons?: Widget.ButtonOptions;
+    //     ok?: string | Widget.ButtonOptions;
+    //     cancel?: string | Widget.ButtonOptions;
+    //     box?: Widget.BoxOptions;
+    // }
+    // export interface InputBoxOptions extends ConfirmOptions {
+    //     prompt?: string | Widget.TextOptions;
+    //     input?: Widget.InputOptions;
+    // }
+    class UI {
+        constructor(opts = {}) {
+            this.layer = null;
+            this.layers = [];
+            // inDialog = false;
+            this._done = false;
+            this._promise = null;
+            if (!opts.canvas)
+                throw new Error('Need a canvas.');
+            this.canvas = opts.canvas;
+            this.loop = opts.loop || GWU__namespace.loop;
         }
-        init(opts) {
-            this.minLength = opts.minLength || 1;
-            if (!opts.width) {
-                opts.width = Math.max(this.minLength, 10);
+        get width() {
+            return this.canvas.width;
+        }
+        get height() {
+            return this.canvas.height;
+        }
+        get styles() {
+            return defaultStyle;
+        }
+        // render() {
+        //     this.buffer.render();
+        // }
+        // get baseBuffer(): GWU.canvas.Buffer {
+        //     return this.layers[this.layers.length - 1] || this.canvas.buffer;
+        // }
+        // get canvasBuffer(): GWU.canvas.Buffer {
+        //     return this.canvas.buffer;
+        // }
+        startNewLayer() {
+            const layer = new Layer(this);
+            if (!this.layer) {
+                this._promise = this.loop.run(this);
             }
-            opts.tabStop = GWU__namespace.first(opts.tabStop, true); // Need to receive input
-            super.init(opts);
-            this.default = opts.default || '';
-            this.errorFg = opts.errorFg || this.fg;
-            this.hint = opts.hint || '';
-            this.hintFg = opts.hintFg || this.errorFg;
-            this.numbersOnly = opts.numbersOnly || false;
-            this.min = GWU__namespace.first(opts.min, Number.MIN_SAFE_INTEGER);
-            this.max = GWU__namespace.first(opts.max, Number.MAX_SAFE_INTEGER);
-            if (this.bounds.width <= 0) {
-                if (this.hint)
-                    this.bounds.width = this.hint.length;
-                if (this.default)
-                    this.bounds.width = this.default.length;
+            else {
+                this.layers.push(this.layer);
             }
-            if (this.bounds.height <= 0) {
-                this.bounds.height = 1;
+            this.layer = layer;
+            return layer;
+        }
+        copyUIBuffer(dest) {
+            const base = this.canvas.buffer;
+            dest.copy(base);
+            dest.changed = false; // So you have to draw something to make the canvas render...
+        }
+        finishLayer(layer) {
+            GWU__namespace.arrayDelete(this.layers, layer);
+            if (this.layer === layer) {
+                this.layer = this.layers.pop() || null;
+                if (!this.layer) {
+                    this._done = true;
+                    this.loop.stop();
+                }
             }
-            this.reset();
+        }
+        stop() {
+            while (this.layer) {
+                this.finishLayer(this.layer);
+            }
+            this._done = true;
+            const p = this._promise;
+            this._promise = null;
+            return p;
+        }
+        // run(): Promise<void> {
+        //     // this._done = false;
+        //     return this.loop.run(this as unknown as GWU.io.IOMap);
+        // }
+        // stop() {
+        //     this._done = true;
+        //     if (this.layer) this.layer.stop();
+        //     this.layers.forEach((l) => l.stop());
+        //     this.layer = null;
+        //     this.layers.length = 0;
+        // }
+        mousemove(e) {
+            if (this.layer)
+                this.layer.mousemove(e);
+            return this._done;
+        }
+        click(e) {
+            if (this.layer)
+                this.layer.click(e);
+            return this._done;
+        }
+        keypress(e) {
+            if (this.layer)
+                this.layer.keypress(e);
+            return this._done;
+        }
+        dir(e) {
+            if (this.layer)
+                this.layer.dir(e);
+            return this._done;
+        }
+        tick(e) {
+            if (this.layer)
+                this.layer.tick(e);
+            return this._done;
+        }
+        draw() {
+            if (this.layer)
+                this.layer.draw();
+        }
+    }
+
+    const widgets = {};
+    function installWidget(tag, fn) {
+        widgets[tag] = fn;
+    }
+
+    class Text extends Widget {
+        constructor(layer, opts) {
+            super(layer, opts);
+            this._text = '';
+            this._lines = [];
+            this._fixedWidth = false;
+            this._fixedHeight = false;
+            this._fixedHeight = !!opts.height;
+            this._fixedWidth = !!opts.width;
+            this.bounds.width = opts.width || 0;
+            this.bounds.height = opts.height || 1;
+            this.text(opts.text);
+        }
+        text(v) {
+            if (v === undefined)
+                return this._text;
+            this._text = v;
+            let w = this._fixedWidth ? this.bounds.width : 100;
+            this._lines = GWU__namespace.text.splitIntoLines(this._text, w);
+            if (!this._fixedWidth) {
+                this.bounds.width = this._lines.reduce((out, line) => Math.max(out, GWU__namespace.text.length(line)), 0);
+            }
+            if (this._fixedHeight) {
+                if (this._lines.length > this.bounds.height) {
+                    this._lines.length = this.bounds.height;
+                }
+            }
+            else {
+                this.bounds.height = this._lines.length;
+            }
+            this.layer.needsDraw = true;
+            return this;
+        }
+        resize(w, h) {
+            super.resize(w, h);
+            this._fixedWidth = w > 0;
+            this._fixedHeight = h > 0;
+            this.text(this._text);
+            return this;
+        }
+        _draw(buffer) {
+            this._drawFill(buffer);
+            let vOffset = 0;
+            if (this._used.valign === 'bottom') {
+                vOffset = this.bounds.height - this._lines.length;
+            }
+            else if (this._used.valign === 'middle') {
+                vOffset = Math.floor((this.bounds.height - this._lines.length) / 2);
+            }
+            this._lines.forEach((line, i) => {
+                buffer.drawText(this.bounds.x, this.bounds.y + i + vOffset, line, this._used.fg, -1, this.bounds.width, this._used.align);
+            });
+            return true;
+        }
+    }
+    installWidget('text', (l, opts) => new Text(l, opts));
+    Layer.prototype.text = function (text, opts = {}) {
+        const options = Object.assign({}, this._opts, opts, { text });
+        const list = new Text(this, options);
+        if (opts.parent) {
+            list.setParent(opts.parent, opts);
+        }
+        return list;
+    };
+
+    class Border extends Widget {
+        constructor(layer, opts) {
+            super(layer, opts);
+            this.ascii = false;
+            if (opts.ascii) {
+                this.ascii = true;
+            }
+            else if (opts.fg && opts.ascii !== false) {
+                this.ascii = true;
+            }
+        }
+        contains(..._args) {
+            return false;
+        }
+        _draw(buffer) {
+            const w = this.bounds.width;
+            const h = this.bounds.height;
+            const x = this.bounds.x;
+            const y = this.bounds.y;
+            const ascii = this.ascii;
+            drawBorder(buffer, x, y, w, h, this._used, ascii);
+            return true;
+        }
+    }
+    installWidget('border', (l, opts) => new Border(l, opts));
+    Layer.prototype.border = function (opts) {
+        const options = Object.assign({}, this._opts, opts);
+        const list = new Border(this, options);
+        if (opts.parent) {
+            list.setParent(opts.parent, opts);
+        }
+        return list;
+    };
+    function drawBorder(buffer, x, y, w, h, style, ascii) {
+        const fg = style.fg;
+        const bg = style.bg;
+        if (ascii) {
+            for (let i = 1; i < w; ++i) {
+                buffer.draw(x + i, y, '-', fg, bg);
+                buffer.draw(x + i, y + h - 1, '-', fg, bg);
+            }
+            for (let j = 1; j < h; ++j) {
+                buffer.draw(x, y + j, '|', fg, bg);
+                buffer.draw(x + w - 1, y + j, '|', fg, bg);
+            }
+            buffer.draw(x, y, '+', fg, bg);
+            buffer.draw(x + w - 1, y, '+', fg, bg);
+            buffer.draw(x, y + h - 1, '+', fg, bg);
+            buffer.draw(x + w - 1, y + h - 1, '+', fg, bg);
+        }
+        else {
+            GWU__namespace.xy.forBorder(x, y, w, h, (x, y) => {
+                buffer.draw(x, y, ' ', bg, bg);
+            });
+        }
+    }
+
+    class Button extends Text {
+        constructor(layer, opts) {
+            super(layer, (() => {
+                opts.text = opts.text || '';
+                opts.action = opts.action || opts.id;
+                opts.tag = opts.tag || 'button';
+                return opts;
+            })());
+        }
+        keypress(ev) {
+            if (!ev.key)
+                return false;
+            if (ev.key === 'Enter') {
+                const action = this._attrStr('action');
+                if (action && action.length)
+                    this._bubbleEvent(action, this);
+                return true;
+            }
+            return false;
+        }
+        click(ev) {
+            if (!this.contains(ev))
+                return false;
+            const action = this._attrStr('action');
+            if (action && action.length)
+                this._bubbleEvent(action, this);
+            return true;
+        }
+    }
+    installWidget('button', (l, opts) => new Button(l, opts));
+
+    class Fieldset extends Border {
+        constructor(layer, opts) {
+            super(layer, (() => {
+                const bopts = Object.assign({}, opts);
+                if (!bopts.height)
+                    bopts.height = 4;
+                if (!bopts.width)
+                    bopts.width = 4;
+                bopts.tag = bopts.tag || 'fieldset';
+                return bopts;
+            })());
+            this._fixedWidth = false;
+            this._fixedHeight = false;
+            this.legend = null;
+            this._addLegend(opts);
+            this._fixedHeight = !!opts.height;
+            this._fixedWidth = !!opts.width;
+        }
+        _addLegend(opts) {
+            if (!opts.legend)
+                return this;
+            this.legend = new Text(this.layer, {
+                text: opts.legend,
+                x: this.bounds.x + 2,
+                y: this.bounds.y,
+                depth: this.depth + 1,
+                tag: opts.legendTag || Fieldset.default.legendTag,
+                class: opts.legendClass || Fieldset.default.legendClass,
+            });
+            if (this.bounds.width < this.legend.bounds.width + 4) {
+                this.bounds.width = this.legend.bounds.width + 4;
+            }
+            this.legend.setParent(this);
+            this.layer.attach(this.legend);
+            return this;
+        }
+        _addChild(w, opts = {}) {
+            if (w !== this.legend) {
+                w.bounds.x = this.bounds.x + 2;
+                if (!this._fixedHeight) {
+                    w.bounds.y = this.bounds.bottom - 2;
+                    this.bounds.height += w.bounds.height;
+                }
+                if (this._fixedWidth) {
+                    w.bounds.width = Math.min(w.bounds.width, this.bounds.width - 4);
+                }
+                else if (w.bounds.width > this.bounds.width - 4) {
+                    this.bounds.width = w.bounds.width + 4;
+                }
+            }
+            return super._addChild(w, opts);
+        }
+    }
+    Fieldset.default = {
+        legendTag: 'legend',
+        legendClass: 'legend',
+    };
+    Layer.prototype.fieldset = function (opts = {}) {
+        const options = Object.assign({}, this._opts, opts);
+        const widget = new Fieldset(this, options);
+        if (opts.parent) {
+            widget.setParent(opts.parent, opts);
+        }
+        return widget;
+    };
+
+    class OrderedList extends Widget {
+        constructor(layer, opts) {
+            super(layer, (() => {
+                opts.tag = opts.tag || 'ol';
+                return opts;
+            })());
+            this._fixedWidth = false;
+            this._fixedHeight = false;
+            this._fixedHeight = !!opts.height;
+            this._fixedWidth = !!opts.width;
+            this.prop('pad', opts.pad || OrderedList.default.pad);
+        }
+        _addChild(w, opts = {}) {
+            w.bounds.x = this.bounds.x + 2;
+            if (!this._fixedHeight) {
+                w.bounds.y = this.bounds.bottom - 2;
+                this.bounds.height += w.bounds.height;
+            }
+            if (this._fixedWidth) {
+                w.bounds.width = Math.min(w.bounds.width, this.bounds.width - 4);
+            }
+            else if (w.bounds.width > this.bounds.width - 4) {
+                this.bounds.width = w.bounds.width + 4;
+            }
+            return super._addChild(w, opts);
+        }
+        _draw(buffer) {
+            this._drawFill(buffer);
+            this.children.forEach((c, i) => {
+                this._drawBulletFor(c, buffer, i);
+            });
+            return true;
+        }
+        _getBullet(index) {
+            return '' + (index + 1);
+        }
+        _drawBulletFor(widget, buffer, index) {
+            const bullet = this._getBullet(index);
+            const size = this._attrInt('pad') + bullet.length;
+            const x = widget.bounds.x - size;
+            const y = widget.bounds.y;
+            buffer.drawText(x, y, bullet, widget._used.fg, widget._used.bg, size);
+        }
+    }
+    OrderedList.default = {
+        pad: 1,
+    };
+    class UnorderedList extends OrderedList {
+        constructor(layer, opts) {
+            super(layer, (() => {
+                opts.tag = opts.tag || 'ul';
+                return opts;
+            })());
+            this.prop('bullet', opts.bullet || UnorderedList.default.bullet);
+            this.prop('pad', opts.pad || UnorderedList.default.pad);
+        }
+        _getBullet(_index) {
+            return this._attrStr('bullet');
+        }
+    }
+    UnorderedList.default = {
+        bullet: '\u2022',
+        pad: 1,
+    };
+    Layer.prototype.ol = function (opts = {}) {
+        const options = Object.assign({}, this._opts, opts);
+        const widget = new OrderedList(this, options);
+        if (opts.parent) {
+            widget.setParent(opts.parent, opts);
+        }
+        return widget;
+    };
+    Layer.prototype.ul = function (opts = {}) {
+        const options = Object.assign({}, this._opts, opts);
+        const widget = new UnorderedList(this, options);
+        if (opts.parent) {
+            widget.setParent(opts.parent, opts);
+        }
+        return widget;
+    };
+
+    class Input extends Text {
+        constructor(layer, opts) {
+            super(layer, (() => {
+                opts.text = opts.text || '';
+                opts.tag = opts.tag || 'input';
+                opts.action = opts.action || opts.id;
+                opts.width =
+                    opts.width ||
+                        opts.maxLength ||
+                        Math.max(opts.minLength || 0, 10);
+                return opts;
+            })());
+            this.placeholder = '';
+            this.minLength = 0;
+            this.maxLength = 0;
+            this.numbersOnly = false;
+            this.min = 0;
+            this.max = 0;
+            this.default = this._text;
+            if (opts.placeholder)
+                this.placeholder = opts.placeholder;
+            if (opts.numbersOnly) {
+                this.numbersOnly = true;
+                this.min = opts.min || 0;
+                this.max = opts.max || 0;
+            }
+            else {
+                this.minLength = opts.minLength || 0;
+                this.maxLength = opts.maxLength || 0;
+            }
+            if (opts.required) {
+                this.attr('required', true);
+                this.prop('required', true);
+            }
+            if (opts.disabled) {
+                this.attr('disabled', true);
+                this.prop('disabled', true);
+            }
+            this.prop('valid', this.isValid()); // redo b/c rules are now set
+            this.on('blur', () => this._fireEvent('change', this));
         }
         reset() {
-            this.text = this.default;
+            this.text(this.default);
+        }
+        _setProp(name, v) {
+            super._setProp(name, v);
+            this._props.valid = this.isValid();
         }
         isValid() {
+            const t = this._text || '';
             if (this.numbersOnly) {
-                const val = Number.parseInt(this.text);
+                const val = Number.parseInt(t);
                 if (this.min !== undefined && val < this.min)
                     return false;
                 if (this.max !== undefined && val > this.max)
                     return false;
                 return val > 0;
             }
-            return this.text.length >= this.minLength;
+            const minLength = Math.max(this.minLength, this.prop('required') ? 1 : 0);
+            return (t.length >= minLength &&
+                (!this.maxLength || t.length <= this.maxLength));
         }
-        get value() {
-            if (this.numbersOnly)
-                return Number.parseInt(this.text);
-            return this.text;
-        }
-        keypress(ev, dialog) {
-            const textEntryBounds = this.numbersOnly ? ['0', '9'] : [' ', '~'];
+        keypress(ev) {
             if (!ev.key)
                 return false;
+            const textEntryBounds = this.numbersOnly ? ['0', '9'] : [' ', '~'];
             if (ev.key === 'Enter' && this.isValid()) {
-                const r = dialog.fireAction(this.action, this);
-                if (r)
-                    return r.then(() => true);
+                const action = this._attrStr('action');
+                if (action && action.length) {
+                    this._fireEvent(action, this);
+                }
+                else {
+                    this.layer.nextTabStop();
+                }
                 return true;
             }
             if (ev.key == 'Delete' || ev.key == 'Backspace') {
-                if (this.text.length) {
-                    this.text = GWU__namespace.text.spliceRaw(this.text, this.text.length - 1, 1);
+                if (this._text.length) {
+                    this.text(GWU__namespace.text.spliceRaw(this._text, this._text.length - 1, 1));
+                    this._fireEvent('input', this);
                 }
                 return true;
             }
@@ -807,1288 +1805,965 @@
             // eat/use all other keys
             if (ev.key >= textEntryBounds[0] && ev.key <= textEntryBounds[1]) {
                 // allow only permitted input
-                if (this.text.length < this.bounds.width) {
-                    this.text += ev.key;
+                if (!this.maxLength || this._text.length < this.maxLength) {
+                    this.text(this._text + ev.key);
+                    this._fireEvent('input', this);
                 }
             }
             return true;
         }
-        draw(buffer) {
-            const x = this.bounds.x;
-            const y = this.bounds.y;
-            const fg = this.active
-                ? this.activeFg
-                : this.hovered
-                    ? this.hoverFg
-                    : this.fg;
-            const bg = this.active
-                ? this.activeBg
-                : this.hovered
-                    ? this.hoverBg
-                    : this.bg;
-            buffer.fillRect(x, y, this.bounds.width, 1, ' ', fg, bg);
-            if (!this.text.length && this.hint && this.hint.length) {
-                buffer.drawText(x, y, this.hint, this.hintFg);
+        text(v) {
+            if (v === undefined)
+                return this._text;
+            super.text(v);
+            this.prop('empty', this._text.length === 0);
+            this.prop('valid', this.isValid());
+            return this;
+        }
+        _draw(buffer, _force = false) {
+            this._drawFill(buffer);
+            let vOffset = 0;
+            if (this._used.valign === 'bottom') {
+                vOffset = this.bounds.height - this._lines.length;
             }
-            else {
-                const color = this.isValid() ? fg : this.errorFg;
-                buffer.drawText(x, y, this.text, color);
+            else if (this._used.valign === 'middle') {
+                vOffset = Math.floor((this.bounds.height - this._lines.length) / 2);
             }
+            let show = this._text;
+            if (this._text.length > this.bounds.width) {
+                show = this._text.slice(this._text.length - this.bounds.width);
+            }
+            buffer.drawText(this.bounds.x, this.bounds.y + vOffset, show, this._used.fg, -1, this.bounds.width, this._used.align);
+            return true;
         }
     }
+    installWidget('input', (l, opts) => new Input(l, opts));
+    Layer.prototype.input = function (opts) {
+        const options = Object.assign({}, this._opts, opts);
+        const list = new Input(this, options);
+        if (opts.parent) {
+            list.setParent(opts.parent, opts);
+        }
+        return list;
+    };
 
-    class Column$1 {
+    class Column {
         constructor(opts) {
-            this.active = false;
-            this.hovered = false;
-            this.fg = null;
-            this.bg = null;
-            this.activeFg = null;
-            this.activeBg = null;
-            this.hoverFg = null;
-            this.hoverBg = null;
-            this.align = 'left';
-            this.header = '';
-            this.empty = '';
-            this._value = GWU__namespace.IDENTITY;
-            // align: Widget.Align = 'left';
-            // valign: Widget.VAlign = 'middle';
-            // hover: HoverType = 'cell';
-            this.x = -1;
-            this.width = -1;
-            this.index = -1;
-            GWU__namespace.object.assignOmitting('value', this, opts);
-            if (this.width <= 0) {
-                this.width = this.header.length || 1;
+            this.format = GWU__namespace.IDENTITY;
+            this.width = opts.width || DataTable.default.columnWidth;
+            if (typeof opts.format === 'function') {
+                this.format = opts.format;
             }
-            if (typeof opts.value === 'string') {
-                this._value = GWU__namespace.text.compile(opts.value);
+            else if (opts.format) {
+                this.format = GWU__namespace.text.compile(opts.format);
             }
-            else {
-                this._value = opts.value || GWU__namespace.IDENTITY;
-            }
-            if (opts.align)
-                this.align = opts.align;
+            this.header = opts.header || '';
+            this.headerClass = opts.headerClass || DataTable.default.headerClass;
+            this.empty = opts.empty || DataTable.default.empty;
+            this.dataClass = opts.dataClass || DataTable.default.dataClass;
         }
-        value(data, index) {
-            const v = this._value(data, index);
-            return GWU__namespace.text.truncate(v, this.width);
-        }
-    }
-    class Table$1 extends Widget$1 {
-        constructor(id, opts) {
-            super(id, opts);
-            this.data = null;
-            this.selectedColumn = null;
-            this.selectedIndex = -1;
-        }
-        init(opts) {
-            if (!opts.height)
-                throw new Error('Height is required.');
-            if (!opts.columns || opts.columns.length == 0)
-                throw new Error('Must have at least 1 column.');
-            opts.tabStop = GWU__namespace.first(opts.tabStop, true);
-            super.init(opts);
-            this.headers = GWU__namespace.first(opts.headers, true);
-            this.letters = GWU__namespace.first(opts.letters, true);
-            this.columns = [];
-            this.hoverType = opts.hover || 'row';
-            this.wrapColumns = GWU__namespace.first(opts.wrapColumns, opts.wrap, true);
-            this.wrapRows = GWU__namespace.first(opts.wrapRows, opts.wrap, true);
-            this.headerFg = opts.headerFg || this.fg;
-            this.headerBg = opts.headerBg || this.bg;
-            let columnWidth = 0;
-            if (opts.letters) {
-                this.columns.push(new Column$1({
-                    width: 2,
-                    value: (_data, index) => {
-                        const letter = String.fromCharCode(97 + index);
-                        return letter + ')';
-                    },
-                }));
-                columnWidth += 2;
-            }
-            if (opts.columns) {
-                opts.columns.forEach((c) => {
-                    const col = new Column$1(c);
-                    this.columns.push(col);
-                    columnWidth += col.width;
-                });
-            }
-            this.columns.forEach((c, i) => (c.index = i));
-            // scrolling?  paging?  fixed columns/headers?
-            this.bounds.width =
-                this.bounds.width > 0 ? this.bounds.width : columnWidth;
-        }
-        setData(data) {
-            this.data = data;
-            this.selectedIndex = -1;
-        }
-        selectRow(index) {
-            if (!this.data)
-                return false;
-            const len = Array.isArray(this.data)
-                ? this.data.length
-                : GWU__namespace.list.length(this.data);
-            if (index >= len)
-                return false;
-            if (index < -1)
-                return false;
-            this.selectedIndex = index;
-            return true;
-        }
-        selectNextRow(wrap = true) {
-            if (!this.data)
-                return -1;
-            const len = Array.isArray(this.data)
-                ? this.data.length
-                : GWU__namespace.list.length(this.data);
-            this.selectedIndex = GWU__namespace.nextIndex(this.selectedIndex, len, wrap);
-            if (this.selectedIndex > -1 && !this.selectedColumn) {
-                this.selectedColumn = this.columns[0];
-            }
-            return this.selectedIndex;
-        }
-        selectPrevRow(wrap = true) {
-            if (!this.data)
-                return -1;
-            const len = Array.isArray(this.data)
-                ? this.data.length
-                : GWU__namespace.list.length(this.data);
-            this.selectedIndex = GWU__namespace.prevIndex(this.selectedIndex, len, wrap);
-            if (this.selectedIndex > -1 && !this.selectedColumn) {
-                this.selectedColumn = this.columns[0];
-            }
-            return this.selectedIndex;
-        }
-        selectNextColumn(wrap = true) {
-            if (!this.selectedColumn) {
-                this.selectedColumn = this.columns[0];
-            }
-            else {
-                let index = GWU__namespace.nextIndex(this.selectedColumn.index, this.columns.length, wrap);
-                this.selectedColumn = this.columns[index] || null;
-            }
-            if (this.selectedColumn && this.selectedIndex < 0 && this.data) {
-                this.selectedIndex = 0;
-            }
-            return this.selectedColumn;
-        }
-        selectPrevColumn(wrap = true) {
-            if (!this.selectedColumn) {
-                this.selectedColumn = this.columns[this.columns.length - 1]; // last column
-            }
-            else {
-                let index = GWU__namespace.prevIndex(this.selectedColumn.index, this.columns.length, wrap);
-                this.selectedColumn = this.columns[index] || null;
-            }
-            if (this.selectedColumn && this.selectedIndex < 0 && this.data) {
-                this.selectedIndex = 0;
-            }
-            return this.selectedColumn;
-        }
-        get selectedData() {
-            if (!this.data)
-                return null;
-            if (Array.isArray(this.data)) {
-                return this.data[this.selectedIndex] || null;
-            }
-            else {
-                return GWU__namespace.list.at(this.data, this.selectedIndex);
-            }
-        }
-        draw(buffer) {
-            const b = this.bounds;
-            buffer.fillRect(b.x, b.y, b.width, b.height, ' ', this.bg, this.bg);
-            let x = b.x;
-            this.columns.forEach((col) => {
-                this.drawColumn(buffer, col, x);
-                x += col.width;
+        addHeader(table, x, y) {
+            const t = new Text(table.layer, {
+                x,
+                y,
+                class: this.headerClass,
+                tag: table.headerTag,
+                width: this.width,
+                height: table.rowHeight,
+                depth: table.depth + 1,
+                text: this.header,
             });
+            t.setParent(table);
+            table.layer.attach(t);
+            return t;
         }
-        drawColumn(buffer, column, x) {
-            let y = this.bounds.y;
-            if (column.header) {
-                buffer.fillRect(x, y, column.width, 1, ' ', this.headerFg, this.headerBg);
-                buffer.drawText(x, y, column.header, this.headerFg, this.headerBg, column.width, column.align);
-                ++y;
+        addData(table, data, x, y, col, row) {
+            let text;
+            if (Array.isArray(data)) {
+                text = '' + (data[col] || this.empty);
             }
-            if (!this.data)
-                return;
-            if (Array.isArray(this.data)) {
-                this.data.forEach((item, index) => {
-                    this.drawCell(buffer, column, item, index, x, y);
-                    ++y;
-                });
+            else if (typeof data !== 'object') {
+                text = '' + data;
             }
             else {
-                GWU__namespace.list.forEach(this.data, (item, index) => {
-                    this.drawCell(buffer, column, item, index, x, y);
-                    ++y;
+                text = this.format(data);
+            }
+            const widget = new Text(table.layer, {
+                text,
+                x,
+                y,
+                class: this.dataClass,
+                tag: table.dataTag,
+                width: this.width,
+                height: table.rowHeight,
+                depth: table.depth + 1,
+            });
+            widget.prop(row % 2 == 0 ? 'even' : 'odd', true);
+            widget.prop('row', row);
+            widget.prop('col', col);
+            widget.setParent(table);
+            table.layer.attach(widget);
+            return widget;
+        }
+        addEmpty(table, x, y, col, row) {
+            return this.addData(table, [], x, y, col, row);
+        }
+    }
+    class DataTable extends Widget {
+        constructor(layer, opts) {
+            super(layer, opts);
+            this._data = [];
+            this.columns = [];
+            this.showHeader = false;
+            this.headerTag = 'th';
+            this.dataTag = 'td';
+            this.prefix = 'none';
+            this.select = 'cell';
+            this.rowHeight = 1;
+            this.border = 'none';
+            this.tag = 'table';
+            this.size = opts.size || layer.height;
+            this.bounds.width = 0;
+            opts.columns.forEach((o) => {
+                const col = new Column(o);
+                this.columns.push(col);
+                this.bounds.width += col.width;
+            });
+            if (opts.border) {
+                if (opts.border === true)
+                    opts.border = 'ascii';
+                this.border = opts.border;
+            }
+            this.rowHeight = opts.rowHeight || 1;
+            this.bounds.height = 1;
+            if (opts.header) {
+                this.showHeader = true;
+            }
+            this.headerTag = opts.headerTag || DataTable.default.headerTag;
+            this.dataTag = opts.dataTag || DataTable.default.dataTag;
+            this.prefix = opts.prefix || DataTable.default.prefix;
+            this.select = opts.select || DataTable.default.select;
+            this.data(opts.data || []);
+        }
+        data(data) {
+            if (!data)
+                return this._data;
+            this._data = data;
+            for (let i = this.children.length - 1; i >= 0; --i) {
+                const c = this.children[i];
+                if (c.tag !== this.headerTag) {
+                    this.layer.detach(c);
+                }
+            }
+            const borderAdj = this.border !== 'none' ? 1 : 0;
+            let x = this.bounds.x + borderAdj;
+            let y = this.bounds.y + borderAdj;
+            if (this.showHeader) {
+                this.columns.forEach((col) => {
+                    col.addHeader(this, x, y);
+                    x += col.width + borderAdj;
                 });
+                y += this.rowHeight + borderAdj;
             }
+            this._data.forEach((obj, j) => {
+                if (j >= this.size)
+                    return;
+                x = this.bounds.x + borderAdj;
+                this.columns.forEach((col, i) => {
+                    col.addData(this, obj, x, y, i, j);
+                    x += col.width + borderAdj;
+                });
+                y += this.rowHeight + borderAdj;
+            });
+            if (this._data.length == 0) {
+                x = this.bounds.x + borderAdj;
+                this.columns.forEach((col, i) => {
+                    col.addEmpty(this, x, y, i, 0);
+                    x += col.width + borderAdj;
+                });
+                y += 1;
+            }
+            this.bounds.height = y - this.bounds.y;
+            this.bounds.width = x - this.bounds.x;
+            this.updateStyle(); // sets this.needsDraw
+            return this;
         }
-        drawCell(buffer, column, data, index, x, y) {
-            if (y > this.bounds.bottom)
-                return;
-            let text = column._value(data, index);
-            if (text.length == 0) {
-                text = column.empty;
-            }
-            // pick color...
-            let fg = this.fg;
-            let bg = this.bg;
-            if (this.hoverType === 'row') {
-                if (index === this.selectedIndex) {
-                    fg = this.hoverFg;
-                    bg = this.hoverBg;
+        _draw(buffer) {
+            this._drawFill(buffer);
+            this.children.forEach((w) => {
+                if (w.prop('row') >= this.size)
+                    return;
+                if (this.border !== 'none') {
+                    drawBorder(buffer, w.bounds.x - 1, w.bounds.y - 1, w.bounds.width + 2, w.bounds.height + 2, this._used, this.border == 'ascii');
                 }
-            }
-            else if (this.hoverType === 'column') {
-                if (column === this.selectedColumn) {
-                    fg = this.hoverFg;
-                    bg = this.hoverBg;
-                }
-            }
-            else if (this.hoverType === 'cell') {
-                if (column === this.selectedColumn &&
-                    index === this.selectedIndex) {
-                    fg = this.hoverFg;
-                    bg = this.hoverBg;
-                }
-            }
-            buffer.fillRect(x, y, column.width, 1, ' ', bg, bg);
-            buffer.drawText(x, y, text, fg, bg, column.width, column.align);
-        }
-        async mousemove(e, dialog) {
-            if (!super.mousemove(e, dialog)) {
-                return false;
-            }
-            const oldColumn = this.selectedColumn;
-            const oldIndex = this.selectedIndex;
-            let x = e.x - this.bounds.x;
-            const column = (this.selectedColumn =
-                this.columns.find((c) => {
-                    if (c.width >= x)
-                        return true;
-                    x -= c.width;
-                    return false;
-                }) || null);
-            let index = -1;
-            if (this.data) {
-                index = e.y - this.bounds.y - (this.headers ? 1 : 0);
-                if (Array.isArray(this.data)) {
-                    if (index >= this.data.length)
-                        index = -1;
-                }
-            }
-            this.selectedIndex = index;
-            if (oldColumn !== column || oldIndex !== index) {
-                dialog.fireAction(this.id + '_HOVER', this);
-                dialog.requestRedraw();
-            }
+            });
             return true;
         }
-        dir(e) {
-            if (!e.dir)
+        mousemove(e) {
+            const active = (this.hovered = this.contains(e));
+            if (!active) {
+                this.children.forEach((c) => (c.hovered = false));
                 return false;
-            if (e.dir[0] > 0) {
-                this.selectNextColumn(this.wrapColumns);
             }
-            else if (e.dir[0] < 0) {
-                this.selectPrevColumn(this.wrapColumns);
-            }
-            if (e.dir[1] > 0) {
-                this.selectNextRow(this.wrapRows);
-            }
-            else if (e.dir[1] < 0) {
-                this.selectPrevRow(this.wrapRows);
+            const hovered = this.children.find((c) => c.contains(e));
+            if (hovered) {
+                if (this.select === 'none') {
+                    this.children.forEach((c) => (c.hovered = false));
+                }
+                else if (this.select === 'row') {
+                    this.children.forEach((c) => (c.hovered = hovered.prop('row') == c.prop('row')));
+                }
+                else if (this.select === 'column') {
+                    this.children.forEach((c) => (c.hovered = hovered.prop('col') == c.prop('col')));
+                }
             }
             return true;
         }
     }
-    function makeTable(id, opts) {
-        return new Table$1(id, opts);
-    }
+    DataTable.default = {
+        columnWidth: 10,
+        empty: '-',
+        headerClass: 'header',
+        headerTag: 'th',
+        dataClass: 'data',
+        dataTag: 'td',
+        select: 'cell',
+        prefix: 'none',
+    };
+    installWidget('datatable', (l, opts) => new DataTable(l, opts));
+    Layer.prototype.datatable = function (opts) {
+        const options = Object.assign({}, this._opts, opts);
+        const list = new DataTable(this, options);
+        if (opts.parent) {
+            list.setParent(opts.parent, opts);
+        }
+        return list;
+    };
 
-    class List extends Table$1 {
-        constructor(id, opts) {
-            super(id, (() => {
+    class DataList extends DataTable {
+        constructor(layer, opts) {
+            super(layer, (() => {
                 // @ts-ignore
                 const tableOpts = opts;
                 tableOpts.columns = [opts];
-                tableOpts.headers = opts.header ? true : false;
-                tableOpts.hover = opts.hover === false ? 'none' : 'row';
                 return tableOpts;
             })());
         }
     }
+    installWidget('list', (l, opts) => new DataList(l, opts));
+    Layer.prototype.datalist = function (opts) {
+        const options = Object.assign({}, this._opts, opts);
+        const list = new DataList(this, options);
+        if (opts.parent) {
+            list.setParent(opts.parent, opts);
+        }
+        return list;
+    };
 
-    class Box extends Widget$1 {
-        constructor(id, opts) {
-            super(id, (() => {
-                if (!opts)
-                    return opts;
-                if (opts.depth === undefined)
-                    opts.depth = -10; // hide behind other widgets
-                if (opts.title)
-                    opts.text = opts.title;
-                opts.bg = opts.bg || 'gray';
+    class Menu extends Widget {
+        constructor(layer, opts) {
+            super(layer, (() => {
+                opts.tag = opts.tag || Menu.default.tag;
+                opts.class = opts.class || Menu.default.class;
                 return opts;
             })());
-        }
-        init(opts) {
-            super.init(opts);
-            this.borderBg = opts.borderBg || null;
-        }
-        // EVENTS
-        // box is completely idle
-        mousemove(_e, _dialog) {
-            return false;
-        }
-        // DRAW
-        draw(buffer) {
-            const fg = this.active
-                ? this.activeFg
-                : this.hovered
-                    ? this.hoverFg
-                    : this.fg;
-            const bg = this.active
-                ? this.activeBg
-                : this.hovered
-                    ? this.hoverBg
-                    : this.bg;
-            // Draw dialog
-            if (this.borderBg) {
-                buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.borderBg, this.borderBg);
-                buffer.fillRect(this.bounds.x + 1, this.bounds.y + 1, this.bounds.width - 2, this.bounds.height - 2, ' ', bg, bg);
+            if (Array.isArray(opts.buttonClass)) {
+                this.attr('buttonClass', opts.buttonClass.join(' '));
             }
             else {
-                buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', bg, bg);
+                this.attr('buttonClass', opts.buttonClass || Menu.default.buttonClass);
             }
-            if (this.text) {
-                buffer.drawText(this.bounds.x, this.bounds.y, this.text, fg, -1, this.bounds.width, 'center');
-            }
-        }
-    }
-
-    class Dialog {
-        constructor(ui, id) {
-            // bounds: GWU.xy.Bounds;
-            this.widgets = [];
-            this.eventHandlers = {};
-            this._activeWidget = null;
-            this.result = null;
-            this.done = false;
-            this.timers = {};
-            this.needsRedraw = true;
-            this.ui = ui;
-            this.id = id || 'DIALOG';
-            // this.bounds = new GWU.xy.Bounds(-1, -1, 0, 0);
-            // if (opts) this.init(opts);
-        }
-        init() {
-            // if (opts.id) this.id = opts.id;
-            // if (opts.x !== undefined) this.bounds.x = opts.x;
-            // if (opts.y !== undefined) this.bounds.y = opts.y;
-            // if (opts.height !== undefined) this.bounds.height = opts.height;
-            // if (opts.width !== undefined) this.bounds.width = opts.width;
-            // if (opts.box) {
-            //     let boxOpts: Box.BoxOptions = {
-            //         fg: 'white',
-            //         bg: 'gray',
-            //         borderBg: 'dark_gray',
-            //         width: this.bounds.width,
-            //         height: this.bounds.height,
-            //         x: this.bounds.x,
-            //         y: this.bounds.y,
-            //     };
-            //     if (opts.box !== true) {
-            //         Object.assign(boxOpts, opts.box);
-            //     }
-            //     const box = new Box.Box(this.id + '_BOX', boxOpts);
-            //     this.widgets.push(box);
-            // }
-            // if (opts.widgets) {
-            //     opts.widgets.forEach((w) => this.widgets.push(w));
-            // }
-            this.widgets.sort((a, b) => (a.depth < b.depth ? -1 : 1));
-        }
-        get activeWidget() {
-            return this._activeWidget;
-        }
-        setActiveWidget(w, reverse = false) {
-            if (w === this._activeWidget)
-                return;
-            if (this._activeWidget) {
-                this._activeWidget.deactivate();
-            }
-            this._activeWidget = w;
-            if (this._activeWidget) {
-                this._activeWidget.activate(reverse);
-            }
-        }
-        // contains(e: GWU.xy.XY): boolean {
-        //     return this.bounds.contains(e);
-        // }
-        requestRedraw() {
-            this.needsRedraw = true;
-        }
-        setTimeout(action, time) {
-            this.timers[action] = time;
-        }
-        clearTimeout(action) {
-            delete this.timers[action];
-        }
-        async fireAction(action, widget) {
-            const handler = this.eventHandlers[action];
-            if (handler) {
-                await handler(action, this, widget);
-            }
-        }
-        // Multiple calls result in adding more handlers
-        setEventHandlers(map) {
-            Object.assign(this.eventHandlers, map);
-        }
-        async show() {
-            this.done = false;
-            // reset any temp data...
-            this.widgets.forEach((w) => w.reset());
-            // first tabStop is the starting active Widget
-            this.setActiveWidget(this.widgets.find((w) => w.tabStop) || null);
-            // start dialog
-            const buffer = this.ui.startLayer();
-            // run input loop
-            await this.ui.loop.run({
-                keypress: this.keypress.bind(this),
-                dir: this.dir.bind(this),
-                mousemove: this.mousemove.bind(this),
-                click: this.click.bind(this),
-                tick: this.tick.bind(this),
-                draw: () => {
-                    this.draw(buffer);
-                    buffer.render();
-                },
-            }, 100);
-            // stop dialog
-            this.ui.finishLayer();
-            return this.result;
-        }
-        close(returnValue) {
-            this.result = returnValue;
-            this.done = true;
-        }
-        widgetAt(x, y) {
-            return (this.widgets.find((w) => w.contains(x, y) && w.depth >= 0) || null);
-        }
-        getWidget(id) {
-            return this.widgets.find((w) => w.id === id) || null;
-        }
-        nextTabstop() {
-            if (!this.activeWidget) {
-                this.setActiveWidget(this.widgets.find((w) => w.tabStop) || null);
-                return !!this.activeWidget;
-            }
-            const next = GWU__namespace.arrayNext(this.widgets, this.activeWidget, (w) => w.tabStop);
-            if (next) {
-                this.setActiveWidget(next);
+            this.attr('buttonTag', opts.buttonTag || Menu.default.buttonTag);
+            this.attr('marker', opts.marker || Menu.default.marker);
+            this._initButtons(opts);
+            this.bounds.height = this.children.length;
+            this.on('mouseenter', (_n, _w, e) => {
+                this.children.forEach((c) => {
+                    if (!c.contains(e)) {
+                        c.collapse();
+                    }
+                    else {
+                        c.expand();
+                    }
+                });
                 return true;
-            }
-            return false;
+            });
         }
-        prevTabstop() {
-            if (!this.activeWidget) {
-                this.setActiveWidget(this.widgets.find((w) => w.tabStop) || null);
-                return !!this.activeWidget;
+        _initButtons(opts) {
+            this.children = [];
+            const buttons = opts.buttons;
+            const marker = this._attrStr('marker');
+            const entries = Object.entries(buttons);
+            if (this.bounds.width <= 0) {
+                this.bounds.width = Math.max(opts.minWidth || 0, entries.reduce((out, [key, value]) => {
+                    const textLen = GWU__namespace.text.length(key) +
+                        (typeof value === 'string' ? 0 : marker.length);
+                    return Math.max(out, textLen);
+                }, 0));
             }
-            const prev = GWU__namespace.arrayPrev(this.widgets, this.activeWidget, (w) => w.tabStop);
-            if (prev) {
-                this.setActiveWidget(prev, true);
-                return true;
-            }
-            return false;
-        }
-        async tick(e) {
-            const dt = e.dt;
-            let promises = [];
-            Object.entries(this.timers).forEach(([action, time]) => {
-                time -= dt;
-                if (time <= 0) {
-                    delete this.timers[action];
-                    promises.push(this.fireAction(action, null));
+            entries.forEach(([key, value], i) => {
+                const opts = {
+                    x: this.bounds.x,
+                    y: this.bounds.y + i,
+                    class: this._attrStr('buttonClass'),
+                    tag: this._attrStr('buttonTag'),
+                    width: this.bounds.width,
+                    height: 1,
+                    depth: this.depth + 1,
+                    buttons: value,
+                    text: key,
+                };
+                if (typeof value === 'string') {
+                    opts.action = value;
                 }
                 else {
-                    this.timers[action] = time;
+                    opts.text =
+                        GWU__namespace.text.padEnd(key, this.bounds.width - marker.length, ' ') + marker;
                 }
+                const menuItem = new MenuButton(this.layer, opts);
+                menuItem.setParent(this);
+                menuItem.on('mouseenter', () => {
+                    this._bubbleEvent('change', menuItem);
+                    return false;
+                });
+                menuItem.setParent(this);
             });
-            for (let w of this.widgets) {
-                promises.push(w.tick(e, this));
-            }
-            if (promises.length) {
-                return Promise.all(promises).then(() => this.done);
-            }
-            return this.done;
         }
-        // TODO - async - to allow animations or events on mouseover?
-        async mousemove(e) {
-            // this.setActiveWidget(null);
-            await Promise.all(this.widgets.map(async (w) => {
-                await w.mousemove(e, this);
-                if (w.hovered && w.tabStop) {
-                    this.setActiveWidget(w);
+        collapse() {
+            this.children.forEach((c) => {
+                c.collapse();
+            });
+            return this;
+        }
+    }
+    Menu.default = {
+        tag: 'menu',
+        class: '',
+        buttonClass: '',
+        buttonTag: 'mi',
+        marker: ' \u25b6',
+        minWidth: 4,
+    };
+    class MenuButton extends Text {
+        constructor(layer, opts) {
+            super(layer, (() => {
+                opts.tag = opts.tag || 'mi';
+                return opts;
+            })());
+            this.menu = null;
+            this.tag = opts.tag || 'mi';
+            if (typeof opts.buttons !== 'string') {
+                this.menu = this._initMenu(opts);
+                this.on('mouseenter', () => {
+                    this.menu.hidden = false;
+                    this.menu._bubbleEvent('change', this);
+                    return true;
+                });
+                this.on('mouseleave', (_n, _w, e) => {
+                    var _a;
+                    if ((_a = this.parent) === null || _a === void 0 ? void 0 : _a.contains(e)) {
+                        this.menu.hidden = true;
+                        return true;
+                    }
+                    return false;
+                });
+                this.on('click', () => {
+                    return true; // eat clicks
+                });
+            }
+        }
+        collapse() {
+            if (this.menu) {
+                this.menu.collapse();
+                this.menu.hidden = true;
+            }
+            return this;
+        }
+        expand() {
+            if (this.menu) {
+                this.menu.hidden = false;
+            }
+            return this;
+        }
+        _setMenuPos(xy, opts) {
+            xy.x = this.bounds.x + this.bounds.width;
+            xy.y = this.bounds.y;
+            const height = Object.keys(opts.buttons).length;
+            if (xy.y + height >= this.layer.height) {
+                xy.y = this.layer.height - height - 1;
+            }
+        }
+        _initMenu(opts) {
+            if (typeof opts.buttons === 'string')
+                return null;
+            const menuOpts = {
+                x: this.bounds.x + this.bounds.width,
+                y: this.bounds.y,
+                class: opts.class,
+                tag: opts.tag || 'mi',
+                buttons: opts.buttons,
+                depth: this.depth + 1,
+            };
+            this._setMenuPos(menuOpts, opts);
+            const menu = new Menu(this.layer, menuOpts);
+            menu.hidden = true;
+            menu.setParent(this);
+            return menu;
+        }
+    }
+    installWidget('menu', (l, opts) => new Menu(l, opts));
+    Layer.prototype.menu = function (opts) {
+        const options = Object.assign({}, this._opts, opts);
+        const list = new Menu(this, options);
+        if (opts.parent) {
+            list.setParent(opts.parent, opts);
+        }
+        return list;
+    };
+
+    class Menubar extends Widget {
+        constructor(layer, opts) {
+            super(layer, (() => {
+                opts.tabStop = true;
+                opts.tag = opts.tag || 'menu';
+                return opts;
+            })());
+            this._buttons = [];
+            this._selectedIndex = -1;
+            if (opts.buttonClass) {
+                if (Array.isArray(opts.buttonClass)) {
+                    this.attr('buttonClass', opts.buttonClass.join(' '));
                 }
-            }));
-            return this.done;
-        }
-        async click(e) {
-            // this.mousemove(e); // make sure activeWidget is set correctly
-            // if (!this.contains(e)) {
-            //     return false;
-            // }
-            const widget = this.widgetAt(e.x, e.y);
-            let fn = null;
-            if (widget) {
-                if (await widget.click(e, this)) {
-                    return this.done;
+                else {
+                    this.attr('buttonClass', opts.buttonClass);
                 }
-                fn = this.eventHandlers[widget.id];
             }
-            fn = fn || this.eventHandlers[this.id] || this.eventHandlers.click;
-            if (fn) {
-                await fn(e, this, this.activeWidget);
+            else {
+                this.attr('buttonClass', Menubar.default.buttonClass);
             }
-            return this.done;
+            this.attr('buttonTag', opts.buttonTag || Menubar.default.buttonTag);
+            if (opts.menuClass) {
+                if (Array.isArray(opts.menuClass)) {
+                    this.attr('menuClass', opts.menuClass.join(' '));
+                }
+                else {
+                    this.attr('menuClass', opts.menuClass);
+                }
+            }
+            else {
+                this.attr('menuClass', Menubar.default.menuClass);
+            }
+            this.attr('menuTag', opts.menuTag || Menubar.default.menuTag);
+            this.attr('prefix', opts.prefix || Menubar.default.prefix);
+            this.attr('separator', opts.separator || Menubar.default.separator);
+            this._initButtons(opts);
+            this.on('click', this._buttonClick.bind(this));
         }
-        async keypress(e) {
+        get selectedIndex() {
+            return this._selectedIndex;
+        }
+        set selectedIndex(v) {
+            if (this._selectedIndex >= 0) {
+                this._buttons[this._selectedIndex].prop('focus', false).collapse();
+            }
+            this._selectedIndex = v;
+            if (v >= 0 && v < this._buttons.length) {
+                this._buttons[v].prop('focus', true).expand();
+            }
+            else {
+                this._selectedIndex = -1;
+            }
+        }
+        get selectedButton() {
+            return this._buttons[this._selectedIndex];
+        }
+        focus(reverse = false) {
+            if (reverse) {
+                this.selectedIndex = this._buttons.length - 1;
+            }
+            else {
+                this.selectedIndex = 0;
+            }
+            return super.focus(reverse);
+        }
+        blur(reverse = false) {
+            this.selectedIndex = -1;
+            return super.blur(reverse);
+        }
+        collapse() {
+            this._buttons.forEach((b) => b.collapse());
+            return this;
+        }
+        keypress(e) {
             if (!e.key)
                 return false;
-            if (this.activeWidget) {
-                if (await this.activeWidget.keypress(e, this)) {
-                    return this.done;
-                }
-            }
-            const fn = this.eventHandlers[e.key] ||
-                this.eventHandlers[e.code] ||
-                this.eventHandlers.keypress;
-            if (fn) {
-                if (await fn(e, this, this.activeWidget)) {
-                    return this.done;
-                }
-            }
+            if (!this.focused)
+                return false;
             if (e.key === 'Tab') {
-                // Next widget
-                this.nextTabstop();
-                return false; // not done
+                this.selectedIndex += 1;
+                return this._selectedIndex >= 0;
             }
             else if (e.key === 'TAB') {
-                // Prev Widget
-                this.prevTabstop();
-                return false; // not done
+                this.selectedIndex -= 1;
+                return this._selectedIndex >= 0;
             }
-            return this.done;
+            return false;
         }
-        async dir(e) {
-            if (this.activeWidget) {
-                if (await this.activeWidget.dir(e, this)) {
-                    return this.done;
-                }
-            }
-            const fn = this.eventHandlers.dir || this.eventHandlers.keypress;
-            if (fn) {
-                await fn(e, this, this.activeWidget);
-            }
-            return this.done;
+        mousemove(e) {
+            if (!this.contains(e) || !this.focused)
+                return super.mousemove(e);
+            const active = this._buttons.findIndex((c) => c.contains(e));
+            if (active < 0 || active === this._selectedIndex)
+                return false;
+            this.selectedIndex = active;
+            return true;
         }
-        draw(buffer, force = false) {
-            if (!this.needsRedraw && !force)
-                return;
-            this.ui.resetLayerBuffer();
-            this.widgets.forEach((w) => w.draw(buffer));
+        _initButtons(opts) {
+            this._config = opts.buttons;
+            const entries = Object.entries(this._config);
+            const buttonTag = this._attrStr('buttonTag');
+            const buttonClass = this._attrStr('buttonClass');
+            let x = this.bounds.x;
+            const y = this.bounds.y;
+            entries.forEach(([key, value], i) => {
+                const prefix = i == 0 ? this._attrStr('prefix') : this._attrStr('separator');
+                this.layer.text(prefix, { x, y, parent: this });
+                x += prefix.length;
+                const button = new MenubarButton(this.layer, {
+                    text: key,
+                    x,
+                    y,
+                    tag: buttonTag,
+                    class: buttonClass,
+                    depth: this.depth + 1,
+                    buttons: value,
+                    // data: value,
+                });
+                button.setParent(this);
+                this._buttons.push(button);
+                x += button.bounds.width;
+            });
         }
-    }
-    class DialogBuilder {
-        constructor(ui, width, height) {
-            this.nextY = 0;
-            this.box = null;
-            this.nextY = 1;
-            this.dialog = new Dialog(ui);
-            this.bounds = new GWU__namespace.xy.Bounds(-1, -1, width, height);
-        }
-        with(widget, at) {
-            // widget bounds are set relative to the dialog top left,
-            // if we don't get any, help them out
-            // TODO - Get rid of x, y
-            const bounds = this.bounds;
-            if (at) {
-                if (at.right !== undefined) {
-                    bounds.width = Math.max(bounds.width, widget.bounds.width + at.right);
-                    widget.bounds.right = bounds.width - at.right - 1;
-                }
-                else {
-                    widget.bounds.x = at.x || 0;
-                    bounds.width = Math.max(bounds.width, widget.bounds.width + widget.bounds.x);
-                }
-                if (at.bottom !== undefined) {
-                    bounds.height = Math.max(bounds.height, widget.bounds.height + at.bottom);
-                    widget.bounds.bottom = bounds.height - at.bottom - 1;
-                }
-                else {
-                    widget.bounds.y = at.y || 0;
-                    bounds.height = Math.max(bounds.height, widget.bounds.height + widget.bounds.y);
-                }
+        _buttonClick(_action, button) {
+            if (!button)
+                return false;
+            this.layer.setFocusWidget(this);
+            console.log('clicked = ' + button.text(), button._attrStr('action'));
+            const barButton = button;
+            this.selectedIndex = this._buttons.indexOf(barButton);
+            if (barButton.menu) {
+                barButton.expand();
             }
             else {
-                bounds.width = Math.max(bounds.width, widget.bounds.right);
-                bounds.height = Math.max(bounds.height, widget.bounds.bottom);
+                this.collapse();
             }
-            this.dialog.widgets.push(widget);
-            this.nextY = Math.max(this.nextY, widget.bounds.bottom + 1);
-            return this;
-        }
-        center() {
-            const size = this.dialog.ui.buffer;
-            const bounds = this.bounds;
-            bounds.x = Math.floor((size.width - bounds.width) / 2);
-            bounds.y = Math.floor((size.height - bounds.height) / 2);
-            return this;
-        }
-        place(x, y) {
-            const bounds = this.bounds;
-            bounds.x = x;
-            bounds.y = y;
-            return this;
-        }
-        addBox(opts) {
-            this.box = opts || {};
-            return this;
-        }
-        done() {
-            if (this.bounds.x < 0)
-                this.bounds.x = 0;
-            if (this.bounds.y < 0)
-                this.bounds.y = 0;
-            if (this.bounds.right > this.dialog.ui.buffer.width)
-                throw new Error('Dialog is off screen!');
-            if (this.bounds.bottom > this.dialog.ui.buffer.height)
-                throw new Error('Dialog is off screen!');
-            if (this.box) {
-                const padX = this.box.padX || this.box.pad || 1;
-                const padY = this.box.padY || this.box.pad || 1;
-                this.box.x = 0;
-                this.box.y = 0;
-                this.box.width = this.bounds.width + 2 * padX;
-                this.box.height = this.bounds.height + 2 * padY;
-                const widget = new Box(this.dialog.id + '_BOX', this.box);
-                this.dialog.widgets.forEach((w) => {
-                    w.bounds.x += padX;
-                    w.bounds.y += padY;
-                });
-                this.dialog.widgets.unshift(widget);
-            }
-            // lock in locations
-            this.dialog.widgets.forEach((w) => {
-                w.bounds.x += this.bounds.x;
-                w.bounds.y += this.bounds.y;
-            });
-            return this.dialog;
+            return true;
         }
     }
-    function buildDialog(ui, width = 0, height = 0) {
-        return new DialogBuilder(ui, width, height);
-    }
-
-    class UI {
-        constructor(opts = {}) {
-            this.layers = [];
-            this.freeBuffers = [];
-            this.inDialog = false;
-            if (!opts.canvas)
-                throw new Error('Need a canvas.');
-            this.canvas = opts.canvas;
-            this.buffer = opts.canvas.buffer;
-            this.loop = opts.loop || GWU__namespace.loop;
-        }
-        get width() {
-            return this.canvas.width;
-        }
-        get height() {
-            return this.canvas.height;
-        }
-        render() {
-            this.buffer.render();
-        }
-        get baseBuffer() {
-            return this.layers[this.layers.length - 1] || this.canvas.buffer;
-        }
-        get canvasBuffer() {
-            return this.canvas.buffer;
-        }
-        startLayer() {
-            this.inDialog = true;
-            const base = this.buffer || this.canvas.buffer;
-            this.layers.push(base);
-            this.buffer = this.freeBuffers.pop() || this.canvas.buffer.clone();
-            // UI_OVERLAY._data.forEach( (c) => c.opacity = 0 );
-            this.buffer.copy(base);
-            this.buffer.changed = false;
-            return this.buffer;
-        }
-        resetLayerBuffer() {
-            const base = this.baseBuffer;
-            this.buffer.copy(base);
-            this.buffer.changed = false; // So you have to draw something to make the canvas render...
-        }
-        finishLayer() {
-            if (!this.inDialog)
-                return;
-            if (this.buffer !== this.canvas.buffer) {
-                this.freeBuffers.push(this.buffer);
-            }
-            this.buffer = this.layers.pop() || this.canvas.buffer;
-            this.buffer.changed = true;
-            this.buffer.render();
-            this.inDialog = this.layers.length > 0;
-        }
-        // UTILITY FUNCTIONS
-        async fadeTo(color = 'black', duration = 1000) {
-            color = GWU__namespace.color.from(color);
-            const buffer = this.startLayer();
-            let pct = 0;
-            let elapsed = 0;
-            while (elapsed < duration) {
-                elapsed += 32;
-                if (await this.loop.pause(32)) {
-                    elapsed = duration;
+    Menubar.default = {
+        buttonClass: '',
+        buttonTag: 'mi',
+        menuClass: '',
+        menuTag: 'mi',
+        prefix: ' ',
+        separator: ' | ',
+    };
+    installWidget('menubar', (l, opts) => new Menubar(l, opts));
+    class MenubarButton extends Text {
+        constructor(layer, opts) {
+            super(layer, (() => {
+                opts.tag = opts.tag || 'mi';
+                if (typeof opts.buttons === 'string') {
+                    opts.action = opts.buttons;
                 }
-                pct = Math.floor((100 * elapsed) / duration);
-                this.resetLayerBuffer();
-                buffer.mix(color, pct);
-                buffer.render();
+                return opts;
+            })());
+            this.menu = null;
+            this.tag = opts.tag || 'mi';
+            if (typeof opts.buttons !== 'string') {
+                this.menu = this._initMenu(opts);
+                this.on('mouseenter', () => {
+                    this.menu.hidden = false;
+                    this.menu._bubbleEvent('change', this);
+                    return true;
+                });
+                this.on('mouseleave', (_n, _w, e) => {
+                    var _a;
+                    if ((_a = this.parent) === null || _a === void 0 ? void 0 : _a.contains(e)) {
+                        this.menu.hidden = true;
+                        return true;
+                    }
+                    return false;
+                });
+                this.on('click', () => {
+                    return true; // eat clicks
+                });
             }
-            this.finishLayer();
         }
-        async alert(opts, text, args) {
-            if (typeof opts === 'number') {
-                opts = { duration: opts };
+        collapse() {
+            if (this.menu) {
+                this.menu.collapse();
+                this.menu.hidden = true;
             }
-            if (args) {
-                text = GWU__namespace.text.apply(text, args);
+            return this;
+        }
+        expand() {
+            if (this.menu) {
+                this.menu.hidden = false;
             }
-            const width = opts.width || GWU__namespace.text.length(text);
-            opts.box = opts.box || { bg: opts.bg };
-            // opts.box.bg = opts.box.bg || 'gray';
-            const textOpts = {
-                fg: opts.fg,
-                text,
+            return this;
+        }
+        _setMenuPos(xy, opts) {
+            xy.x = this.bounds.x;
+            const height = opts.height || Object.keys(opts.buttons).length;
+            if (this.bounds.y < height) {
+                xy.y = this.bounds.y + 1;
+            }
+            else {
+                xy.y = this.bounds.top - height;
+            }
+        }
+        _initMenu(opts) {
+            if (typeof opts.buttons === 'string')
+                return null;
+            const menuOpts = {
+                x: this.bounds.x,
+                y: this.bounds.y,
+                class: opts.class,
+                tag: opts.tag || 'mi',
+                height: opts.height,
+                buttons: opts.buttons,
+                depth: this.depth + 1,
+            };
+            this._setMenuPos(menuOpts, opts);
+            const menu = new Menu(this.layer, menuOpts);
+            menu.hidden = true;
+            menu.setParent(this);
+            return menu;
+        }
+    }
+    Layer.prototype.menubar = function (opts) {
+        const options = Object.assign({}, this._opts, opts);
+        const menubar = new Menubar(this, options);
+        if (opts.parent) {
+            menubar.setParent(opts.parent, opts);
+        }
+        return menubar;
+    };
+    // MENU
+    class MenuViewer extends Widget {
+        constructor(menubar, buttons) {
+            super(menubar.layer, {
+                tabStop: true,
                 x: 0,
                 y: 0,
-                wrap: width,
-            };
-            const textWidget = new Text$1('TEXT', textOpts);
-            const height = textWidget.bounds.height;
-            const dlg = buildDialog(this, width, height)
-                .with(textWidget, { x: 0, y: 0 })
-                .addBox(opts.box)
-                .center()
-                .done();
-            dlg.setEventHandlers({
-                click: () => dlg.close(true),
-                keypress: () => dlg.close(true),
-                TIMEOUT: () => dlg.close(false),
+                width: menubar.layer.width,
+                height: menubar.layer.height,
+                // @ts-ignore
+                tag: menubar.attr('menuTag'),
+                // @ts-ignore
+                class: menubar.attr('menuClass'),
             });
-            if (!opts.waitForAck) {
-                dlg.setTimeout('TIMEOUT', opts.duration || 3000);
-            }
-            return await dlg.show();
+            this.menubar = menubar;
+            this.mainMenu = this._initMenu(buttons);
         }
-        async confirm(...args) {
-            let opts;
-            let text;
-            let textArgs = null;
-            if (args.length <= 2 && typeof args[0] === 'string') {
-                opts = {};
-                text = args[0];
-                textArgs = args[1] || null;
-            }
-            else {
-                opts = args[0];
-                text = args[1];
-                textArgs = args[2] || null;
-            }
-            if (textArgs) {
-                text = GWU__namespace.text.apply(text, textArgs);
-            }
-            const width = opts.width ||
-                Math.min(Math.floor(this.buffer.width / 2), GWU__namespace.text.length(text));
-            const textOpts = {
-                fg: opts.fg,
-                text,
-                wrap: width,
-            };
-            const textWidget = new Text$1('TEXT', textOpts);
-            const height = textWidget.bounds.height + 2;
-            opts.allowCancel = opts.allowCancel !== false;
-            opts.buttons = Object.assign({
-                fg: 'white',
-                activeFg: 'teal',
-                bg: 'dark_gray',
-                activeBg: 'darkest_gray',
-            }, opts.buttons || {});
-            if (typeof opts.ok === 'string') {
-                opts.ok = { text: opts.ok };
-            }
-            if (typeof opts.cancel === 'string') {
-                opts.cancel = { text: opts.cancel };
-            }
-            opts.ok = opts.ok || {};
-            opts.cancel = opts.cancel || {};
-            const okOpts = Object.assign({}, opts.buttons, { text: 'OK' }, opts.ok);
-            const cancelOpts = Object.assign({}, opts.buttons, { text: 'CANCEL' }, opts.cancel);
-            const builder = buildDialog(this, width, height)
-                .with(textWidget, { x: 0, y: 0 })
-                .with(new Button$2('OK', okOpts), { x: 0, bottom: 0 });
-            if (opts.allowCancel) {
-                builder.with(new Button$2('CANCEL', cancelOpts), {
-                    right: 0,
-                    bottom: 0,
-                });
-            }
-            const dlg = builder.center().addBox(opts.box).done();
-            dlg.setEventHandlers({
-                OK() {
-                    dlg.close(true);
-                },
-                CANCEL() {
-                    dlg.close(false);
-                },
-                Escape() {
-                    dlg.close(false);
-                },
-                Enter() {
-                    dlg.close(true);
-                },
-            });
-            return await dlg.show();
+        contains() {
+            return true;
         }
-        async showWidget(widget, keymap = {}) {
-            const center = widget.bounds.x < 0 || widget.bounds.y < 0;
-            const place = { x: widget.bounds.x, y: widget.bounds.y };
-            const builder = buildDialog(this).with(widget, { x: 0, y: 0 });
-            if (center) {
-                builder.center();
-            }
-            else {
-                builder.place(place.x, place.y);
-            }
-            const dlg = builder.done();
-            keymap.Escape =
-                keymap.Escape ||
-                    (() => {
-                        dlg.close(false);
-                    });
-            dlg.setEventHandlers(keymap);
-            return await dlg.show();
+        finish() {
+            this.layer.finish();
         }
-        // assumes you are in a dialog and give the buffer for that dialog
-        async getInputAt(x, y, maxLength, opts = {}) {
-            opts.width = maxLength;
-            opts.x = x;
-            opts.y = y;
-            const widget = new Input$1('INPUT', opts);
-            return this.showWidget(widget, {
-                INPUT(_e, dlg) {
-                    dlg.close(widget.text);
-                },
-                Escape(_e, dlg) {
-                    dlg.close('');
-                },
+        _initMenu(buttons) {
+            return new Menu(this.layer, {
+                buttonTag: this.menubar._attrStr('buttonTag'),
+                buttonClass: this.menubar._attrStr('buttonClass'),
+                minWidth: this.menubar.selectedButton.bounds.width,
+                buttons,
             });
         }
-        async inputBox(opts, prompt, args) {
-            if (args) {
-                prompt = GWU__namespace.text.apply(prompt, args);
+        keypress(e) {
+            if (!e.key)
+                return false;
+            if (e.key === 'Escape') {
+                this.finish();
+                return true;
             }
-            const width = opts.width ||
-                Math.min(Math.floor(this.buffer.width / 2), GWU__namespace.text.length(prompt));
-            const promptOpts = {
-                fg: opts.fg,
-                text: prompt,
-                wrap: width,
-            };
-            const promptWidget = new Text$1('TEXT', promptOpts);
-            const height = promptWidget.bounds.height +
-                2 + // skip + input
-                2; // skip + ok/cancel
-            opts.allowCancel = opts.allowCancel !== false;
-            opts.buttons = Object.assign({
-                fg: 'white',
-                activeFg: 'teal',
-                bg: 'dark_gray',
-                activeBg: 'darkest_gray',
-            }, opts.buttons || {});
-            if (typeof opts.ok === 'string') {
-                opts.ok = { text: opts.ok };
+            else if (e.key === 'Tab') {
+                this.finish();
+                this.menubar.keypress(e);
+                return true;
             }
-            if (typeof opts.cancel === 'string') {
-                opts.cancel = { text: opts.cancel };
+            else if (e.key === 'TAB') {
+                this.finish();
+                this.menubar.keypress(e);
+                return true;
             }
-            opts.ok = opts.ok || {};
-            opts.cancel = opts.cancel || {};
-            const okOpts = Object.assign({}, opts.buttons, { text: 'OK' }, opts.ok);
-            const cancelOpts = Object.assign({}, opts.buttons, { text: 'CANCEL' }, opts.cancel);
-            opts.input = opts.input || {};
-            opts.input.width = opts.input.width || width;
-            opts.input.bg = opts.input.bg || opts.fg;
-            opts.input.fg = opts.input.fg || opts.bg;
-            const inputWidget = new Input$1('INPUT', opts.input || {});
-            const builder = buildDialog(this, width, height)
-                .with(promptWidget, { x: 0, y: 0 })
-                .with(inputWidget, { bottom: 2, x: 0 })
-                .with(new Button$2('OK', okOpts), { bottom: 0, x: 0 })
-                .addBox(opts.box);
-            if (opts.allowCancel) {
-                builder.with(new Button$2('CANCEL', cancelOpts), {
-                    bottom: 0,
-                    right: 0,
-                });
-            }
-            const dlg = builder.center().done();
-            dlg.setEventHandlers({
-                OK() {
-                    dlg.close(inputWidget.text);
-                },
-                CANCEL() {
-                    dlg.close('');
-                },
-                Escape() {
-                    dlg.close('');
-                },
-                INPUT() {
-                    dlg.close(inputWidget.text);
-                },
-            });
-            return await dlg.show();
+            return false;
         }
     }
 
-    class Messages extends Widget$1 {
-        constructor(id, opts) {
-            super(id, opts);
+    // import * as GWU from 'gw-utils';
+    class Select extends Widget {
+        constructor(layer, opts) {
+            super(layer, opts);
+            this.tag = opts.tag || 'select';
+            this._initText(opts);
+            this._initMenu(opts);
+            this.bounds.height = 1; // just the text component
         }
-        init(opts) {
-            opts.x = opts.x || 0;
-            opts.y = opts.y || 0;
-            super.init(opts);
+        _initText(opts) {
+            this.dropdown = new Text(this.layer, {
+                text: opts.text + ' \u25bc',
+                x: this.bounds.x,
+                y: this.bounds.y,
+                class: opts.class,
+                tag: opts.tag || 'select',
+                width: this.bounds.width,
+                height: 1,
+                depth: this.depth + 1,
+            }).on('click', () => {
+                this.menu.toggleProp('hidden');
+                return false;
+            });
+            this.dropdown.setParent(this, { beforeIndex: 0 });
+        }
+        _initMenu(opts) {
+            this.menu = new Menu(this.layer, {
+                x: this.bounds.x,
+                y: this.bounds.y + 1,
+                class: opts.buttonClass,
+                tag: opts.buttonTag || 'select',
+                width: opts.width,
+                minWidth: this.dropdown.bounds.width,
+                height: opts.height,
+                buttons: opts.buttons,
+                depth: this.depth + 1,
+            }).on('click', () => {
+                this.menu.hidden = true;
+                return false;
+            });
+            this.menu.hidden = true;
+            this.menu.setParent(this);
+        }
+    }
+    installWidget('select', (l, opts) => new Select(l, opts));
+    Layer.prototype.select = function (opts) {
+        const options = Object.assign({}, this._opts, opts);
+        const list = new Select(this, options);
+        if (opts.parent) {
+            list.setParent(opts.parent, opts);
+        }
+        return list;
+    };
+
+    class Messages extends Widget {
+        constructor(layer, opts) {
+            super(layer, (() => {
+                opts.tag = opts.tag || 'messages';
+                return opts;
+            })());
             if (!this.bounds.height)
                 throw new Error('Must provde a height for messages widget.');
             this.cache = new GWU__namespace.message.MessageCache({
                 width: this.bounds.width,
                 length: opts.length || 40,
                 match: (_x, _y) => {
+                    this.layer.needsDraw = true;
                     return true;
                 },
             });
         }
-        click(e, dialog) {
+        click(e) {
             if (!this.contains(e))
                 return false;
-            return this.showArchive(dialog).then(() => true);
+            this.showArchive();
+            return true;
         }
         draw(buffer) {
             const isOnTop = this.bounds.y < 10;
             // black out the message area
-            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.bg, this.bg);
+            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this._used.bg, this._used.bg);
             this.cache.forEach((line, confirmed, i) => {
                 if (i >= this.bounds.height)
                     return;
                 const localY = isOnTop ? this.bounds.height - i - 1 : i;
                 const y = localY + this.bounds.y;
-                buffer.drawText(this.bounds.x, y, line, this.fg);
-                if (confirmed) {
-                    buffer.mix(this.bg, 50, this.bounds.x, y, this.bounds.width, 1);
+                buffer.drawText(this.bounds.x, y, line, this._used.fg);
+                if (confirmed && this._used.bg) {
+                    buffer.mix(this._used.bg, 50, this.bounds.x, y, this.bounds.width, 1);
                 }
             });
             return true;
         }
-        async showArchive(dialog) {
-            let reverse, fadePercent = 0;
-            let fastForward;
-            const ui = dialog.ui;
-            // Count the number of lines in the archive.
-            let totalMessageCount = this.cache.length;
-            if (totalMessageCount <= this.bounds.height)
-                return false;
-            const isOnTop = this.bounds.y < 10;
-            const dbuf = ui.startLayer();
-            const fg = GWU__namespace.color.from(this.fg);
-            totalMessageCount = Math.min(totalMessageCount, isOnTop ? dbuf.height - this.bounds.top : this.bounds.bottom);
-            // Pull-down/pull-up animation:
-            for (reverse = 0; reverse <= 1; reverse++) {
-                fastForward = false;
-                const dM = reverse ? -1 : 1;
-                const startM = reverse ? totalMessageCount : this.bounds.height;
-                const endM = reverse
-                    ? this.bounds.height + dM + 1
-                    : totalMessageCount + dM;
-                // console.log(
-                //     `setting up draw - startM=${startM}, endM=${endM}, dM=${dM}`
-                // );
-                for (let currentM = startM; currentM != endM; currentM += dM) {
-                    const startY = isOnTop
-                        ? this.bounds.y + currentM - 1
-                        : this.bounds.bottom - currentM;
-                    const endY = isOnTop ? this.bounds.y : this.bounds.bottom;
-                    const dy = isOnTop ? -1 : 1;
-                    ui.resetLayerBuffer();
-                    // console.log(
-                    //     `draw archive - count=${i}, startY=${startY}, endY=${endY}, dy=${dy}`
-                    // );
-                    dbuf.fillRect(this.bounds.x, Math.min(startY, endY), this.bounds.width, currentM, ' ', this.bg, this.bg);
-                    this.cache.forEach((line, _confirmed, j) => {
-                        const y = startY + j * dy;
-                        if (isOnTop) {
-                            if (y < endY)
-                                return;
-                        }
-                        else if (y > endY)
-                            return;
-                        fadePercent = Math.floor((50 * j) / currentM);
-                        const fgColor = fg.clone().mix(this.bg, fadePercent);
-                        dbuf.drawText(this.bounds.x, y, line, fgColor, this.bg);
-                    });
-                    dbuf.render();
-                    if (!fastForward) {
-                        if (await ui.loop.pause(reverse ? 15 : 45)) {
-                            fastForward = true;
-                            currentM = endM - 2 * dM; // skip to the end-1
-                        }
-                    }
-                }
-                if (!reverse) {
-                    const y = isOnTop ? 0 : dbuf.height - 1;
-                    const x = this.bounds.x > 8
-                        ? this.bounds.x - 8 // to left of box
-                        : Math.min(this.bounds.x + this.bounds.width, // just to right of box
-                        dbuf.width - 8 // But definitely on the screen - overwrite some text if necessary
-                        );
-                    dbuf.wrapText(x, y, 8, '--DONE--', this.bg, this.fg);
-                    dbuf.render();
-                    await ui.loop.waitForAck();
-                }
-            }
-            ui.finishLayer();
-            this.cache.confirmAll();
-            dialog.requestRedraw(); // everything is confirmed
-            return true;
+        showArchive() {
+            if (this.cache.length <= this.bounds.height)
+                return;
+            const layer = this.layer.ui.startNewLayer();
+            // @ts-ignore
+            new MessageArchive(layer, this);
         }
     }
-
-    class Viewport extends Widget$1 {
-        constructor(id, opts) {
-            super(id, opts);
-            this.offsetX = 0;
-            this.offsetY = 0;
-            this._subject = null;
+    class MessageArchive extends Widget {
+        constructor(layer, source) {
+            super(layer, {
+                id: 'ARCHIVE',
+                tag: 'messages',
+                class: source.classes.concat('archive'),
+                height: source.bounds.height,
+                width: source.bounds.width,
+                x: 0,
+                y: 0,
+                tabStop: true,
+                depth: 100, // I'm on top
+            });
+            this.mode = 'forward';
+            this.source = source;
+            this.isOnTop = this.source.bounds.y < 10;
+            this.bounds.height = this.isOnTop
+                ? layer.height - source.bounds.y
+                : source.bounds.bottom;
+            this.totalCount = Math.min(source.cache.length, this.isOnTop
+                ? layer.height - this.source.bounds.top
+                : this.source.bounds.bottom);
+            this.shown = source.bounds.height;
+            this.layer.on('FORWARD', this._forward.bind(this));
+            this.layer.on('REVERSE', this._reverse.bind(this));
+            this.layer.setTimeout('FORWARD', 16);
         }
-        init(opts) {
-            opts.bg = opts.bg || 'black';
-            opts.x = opts.x || 0;
-            opts.y = opts.y || 0;
-            super.init(opts);
-            this.snap = opts.snap || false;
-            this.center = opts.center || false;
-            this.filter = opts.filter || null;
-            if (opts.lock) {
-                this.lockX = true;
-                this.lockY = true;
+        contains() {
+            return true; // Eat all mouse activity
+        }
+        finish() {
+            this.source.cache.confirmAll();
+            this.layer.finish();
+        }
+        keypress(e) {
+            if (this.mode === 'ack') {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    this.mode = 'reverse';
+                    this.layer.needsDraw = true;
+                    this.layer.setTimeout('REVERSE', 16);
+                }
+            }
+            else if (this.mode === 'reverse') {
+                this.finish();
+                return true;
             }
             else {
-                if (opts.lockX) {
-                    this.lockX = true;
+                this.mode = 'ack';
+                this.shown = this.totalCount;
+                this.layer.needsDraw = true;
+            }
+            return false;
+        }
+        click(_e) {
+            if (this.mode === 'ack') {
+                this.mode = 'reverse';
+                this.layer.needsDraw = true;
+                this.layer.setTimeout('REVERSE', 16);
+            }
+            else if (this.mode === 'reverse') {
+                this.finish();
+            }
+            else {
+                this.mode = 'ack';
+                this.shown = this.totalCount;
+                this.layer.needsDraw = true;
+            }
+            return false;
+        }
+        _forward() {
+            ++this.shown;
+            this.layer.needsDraw = true;
+            if (this.shown < this.totalCount) {
+                this.layer.setTimeout('FORWARD', 16);
+            }
+            else {
+                this.mode = 'ack';
+            }
+            return true;
+        }
+        _reverse() {
+            --this.shown;
+            if (this.shown <= this.source.bounds.height) {
+                this.finish();
+            }
+            else {
+                this.layer.needsDraw = true;
+                this.layer.setTimeout('REVERSE', 16);
+            }
+            return true;
+        }
+        _draw(buffer) {
+            let fadePercent = 0;
+            // let reverse = this.mode === 'reverse';
+            // Count the number of lines in the archive.
+            // let totalMessageCount = this.totalCount;
+            const isOnTop = this.isOnTop;
+            const dbuf = buffer;
+            const fg = GWU__namespace.color.from(this.source._used.fg);
+            // const dM = reverse ? -1 : 1;
+            // const startM = reverse ? totalMessageCount : this.bounds.height;
+            // const endM = reverse
+            //     ? this.bounds.height + dM + 1
+            //     : totalMessageCount + dM;
+            const startY = isOnTop
+                ? this.shown - 1
+                : this.bounds.bottom - this.shown;
+            const endY = isOnTop ? 0 : this.bounds.bottom - 1;
+            const dy = isOnTop ? -1 : 1;
+            dbuf.fillRect(this.source.bounds.x, Math.min(startY, endY), this.bounds.width, this.shown, ' ', this._used.bg, this._used.bg);
+            this.source.cache.forEach((line, _confirmed, j) => {
+                const y = startY + j * dy;
+                if (isOnTop) {
+                    if (y < endY)
+                        return;
                 }
-                if (opts.lockY) {
-                    this.lockY = true;
-                }
+                else if (y > endY)
+                    return;
+                fadePercent = Math.floor((50 * j) / this.shown);
+                const fgColor = fg.clone().mix(this._used.bg, fadePercent);
+                dbuf.drawText(this.source.bounds.x, y, line, fgColor, this._used.bg);
+            });
+            if (this.mode === 'ack') {
+                const y = this.isOnTop ? 0 : dbuf.height - 1;
+                const x = this.source.bounds.x > 8
+                    ? this.source.bounds.x - 8 // to left of box
+                    : Math.min(this.source.bounds.x + this.bounds.width, // just to right of box
+                    dbuf.width - 8 // But definitely on the screen - overwrite some text if necessary
+                    );
+                dbuf.wrapText(x, y, 8, '--DONE--', this._used.bg, this._used.fg);
             }
-        }
-        get subject() {
-            return this._subject;
-        }
-        set subject(subject) {
-            this.center = !!subject;
-            if (subject) {
-                this.offsetX = subject.x - this.halfWidth();
-                this.offsetY = subject.y - this.halfHeight();
-            }
-            this._subject = subject;
-        }
-        set lock(v) {
-            this.lockX = v;
-            this.lockY = v;
-        }
-        toMapX(x) {
-            return x + this.offsetX - this.bounds.x;
-        }
-        toMapY(y) {
-            return y + this.offsetY - this.bounds.y;
-        }
-        toInnerX(x) {
-            return x - this.bounds.x;
-        }
-        toInnerY(y) {
-            return y - this.bounds.y;
-        }
-        halfWidth() {
-            return Math.floor(this.bounds.width / 2);
-        }
-        halfHeight() {
-            return Math.floor(this.bounds.height / 2);
-        }
-        centerOn(map, x, y) {
-            this.center = true;
-            this.subject = { x, y, map };
-        }
-        showMap(map, x = 0, y = 0) {
-            this.subject = { x, y, map };
-            this.offsetX = x;
-            this.offsetY = y;
-            this.center = false;
-            this.snap = false;
-        }
-        updateOffset() {
-            if (!this._subject) {
-                this.offsetX = 0;
-                this.offsetY = 0;
-                return;
-            }
-            const subject = this._subject;
-            const map = subject.memory || subject.map;
-            const bounds = map;
-            if (subject && map.hasXY(subject.x, subject.y)) {
-                if (this.snap) {
-                    let left = this.offsetX;
-                    let right = this.offsetX + this.bounds.width;
-                    let top = this.offsetY;
-                    let bottom = this.offsetY + this.bounds.height;
-                    // auto center if outside the viewport
-                    if (subject.x < left || subject.x > right) {
-                        left = this.offsetX = subject.x - this.halfWidth();
-                        right = left + this.bounds.width;
-                    }
-                    if (subject.y < top || subject.y > bottom) {
-                        top = this.offsetY = subject.y - this.halfHeight();
-                        bottom = top + this.bounds.height;
-                    }
-                    const edgeX = Math.floor(this.bounds.width / 5);
-                    const edgeY = Math.floor(this.bounds.height / 5);
-                    const thirdW = Math.floor(this.bounds.width / 3);
-                    if (left + edgeX >= subject.x) {
-                        this.offsetX = Math.max(0, subject.x + thirdW - this.bounds.width);
-                    }
-                    else if (right - edgeX <= subject.x) {
-                        this.offsetX = Math.min(subject.x - thirdW, bounds.width - this.bounds.width);
-                    }
-                    const thirdH = Math.floor(this.bounds.height / 3);
-                    if (top + edgeY >= subject.y) {
-                        this.offsetY = Math.max(0, subject.y + thirdH - this.bounds.height);
-                    }
-                    else if (bottom - edgeY <= subject.y) {
-                        this.offsetY = Math.min(subject.y - thirdH, bounds.height - this.bounds.height);
-                    }
-                }
-                else if (this.center) {
-                    this.offsetX = subject.x - this.halfWidth();
-                    this.offsetY = subject.y - this.halfHeight();
-                }
-                else {
-                    this.offsetX = subject.x;
-                    this.offsetY = subject.y;
-                }
-            }
-            if (this.lockX && map) {
-                this.offsetX = GWU__namespace.clamp(this.offsetX, 0, map.width - this.bounds.width);
-            }
-            if (this.lockY && map) {
-                this.offsetY = GWU__namespace.clamp(this.offsetY, 0, map.height - this.bounds.height);
-            }
-        }
-        draw(buffer) {
-            buffer.blackOutRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, this.bg);
-            if (!this._subject) {
-                return false;
-            }
-            this.updateOffset();
-            const map = this._subject.memory || this._subject.map;
-            const fov = this._subject.fov;
-            const mixer = new GWU__namespace.sprite.Mixer();
-            for (let x = 0; x < this.bounds.width; ++x) {
-                for (let y = 0; y < this.bounds.height; ++y) {
-                    const mapX = x + this.offsetX;
-                    const mapY = y + this.offsetY;
-                    if (map.hasXY(mapX, mapY)) {
-                        const cell = map.cell(mapX, mapY);
-                        map.drawer.drawCell(mixer, cell, fov);
-                    }
-                    else {
-                        mixer.draw(' ', this.bg, this.bg); // blackOut
-                    }
-                    if (this.filter) {
-                        this.filter(mixer, mapX, mapY, map);
-                    }
-                    buffer.drawSprite(x + this.bounds.x, y + this.bounds.y, mixer);
-                }
-            }
-            // map.clearMapFlag(GWM.flags.Map.MAP_CHANGED);
             return true;
         }
     }
 
     GWU__namespace.color.install('flavorText', 50, 40, 90);
     GWU__namespace.color.install('flavorPrompt', 100, 90, 20);
-    class Flavor extends Text$1 {
-        constructor(id, opts) {
-            super(id, opts);
-        }
-        init(opts) {
-            opts.fg = opts.fg || 'flavorText';
-            opts.bg = opts.bg || 'black';
-            super.init(opts);
-            this.promptFg = GWU__namespace.color.from(opts.promptFg || 'flavorPrompt');
+    class Flavor extends Text {
+        constructor(layer, opts) {
+            super(layer, (() => {
+                opts.tag = opts.tag || 'flavor';
+                opts.text = '';
+                return opts;
+            })());
             this.overflow = opts.overflow || false;
             this.isPrompt = false;
         }
         showText(text) {
-            this.text = GWU__namespace.text.capitalize(text);
-            const len = GWU__namespace.text.length(this.text);
-            if (len > this.bounds.width) {
-                this.lines = GWU__namespace.text.splitIntoLines(this.text, this.bounds.width);
-                if (!this.overflow && this.lines.length > this.bounds.height) {
-                    if (this.bounds.height == 1) {
-                        this.text = GWU__namespace.text.truncate(this.text, this.bounds.width);
-                        this.lines = [this.text];
-                    }
-                    else {
-                        this.lines.length = this.bounds.height;
-                    }
-                }
-            }
-            else {
-                this.lines = [this.text];
-            }
-            this.isPrompt = false;
+            this.text(text);
+            this.removeClass('prompt');
+            return this;
         }
         clear() {
-            this.text = '';
-            this.lines = [''];
-            this.isPrompt = false;
+            this.text('');
+            this.removeClass('prompt');
+            return this;
         }
         showPrompt(text) {
             this.showText(text);
-            this.isPrompt = true;
-        }
-        draw(buffer) {
-            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this.bg, this.bg);
-            super.draw(buffer);
+            this.addClass('prompt');
+            return this;
         }
         getFlavorText(map, x, y, fov) {
             const cell = map.cell(x, y); // KNOWLEDGE / MEMORY !!!
@@ -2237,9 +2912,9 @@
             return this.cell.drawStatus(buffer, bounds);
         }
     }
-    class Sidebar extends Widget$1 {
-        constructor(id, opts) {
-            super(id, opts);
+    class Sidebar extends Widget {
+        constructor(layer, opts) {
+            super(layer, opts);
             this.cellCache = [];
             this.lastX = -1;
             this.lastY = -1;
@@ -2248,13 +2923,7 @@
             this.subject = null;
             this.highlight = null;
         }
-        init(opts) {
-            opts.fg = opts.fg || 'purple';
-            opts.bg = opts.bg || 'black';
-            super.init(opts);
-        }
         reset() {
-            super.reset();
             this.lastMap = null;
             this.lastX = -1;
             this.lastY = -1;
@@ -2264,8 +2933,8 @@
                 return entry.sidebarY <= e.y && entry.sidebarY !== -1;
             }) || null);
         }
-        mousemove(e, dialog) {
-            super.mousemove(e, dialog);
+        mousemove(e) {
+            super.mousemove(e);
             if (this.contains(e)) {
                 return this.highlightRow(e.y);
             }
@@ -2421,7 +3090,7 @@
             return true;
         }
         draw(buffer) {
-            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, 0, 0, this.bg);
+            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, 0, 0, this._used.bg);
             // clear the row information
             this.entries.forEach((e) => (e.sidebarY = -1));
             const drawBounds = this.bounds.clone();
@@ -2430,8 +3099,8 @@
                 currentEntry = this.entries[i];
                 currentEntry.sidebarY = drawBounds.y;
                 let usedLines = currentEntry.draw(buffer, drawBounds);
-                if (this._isDim(currentEntry)) {
-                    buffer.mix(this.bg, 50, drawBounds.x, drawBounds.y, drawBounds.width, usedLines);
+                if (this._isDim(currentEntry) && this._used.bg) {
+                    buffer.mix(this._used.bg, 50, drawBounds.x, drawBounds.y, drawBounds.width, usedLines);
                 }
                 if (usedLines) {
                     ++usedLines; // skip a space
@@ -2443,4004 +3112,194 @@
         }
     }
 
-    class MenuButton$1 {
-        constructor(text) {
-            this.hovered = false;
-            this.x = 999;
-            this.text = text;
-        }
-        get width() {
-            return this.text.length;
-        }
-    }
-    class ActionButton extends MenuButton$1 {
-        constructor(text, action) {
-            super(text);
-            this.action = action;
-        }
-    }
-    class DropDownButton extends MenuButton$1 {
-        constructor(menu, parent, text, buttons) {
-            super(text);
-            this.buttons = [];
-            this.parent = null;
-            this.menu = menu;
-            this.parent = parent;
-            this.text = text;
-            this.bounds = new GWU__namespace.xy.Bounds(0, 0, 0, 0);
-            Object.entries(buttons).forEach(([text, opts]) => {
-                this.addButton(text, opts);
-            });
-        }
-        addButton(text, config) {
-            // if (this.buttons.length >= this.menu.bounds.height - 1) {
-            //     throw new Error('Too many menu options.');
-            // }
-            let button;
-            if (typeof config === 'string') {
-                button = new ActionButton(text, config);
+    class Viewport extends Widget {
+        constructor(layer, opts) {
+            super(layer, opts);
+            this.offsetX = 0;
+            this.offsetY = 0;
+            this._subject = null;
+            this.snap = opts.snap || false;
+            this.center = opts.center || false;
+            this.filter = opts.filter || null;
+            if (opts.lock) {
+                this.lockX = true;
+                this.lockY = true;
             }
             else {
-                button = new DropDownButton(this.menu, this, text, config);
+                if (opts.lockX) {
+                    this.lockX = true;
+                }
+                if (opts.lockY) {
+                    this.lockY = true;
+                }
             }
-            this.buttons.push(button);
-            ++this.bounds.height;
-            this.bounds.width = Math.max(this.bounds.width, text.length + 2);
         }
-        setBounds(buffer, px, py, pw) {
-            // vertical reveal
-            const right = px + pw;
-            const totalWidth = buffer.width;
-            if (this.bounds.width < totalWidth - right) {
-                this.bounds.x = right;
-            }
-            else if (this.bounds.width < px) {
-                this.bounds.x = px - this.bounds.width;
-            }
-            else {
-                throw new Error('Menu does not fit - too wide.');
-            }
-            const totalHeight = buffer.height;
-            if (this.bounds.height <= totalHeight - py) {
-                this.bounds.y = py;
-            }
-            else if (this.bounds.height < totalHeight) {
-                this.bounds.y = totalHeight - this.bounds.height - 1;
-            }
-            else {
-                throw new Error('Menu does not fit - too tall.');
-            }
-            // this.buttons.forEach((b) => {
-            //     if (b instanceof DropDownButton) {
-            //         b.setBounds(buffer);
-            //     }
-            // });
+        get subject() {
+            return this._subject;
         }
-        contains(e) {
-            return this.bounds.contains(e);
+        set subject(subject) {
+            this.center = !!subject;
+            if (subject) {
+                this.offsetX = subject.x - this.halfWidth();
+                this.offsetY = subject.y - this.halfHeight();
+            }
+            this._subject = subject;
         }
-        buttonAt(e) {
-            const index = e.y - this.bounds.y;
-            return this.buttons[index] || null;
+        set lock(v) {
+            this.lockX = v;
+            this.lockY = v;
+        }
+        toMapX(x) {
+            return x + this.offsetX - this.bounds.x;
+        }
+        toMapY(y) {
+            return y + this.offsetY - this.bounds.y;
+        }
+        toInnerX(x) {
+            return x - this.bounds.x;
+        }
+        toInnerY(y) {
+            return y - this.bounds.y;
+        }
+        halfWidth() {
+            return Math.floor(this.bounds.width / 2);
+        }
+        halfHeight() {
+            return Math.floor(this.bounds.height / 2);
+        }
+        centerOn(map, x, y) {
+            this.center = true;
+            this.subject = { x, y, map };
+        }
+        showMap(map, x = 0, y = 0) {
+            this.subject = { x, y, map };
+            this.offsetX = x;
+            this.offsetY = y;
+            this.center = false;
+            this.snap = false;
+        }
+        updateOffset() {
+            if (!this._subject) {
+                this.offsetX = 0;
+                this.offsetY = 0;
+                return;
+            }
+            const subject = this._subject;
+            const map = subject.memory || subject.map;
+            const bounds = map;
+            if (subject && map.hasXY(subject.x, subject.y)) {
+                if (this.snap) {
+                    let left = this.offsetX;
+                    let right = this.offsetX + this.bounds.width;
+                    let top = this.offsetY;
+                    let bottom = this.offsetY + this.bounds.height;
+                    // auto center if outside the viewport
+                    if (subject.x < left || subject.x > right) {
+                        left = this.offsetX = subject.x - this.halfWidth();
+                        right = left + this.bounds.width;
+                    }
+                    if (subject.y < top || subject.y > bottom) {
+                        top = this.offsetY = subject.y - this.halfHeight();
+                        bottom = top + this.bounds.height;
+                    }
+                    const edgeX = Math.floor(this.bounds.width / 5);
+                    const edgeY = Math.floor(this.bounds.height / 5);
+                    const thirdW = Math.floor(this.bounds.width / 3);
+                    if (left + edgeX >= subject.x) {
+                        this.offsetX = Math.max(0, subject.x + thirdW - this.bounds.width);
+                    }
+                    else if (right - edgeX <= subject.x) {
+                        this.offsetX = Math.min(subject.x - thirdW, bounds.width - this.bounds.width);
+                    }
+                    const thirdH = Math.floor(this.bounds.height / 3);
+                    if (top + edgeY >= subject.y) {
+                        this.offsetY = Math.max(0, subject.y + thirdH - this.bounds.height);
+                    }
+                    else if (bottom - edgeY <= subject.y) {
+                        this.offsetY = Math.min(subject.y - thirdH, bounds.height - this.bounds.height);
+                    }
+                }
+                else if (this.center) {
+                    this.offsetX = subject.x - this.halfWidth();
+                    this.offsetY = subject.y - this.halfHeight();
+                }
+                else {
+                    this.offsetX = subject.x;
+                    this.offsetY = subject.y;
+                }
+            }
+            if (this.lockX && map) {
+                this.offsetX = GWU__namespace.clamp(this.offsetX, 0, map.width - this.bounds.width);
+            }
+            if (this.lockY && map) {
+                this.offsetY = GWU__namespace.clamp(this.offsetY, 0, map.height - this.bounds.height);
+            }
         }
         draw(buffer) {
-            const width = this.bounds.width;
-            const height = this.bounds.height;
-            const x = this.bounds.x;
-            let y = this.bounds.y;
-            buffer.fillRect(x, y, width, height, 0, 0, this.menu.dropBg);
-            // Now draw the individual buttons...
-            this.buttons.forEach((b) => {
-                buffer.drawText(x + 1, y, b.text, b.hovered ? this.menu.activeFg : this.menu.dropFg, b.hovered ? this.menu.activeBg : this.menu.dropBg);
-                ++y;
-            });
-            if (this.parent) {
-                this.parent.draw(buffer);
-            }
-        }
-    }
-    async function showDropDown(dialog, menu, button) {
-        // Start dialog
-        const ui = dialog.ui;
-        const buffer = ui.startLayer();
-        button.buttons.forEach((b) => (b.hovered = false));
-        // button.buttons[0].hovered = true;
-        let activeButton = button;
-        await ui.loop.run({
-            Escape() {
-                return true;
-            },
-            // TODO - Tab
-            Tab() {
-                menu.activeIndex = (menu.activeIndex + 1) % menu.buttons.length;
-                const button = menu.buttons[menu.activeIndex];
-                if (button) {
-                    button.hovered = true;
-                }
-                if (activeButton && button instanceof DropDownButton) {
-                    activeButton.hovered = false;
-                    activeButton = button;
-                }
-                else {
-                    activeButton = null; // done.
-                }
-                dialog.requestRedraw();
-                return !activeButton;
-            },
-            // TODO - TAB
-            TAB() {
-                menu.activeIndex =
-                    (menu.buttons.length + menu.activeIndex - 1) %
-                        menu.buttons.length;
-                const button = menu.buttons[menu.activeIndex];
-                if (button) {
-                    button.hovered = true;
-                }
-                if (activeButton && button instanceof DropDownButton) {
-                    activeButton.hovered = false;
-                    activeButton = button;
-                }
-                else {
-                    activeButton = null; // done.
-                }
-                dialog.requestRedraw();
-                return !activeButton;
-            },
-            mousemove: (e) => {
-                if (!activeButton)
-                    return true; // we are done (should not happen)
-                let newActive = activeButton;
-                while (newActive && !newActive.contains(e)) {
-                    newActive = newActive.parent;
-                }
-                if (newActive) {
-                    activeButton = newActive;
-                    const selected = activeButton.buttonAt(e);
-                    if (selected) {
-                        activeButton.buttons.forEach((b) => {
-                            b.hovered = false;
-                        });
-                        selected.hovered = true;
-                        if (selected instanceof DropDownButton) {
-                            selected.buttons.forEach((b) => {
-                                b.hovered = false;
-                            });
-                            selected.buttons[0].hovered = true;
-                            selected.setBounds(ui.buffer, activeButton.bounds.x, e.y, activeButton.bounds.width);
-                            activeButton = selected;
-                        }
-                    }
-                }
-                else {
-                    if (menu.contains(e)) {
-                        if (dialog)
-                            dialog.requestRedraw();
-                        const button = menu.getButtonAt(e.x, e.y);
-                        if (button) {
-                            button.hovered = true;
-                            menu.activeIndex = menu.buttons.indexOf(button);
-                        }
-                        if (button instanceof DropDownButton) {
-                            activeButton.hovered = false;
-                            activeButton = button;
-                        }
-                        else {
-                            activeButton = null; // done.
-                        }
-                        if (dialog)
-                            dialog.requestRedraw();
-                    }
-                }
-                return !activeButton; // if no active button we are done (should not happen)
-            },
-            click: async (e) => {
-                if (!activeButton)
-                    return true; // we are done (should not happen)
-                if (!activeButton.contains(e)) {
-                    menu.clearHighlight();
-                    return true; // we are done
-                }
-                const actionButton = activeButton.buttonAt(e);
-                if (!actionButton) {
-                    return true; // weird, but we are done.
-                }
-                if (actionButton instanceof ActionButton) {
-                    menu.actionButton = actionButton;
-                    await dialog.fireAction(actionButton.action, menu);
-                    return true;
-                }
+            buffer.blackOutRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, this._used.bg);
+            if (!this._subject) {
                 return false;
-            },
-            dir: async (e) => {
-                if (!activeButton)
-                    return true; // should not happen
-                if (!e.dir)
-                    return;
-                if (e.dir[1]) {
-                    const current = activeButton.buttons.findIndex((b) => b.hovered);
-                    if (current < 1 && e.dir[1] < 0) {
-                        activeButton.buttons.forEach((b) => (b.hovered = false));
-                        return true; // close me!
-                    }
-                    const index = GWU__namespace.clamp(current + e.dir[1], 0, activeButton.buttons.length - 1);
-                    activeButton.buttons.forEach((b, i) => (b.hovered = i === index));
-                    const selected = activeButton.buttons[index];
-                    if (selected instanceof DropDownButton) {
-                        selected.buttons.forEach((b) => {
-                            b.hovered = false;
-                        });
-                        selected.buttons[0].hovered = true;
-                        selected.setBounds(ui.buffer, activeButton.bounds.x, e.y, activeButton.bounds.width);
-                        activeButton = selected;
-                    }
-                }
-            },
-            draw: () => {
-                if (!activeButton)
-                    return;
-                ui.resetLayerBuffer();
-                activeButton.draw(buffer);
-                menu.draw(buffer);
-                buffer.render();
-            },
-        });
-        ui.finishLayer();
-        menu.clearHighlight();
-    }
-    class Menu$1 extends Widget$1 {
-        constructor(id, opts) {
-            super(id, opts);
-            this.activeIndex = -1;
-            this.actionButton = null;
-        }
-        init(opts) {
-            opts.fg = GWU__namespace.first(opts.fg, 'black');
-            opts.bg = GWU__namespace.first(opts.bg, 'light_gray');
-            opts.height = opts.height || 1;
-            opts.tabStop = GWU__namespace.first(opts.tabStop, true);
-            super.init(opts);
-            this.dropFg = GWU__namespace.color.from(opts.dropFg || this.fg);
-            this.dropBg = GWU__namespace.color.from(opts.dropBg || this.bg);
-            this.buttons = [];
-            this.separator = opts.separator || ' | ';
-            this.lead = opts.lead || ' ';
-            Object.entries(opts.buttons).forEach(([text, opts]) => {
-                this._addButton(text, opts);
-            });
-            if (opts.separator) {
-                this.separator = opts.separator;
             }
-            if (opts.lead !== undefined) {
-                this.lead = opts.lead ? opts.lead : '';
-            }
-        }
-        reset() {
-            super.reset();
-            const onTop = this.bounds.y <= 10;
-            this.buttons.forEach((b) => {
-                if (b instanceof DropDownButton) {
-                    if (onTop) {
-                        b.bounds.top = this.bounds.bottom + 1;
+            this.updateOffset();
+            const map = this._subject.memory || this._subject.map;
+            const fov = this._subject.fov;
+            const mixer = new GWU__namespace.sprite.Mixer();
+            for (let x = 0; x < this.bounds.width; ++x) {
+                for (let y = 0; y < this.bounds.height; ++y) {
+                    const mapX = x + this.offsetX;
+                    const mapY = y + this.offsetY;
+                    if (map.hasXY(mapX, mapY)) {
+                        const cell = map.cell(mapX, mapY);
+                        map.drawer.drawCell(mixer, cell, fov);
                     }
                     else {
-                        b.bounds.bottom = this.bounds.top - 1;
+                        mixer.draw(' ', this._used.bg, this._used.bg); // blackOut
                     }
-                }
-            });
-        }
-        activate(reverse = false) {
-            super.activate(reverse);
-            if (this.activeIndex < 0)
-                this.activeIndex = reverse ? this.buttons.length - 1 : 0;
-        }
-        deactivate() {
-            super.deactivate();
-            this.activeIndex = -1;
-        }
-        mousemove(e, dialog) {
-            // turn off all the hovers
-            this.buttons.forEach((b) => {
-                if (b.hovered) {
-                    b.hovered = false;
-                }
-            });
-            if (!super.mousemove(e, dialog))
-                return false;
-            // highlight one of them...
-            if (this.bounds.contains(e)) {
-                let hovered = null;
-                this.buttons.forEach((b) => {
-                    b.hovered = false;
-                    if (b.x < e.x) {
-                        hovered = b;
+                    if (this.filter) {
+                        this.filter(mixer, mapX, mapY, map);
                     }
-                });
-                if (hovered) {
-                    // @ts-ignore
-                    hovered.hovered = true;
-                    this.activeIndex = this.buttons.indexOf(hovered);
-                }
-                if (dialog)
-                    dialog.requestRedraw();
-                return true; // we handled the message
-            }
-            return false;
-        }
-        clearHighlight() {
-            this.buttons.forEach((b) => {
-                b.hovered = false;
-            });
-        }
-        getButtonAt(x, _y) {
-            return GWU__namespace.arrayFindRight(this.buttons, (b) => b.x < x) || null;
-        }
-        async click(e, dialog) {
-            if (this.bounds.contains(e)) {
-                // get active button
-                let activeButton = this.getButtonAt(e.x, e.y);
-                if (!activeButton)
-                    return false;
-                this.activeIndex = this.buttons.indexOf(activeButton);
-                if (activeButton instanceof DropDownButton) {
-                    await showDropDown(dialog, this, activeButton);
-                }
-                else if (activeButton instanceof ActionButton) {
-                    this.actionButton = activeButton;
-                    await dialog.fireAction(activeButton.action, this);
-                }
-                return true;
-            }
-            return false;
-        }
-        async keypress(e, dialog) {
-            if (this.active) {
-                if (e.key === 'Tab') {
-                    ++this.activeIndex;
-                    if (this.activeIndex >= this.buttons.length) {
-                        this.deactivate();
-                        return false; // tabbing away from me, need to process in dialog
-                    }
-                    return true;
-                }
-                else if (e.key === 'TAB') {
-                    --this.activeIndex;
-                    if (this.activeIndex < 0) {
-                        this.deactivate();
-                        return false; // shift tabbing away from me, need to process in dialog
-                    }
-                    return true;
-                }
-                else if (e.key === 'Enter') {
-                    const activeButton = this.buttons[this.activeIndex];
-                    if (activeButton instanceof DropDownButton) {
-                        await showDropDown(dialog, this, activeButton);
-                    }
-                    else if (activeButton instanceof ActionButton) {
-                        this.actionButton = activeButton;
-                        await dialog.fireAction(activeButton.action, this);
-                    }
-                    return true;
+                    buffer.drawSprite(x + this.bounds.x, y + this.bounds.y, mixer);
                 }
             }
-            return super.keypress(e, dialog);
-        }
-        _addButton(text, config) {
-            const x = this.buttons.reduce((len, button) => len + button.text.length + this.separator.length, this.lead.length + this.bounds.x);
-            if (x + text.length + this.separator.length > this.bounds.width) {
-                throw new Error('Button makes menu too wide :' + text);
-            }
-            let button;
-            if (typeof config === 'string') {
-                button = new ActionButton(text, config);
-            }
-            else {
-                const dropdown = new DropDownButton(this, null, text, config);
-                dropdown.bounds.x = x - 1; // Hmmm...
-                button = dropdown;
-            }
-            button.x = x;
-            this.buttons.push(button);
-        }
-        draw(buffer) {
-            const bg = this.active ? this.activeBg : this.bg;
-            const fg = this.active ? this.activeFg : this.fg;
-            buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, 1, 0, bg, bg);
-            let x = this.bounds.x;
-            const y = this.bounds.y;
-            buffer.drawText(x, y, this.lead, fg);
-            this.buttons.forEach((b, i) => {
-                const hovered = i === this.activeIndex;
-                const color = hovered ? this.hoverFg : fg;
-                const bgColor = hovered ? this.hoverBg : bg;
-                buffer.drawText(b.x, y, b.text, color, bgColor);
-                x = b.x + b.text.length;
-                buffer.drawText(x, y, this.separator, fg);
-            });
+            // map.clearMapFlag(GWM.flags.Map.MAP_CHANGED);
             return true;
         }
     }
 
-    class Style extends Style$1 {
-        constructor(selector = '$', init) {
-            super(selector, init);
-        }
-        get border() {
-            return this._border;
-        }
-        // get depth(): number | undefined {
-        //     return this._depth;
-        // }
-        get position() {
-            return this._position;
-        }
-        get minWidth() {
-            return this._minWidth;
-        }
-        get maxWidth() {
-            return this._maxWidth;
-        }
-        get width() {
-            return this._width;
-        }
-        get minHeight() {
-            return this._minHeight;
-        }
-        get maxHeight() {
-            return this._maxHeight;
-        }
-        get height() {
-            return this._height;
-        }
-        get x() {
-            return this._x;
-        }
-        get left() {
-            return this._left;
-        }
-        get right() {
-            return this._right;
-        }
-        get y() {
-            return this._y;
-        }
-        get top() {
-            return this._top;
-        }
-        get bottom() {
-            return this._bottom;
-        }
-        get padLeft() {
-            return this._padLeft;
-        }
-        get padRight() {
-            return this._padRight;
-        }
-        get padTop() {
-            return this._padTop;
-        }
-        get padBottom() {
-            return this._padBottom;
-        }
-        get marginLeft() {
-            return this._marginLeft;
-        }
-        get marginRight() {
-            return this._marginRight;
-        }
-        get marginTop() {
-            return this._marginTop;
-        }
-        get marginBottom() {
-            return this._marginBottom;
-        }
-        get(key) {
-            const id = ('_' + key);
-            return this[id];
-        }
-        set(key, value, setDirty = true) {
-            if (typeof key === 'string') {
-                if (key === 'padding') {
-                    if (typeof value === 'number') {
-                        value = [value];
-                    }
-                    else if (typeof value === 'string') {
-                        value = value.split(' ');
-                    }
-                    value = value.map((v) => {
-                        if (typeof v === 'string')
-                            return Number.parseInt(v);
-                        return v;
-                    });
-                    if (value.length == 1) {
-                        this._padLeft =
-                            this._padRight =
-                                this._padTop =
-                                    this._padBottom =
-                                        value[0];
-                    }
-                    else if (value.length == 2) {
-                        this._padLeft = this._padRight = value[1];
-                        this._padTop = this._padBottom = value[0];
-                    }
-                    else if (value.length == 3) {
-                        this._padTop = value[0];
-                        this._padRight = value[1];
-                        this._padBottom = value[2];
-                        this._padLeft = value[1];
-                    }
-                    else if (value.length == 4) {
-                        this._padTop = value[0];
-                        this._padRight = value[1];
-                        this._padBottom = value[2];
-                        this._padLeft = value[3];
-                    }
-                }
-                else if (key === 'margin') {
-                    if (typeof value === 'number') {
-                        value = [value];
-                    }
-                    else if (typeof value === 'string') {
-                        value = value.split(' ');
-                    }
-                    value = value.map((v) => {
-                        if (typeof v === 'string')
-                            return Number.parseInt(v);
-                        return v;
-                    });
-                    if (value.length == 1) {
-                        this._marginLeft =
-                            this._marginRight =
-                                this._marginTop =
-                                    this._marginBottom =
-                                        value[0];
-                    }
-                    else if (value.length == 2) {
-                        this._marginLeft = this._marginRight = value[1];
-                        this._marginTop = this._marginBottom = value[0];
-                    }
-                    else if (value.length == 3) {
-                        this._marginTop = value[0];
-                        this._marginRight = value[1];
-                        this._marginBottom = value[2];
-                        this._marginLeft = value[1];
-                    }
-                    else if (value.length == 4) {
-                        this._marginTop = value[0];
-                        this._marginRight = value[1];
-                        this._marginBottom = value[2];
-                        this._marginLeft = value[3];
-                    }
-                }
-                else {
-                    const field = '_' + key;
-                    if (typeof value === 'string') {
-                        if (value.match(/^[+-]?\d+$/)) {
-                            value = Number.parseInt(value);
-                        }
-                        else if (value === 'true') {
-                            value = true;
-                        }
-                        else if (value === 'false') {
-                            value = false;
-                        }
-                    }
-                    this[field] = value;
-                }
-            }
-            else if (key instanceof Style) {
-                setDirty = value || value === undefined ? true : false;
-                Object.entries(key).forEach(([name, value]) => {
-                    if (name === 'selector' || name === '_dirty')
-                        return;
-                    if (value !== undefined && value !== null) {
-                        this[name] = value;
-                    }
-                    else if (value === null) {
-                        this.unset(name);
-                    }
-                });
-            }
-            else {
-                setDirty = value || value === undefined ? true : false;
-                Object.entries(key).forEach(([name, value]) => {
-                    if (value === null) {
-                        this.unset(name);
-                    }
-                    else {
-                        this.set(name, value, setDirty);
-                    }
-                });
-            }
-            this.dirty || (this.dirty = setDirty);
-            return this;
-        }
-        unset(key) {
-            const field = key.startsWith('_') ? key : '_' + key;
-            delete this[field];
-            this.dirty = true;
-            return this;
-        }
-        clone() {
-            const other = new this.constructor();
-            other.copy(this);
-            return other;
-        }
-        copy(other) {
-            Object.assign(this, other);
-            return this;
-        }
-    }
-    function makeStyle(style, selector = '$') {
-        const opts = {};
-        const parts = style
-            .trim()
-            .split(';')
-            .map((p) => p.trim());
-        parts.forEach((p) => {
-            const [name, base] = p.split(':').map((p) => p.trim());
-            if (!name)
-                return;
-            const baseParts = base.split(/ +/g);
-            if (baseParts.length == 1) {
-                // @ts-ignore
-                opts[name] = base;
-            }
-            else {
-                // @ts-ignore
-                opts[name] = baseParts;
-            }
-        });
-        return new Style(selector, opts);
-    }
-    // const NO_BOUNDS = ['fg', 'bg', 'depth', 'align', 'valign'];
-    // export function affectsBounds(key: keyof StyleOptions): boolean {
-    //     return !NO_BOUNDS.includes(key);
-    // }
-    class ComputedStyle extends Style {
-        // constructor(source: Stylable, sources?: Style[]) {
-        constructor(sources) {
-            super();
-            // obj: Stylable;
-            this.sources = [];
-            // this.obj = source;
-            if (sources) {
-                // sort low to high priority (highest should be this.obj._style, lowest = global default:'*')
-                sources.sort((a, b) => a.selector.priority - b.selector.priority);
-                this.sources = sources;
-            }
-            this.sources.forEach((s) => super.set(s));
-            this._dirty = false; // As far as I know I reflect all of the current source values.
-        }
-        get dirty() {
-            return this._dirty || this.sources.some((s) => s.dirty);
-        }
-        set dirty(v) {
-            this._dirty = v;
-        }
-    }
-    class Sheet {
-        constructor(parentSheet) {
-            this.rules = [];
-            this._dirty = true;
-            if (parentSheet === undefined) {
-                parentSheet = defaultStyle;
-            }
-            if (parentSheet) {
-                this.rules = parentSheet.rules.slice();
-            }
-        }
-        get dirty() {
-            return this._dirty;
-        }
-        set dirty(v) {
-            this._dirty = v;
-            if (!this._dirty) {
-                this.rules.forEach((r) => (r.dirty = false));
-            }
-        }
-        add(selector, props) {
-            if (selector.includes(',')) {
-                const parts = selector
-                    .split(',')
-                    .map((p) => p.trim())
-                    .map((p) => this.add(p, props));
-                return parts[parts.length - 1];
-            }
-            if (selector.includes(' '))
-                throw new Error('Hierarchical selectors not supported.');
-            // if 2 '.' - Error('Only single class rules supported.')
-            // if '&' - Error('Not supported.')
-            let rule = new Style(selector, props);
-            const existing = this.rules.findIndex((s) => s.selector.text === rule.selector.text);
-            if (existing > -1) {
-                const current = this.rules[existing];
-                current.set(rule);
-                rule = current;
-            }
-            else {
-                this.rules.push(rule);
-            }
-            // rulesChanged = true;
-            this.dirty = true;
-            return rule;
-        }
-        get(selector) {
-            return this.rules.find((s) => s.selector.text === selector) || null;
-        }
-        remove(selector) {
-            const existing = this.rules.findIndex((s) => s.selector.text === selector);
-            if (existing > -1) {
-                this.rules.splice(existing, 1);
-                this.dirty = true;
-            }
-        }
-        computeFor(widget) {
-            const sources = this.rules.filter((r) => r.selector.matches(widget));
-            const widgetStyle = widget.style();
-            if (widgetStyle) {
-                sources.push(widgetStyle);
-            }
-            widgetStyle.dirty = false;
-            return new ComputedStyle(sources);
-        }
-    }
-    const defaultStyle = new Sheet(null);
-
-    defaultStyle.add('*', {
-        fg: 'white',
-        bg: -1,
-        align: 'left',
-        valign: 'top',
-        position: 'static',
-    });
-    class Element {
-        // hovered: Style.Style = {};
-        // active: Style.Style = {};
-        constructor(tag, styles) {
-            this.parent = null;
-            this._props = {};
-            this._attrs = {};
-            this.classes = [];
-            this.children = [];
-            this.events = {};
-            this._data = null;
-            this._bounds = new GWU__namespace.xy.Bounds(0, 0, 0, 0);
-            this._text = '';
-            this._lines = [];
-            this._dirty = false;
-            this._attached = false;
-            this._style = null;
-            this.tag = tag;
-            this._usedStyle = styles
-                ? styles.computeFor(this)
-                : new ComputedStyle();
-        }
-        contains(x, y) {
-            if (typeof x === 'number')
-                return this._bounds.contains(x, y);
-            return this._bounds.contains(x);
-        }
-        clone() {
-            if (this._attached && !this.parent)
-                throw new Error('Cannot clone a root widget.');
-            const other = new this.constructor(this.tag);
-            Object.assign(other._props, this._props);
-            other.classes = this.classes.slice();
-            other._text = this._text;
-            if (this._style) {
-                other._style = this._style.clone();
-            }
-            other.parent = null; // The root cloned widget will not have a parent anymore
-            other._attached = false;
-            other.dirty = true;
-            // First we clone the children, then we set their parent to us
-            other.children = this.children.map((c) => c.clone());
-            other.children.forEach((c) => (c.parent = other));
-            return other;
-        }
-        get dirty() {
-            return this._dirty || this._usedStyle.dirty;
-        }
-        set dirty(v) {
-            this._dirty = v;
-            if (this.parent && v) {
-                const position = this.used('position');
-                if (position === 'static' || position === 'relative') {
-                    this.parent.dirty = true;
-                }
-            }
-        }
-        attr(name, value) {
-            if (value === undefined)
-                return this._attrs[name];
-            this._setAttr(name, value);
-            return this;
-        }
-        _setAttr(name, value) {
-            this._attrs[name] = value;
-            if (name === 'style') {
-                this._style = makeStyle(value);
-                this._usedStyle.dirty = true;
-            }
-        }
-        _attrInt(name, def = 0) {
-            let v = this._attrs[name];
-            if (v === undefined)
-                return def;
-            if (typeof v === 'string') {
-                return Number.parseInt(v);
-            }
-            else if (typeof v === 'boolean') {
-                return v ? 1 : 0;
-            }
-            return v;
-        }
-        _attrString(name) {
-            let v = this._attrs[name] || '';
-            if (typeof v === 'string')
-                return v;
-            return '' + v;
-        }
-        _attrBool(name) {
-            const v = this._attrs[name] || false;
-            if (typeof v === 'boolean')
-                return v;
-            if (typeof v === 'number')
-                return v != 0;
-            return v.length > 0 && v !== 'false';
-        }
-        prop(name, value) {
-            if (value === undefined)
-                return this._props[name];
-            this._setProp(name, value);
-            return this;
-        }
-        _setProp(name, value) {
-            if (this._props[name] === value)
-                return;
-            this._props[name] = value;
-            this._usedStyle.dirty = true; // Need to reload styles
-        }
-        toggleProp(name) {
-            const v = this._props[name] || false;
-            this._setProp(name, !v);
-            return this;
-        }
-        val(v) {
-            if (v === undefined)
-                return this.prop('value');
-            this._setProp('value', v);
-            return this;
-        }
-        data(doc, v) {
-            if (doc === undefined) {
-                return this._data;
-            }
-            this._setData(doc, v);
-            return this;
-        }
-        _setData(_doc, v) {
-            this._data = v;
-        }
-        onblur(_doc) {
-            this.prop('focus', false);
-        }
-        onfocus(_doc, _reverse) {
-            this.prop('focus', true);
-        }
-        _propInt(name, def = 0) {
-            let v = this._props[name];
-            if (v === undefined)
-                return def;
-            if (typeof v === 'string') {
-                return Number.parseInt(v);
-            }
-            else if (typeof v === 'boolean') {
-                return v ? 1 : 0;
-            }
-            return v;
-        }
-        _propString(name) {
-            let v = this._props[name] || '';
-            if (typeof v === 'string')
-                return v;
-            return '' + v;
-        }
-        _propBool(name) {
-            const v = this._props[name] || false;
-            return !!v;
-        }
-        // CHILDREN
-        _isValidChild(_child) {
-            return true;
-        }
-        appendChild(child, beforeIndex = -1) {
-            if (!this._isValidChild(child)) {
-                throw new Error(`Invalid child (tag=${child.tag}) for element (tag=${this.tag})`);
-            }
-            if (child.parent) {
-                if (child.parent === this)
-                    return this; // ok
-                throw new Error('Cannot add a currently attached child to another element.  Detach it first.');
-            }
-            if (beforeIndex == 0) {
-                this.children.unshift(child);
-            }
-            else if (beforeIndex > 0 && beforeIndex <= this.children.length - 1) {
-                this.children.splice(beforeIndex, 0, child);
-            }
-            else {
-                this.children.push(child);
-            }
-            child.parent = this;
-            child.dirty = true;
-            this.dirty = true;
-            return this;
-        }
-        removeChild(child) {
-            if (!child.parent)
-                return this; // not attached, silently ignore
-            if (child.parent !== this) {
-                // TODO - fail silently?
-                throw new Error('Cannot remove child that is not attached to this widget.');
-            }
-            if (GWU__namespace.arrayDelete(this.children, child)) {
-                child.parent = null;
-                child.dirty = true;
-                this.dirty = true;
-            }
-            return this;
-        }
-        empty() {
-            this.text(''); // clear the text
-            // clear the children
-            const old = this.children;
-            this.children = []; // no more children
-            old.forEach((c) => {
-                c.parent = null;
-                c.dirty = true;
-            });
-            this.dirty = true;
-            // return the children for cleanup
-            return old;
-        }
-        root() {
-            let current = this;
-            while (current.parent) {
-                current = current.parent;
-            }
-            return current !== this ? current : null;
-        }
-        positionedParent() {
-            const position = this._usedStyle.position || 'static';
-            if (position === 'static')
-                return null;
-            if (position === 'relative')
-                return this;
-            if (position === 'fixed')
-                return this.root();
-            let parent = this.parent;
-            if (parent) {
-                // for absolute position, position is relative to closest ancestor that is positioned
-                while (parent && !parent.isPositioned()) {
-                    parent = parent.parent;
-                }
-            }
-            if (!parent) {
-                return this.root(); // no positioned parent so we act fixed.
-            }
-            return parent;
-        }
-        // BOUNDS
-        get bounds() {
-            // this._update();
-            return this._bounds;
-        }
-        get innerLeft() {
-            return (this._bounds.left +
-                (this._usedStyle.padLeft || 0) +
-                (this._usedStyle.marginLeft || 0) +
-                (this._usedStyle.border ? 1 : 0));
-        }
-        get innerRight() {
-            return (this._bounds.right -
-                (this._usedStyle.padRight || 0) -
-                (this._usedStyle.marginRight || 0) -
-                (this._usedStyle.border ? 1 : 0));
-        }
-        get innerWidth() {
-            return Math.max(0, this._bounds.width -
-                (this._usedStyle.padLeft || 0) -
-                (this._usedStyle.padRight || 0) -
-                (this._usedStyle.marginLeft || 0) -
-                (this._usedStyle.marginRight || 0) -
-                (this._usedStyle.border ? 2 : 0));
-        }
-        get innerHeight() {
-            return Math.max(0, this._bounds.height -
-                (this._usedStyle.padTop || 0) -
-                (this._usedStyle.padBottom || 0) -
-                (this._usedStyle.marginTop || 0) -
-                (this._usedStyle.marginBottom || 0) -
-                (this._usedStyle.border ? 2 : 0));
-        }
-        get innerTop() {
-            return (this._bounds.top +
-                (this._usedStyle.padTop || 0) +
-                (this._usedStyle.marginTop || 0) +
-                (this._usedStyle.border ? 1 : 0));
-        }
-        get innerBottom() {
-            return (this._bounds.bottom -
-                (this._usedStyle.padBottom || 0) -
-                (this._usedStyle.marginBottom || 0) -
-                (this._usedStyle.border ? 1 : 0));
-        }
-        updateLayout() {
-            // if (!this.dirty) {
-            //     this.children.forEach((c) => c.updateLayout());
-            //     return this;
-            // }
-            this._updateWidth();
-            this._updateHeight();
-            this._updateLeft();
-            this._updateTop();
-            // this.dirty = false;
-            // this.children.forEach((c) => (c.dirty = false));
-            return this;
-        }
-        // update bounds.width and return it
-        _updateWidth() {
-            const used = this._usedStyle;
-            const bounds = this._bounds;
-            bounds.width = used.width || 0;
-            if (!bounds.width) {
-                const position = used.position || 'static';
-                if (['static', 'relative'].includes(position) && this.parent) {
-                    bounds.width = this.parent.innerWidth || 0;
-                }
-                // compute internal width
-                if (!bounds.width) {
-                    bounds.width =
-                        (used.padLeft || 0) +
-                            (used.padRight || 0) +
-                            (used.marginLeft || 0) +
-                            (used.marginRight || 0) +
-                            (used.border ? 2 : 0);
-                    if (this.children.length) {
-                        // my width comes from my children...
-                        bounds.width += this.children.reduce((len, c) => Math.max(len, c._updateWidth()), 0);
-                    }
-                    else {
-                        bounds.width += this._calcContentWidth();
-                    }
-                }
-            }
-            bounds.width = GWU__namespace.clamp(bounds.width, used.minWidth || bounds.width, used.maxWidth || bounds.width);
-            this.children.forEach((c) => c._updateWidth());
-            // These do not figure into parent with calculation
-            const position = used.position || 'static';
-            if (['fixed', 'absolute'].includes(position))
-                return 0;
-            return bounds.width;
-        }
-        _updateHeight() {
-            const used = this._usedStyle;
-            const bounds = this._bounds;
-            let contentHeight = 0;
-            bounds.height = used.height || 0;
-            if (!bounds.height) {
-                bounds.height =
-                    (used.padTop || 0) +
-                        (used.padBottom || 0) +
-                        (used.marginTop || 0) +
-                        (used.marginBottom || 0) +
-                        (used.border ? 2 : 0);
-                if (this.children.length) {
-                    // my height comes from my children...
-                    bounds.height += this._calcChildHeight();
-                }
-                else {
-                    contentHeight = this._calcContentHeight();
-                    bounds.height += contentHeight;
-                }
-            }
-            bounds.height = GWU__namespace.clamp(bounds.height, used.minHeight || bounds.height, used.maxHeight || bounds.height);
-            if (contentHeight > this.innerHeight) {
-                this._updateContentHeight();
-            }
-            this.children.forEach((c) => c._updateHeight());
-            // These do not figure into parent height calculation
-            const position = used.position || 'static';
-            if (['fixed', 'absolute'].includes(position))
-                return 0;
-            return bounds.height;
-        }
-        _updateLeft() {
-            const used = this._usedStyle;
-            const bounds = this._bounds;
-            const position = used.position || 'static';
-            bounds.left = 0;
-            if (position === 'static') {
-                if (this.parent) {
-                    bounds.left = this.parent.innerLeft;
-                }
-            }
-            else {
-                const root = this.positionedParent();
-                if (used.left !== undefined) {
-                    bounds.left = (root ? root.bounds.left : 0) + used.left;
-                }
-                else if (used.right !== undefined) {
-                    if (root) {
-                        bounds.right = root.bounds.right - used.right;
-                    }
-                }
-                else {
-                    bounds.left = root ? root.bounds.left : 0;
-                }
-            }
-            this.children.forEach((c) => c._updateLeft());
-        }
-        _updateTop(parentBottom = 0) {
-            const used = this._usedStyle;
-            const bounds = this._bounds;
-            const position = used.position || 'static';
-            if (['fixed', 'absolute'].includes(position)) {
-                const root = this.positionedParent();
-                if (used.top !== undefined) {
-                    bounds.top = (root ? root.bounds.top : 0) + used.top;
-                }
-                else if (used.bottom !== undefined) {
-                    if (root) {
-                        bounds.bottom = root.bounds.bottom - used.bottom;
-                    }
-                }
-                else {
-                    bounds.top = root ? root.bounds.top : 0;
-                }
-            }
-            else {
-                bounds.top = parentBottom;
-                if (position === 'relative') {
-                    if (used.top !== undefined) {
-                        bounds.top += used.top;
-                    }
-                    else if (used.bottom !== undefined) {
-                        bounds.top -= used.bottom;
-                    }
-                }
-            }
-            if (this.children.length) {
-                let innerTop = this.innerTop;
-                this.children.forEach((c) => {
-                    innerTop += c._updateTop(innerTop);
-                });
-            }
-            if (['fixed', 'absolute'].includes(position))
-                return 0;
-            return bounds.height;
-        }
-        style(...args) {
-            if (!this._style) {
-                this._style = new Style();
-            }
-            if (args.length === 0)
-                return this._style;
-            if (args.length === 1) {
-                const v = args[0];
-                if (typeof v === 'string') {
-                    return this._style.get(v);
-                }
-                else {
-                    this._style.set(args[0], false); // do not set the dirty flag
-                    this._usedStyle.set(args[0], false); // do not set the dirty flag
-                    this.dirty = true; // Need layout update
-                }
-            }
-            else {
-                this._style.set(args[0], args[1], false); // do not set dirty flag
-                this._usedStyle.set(args[0], args[1], false); // do not set dirty flag
-                this.dirty = true; // Need layout update
-            }
-            return this;
-        }
-        removeStyle(id) {
-            if (!this._style)
-                return this;
-            this._style.unset(id);
-            this._usedStyle.dirty = true;
-            return this;
-        }
-        used(id) {
-            if (!id)
-                return this._usedStyle;
-            if (id instanceof ComputedStyle) {
-                this._usedStyle = id;
-                this.dirty = true;
-                return this;
-            }
-            return this._usedStyle.get(id);
-        }
-        addClass(id) {
-            const items = id.split(' ');
-            items.forEach((cls) => {
-                if (cls.length == 0)
-                    return;
-                if (this.classes.includes(cls))
-                    return;
-                this._usedStyle.dirty = true; // It needs to get styles for this class
-                this.classes.push(cls);
-            });
-            return this;
-        }
-        removeClass(id) {
-            const items = id.split(' ');
-            items.forEach((cls) => {
-                if (cls.length == 0)
-                    return;
-                if (!GWU__namespace.arrayDelete(this.classes, cls))
-                    return;
-                this._usedStyle.dirty = true; // It may need to remove some styles
-            });
-            return this;
-        }
-        toggleClass(id) {
-            const items = id.split(' ');
-            items.forEach((cls) => {
-                if (cls.length == 0)
-                    return;
-                if (!GWU__namespace.arrayDelete(this.classes, cls)) {
-                    this.classes.push(cls);
-                }
-                this._usedStyle.dirty = true;
-            });
-            return this;
-        }
-        pos(...args) {
-            if (args.length === 0)
-                return this.bounds;
-            let pos;
-            let wantStyle = 'fixed';
-            if (typeof args[0] === 'number') {
-                pos = { left: args.shift(), top: args.shift() };
-            }
-            else {
-                pos = args.shift();
-            }
-            // update style if necessary
-            if (args[0] && args[0].length) {
-                wantStyle = args[0];
-                this.style('position', wantStyle);
-            }
-            else if (!this.isPositioned()) {
-                this.style('position', 'fixed'); // convert to fixed
-            }
-            if (pos.right !== undefined) {
-                this.style('right', pos.right);
-            }
-            if (pos.left !== undefined) {
-                this.style('left', pos.left);
-            }
-            if (pos.top !== undefined) {
-                this.style('top', pos.top);
-            }
-            if (pos.bottom !== undefined) {
-                this.style('bottom', pos.bottom);
-            }
-            return this;
-        }
-        isPositioned() {
-            const pos = this._usedStyle.position;
-            return !!pos && pos !== 'static';
-        }
-        size(size, height) {
-            if (size === undefined)
-                return this.bounds;
-            if (typeof size === 'number') {
-                size = { width: size, height };
-            }
-            if (size.minWidth !== undefined)
-                this.style('minWidth', size.minWidth);
-            if (size.minHeight !== undefined)
-                this.style('minHeight', size.minHeight);
-            if (size.maxWidth !== undefined)
-                this.style('maxWidth', size.maxWidth);
-            if (size.maxHeight !== undefined)
-                this.style('maxHeight', size.maxHeight);
-            if (size.width !== undefined)
-                this.style('width', size.width);
-            if (size.height !== undefined)
-                this.style('height', size.height);
-            // this._update();
-            return this;
-        }
-        text(v) {
-            if (v === undefined)
-                return this._text;
-            this._setText(v);
-            return this;
-        }
-        _setText(v) {
-            this._text = v;
-            this.dirty = true;
-            this._usedStyle.dirty = true; // We need to re-layout the _lines (which possibly affects width+height)
-        }
-        _calcContentWidth() {
-            this._lines = GWU__namespace.text.splitIntoLines(this._text);
-            return this._lines.reduce((out, line) => Math.max(out, line.length), 0);
-        }
-        _calcContentHeight() {
-            this._lines = GWU__namespace.text.splitIntoLines(this._text, this.innerWidth);
-            return this._lines.length;
-        }
-        _calcChildHeight() {
-            return this.children.reduce((len, c) => len + c._updateHeight(), 0);
-        }
-        _updateContentHeight() {
-            this._lines.length = this.innerHeight;
-        }
-        // DRAWING
-        draw(buffer) {
-            const used = this._usedStyle;
-            if (used.border) {
-                this._drawBorder(buffer);
-            }
-            this._fill(buffer);
-            this._drawContent(buffer);
-            this.dirty = false;
-            return true;
-        }
-        _drawBorder(buffer) {
-            const used = this._usedStyle;
-            const bounds = this.bounds;
-            GWU__namespace.xy.forBorder(bounds.x + (used.marginLeft || 0), bounds.y + (used.marginTop || 0), bounds.width - (used.marginLeft || 0) - (used.marginRight || 0), bounds.height - (used.marginTop || 0) - (used.marginBottom || 0), (x, y) => {
-                buffer.draw(x, y, 0, used.border, used.border);
-            });
-        }
-        _fill(buffer) {
-            const used = this._usedStyle;
-            const bg = used.bg;
-            const bounds = this.bounds;
-            buffer.fillRect(bounds.x + (used.marginLeft || 0) + (used.border ? 1 : 0), bounds.y + (used.marginTop || 0) + (used.border ? 1 : 0), bounds.width -
-                (used.marginLeft || 0) -
-                (used.marginRight || 0) -
-                (used.border ? 2 : 0), bounds.height -
-                (used.marginTop || 0) -
-                (used.marginBottom || 0) -
-                (used.border ? 2 : 0), ' ', bg, bg);
-        }
-        _drawContent(buffer) {
-            if (this.children.length) {
-                this._drawChildren(buffer);
-            }
-            else {
-                this._drawText(buffer);
-            }
-        }
-        _drawChildren(buffer) {
-            // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
-            this.children.forEach((c) => {
-                if (!c.isPositioned())
-                    c.draw(buffer);
-            });
-            this.children.forEach((c) => {
-                if (c.isPositioned())
-                    c.draw(buffer);
-            });
-        }
-        _drawText(buffer) {
-            if (this._lines.length) {
-                const fg = this.used('fg') || 'white';
-                const top = this.innerTop;
-                const width = this.innerWidth;
-                const left = this.innerLeft;
-                const align = this.used('align');
-                this._lines.forEach((line, i) => {
-                    buffer.drawText(left, top + i, line, fg, -1, width, align);
-                });
-            }
-        }
-        // Events
-        on(event, cb) {
-            let handlers = this.events[event];
-            if (!handlers) {
-                handlers = this.events[event] = [];
-            }
-            if (!handlers.includes(cb)) {
-                handlers.push(cb);
-            }
-            return this;
-        }
-        off(event, cb) {
-            let handlers = this.events[event];
-            if (!handlers)
-                return this;
-            if (cb) {
-                GWU__namespace.arrayDelete(handlers, cb);
-            }
-            else {
-                handlers.length = 0; // clear all handlers
-            }
-            return this;
-        }
-        elementFromPoint(x, y) {
-            let result = null;
-            // positioned elements
-            for (let w of this.children) {
-                if (w.isPositioned() && w.contains(x, y)) {
-                    result = w.elementFromPoint(x, y) || result;
-                }
-            }
-            if (result)
-                return result;
-            // static elements
-            for (let w of this.children) {
-                if (!w.isPositioned() && w.contains(x, y)) {
-                    result = w.elementFromPoint(x, y) || result;
-                }
-            }
-            if (result)
-                return result;
-            if (!result && this.contains(x, y)) {
-                result = this;
-            }
-            return result;
-        }
-    }
-
-    const MARKUP_RE = /<!--[^]*?(?=-->)-->|<(\/?)(\w*)\s*([^>]*?)(\/?)>/g;
-    const ATTR_RE = /(\w+)(?: *= *(?:(?:\'([^\']*)\')|(?:\"([^\"]*)\")|(\w+)))?/g;
-    // var kAttributePattern = /\b(id|class)\s*=\s*("([^"]+)"|'([^']+)'|(\S+))/gi;
-    const selfClosingTags = {
-        meta: true,
-        img: true,
-        link: true,
-        input: true,
-        area: true,
-        br: true,
-        hr: true,
-    };
-    var tagsClosedByOpening = {
-        li: { li: true },
-        p: { p: true, div: true },
-        td: { td: true, th: true },
-        th: { td: true, th: true },
-    };
-    var tagsClosedByClosing = {
-        li: { ul: true, ol: true },
-        a: { div: true },
-        b: { div: true },
-        i: { div: true },
-        p: { div: true },
-        td: { tr: true, table: true },
-        th: { tr: true, table: true },
-    };
-    const elements = {};
-    function configureElement(tag, opts = {}) {
-        if (opts.selfClosing) {
-            selfClosingTags[tag] = true;
-        }
-        if (opts.openCloses && opts.openCloses.length) {
-            const tcbo = (tagsClosedByOpening[tag] = {});
-            opts.openCloses.forEach((t) => (tcbo[t] = true));
-        }
-        if (opts.closeCloses && opts.closeCloses.length) {
-            const tcbc = (tagsClosedByClosing[tag] = {});
-            opts.closeCloses.forEach((t) => (tcbc[t] = true));
-        }
-    }
-    function installElement(tag, fn, opts = {}) {
-        elements[tag] = fn;
-        configureElement(tag, opts);
-    }
-    function createElement(tag, rawAttr, stylesheet) {
-        const fn = elements[tag];
-        const e = fn ? fn(tag, stylesheet) : new Element(tag, stylesheet);
-        // TODO - Add attributs, properties, and styles
-        if (rawAttr) {
-            // console.log(tag, rawAttr);
-            const re = new RegExp(ATTR_RE, 'g');
-            let match = re.exec(rawAttr);
-            while (match) {
-                const name = match[1];
-                const value = match[2] || match[3] || match[4] || true;
-                // console.log('- attr', name, value);
-                if (value === true) {
-                    e.prop(name, value);
-                }
-                else {
-                    e.attr(name, value);
-                }
-                match = re.exec(rawAttr);
-            }
-        }
-        return e;
-    }
-    function back(arr) {
-        return arr[arr.length - 1];
-    }
-    /**
-     * Parse a chuck of HTML source.
-     * @param  {string} data      html
-     * @return {HTMLElement}      root element
-     */
-    function parse(data, options = {}) {
-        if (options instanceof Sheet) {
-            options = { stylesheet: options };
-        }
-        var root = createElement('dummy', '', options.stylesheet);
-        var currentElement = root;
-        var stack = [root];
-        var lastTextPos = -1;
-        options = options || {};
-        const RE = new RegExp(MARKUP_RE, 'gi');
-        var match, text;
-        match = RE.exec(data);
-        while (match) {
-            if (lastTextPos > -1) {
-                if (lastTextPos + match[0].length < RE.lastIndex) {
-                    // if has content
-                    text = data.substring(lastTextPos, RE.lastIndex - match[0].length);
-                    currentElement.text(text); //.appendNode(new TextNode(text));
-                }
-            }
-            lastTextPos = RE.lastIndex;
-            if (match[0][1] == '!') {
-                // this is a comment
-                continue;
-            }
-            if (options.lowerCaseTagName)
-                match[2] = match[2].toLowerCase();
-            if (!match[1]) {
-                // not </ tags
-                // var attrs: Record<string, string> = {};
-                // var attMatch;
-                // attMatch = kAttributePattern.exec(match[3]);
-                // while (attMatch) {
-                //     attrs[attMatch[1]] = attMatch[3] || attMatch[4] || attMatch[5];
-                //     attMatch = kAttributePattern.exec(match[3]);
-                // }
-                // console.log(attrs);
-                if (!match[4] && tagsClosedByOpening[currentElement.tag]) {
-                    if (tagsClosedByOpening[currentElement.tag][match[2]]) {
-                        stack.pop();
-                        currentElement = back(stack);
-                    }
-                }
-                const child = createElement(match[2], match[3], options.stylesheet);
-                stack.push(child);
-                currentElement.appendChild(child);
-                currentElement = child;
-                // if (kBlockTextElements[match[2]]) {
-                //   // a little test to find next </script> or </style> ...
-                //   var closeMarkup = '</' + match[2] + '>';
-                //   var index = data.indexOf(closeMarkup, kMarkupPattern.lastIndex);
-                //   if (options[match[2]]) {
-                //     if (index == -1) {
-                //       // there is no matching ending for the text element.
-                //       text = data.substr(kMarkupPattern.lastIndex);
-                //     } else {
-                //       text = data.substring(kMarkupPattern.lastIndex, index);
-                //     }
-                //     if (text.length > 0)
-                //       currentParent.appendChild(new TextNode(text));
-                //   }
-                //   if (index == -1) {
-                //     lastTextPos = kMarkupPattern.lastIndex = data.length + 1;
-                //   } else {
-                //     lastTextPos = kMarkupPattern.lastIndex = index + closeMarkup.length;
-                //     match[1] = true;
-                //   }
-                // }
-            }
-            if (match[1] || match[4] || selfClosingTags[match[2]]) {
-                // </ or /> or <br> etc.
-                while (true) {
-                    if (currentElement.tag == match[2]) {
-                        stack.pop();
-                        currentElement = back(stack);
-                        break;
-                    }
-                    else {
-                        // Trying to close current tag, and move on
-                        if (tagsClosedByClosing[currentElement.tag]) {
-                            if (tagsClosedByClosing[currentElement.tag][match[2]]) {
-                                stack.pop();
-                                currentElement = back(stack);
-                                continue;
-                            }
-                        }
-                        // Use aggressive strategy to handle unmatching markups.
-                        break;
-                    }
-                }
-            }
-            match = RE.exec(data);
-        }
-        // in case you forget closing tag on something like : "<div>text"
-        if (lastTextPos > -1) {
-            if (lastTextPos < data.length) {
-                // if has content
-                text = data.substring(lastTextPos);
-                currentElement.text(text); //.appendNode(new TextNode(text));
-            }
-        }
-        const e = root.children[0]; // real root
-        e.parent = null;
-        return e;
-    }
-    // let t = parse('<div name="test" checked id=A>Test</div>');
-    // console.log(t);
-
-    defaultStyle.add('input', {
-        fg: 'black',
-        bg: 'gray',
-    });
-    class Input extends Element {
-        constructor(tag, sheet) {
-            super(tag, sheet);
-            this.on('keypress', this.keypress.bind(this));
-            this.prop('tabindex', true);
-            this.prop('value', '');
-        }
-        // reset() {
-        //     this.prop('value', this._attrString('value'));
-        // }
-        // ATTRIBUTES
-        _setAttr(name, value) {
-            super._setAttr(name, value);
-            if (name === 'value') {
-                this._setProp('value', value);
-            }
-            super._setProp('valid', this.isValid());
-        }
-        _setProp(name, value) {
-            if (name === 'value') {
-                value = '' + value;
-                const maxLength = this._attrInt('maxLength', 0);
-                if (maxLength && value.length > maxLength) {
-                    value = value.substring(0, maxLength);
-                }
-                super._setProp('empty', value.length == 0);
-                this._props.value = value;
-                this.dirty = true;
-            }
-            else {
-                super._setProp(name, value);
-            }
-            super._setProp('valid', this.isValid());
-        }
-        get isTypeNumber() {
-            return this._attrs.type === 'number';
-        }
-        // PROPERTIES
-        // CONTENT
-        _calcContentWidth() {
-            const size = this._attrs.size || '';
-            if (size.length)
-                return Number.parseInt(size);
-            return 10; // default somewhere else?
-        }
-        _calcContentHeight() {
-            return 1;
-        }
-        _updateContentHeight() { }
-        isValid() {
-            const v = this._propString('value');
-            if (this.isTypeNumber) {
-                const val = this._propInt('value');
-                const min = this._attrInt('min', Number.MIN_SAFE_INTEGER);
-                if (val < min)
-                    return false;
-                const max = this._attrInt('max', Number.MAX_SAFE_INTEGER);
-                if (val > max)
-                    return false;
-                return v.length > 0;
-            }
-            const requiredLen = this._propInt('required', 0);
-            // console.log(
-            //     'required',
-            //     this._attrs.required,
-            //     requiredLen,
-            //     v,
-            //     v.length,
-            //     this._attrInt('minLength', requiredLen)
-            // );
-            return (v.length >= this._attrInt('minLength', requiredLen) &&
-                v.length <= this._attrInt('maxLength', Number.MAX_SAFE_INTEGER));
-        }
-        // DRAWING
-        _drawText(buffer) {
-            const fg = this.used('fg') || 'white';
-            const top = this.innerTop;
-            const width = this.innerWidth;
-            const left = this.innerLeft;
-            const align = this.used('align');
-            let v = this._propString('value');
-            if (v.length == 0) {
-                v = this._attrString('placeholder');
-            }
-            buffer.drawText(left, top, v, fg, -1, width, align);
-        }
-        // EVENTS
-        onblur(doc) {
-            super.onblur(doc);
-            if (this.val() !== this.attr('value')) {
-                doc._fireEvent(this, 'change');
-            }
-        }
-        keypress(document, _element, e) {
-            if (!e)
-                return false;
-            if (e.key === 'Enter') {
-                document.nextTabStop();
-                return true;
-            }
-            if (e.key === 'Escape') {
-                this._setProp('value', '');
-                document._fireEvent(this, 'input', e);
-                return true;
-            }
-            if (e.key === 'Backspace' || e.key === 'Delete') {
-                const v = this._propString('value');
-                this._setProp('value', v.substring(0, v.length - 1));
-                document._fireEvent(this, 'input', e);
-                return true;
-            }
-            if (e.key.length > 1) {
-                return false;
-            }
-            const textEntryBounds = this.isTypeNumber ? ['0', '9'] : [' ', '~'];
-            // eat/use all other keys
-            if (e.key >= textEntryBounds[0] && e.key <= textEntryBounds[1]) {
-                // allow only permitted input
-                const v = this._propString('value');
-                this._setProp('value', v + e.key);
-                document._fireEvent(this, 'input', e);
-            }
-            return true;
-        }
-    }
-    installElement('input', (tag, sheet) => {
-        return new Input(tag, sheet);
-    });
-
-    class CheckBox extends Element {
-        constructor(tag, sheet) {
-            super(tag, sheet);
-            this.on('keypress', this.keypress.bind(this));
-            this.on('click', this.click.bind(this));
-            this.prop('tabindex', true);
-            this.prop('checked', false);
-            Object.entries(CheckBox.default).forEach(([key, value]) => this.attr(key, value));
-        }
-        // reset() {
-        //     this.prop('value', this._attrString('value'));
-        // }
-        // ATTRIBUTES
-        _setAttr(name, value) {
-            this._attrs[name] = value;
-            if (name === 'value') {
-                this._setProp('value', value);
-            }
-        }
-        // PROPERTIES
-        // CONTENT
-        _calcContentWidth() {
-            return 2 + super._calcContentWidth();
-        }
-        _calcContentHeight() {
-            this._lines = GWU__namespace.text.splitIntoLines(this._text, this.innerWidth - 2);
-            return Math.max(1, this._lines.length);
-        }
-        // DRAWING
-        _drawText(buffer) {
-            const fg = this.used('fg') || 'white';
-            const top = this.innerTop;
-            const width = this.innerWidth;
-            const left = this.innerLeft;
-            const align = this.used('align');
-            const state = this.prop('checked') ? 'check' : 'uncheck';
-            let v = this._attrs[state];
-            buffer.drawText(left, top, v, fg, -1);
-            this._lines.forEach((line, i) => {
-                buffer.drawText(left + 2, top + i, line, fg, -1, width - 2, align);
-            });
-        }
-        // EVENTS
-        onblur(doc) {
-            super.onblur(doc);
-            doc._fireEvent(this, 'change');
-        }
-        keypress(document, _element, e) {
-            if (!e)
-                return false;
-            if (e.key === 'Enter' || e.key === ' ') {
-                this.toggleProp('checked');
-                document._fireEvent(this, 'input', e);
-                return true;
-            }
-            if (e.key === 'Backspace' || e.key === 'Delete') {
-                this.prop('checked', false);
-                document._fireEvent(this, 'input', e);
-                return true;
-            }
-            return false;
-        }
-        click(document, _element, e) {
-            if (!e)
-                return false;
-            if (!this.contains(e))
-                return false;
-            this.toggleProp('checked');
-            document.setActiveElement(this);
-            document._fireEvent(this, 'input', e);
-            return true;
-        }
-    }
-    CheckBox.default = {
-        uncheck: '\u2610',
-        check: '\u2612',
-        padCheck: '1',
-        value: 'on',
-    };
-    installElement('checkbox', (tag, sheet) => {
-        return new CheckBox(tag, sheet);
-    });
-
-    defaultStyle.add('button', {
-        fg: 'black',
-        bg: 'gray',
-    });
-    class Button$1 extends Element {
-        constructor(tag, sheet) {
-            super(tag, sheet);
-            this.on('keypress', this.keypress.bind(this));
-            this.on('click', this.click.bind(this));
-            this.prop('tabindex', true);
-            Object.entries(Button$1.default).forEach(([key, value]) => {
-                if (typeof value === 'boolean') {
-                    this.prop(key, value);
-                }
-                else {
-                    this.attr(key, value);
-                }
-            });
-        }
-        // ATTRIBUTES
-        _setAttr(name, value) {
-            this._attrs[name] = value;
-            if (name === 'value') {
-                this._setProp('value', value);
-            }
-        }
-        // PROPERTIES
-        // CONTENT
-        // DRAWING
-        // EVENTS
-        keypress(document, _element, e) {
-            if (!e)
-                return false;
-            if (e.key === 'Enter' || e.key === ' ') {
-                document._fireEvent(this, 'click', e);
-                return true;
-            }
-            return false;
-        }
-        click(document, _element, e) {
-            if (!e)
-                return false;
-            if (!this.contains(e))
-                return false;
-            if (this.prop('clickfocus')) {
-                document.setActiveElement(this);
-            }
-            return true;
-        }
-    }
-    Button$1.default = {
-        clickfocus: false,
-    };
-    installElement('button', (tag, sheet) => {
-        return new Button$1(tag, sheet);
-    });
-
-    defaultStyle.add('fieldset', {
-        margin: 1,
-        border: 'dark_gray',
-        fg: 'white',
-        bg: -1,
-        padding: 1,
-    });
-    class FieldSet extends Element {
-        constructor(tag, sheet) {
-            super(tag, sheet);
-            Object.entries(FieldSet.default).forEach(([key, value]) => {
-                if (typeof value === 'boolean') {
-                    this.prop(key, value);
-                }
-                else if (value !== undefined) {
-                    this.attr(key, '' + value);
-                }
-            });
-        }
-        // ATTRIBUTES
-        // PROPERTIES
-        // CONTENT
-        // DRAWING
-        _drawBorder(buffer) {
-            super._drawBorder(buffer);
-            const legend = this.attr('legend');
-            if (!legend || legend.length == 0)
-                return;
-            const used = this._usedStyle;
-            const fg = used.fg || 'white';
-            const top = this.innerTop - (used.padTop || 0) - 1; // -1 for border
-            const width = this.innerWidth;
-            const left = this.innerLeft;
-            const align = used.align;
-            buffer.drawText(left, top, legend, fg, -1, width, align);
-        }
-    }
-    FieldSet.default = {};
-    installElement('fieldset', (tag, sheet) => {
-        return new FieldSet(tag, sheet);
-    });
-
-    // import { Document } from './document';
-    // Style.defaultStyle.add('button', {
-    //     fg: 'black',
-    //     bg: 'gray',
-    // });
-    class UnorderedList extends Element {
-        constructor(tag, sheet) {
-            super(tag, sheet);
-        }
-        // CONTENT
-        get indentWidth() {
-            return 2;
-        }
-        _calcContentWidth() {
-            return this.indentWidth + super._calcContentWidth();
-        }
-        _calcContentHeight() {
-            this._lines = GWU__namespace.text.splitIntoLines(this._text, this.innerWidth - this.indentWidth);
-            return Math.max(1, this._lines.length);
-        }
-        get innerLeft() {
-            return super.innerLeft + this.indentWidth;
-        }
-        get innerWidth() {
-            return Math.max(0, super.innerWidth - this.indentWidth);
-        }
-        // DRAWING
-        _drawBullet(buffer, _index, left, top, fg) {
-            const b = this._attrs.bullet || UnorderedList.default.bullet;
-            buffer.drawText(left, top, b, fg, -1);
-        }
-        _drawChildren(buffer) {
-            this.children.forEach((c, i) => {
-                const fg = c.used('fg') || 'white';
-                const top = c.bounds.top + (c.used('marginTop') || 0);
-                const left = c.bounds.left - this.indentWidth;
-                this._drawBullet(buffer, i, left, top, fg);
-                c.draw(buffer);
-            });
-        }
-    }
-    UnorderedList.default = {
-        bullet: '\u2022', // bullet
-    };
-    installElement('ul', (tag, sheet) => {
-        return new UnorderedList(tag, sheet);
-    });
-    class OrderedList extends UnorderedList {
-        constructor(tag, sheet) {
-            super(tag, sheet);
-        }
-        get indentWidth() {
-            return this.children.length >= 10 ? 4 : 3;
-        }
-        _drawBullet(buffer, index, left, top, fg) {
-            const b = ('' + (index + 1) + '. ').padStart(this.indentWidth, ' ');
-            buffer.drawText(left, top, b, fg, -1);
-        }
-    }
-    installElement('ol', (tag, sheet) => {
-        return new OrderedList(tag, sheet);
-    });
-
-    class DataList extends Element {
-        constructor(tag, sheet) {
-            super(tag, sheet);
-            this._data = [];
-        }
-        // CONTENT
-        _setData(doc, v) {
-            if (!Array.isArray(v)) {
-                throw new Error('<datalist> only uses Array values for data field.');
-            }
-            super._setData(doc, v);
-            this.dirty = true;
-            if (this.children.length) {
-                const oldChildren = doc.select(this.children.filter((c) => c.tag === 'data'));
-                oldChildren.detach();
-            }
-            if (!this._data)
-                return;
-            this._data.forEach((item) => {
-                doc.create('<data>').text(item).appendTo(this);
-            });
-        }
-        get indentWidth() {
-            return 0;
-            // const prefix = this.attr('prefix') || DataList.default.prefix;
-            // if (!prefix) return 0;
-            // if (prefix.includes('#')) {
-            //     return prefix.length - 1 + this._data.length >= 10 ? 2 : 1;
-            // }
-            // return prefix.length;
-        }
-        _calcContentWidth() {
-            return DataList.default.width; // no legend or data, so use default
-        }
-        _calcContentHeight() {
-            return 1; // no legend or data so just an empty cell
-        }
-        _calcChildHeight() {
-            if (!this._data || this._data.length === 0) {
-                return super._calcChildHeight() + 1; // legend (if present) + empty cell
-            }
-            return super._calcChildHeight();
-        }
-        get innerLeft() {
-            return super.innerLeft + this.indentWidth;
-        }
-        get innerWidth() {
-            return Math.max(0, super.innerWidth - this.indentWidth);
-        }
-        // DRAWING
-        _drawContent(buffer) {
-            // draw legend and data (if any)
-            this._drawChildren(buffer);
-            if (!this._data || this._data.length == 0) {
-                // empty cell is necessary
-                const fg = this.used('fg') || 'white';
-                const top = this.innerBottom - 1;
-                const left = this.innerLeft + this.indentWidth;
-                const width = this.innerWidth - this.indentWidth;
-                const align = this.used('align');
-                const empty = this.attr('empty') || DataList.default.empty;
-                buffer.drawText(left, top, empty, fg, -1, width, align);
-            }
-        }
-        // CHILDREN
-        _isValidChild(child) {
-            return ['data', 'legend'].includes(child.tag);
-        }
-    }
-    DataList.default = {
-        bullet: '\u2022',
-        empty: '-',
-        prefix: 'none',
-        width: 10,
-    };
-    installElement('datalist', (tag, sheet) => {
-        return new DataList(tag, sheet);
-    });
-
-    defaultStyle.add('body', {
-        bg: 'black',
-    });
-    class Document {
-        constructor(ui, rootTag = 'body') {
-            this._activeElement = null;
-            this._done = false;
-            this.ui = ui;
-            this.stylesheet = new Sheet();
-            this.body = new Element(rootTag);
-            this.body.style({
-                width: ui.buffer.width,
-                maxWidth: ui.buffer.width,
-                height: ui.buffer.height,
-                maxHeight: ui.buffer.height,
-                position: 'fixed',
-                top: 0,
-                left: 0,
-            });
-            this.body._attached = true; // attached as the root of the layer
-            this.children = [this.body];
-        }
-        $(id) {
-            return this.select(id);
-        }
-        select(id) {
-            let selected;
-            if (id === undefined) {
-                selected = [this.body];
-            }
-            else if (id instanceof Selection) {
-                return id;
-            }
-            else if (typeof id === 'string') {
-                if (id.startsWith('<')) {
-                    selected = [this.createElement(id)];
-                }
-                else {
-                    if (id === 'document') {
-                        selected = [this.body]; // convenience
-                    }
-                    else {
-                        const s = new Selector(id);
-                        selected = this.children.filter((w) => s.matches(w));
-                    }
-                }
-            }
-            else if (Array.isArray(id)) {
-                selected = id;
-            }
-            else {
-                selected = [id];
-            }
-            return new Selection(this, selected);
-        }
-        createElement(tag) {
-            return parse(tag, this.stylesheet);
-        }
-        create(tag) {
-            return this.select(this.createElement(tag));
-        }
-        rule(rule, style) {
-            if (typeof rule === 'string') {
-                if (style) {
-                    this.stylesheet.add(rule, style);
-                    return this;
-                }
-                let out = this.stylesheet.get(rule);
-                if (out)
-                    return out;
-                return this.stylesheet.add(rule, {});
-            }
-            Object.entries(rule).forEach(([name, value]) => {
-                this.stylesheet.add(name, value);
-            });
-            return this;
-        }
-        removeRule(rule) {
-            this.stylesheet.remove(rule);
-            return this;
-        }
-        _attach(w) {
-            if (Array.isArray(w)) {
-                w.forEach((x) => this._attach(x));
-                return this;
-            }
-            if (this.children.includes(w))
-                return this;
-            this.children.push(w);
-            w._attached = true;
-            w.children.forEach((c) => this._attach(c));
-            return this;
-        }
-        _detach(w) {
-            if (Array.isArray(w)) {
-                w.forEach((x) => this._detach(x));
-                return this;
-            }
-            if (w === this.body)
-                throw new Error('Cannot detach root widget.');
-            GWU__namespace.arrayDelete(this.children, w);
-            w._attached = false;
-            w.children.forEach((c) => this._detach(c));
-            return this;
-        }
-        computeStyles() {
-            let anyChanged = false;
-            this.children.forEach((w) => {
-                if (w.used().dirty || this.stylesheet.dirty) {
-                    w.used(this.stylesheet.computeFor(w));
-                    anyChanged = true;
-                }
-            });
-            this.stylesheet.dirty = false;
-            return anyChanged;
-        }
-        updateLayout(widget) {
-            widget = widget || this.body;
-            widget.updateLayout();
-        }
-        draw(buffer) {
-            if (this._prepareDraw()) {
-                buffer = buffer || this.ui.buffer;
-                this.body.draw(buffer);
-                buffer.render();
-                // console.log('draw');
-            }
-        }
-        _prepareDraw() {
-            if (!this.computeStyles() && !this.children.some((c) => c.dirty))
-                return false;
-            this.updateLayout();
-            return true;
-        }
-        // activeElement
-        get activeElement() {
-            return this._activeElement;
-        }
-        setActiveElement(w, reverse = false) {
-            if (w === this._activeElement)
-                return true;
-            const opts = {
-                target: w,
-                dir: [reverse ? -1 : 1, 0],
-            };
-            if (this._activeElement &&
-                this._fireEvent(this._activeElement, 'blur', opts)) {
-                return false;
-            }
-            if (w && this._fireEvent(w, 'focus', opts))
-                return false;
-            if (this._activeElement)
-                this._activeElement.onblur(this);
-            this._activeElement = w;
-            if (this._activeElement)
-                this._activeElement.onfocus(this, reverse);
-            return true;
-        }
-        nextTabStop() {
-            if (!this._activeElement) {
-                this.setActiveElement(this.children.find((w) => !w.prop('disabled') && w.prop('tabindex')) || null);
-                return !!this._activeElement;
-            }
-            const next = GWU__namespace.arrayNext(this.children, this._activeElement, (w) => !!w.prop('tabindex') && !w.prop('disabled'));
-            if (next) {
-                this.setActiveElement(next);
-                return true;
-            }
-            return false;
-        }
-        prevTabStop() {
-            if (!this._activeElement) {
-                this.setActiveElement(this.children.find((w) => !w.prop('disabled') && w.prop('tabindex')) || null);
-                return !!this._activeElement;
-            }
-            const prev = GWU__namespace.arrayPrev(this.children, this._activeElement, (w) => !!w.prop('tabindex') && !w.prop('disabled'));
-            if (prev) {
-                this.setActiveElement(prev, true);
-                return true;
-            }
-            return false;
-        }
-        // events
-        // return topmost element under point
-        elementFromPoint(x, y) {
-            return this.body.elementFromPoint(x, y) || this.body;
-        }
-        _fireEvent(element, name, e) {
-            if (!e || !e.type) {
-                e = GWU__namespace.io.makeCustomEvent(name, e);
-            }
-            const handlers = element.events[name] || [];
-            let handled = handlers.reduce((out, h) => h(this, element, e) || out, false);
-            return handled;
-        }
-        _bubbleEvent(element, name, e) {
-            let current = element;
-            while (current) {
-                const handlers = current.events[name] || [];
-                let handled = handlers.reduce((out, h) => h(this, current, e) || out, false);
-                if (handled)
-                    return true;
-                current = current.parent;
-            }
-            return false;
-        }
-        click(e) {
-            let element = this.elementFromPoint(e.x, e.y);
-            if (!element)
-                return false;
-            if (element.prop('disabled'))
-                return false;
-            if (this._bubbleEvent(element, 'click', e))
-                return this._done;
-            if (element.prop('tabindex')) {
-                this.setActiveElement(element);
-            }
-            return false;
-        }
-        mousemove(e) {
-            let element = this.elementFromPoint(e.x, e.y);
-            const hovered = [];
-            let current = element;
-            while (current) {
-                hovered.push(current);
-                current.prop('hover', true);
-                current = current.parent;
-            }
-            this.children.forEach((w) => {
-                if (hovered.includes(w))
-                    return;
-                w.prop('hover', false);
-            });
-            if (element && this._bubbleEvent(element, 'mousemove', e))
-                return this._done;
-            return false;
-        }
-        // dir
-        dir(e) {
-            const element = this.activeElement || this.body;
-            if (element && this._bubbleEvent(element, 'dir', e))
-                return this._done;
-            return false;
-        }
-        // keypress
-        keypress(e) {
-            const element = this.activeElement || this.body;
-            if (element) {
-                if (this._bubbleEvent(element, e.key, e))
-                    return this._done;
-                if (this._bubbleEvent(element, e.code, e))
-                    return this._done;
-                if (this._bubbleEvent(element, 'keypress', e))
-                    return this._done;
-            }
-            if (e.key === 'Tab') {
-                this.nextTabStop();
-            }
-            else if (e.key === 'TAB') {
-                this.prevTabStop();
-            }
-            return false;
-        }
-    }
-    ///////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////
-    // TODO - look at cheerio
-    class Selection {
-        constructor(document, widgets = []) {
-            this.document = document;
-            this.selected = widgets.slice();
-        }
-        get(index) {
-            if (index === undefined)
-                return this.selected;
-            if (index < 0)
-                return this.selected[this.selected.length + index];
-            return this.selected[index];
-        }
-        length() {
-            return this.selected.length;
-        }
-        slice(start, end) {
-            return new Selection(this.document, this.selected.slice(start, end));
-        }
-        add(arg) {
-            if (!(arg instanceof Selection)) {
-                arg = this.document.$(arg);
-            }
-            arg.forEach((w) => {
-                if (!this.selected.includes(w)) {
-                    this.selected.push(w);
-                }
-            });
-            return this;
-        }
-        clone() {
-            this.selected = this.selected.map((w) => w.clone());
-            return this;
-        }
-        // async ???
-        forEach(cb) {
-            this.selected.forEach(cb);
-            return this;
-        }
-        // HIERARCHY
-        after(content) {
-            if (!(content instanceof Selection)) {
-                content = this.document.$(content);
-            }
-            if (content.length() == 0)
-                return this;
-            content.detach();
-            let current = content;
-            const last = this.selected.length - 1;
-            this.selected.forEach((next, i) => {
-                if (!next.parent)
-                    throw new Error('Cannot add after detached widgets.');
-                current =
-                    i < last ? content.clone() : content;
-                const parent = next.parent;
-                let nextIndex = parent.children.indexOf(next) + 1;
-                current.forEach((toAdd) => {
-                    parent.appendChild(toAdd, nextIndex);
-                    if (parent._attached) {
-                        this.document._attach(toAdd);
-                    }
-                });
-            });
-            return this;
-        }
-        append(content) {
-            if (!(content instanceof Selection)) {
-                content = this.document.$(content);
-            }
-            if (content.length() == 0)
-                return this;
-            content.detach(); // remove all items to be appended from the tree
-            let current = content;
-            const last = this.selected.length - 1;
-            this.selected.forEach((dest, i) => {
-                current =
-                    i < last ? content.clone() : content;
-                current.forEach((toAppend) => {
-                    dest.appendChild(toAppend);
-                    if (dest._attached) {
-                        this.document._attach(toAppend);
-                    }
-                });
-            });
-            return this;
-        }
-        appendTo(dest) {
-            if (!(dest instanceof Selection)) {
-                dest = this.document.$(dest);
-            }
-            dest.append(this);
-            return this;
-        }
-        before(content) {
-            if (!(content instanceof Selection)) {
-                content = this.document.$(content);
-            }
-            if (content.length() == 0)
-                return this;
-            content.detach();
-            let current = content;
-            const last = this.selected.length - 1;
-            this.selected.forEach((next, i) => {
-                if (!next.parent)
-                    throw new Error('Cannot add before detached widgets.');
-                current =
-                    i < last ? content.clone() : content;
-                const parent = next.parent;
-                let nextIndex = parent.children.indexOf(next);
-                current.forEach((toAdd) => {
-                    parent.appendChild(toAdd, nextIndex++);
-                    if (parent._attached) {
-                        this.document._attach(toAdd);
-                    }
-                });
-            });
-            return this;
-        }
-        detach() {
-            this.selected.forEach((w) => {
-                if (w._attached) {
-                    if (!w.parent)
-                        throw new Error('Cannot detach root widget.');
-                    w.parent.removeChild(w);
-                    // remove from document.children
-                    this.document._detach(w);
-                }
-            });
-            return this;
-        }
-        empty() {
-            this.selected.forEach((w) => {
-                const oldChildren = w.empty();
-                this.document._detach(oldChildren);
-            });
-            return this;
-        }
-        insertAfter(target) {
-            if (!(target instanceof Selection)) {
-                target = this.document.$(target);
-            }
-            target.after(this);
-            return this;
-        }
-        insertBefore(target) {
-            if (!(target instanceof Selection)) {
-                target = this.document.$(target);
-            }
-            target.before(this);
-            return this;
-        }
-        prepend(content) {
-            if (!(content instanceof Selection)) {
-                content = this.document.$(content);
-            }
-            if (content.length() == 0)
-                return this;
-            content.detach(); // remove all items to be prepended from the tree
-            let current = content;
-            const last = this.selected.length - 1;
-            this.selected.forEach((dest, i) => {
-                current =
-                    i < last ? content.clone() : content;
-                current.forEach((toAppend) => {
-                    dest.appendChild(toAppend, 0); // before first child
-                    if (dest._attached) {
-                        this.document._attach(toAppend);
-                    }
-                });
-            });
-            return this;
-        }
-        prependTo(dest) {
-            if (!(dest instanceof Selection)) {
-                dest = this.document.$(dest);
-            }
-            dest.prepend(this);
-            return this;
-        }
-        remove(_sub) {
-            // TODO - subselector
-            // TODO - remove events
-            return this.detach();
-        }
-        replaceAll(target) {
-            if (!(target instanceof Selection)) {
-                target = this.document.$(target);
-            }
-            target.before(this);
-            target.detach();
-            return this;
-        }
-        replaceWith(content) {
-            if (!(content instanceof Selection)) {
-                content = this.document.$(content);
-            }
-            content.replaceAll(this);
-            return this;
-        }
-        text(t) {
-            if (!t) {
-                return this.selected.length ? this.selected[0].text() : '';
-            }
-            this.selected.forEach((w) => w.text(t));
-            return this;
-        }
-        data(d) {
-            if (d === undefined) {
-                if (!this.selected.length)
-                    return undefined;
-                return this.selected[0].data();
-            }
-            this.selected.forEach((e) => e.data(this.document, d));
-            return this;
-        }
-        attr(id, value) {
-            if (value === undefined) {
-                if (this.selected.length == 0)
-                    return undefined;
-                return this.selected[0].attr(id);
-            }
-            this.selected.forEach((e) => e.attr(id, value));
-            return this;
-        }
-        prop(id, value) {
-            if (value === undefined) {
-                if (this.selected.length == 0)
-                    return undefined;
-                return this.selected[0].prop(id);
-            }
-            this.selected.forEach((e) => e.prop(id, value));
-            return this;
-        }
-        // STYLE
-        addClass(id) {
-            this.selected.forEach((w) => w.addClass(id));
-            return this;
-        }
-        hasClass(id) {
-            if (this.selected.length == 0)
-                return false;
-            return this.selected[0].classes.includes(id);
-        }
-        removeClass(id) {
-            this.selected.forEach((w) => w.removeClass(id));
-            return this;
-        }
-        toggleClass(id) {
-            this.selected.forEach((w) => w.toggleClass(id));
-            return this;
-        }
-        style(name, value) {
-            if (!name)
-                return this.selected[0].style();
-            if (value === undefined) {
-                if (typeof name === 'string') {
-                    return this.selected[0].style(name);
-                }
-            }
-            this.selected.forEach((w) => {
-                if (typeof name === 'string') {
-                    w.style(name, value);
-                }
-                else {
-                    w.style(name);
-                }
-            });
-            return this;
-        }
-        removeStyle(name) {
-            this.selected.forEach((w) => w.removeStyle(name));
-            return this;
-        }
-        pos(...args) {
-            if (args.length == 0) {
-                if (this.selected.length == 0)
-                    return undefined;
-                return this.selected[0].pos();
-            }
-            this.selected.forEach((w) => w.pos(args[0], args[1], args[2]));
-            return this;
-        }
-        size(...args) {
-            if (args.length == 0) {
-                if (this.selected.length == 0)
-                    return undefined;
-                return this.selected[0].size();
-            }
-            this.selected.forEach((w) => w.size(args[0], args[1]));
-            return this;
-        }
-        // ANIMATION
-        animate(_props, _ms) {
-            return this;
-        }
-        clearQueue(_name) {
-            return this;
-        }
-        delay(_ms, _name) {
-            return this;
-        }
-        dequeue() {
-            return this;
-        }
-        fadeIn(_ms) {
-            return this;
-        }
-        fadeOut(_ms) {
-            return this;
-        }
-        fadeTo(_ms, _opacity) {
-            return this;
-        }
-        fadeToggle(_ms) {
-            return this;
-        }
-        finish(_name) {
-            return this;
-        }
-        hide(_ms) {
-            return this;
-        }
-        queue(..._args) {
-            return [];
-        }
-        show(_ms) {
-            return this;
-        }
-        slideDown(_ms) {
-            return this;
-        }
-        slideToggle(_ms) {
-            return this;
-        }
-        slideUp(_ms) {
-            return this;
-        }
-        stop() {
-            return this;
-        }
-        toggle(_arg) {
-            return this;
-        }
-        // EVENTS
-        on(event, cb) {
-            this.selected.forEach((w) => {
-                w.on(event, cb);
-            });
-            return this;
-        }
-        off(event, cb) {
-            this.selected.forEach((w) => {
-                w.off(event, cb);
-            });
-            return this;
-        }
-        fire(event, e) {
-            if (!e) {
-                e = GWU__namespace.io.makeCustomEvent(event);
-            }
-            this.selected.forEach((w) => {
-                const handlers = w.events[event];
-                if (handlers) {
-                    handlers.forEach((cb) => cb(this.document, w, e));
-                }
-            });
-            return this;
-        }
-    }
-
-    var index$1 = /*#__PURE__*/Object.freeze({
-        __proto__: null,
-        Style: Style,
-        makeStyle: makeStyle,
-        ComputedStyle: ComputedStyle,
-        Sheet: Sheet,
-        defaultStyle: defaultStyle,
-        Element: Element,
-        Input: Input,
-        CheckBox: CheckBox,
-        Button: Button$1,
-        FieldSet: FieldSet,
-        UnorderedList: UnorderedList,
-        OrderedList: OrderedList,
-        DataList: DataList,
-        selfClosingTags: selfClosingTags,
-        elements: elements,
-        configureElement: configureElement,
-        installElement: installElement,
-        parse: parse,
-        Document: Document,
-        Selection: Selection
-    });
-
-    defaultStyle$1.add('*', {
-        fg: 'white',
-        bg: -1,
-        align: 'left',
-        valign: 'top',
-    });
-    class Widget {
-        constructor(term, opts = {}) {
-            this.tag = 'text';
-            this.bounds = new GWU__namespace.xy.Bounds(0, 0, 0, 1);
-            this.depth = 0;
-            this.events = {};
-            this.action = '';
-            this.children = [];
-            this._style = new Style$1();
-            this.parent = null;
-            this.classes = [];
-            this._props = {};
-            this._attrs = {};
-            this.term = term;
-            // this.bounds.x = term.x;
-            // this.bounds.y = term.y;
-            this.bounds.x = opts.x || 0;
-            this.bounds.y = opts.y || 0;
-            this.bounds.width = opts.width || 0;
-            this.bounds.height = opts.height || 1;
-            if (opts.tag) {
-                this.tag = opts.tag;
-            }
-            if (opts.id) {
-                this.attr('id', opts.id);
-            }
-            if (opts.parent) {
-                this.parent = opts.parent;
-            }
-            if (opts.depth) {
-                this.depth = opts.depth;
-            }
-            this._style.set(opts);
-            if (opts.class) {
-                if (typeof opts.class === 'string') {
-                    opts.class = opts.class.split(/ +/g);
-                }
-                this.classes = opts.class.map((c) => c.trim());
-            }
-            if (opts.tabStop) {
-                this.prop('tabStop', true);
-            }
-            if (opts.action) {
-                this.attr('action', opts.action);
-            }
-            if (opts.action) {
-                this.action = opts.action;
-                this.on('click', (_n, w, e) => {
-                    if (this.action) {
-                        this._bubbleEvent(this.action, w, e);
-                    }
-                    return false; // keep bubbling
-                });
-            }
-            this._updateStyle();
-        }
-        attr(name, v) {
-            if (v === undefined)
-                return this._attrs[name];
-            this._attrs[name] = v;
-            return this;
-        }
-        prop(name, v) {
-            if (v === undefined)
-                return this._props[name];
-            const current = this._props[name];
-            if (current !== v) {
-                this._props[name] = v;
-                // console.log(`${this.tag}.${name}=${v}`);
-                this._updateStyle();
-            }
-            return this;
-        }
-        toggleProp(name) {
-            const current = !!this._props[name];
-            this.prop(name, !current);
-            return this;
-        }
-        incProp(name) {
-            let current = this.prop(name) || 0;
-            if (typeof current === 'boolean') {
-                current = current ? 1 : 0;
-            }
-            else if (typeof current === 'string') {
-                current = Number.parseInt(current) || 0;
-            }
-            ++current;
-            this.prop(name, current);
-            return this;
-        }
-        contains(...args) {
-            return this.bounds.contains(args[0], args[1]);
-        }
-        style(opts) {
-            if (opts === undefined)
-                return this._style;
-            this._style.set(opts);
-            this._updateStyle();
-            return this;
-        }
-        addClass(c) {
-            const all = c.split(/ +/g);
-            all.forEach((a) => {
-                if (this.classes.includes(a))
-                    return;
-                this.classes.push(a);
-            });
-            return this;
-        }
-        removeClass(c) {
-            const all = c.split(/ +/g);
-            all.forEach((a) => {
-                GWU__namespace.arrayDelete(this.classes, a);
-            });
-            return this;
-        }
-        hasClass(c) {
-            const all = c.split(/ +/g);
-            return GWU__namespace.arrayIncludesAll(this.classes, all);
-        }
-        toggleClass(c) {
-            const all = c.split(/ +/g);
-            all.forEach((a) => {
-                if (this.classes.includes(a)) {
-                    GWU__namespace.arrayDelete(this.classes, a);
-                }
-                else {
-                    this.classes.push(a);
-                }
-            });
-            return this;
-        }
-        get focused() {
-            return !!this.prop('focus');
-        }
-        set focused(v) {
-            this.prop('focus', v);
-        }
-        get hovered() {
-            return !!this.prop('hover');
-        }
-        set hovered(v) {
-            this.prop('hover', v);
-        }
-        get hidden() {
-            let current = this;
-            while (current) {
-                if (current.prop('hidden'))
-                    return true;
-                current = current.parent;
-            }
-            return false;
-        }
-        set hidden(v) {
-            this.prop('hidden', v);
-        }
-        _updateStyle() {
-            this._used = this.term.styles.computeFor(this);
-            this.term.needsDraw = true; // changed style or state
-        }
-        draw(buffer) {
-            if (this.hidden)
-                return false;
-            return this._draw(buffer);
-        }
-        _draw(buffer) {
-            this._drawFill(buffer);
-            return true;
-        }
-        _drawFill(buffer) {
-            if (this._used.bg !== undefined && this._used.bg !== -1) {
-                buffer.fillRect(this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, ' ', this._used.bg, this._used.bg);
-                return true;
-            }
-            return false;
-        }
-        // Children
-        addChild(w, beforeIndex = -1) {
-            if (w.parent && w.parent !== this)
-                throw new Error('Trying to add child that already has a parent.');
-            if (!this.children.includes(w)) {
-                if (beforeIndex < 0 || beforeIndex >= this.children.length) {
-                    this.children.push(w);
-                }
-                else {
-                    this.children.splice(beforeIndex, 0, w);
-                }
-            }
-            w.parent = this;
-            return this;
-        }
-        removeChild(w) {
-            if (!w.parent || w.parent !== this)
-                throw new Error('Removing child that does not have this widget as parent.');
-            GWU__namespace.arrayDelete(this.children, w);
-            w.parent = null;
-            return this;
-        }
-        // Events
-        mouseenter(e) {
-            if (!this.contains(e))
-                return;
-            if (this.hovered)
-                return;
-            this.hovered = true;
-            this._fireEvent('mouseenter', this, e);
-            if (this.parent) {
-                this.parent.mouseenter(e);
-            }
-        }
-        mousemove(e) {
-            if (this.hidden)
-                return false;
-            if (this.contains(e) && !e.defaultPrevented) {
-                this.mouseenter(e);
-                this._fireEvent('mousemove', this, e);
-                e.preventDefault();
-            }
-            else {
-                this.mouseleave(e);
-            }
-            return false;
-        }
-        mouseleave(e) {
-            if (this.contains(e))
-                return;
-            if (!this.hovered)
-                return;
-            this.hovered = false;
-            this._fireEvent('mouseleave', this, e);
-            if (this.parent) {
-                this.parent.mouseleave(e);
-            }
-        }
-        click(e) {
-            if (this.hidden)
-                return false;
-            return this._bubbleEvent('click', this, e);
-        }
-        keypress(_e) {
-            return false;
-        }
-        dir(_e) {
-            return false;
-        }
-        tick(_e) {
-            return false;
-        }
-        on(event, cb) {
-            let handlers = this.events[event];
-            if (!handlers) {
-                handlers = this.events[event] = [];
-            }
-            if (!handlers.includes(cb)) {
-                handlers.push(cb);
-            }
-            return this;
-        }
-        off(event, cb) {
-            let handlers = this.events[event];
-            if (!handlers)
-                return this;
-            if (cb) {
-                GWU__namespace.arrayDelete(handlers, cb);
-            }
-            else {
-                handlers.length = 0; // clear all handlers
-            }
-            return this;
-        }
-        _fireEvent(name, source, e) {
-            if (!e || !e.type) {
-                e = GWU__namespace.io.makeCustomEvent(name, e);
-            }
-            const handlers = this.events[name] || [];
-            let handled = handlers.reduce((out, h) => h(name, source || this, e) || out, false);
-            return handled;
-        }
-        _bubbleEvent(name, source, e) {
-            let current = this;
-            while (current) {
-                if (current._fireEvent(name, source, e))
-                    return true;
-                current = current.parent;
-            }
-            return this.term.fireEvent(name, source, e);
-        }
-    }
-
-    class Border extends Widget {
-        constructor(term, opts) {
-            super(term, opts);
-            this.ascii = false;
-            if (opts.ascii) {
-                this.ascii = true;
-            }
-            else if (opts.fg && opts.ascii !== false) {
-                this.ascii = true;
-            }
-        }
-        contains(..._args) {
-            return false;
-        }
-        _draw(buffer) {
-            const w = this.bounds.width;
-            const h = this.bounds.height;
-            const x = this.bounds.x;
-            const y = this.bounds.y;
-            const ascii = this.ascii;
-            drawBorder(buffer, x, y, w, h, this._used, ascii);
-            return true;
-        }
-    }
-    function drawBorder(buffer, x, y, w, h, style, ascii) {
-        const fg = style.fg;
-        const bg = style.bg;
-        if (ascii) {
-            for (let i = 1; i < w; ++i) {
-                buffer.draw(x + i, y, '-', fg, bg);
-                buffer.draw(x + i, y + h - 1, '-', fg, bg);
-            }
-            for (let j = 1; j < h; ++j) {
-                buffer.draw(x, y + j, '|', fg, bg);
-                buffer.draw(x + w - 1, y + j, '|', fg, bg);
-            }
-            buffer.draw(x, y, '+', fg, bg);
-            buffer.draw(x + w - 1, y, '+', fg, bg);
-            buffer.draw(x, y + h - 1, '+', fg, bg);
-            buffer.draw(x + w - 1, y + h - 1, '+', fg, bg);
-        }
-        else {
-            GWU__namespace.xy.forBorder(x, y, w, h, (x, y) => {
-                buffer.draw(x, y, ' ', bg, bg);
-            });
-        }
-    }
-
-    class Text extends Widget {
-        constructor(term, text, opts = {}) {
-            super(term, opts);
-            this._text = '';
-            this._lines = [];
-            this._fixedWidth = false;
-            this._fixedHeight = false;
-            this._fixedHeight = !!opts.height;
-            this._fixedWidth = !!opts.width;
-            this.bounds.width = opts.width || 0;
-            this.bounds.height = opts.height || 1;
-            this.text(text);
-        }
-        text(v) {
-            if (v === undefined)
-                return this._text;
-            this._text = v;
-            let w = this._fixedWidth ? this.bounds.width : 100;
-            this._lines = GWU__namespace.text.splitIntoLines(this._text, w);
-            if (!this._fixedWidth) {
-                this.bounds.width = this._lines.reduce((out, line) => Math.max(out, GWU__namespace.text.length(line)), 0);
-            }
-            if (this._fixedHeight) {
-                if (this._lines.length > this.bounds.height) {
-                    this._lines.length = this.bounds.height;
-                }
-            }
-            else {
-                this.bounds.height = this._lines.length;
-            }
-            this.term.needsDraw = true;
-            return this;
-        }
-        _draw(buffer, _force = false) {
-            this._drawFill(buffer);
-            let vOffset = 0;
-            if (this._used.valign === 'bottom') {
-                vOffset = this.bounds.height - this._lines.length;
-            }
-            else if (this._used.valign === 'middle') {
-                vOffset = Math.floor((this.bounds.height - this._lines.length) / 2);
-            }
-            this._lines.forEach((line, i) => {
-                buffer.drawText(this.bounds.x, this.bounds.y + i + vOffset, line, this._used.fg, -1, this.bounds.width, this._used.align);
-            });
-            return true;
-        }
-    }
-
-    class Button extends Widget {
-        constructor(term, opts) {
-            super(term, opts);
-        }
-    }
-
-    class Grid {
-        constructor(x, y) {
-            this._left = 0;
-            this._top = 0;
-            this._colWidths = [];
-            this._rowHeights = [];
-            this._col = 0;
-            this._row = -1;
-            this.x = 0;
-            this.y = 0;
-            this._left = x;
-            this._top = y;
-            this.x = x;
-            this.y = y;
-        }
-        cols(...args) {
-            if (args.length === 0)
-                return this._colWidths;
-            if (args.length == 2) {
-                args[0] = new Array(args[0]).fill(args[1]);
-            }
-            if (Array.isArray(args[0])) {
-                this._colWidths = args[0];
-            }
-            return this;
-        }
-        rows(...args) {
-            if (args.length === 0)
-                return this._rowHeights;
-            if (typeof args[0] === 'number') {
-                args[0] = new Array(args[0]).fill(args[1] || 1);
-            }
-            if (Array.isArray(args[0])) {
-                this._rowHeights = args[0];
-            }
-            return this;
-        }
-        col(n) {
-            if (n === undefined)
-                n = this._col;
-            this._col = GWU__namespace.clamp(n, 0, this._colWidths.length - 1);
-            return this._resetX()._resetY(); // move back to top of our current row
-        }
-        nextCol() {
-            return this.col(this._col + 1);
-        }
-        row(n) {
-            if (n === undefined)
-                n = this._row;
-            this._row = GWU__namespace.clamp(n, 0, this._rowHeights.length - 1);
-            return this._resetY()._resetX(); // move back to beginning of current column
-        }
-        nextRow() {
-            return this.row(this._row + 1).col(0);
-        }
-        setRowHeight(h) {
-            if (h < 0)
-                return this;
-            this._rowHeights[this._row] = h;
-            return this;
-        }
-        _resetX() {
-            this.x = this._left;
-            for (let i = 0; i < this._col; ++i) {
-                this.x += this._colWidths[i];
-            }
-            return this;
-        }
-        _resetY() {
-            this.y = this._top;
-            for (let i = 0; i < this._row; ++i) {
-                this.y += this._rowHeights[i];
-            }
-            return this;
-        }
-    }
-
-    class Column {
-        constructor(opts) {
-            this.format = GWU__namespace.IDENTITY;
-            this.width = opts.width;
-            if (typeof opts.format === 'function') {
-                this.format = opts.format;
-            }
-            else if (opts.format) {
-                this.format = GWU__namespace.text.compile(opts.format);
-            }
-            this.header = opts.header || '';
-            this.headerClass = opts.headerClass || '';
-            this.empty = opts.empty || '';
-            this.dataClass = opts.dataClass || '';
-        }
-        makeHeader(table) {
-            return table.term.text(this.header, {
-                class: this.headerClass,
-                tag: table.headerTag,
-                width: this.width,
-                height: table.rowHeight,
-                depth: table.depth + 1,
-            });
-        }
-        makeData(table, data, col, row) {
-            let text;
-            if (Array.isArray(data)) {
-                text = '' + (data[col] || this.empty);
-            }
-            else if (typeof data !== 'object') {
-                text = '' + data;
-            }
-            else {
-                text = this.format(data);
-            }
-            const widget = table.term.text(text, {
-                class: this.dataClass,
-                tag: table.dataTag,
-                width: this.width,
-                height: table.rowHeight,
-                depth: table.depth + 1,
-            });
-            widget.prop(row % 2 == 0 ? 'even' : 'odd', true);
-            widget.prop('row', row);
-            widget.prop('col', col);
-            return widget;
-        }
-    }
-    class Table extends Widget {
-        constructor(term, opts) {
-            super(term, opts);
-            this._data = [];
-            this.columns = [];
-            this.showHeader = false;
-            this.headerTag = 'th';
-            this.dataTag = 'td';
-            this.prefix = 'none';
-            this.select = 'cell';
-            this.rowHeight = 1;
-            this.border = 'none';
-            this.tag = 'table';
-            this.size = opts.size || term.height;
-            this.bounds.width = 0;
-            opts.columns.forEach((o) => {
-                const col = new Column(o);
-                this.columns.push(col);
-                this.bounds.width += col.width;
-            });
-            if (opts.border) {
-                if (opts.border === true)
-                    opts.border = 'ascii';
-                this.border = opts.border;
-            }
-            this.rowHeight = opts.rowHeight || 1;
-            this.bounds.height = 1;
-            if (opts.header) {
-                this.showHeader = true;
-            }
-            if (opts.headerTag)
-                this.headerTag = opts.headerTag;
-            if (opts.dataTag)
-                this.dataTag = opts.dataTag;
-            if (opts.prefix)
-                this.prefix = opts.prefix;
-            if (opts.select)
-                this.select = opts.select;
-            if (opts.data) {
-                this.data(opts.data);
-            }
-        }
-        data(data) {
-            if (data === undefined)
-                return this._data;
-            this._data = data;
-            this.children = []; // get rid of old format...
-            const borderAdj = this.border !== 'none' ? 1 : 0;
-            let x = this.bounds.x + borderAdj;
-            let y = this.bounds.y + borderAdj;
-            if (this.showHeader) {
-                this.columns.forEach((col) => {
-                    this.term.pos(x, y);
-                    const th = col.makeHeader(this);
-                    this.children.push(th);
-                    x += col.width + borderAdj;
-                });
-                y += this.rowHeight + borderAdj;
-            }
-            this._data.forEach((obj, j) => {
-                if (j >= this.size)
-                    return;
-                x = this.bounds.x + borderAdj;
-                this.columns.forEach((col, i) => {
-                    this.term.pos(x, y);
-                    const td = col.makeData(this, obj, i, j);
-                    this.children.push(td);
-                    x += col.width + borderAdj;
-                });
-                y += this.rowHeight + borderAdj;
-            });
-            this.bounds.height = y - this.bounds.y;
-            this.bounds.width = x - this.bounds.x;
-            this._updateStyle(); // sets this.needsDraw
-            return this;
-        }
-        _draw(buffer) {
-            this._drawFill(buffer);
-            this.children.forEach((w) => {
-                if (w.prop('row') >= this.size)
-                    return;
-                if (this.border !== 'none') {
-                    drawBorder(buffer, w.bounds.x - 1, w.bounds.y - 1, w.bounds.width + 2, w.bounds.height + 2, this._used, this.border == 'ascii');
-                }
-            });
-            return true;
-        }
-        mousemove(e) {
-            const active = (this.hovered = this.contains(e));
-            if (!active) {
-                this.children.forEach((c) => (c.hovered = false));
-                return false;
-            }
-            const hovered = this.children.find((c) => c.contains(e));
-            if (hovered) {
-                if (this.select === 'none') {
-                    this.children.forEach((c) => (c.hovered = false));
-                }
-                else if (this.select === 'row') {
-                    this.children.forEach((c) => (c.hovered = hovered.prop('row') == c.prop('row')));
-                }
-                else if (this.select === 'column') {
-                    this.children.forEach((c) => (c.hovered = hovered.prop('col') == c.prop('col')));
-                }
-            }
-            return true;
-        }
-    }
-
-    class Menu extends Widget {
-        constructor(term, opts) {
-            super(term, opts);
-            this.tag = opts.tag || 'menu';
-            this.buttonClass = opts.buttonClass || '';
-            this.buttonTag = opts.buttonTag || 'mi';
-            this._initButtons(opts);
-            this.bounds.height = this.children.length;
-        }
-        _initButtons(opts) {
-            this.children = [];
-            const buttons = opts.buttons;
-            const entries = Object.entries(buttons);
-            if (this.bounds.width <= 0) {
-                this.bounds.width = Math.max(opts.minWidth || 0, entries.reduce((out, [key, value]) => {
-                    const textLen = GWU__namespace.text.length(key) +
-                        (typeof value === 'string' ? 0 : 2);
-                    return Math.max(out, textLen);
-                }, 0));
-            }
-            entries.forEach(([key, value], i) => {
-                const opts = {
-                    x: this.bounds.x,
-                    y: this.bounds.y + i,
-                    class: this.buttonClass,
-                    tag: this.buttonTag,
-                    width: this.bounds.width,
-                    height: 1,
-                    depth: this.depth + 1,
-                    parent: this,
-                };
-                if (typeof value === 'string') {
-                    opts.action = value;
-                    const menuItem = this.term.text(key, opts);
-                    this.children.push(menuItem);
-                }
-                else {
-                    const menuOpts = opts;
-                    menuOpts.text = key;
-                    menuOpts.buttons = value;
-                    const menuItem = new MenuButton(this.term, menuOpts);
-                    this.term.addWidget(menuItem);
-                    this.children.push(menuItem);
-                }
-            });
-        }
-    }
-    class MenuButton extends Widget {
-        constructor(term, opts) {
-            super(term, opts);
-            this.tag = opts.tag || 'mi';
-            this._initButton(opts);
-            this._initMenu(opts);
-            this.bounds.height = 1;
-        }
-        _initButton(opts) {
-            this.button = this.term
-                .text(opts.text + ' \u25b6', {
-                x: this.bounds.x,
-                y: this.bounds.y,
-                class: opts.class,
-                tag: opts.tag || 'mi',
-                width: this.bounds.width,
-                height: 1,
-                depth: this.depth + 1,
-                parent: this,
-            })
-                .on('mouseenter', () => {
-                this.menu.hidden = false;
-                return false;
-            })
-                .on('mouseleave', (_n, _w, e) => {
-                if (!this.menu.contains(e)) {
-                    this.menu.hidden = true;
-                }
-                return false;
-            });
-            this.addChild(this.button, 0);
-        }
-        _initMenu(opts) {
-            this.menu = this.term
-                .menu({
-                x: this.bounds.x + this.button.bounds.width,
-                y: this.bounds.y,
-                class: opts.buttonClass,
-                tag: opts.buttonTag || 'select',
-                height: opts.height,
-                buttons: opts.buttons,
-                depth: this.depth + 1,
-                parent: this,
-            })
-                .on('click', () => {
-                this.menu.hidden = true;
-                return false;
-            })
-                .on('mouseleave', (_n, _w, e) => {
-                if (!this.button.contains(e)) {
-                    this.menu.hidden = true;
-                }
-                return false;
-            });
-            this.menu.hidden = true;
-            this.addChild(this.menu);
-        }
-    }
-
-    // import * as GWU from 'gw-utils';
-    class Select extends Widget {
-        constructor(term, opts) {
-            super(term, opts);
-            this.tag = opts.tag || 'select';
-            this._initText(opts);
-            this._initMenu(opts);
-            this.bounds.height = 1; // just the text component
-        }
-        _initText(opts) {
-            this.dropdown = this.term
-                .text(opts.text + ' \u25bc', {
-                x: this.bounds.x,
-                y: this.bounds.y,
-                class: opts.class,
-                tag: opts.tag || 'select',
-                width: this.bounds.width,
-                height: 1,
-                depth: this.depth + 1,
-                parent: this,
-            })
-                .on('click', () => {
-                this.menu.toggleProp('hidden');
-                return false;
-            });
-            this.addChild(this.dropdown, 0);
-        }
-        _initMenu(opts) {
-            this.menu = this.term
-                .menu({
-                x: this.bounds.x,
-                y: this.bounds.y + 1,
-                class: opts.buttonClass,
-                tag: opts.buttonTag || 'select',
-                width: opts.width,
-                minWidth: this.dropdown.bounds.width,
-                height: opts.height,
-                buttons: opts.buttons,
-                depth: this.depth + 1,
-                parent: this,
-            })
-                .on('click', () => {
-                this.menu.hidden = true;
-                return false;
-            });
-            this.menu.hidden = true;
-            this.addChild(this.menu);
-        }
-    }
-
-    class Term {
-        constructor(ui) {
-            this.opts = {};
-            // widgets: Widget.Widget[] = [];
-            this.allWidgets = [];
-            this.styles = new Sheet$1();
-            // _currentWidget: Widget.Widget | null = null;
-            this.events = {};
-            this._grid = null;
-            this._needsDraw = false;
-            this._buffer = null;
-            this.ui = ui;
-            this.body = new Widget(this, {
-                tag: 'body',
-                id: 'BODY',
-                depth: -1,
-                width: ui.width,
-                height: ui.height,
-            });
-            this.allWidgets.push(this.body);
-            this.reset();
-        }
-        get buffer() {
-            return this._buffer || this.ui.buffer;
-        }
-        get width() {
-            return this.ui.width;
-        }
-        get height() {
-            return this.ui.height;
-        }
-        get needsDraw() {
-            return this._needsDraw;
-        }
-        set needsDraw(v) {
-            this._needsDraw = v;
-        }
-        // RUN
-        show() {
-            if (this._buffer)
-                return;
-            this._buffer = this.ui.startLayer();
-        }
-        hide() {
-            if (!this._buffer)
-                return;
-            this.ui.finishLayer();
-            this._buffer = null;
-        }
-        // COLOR
-        reset() {
-            this.opts = { x: 0, y: 0 };
-            return this;
-        }
-        fg(v) {
-            this.opts.fg = v;
-            return this;
-        }
-        bg(v) {
-            this.opts.bg = v;
-            return this;
-        }
-        dim(pct = 25, fg = true, bg = false) {
-            if (fg) {
-                this.opts.fg = GWU__namespace.color.from(this.opts.fg || 'white').darken(pct);
-            }
-            if (bg) {
-                this.opts.bg = GWU__namespace.color.from(this.opts.bg || 'black').darken(pct);
-            }
-            return this;
-        }
-        bright(pct = 25, fg = true, bg = false) {
-            if (fg) {
-                this.opts.fg = GWU__namespace.color.from(this.opts.fg || 'white').lighten(pct);
-            }
-            if (bg) {
-                this.opts.bg = GWU__namespace.color.from(this.opts.bg || 'black').lighten(pct);
-            }
-            return this;
-        }
-        invert() {
-            [this.opts.fg, this.opts.bg] = [this.opts.bg, this.opts.fg];
-            return this;
-        }
-        // STYLE
-        style(opts) {
-            Object.assign(this.opts, opts);
-            return this;
-        }
-        // POSITION
-        pos(x, y) {
-            this.opts.x = GWU__namespace.clamp(x, 0, this.width);
-            this.opts.y = GWU__namespace.clamp(y, 0, this.height);
-            return this;
-        }
-        moveTo(x, y) {
-            return this.pos(x, y);
-        }
-        move(dx, dy) {
-            this.opts.x = GWU__namespace.clamp(this.opts.x + dx, 0, this.width);
-            this.opts.y = GWU__namespace.clamp(this.opts.y + dy, 0, this.height);
-            return this;
-        }
-        up(n = 1) {
-            return this.move(0, -n);
-        }
-        down(n = 1) {
-            return this.move(0, n);
-        }
-        left(n = 1) {
-            return this.move(-n, 0);
-        }
-        right(n = 1) {
-            return this.move(n, 0);
-        }
-        nextLine(n = 1) {
-            return this.pos(0, this.opts.y + n);
-        }
-        prevLine(n = 1) {
-            return this.pos(0, this.opts.y - n);
-        }
-        // EDIT
-        // erase and move back to top left
-        clear(color) {
-            this.body.children = [];
-            this.allWidgets = [this.body];
-            if (color) {
-                this.body.style().set('bg', color);
-            }
-            else {
-                this.body.style().unset('bg');
-            }
-            return this;
-        }
-        // // just erase screen
-        // erase(color?: GWU.color.ColorBase): this {
-        //     // remove all widgets
-        //     this._needsDraw = true;
-        //     if (color === undefined) {
-        //         color = this.opts.bg;
-        //     }
-        //     this.buffer.fill(' ', color, color);
-        //     return this;
-        // }
-        // eraseBelow(): this {
-        //     // TODO - remove widgets below
-        //     this.buffer.fillRect(
-        //         0,
-        //         this.y + 1,
-        //         this.width,
-        //         this.height - this.y - 1,
-        //         ' ',
-        //         this._style.bg,
-        //         this._style.bg
-        //     );
-        //     this._needsDraw = true;
-        //     return this;
-        // }
-        // eraseAbove(): this {
-        //     // TODO - remove widgets above
-        //     this.buffer.fillRect(
-        //         0,
-        //         0,
-        //         this.width,
-        //         this.y - 1,
-        //         ' ',
-        //         this._style.bg,
-        //         this._style.bg
-        //     );
-        //     this._needsDraw = true;
-        //     return this;
-        // }
-        // eraseLine(n: number): this {
-        //     if (n === undefined) {
-        //         n = this.y;
-        //     }
-        //     if (n >= 0 && n < this.height) {
-        //         // TODO - remove widgets on line
-        //         this.buffer.fillRect(
-        //             0,
-        //             n,
-        //             this.width,
-        //             1,
-        //             ' ',
-        //             this._style.bg,
-        //             this._style.bg
-        //         );
-        //     }
-        //     this._needsDraw = true;
-        //     return this;
-        // }
-        // eraseLineAbove(): this {
-        //     return this.eraseLine(this.y - 1);
-        // }
-        // eraseLineBelow(): this {
-        //     return this.eraseLine(this.y + 1);
-        // }
-        // GRID
-        // erases/clears current grid information
-        grid() {
-            this._grid = new Grid(this.opts.x, this.opts.y);
-            return this;
-        }
-        endGrid() {
-            this._grid = null;
-            return this;
-        }
-        cols(...args) {
-            if (!this._grid)
-                return this;
-            this._grid.cols(args[0], args[1]);
-            return this;
-        }
-        rows(...args) {
-            if (!this._grid)
-                return this;
-            this._grid.rows(args[0], args[1]);
-            return this;
-        }
-        startRow(n) {
-            if (!this._grid)
-                return this;
-            if (n !== undefined) {
-                this._grid.row(n);
-            }
-            else {
-                this._grid.nextRow();
-            }
-            this.pos(this._grid.x, this._grid.y);
-            return this;
-        }
-        nextCol() {
-            if (!this._grid)
-                return this;
-            this._grid.nextCol();
-            this.pos(this._grid.x, this._grid.y);
-            return this;
-        }
-        // new row height
-        endRow(h) {
-            if (!this._grid)
-                return this;
-            if (h !== undefined && h > 0) {
-                this._grid.setRowHeight(h);
-            }
-            return this;
-        }
-        // moves to specific column
-        col(n) {
-            if (!this._grid)
-                return this;
-            this._grid.col(n);
-            this.pos(this._grid.x, this._grid.y);
-            return this;
-        }
-        // moves to specific row
-        row(n) {
-            if (!this._grid)
-                return this;
-            this._grid.row(n);
-            this.pos(this._grid.x, this._grid.y);
-            return this;
-        }
-        // WIDGETS
-        addWidget(w) {
-            const index = this.allWidgets.findIndex((aw) => aw.depth <= w.depth);
-            if (index < 0) {
-                this.allWidgets.push(w);
-            }
-            else {
-                this.allWidgets.splice(index, 0, w);
-            }
-            if (!w.parent) {
-                this.body.addChild(w);
-            }
-            this.needsDraw = true;
-            return this;
-        }
-        removeWidget(w) {
-            // GWU.arrayDelete(this.widgets, w);
-            GWU__namespace.arrayDelete(this.allWidgets, w);
-            this.needsDraw = true;
-            if (w.parent) {
-                w.parent.removeChild(w);
-            }
-            return this;
-        }
-        widgetAt(...args) {
-            return (this.allWidgets.find((w) => w.contains(args[0], args[1]) && !w.hidden) || null);
-        }
-        text(text, opts = {}) {
-            // TODO - if in a grid cell, adjust width and height based on grid
-            // opts.style = opts.style || this._style;
-            const _opts = Object.assign({}, this.opts, opts);
-            const widget = new Text(this, text, _opts);
-            this.addWidget(widget);
-            return widget;
-        }
-        table(opts) {
-            // TODO - if in a grid cell, adjust width and height based on grid
-            // opts.style = opts.style || this._style;
-            const _opts = Object.assign({}, this.opts, opts);
-            const widget = new Table(this, _opts);
-            this.addWidget(widget);
-            return widget;
-        }
-        menu(opts) {
-            const _opts = Object.assign({}, this.opts, opts);
-            const widget = new Menu(this, _opts);
-            this.addWidget(widget);
-            return widget;
-        }
-        button(opts) {
-            const _opts = Object.assign({}, this.opts, opts);
-            const widget = new Button(this, _opts);
-            this.addWidget(widget);
-            return widget;
-        }
-        border(opts) {
-            const _opts = Object.assign({}, this.opts, opts);
-            const widget = new Border(this, _opts);
-            this.addWidget(widget);
-            return widget;
-        }
-        select(opts) {
-            const _opts = Object.assign({}, this.opts, opts);
-            const widget = new Select(this, _opts);
-            this.addWidget(widget);
-            return widget;
-        }
-        // CONTROL
-        render() {
-            this.draw();
-            return this;
-        }
-        // EVENTS
-        on(event, cb) {
-            let handlers = this.events[event];
-            if (!handlers) {
-                handlers = this.events[event] = [];
-            }
-            if (!handlers.includes(cb)) {
-                handlers.push(cb);
-            }
-            return this;
-        }
-        off(event, cb) {
-            let handlers = this.events[event];
-            if (!handlers)
-                return this;
-            if (cb) {
-                GWU__namespace.arrayDelete(handlers, cb);
-            }
-            else {
-                handlers.length = 0; // clear all handlers
-            }
-            return this;
-        }
-        fireEvent(name, source, e) {
-            if (!e || !e.type) {
-                e = GWU__namespace.io.makeCustomEvent(name, e);
-            }
-            const handlers = this.events[name] || [];
-            let handled = handlers.reduce((out, h) => h(name, source, e) || out, false);
-            return handled;
-        }
-        mousemove(e) {
-            this.allWidgets.forEach((w) => {
-                w.mousemove(e);
-            });
-            return false; // TODO - this._done
-        }
-        click(e) {
-            const w = this.widgetAt(e);
-            if (w) {
-                w.click(e);
-            }
-            else {
-                this.fireEvent('click', null, e);
-            }
-            return false; // TODO - this._done
-        }
-        keypress(_e) {
-            return false;
-        }
-        dir(_e) {
-            return false;
-        }
-        tick(_e) {
-            return false;
-        }
-        draw() {
-            if (this.styles.dirty) {
-                this._needsDraw = true;
-                this.allWidgets.forEach((w) => w._updateStyle());
-                this.styles.dirty = false;
-            }
-            if (!this._needsDraw)
-                return;
-            this._needsDraw = false;
-            if (!this._buffer) {
-                this.show();
-            }
-            this.ui.resetLayerBuffer();
-            // draw from low depth to high depth
-            for (let i = this.allWidgets.length - 1; i >= 0; --i) {
-                const w = this.allWidgets[i];
-                w.draw(this._buffer);
-            }
-            console.log('draw');
-            this.ui.render();
-        }
-    }
-
-    var index = /*#__PURE__*/Object.freeze({
-        __proto__: null,
-        Widget: Widget,
-        Border: Border,
-        drawBorder: drawBorder,
-        Text: Text,
-        Button: Button,
-        Grid: Grid,
-        Column: Column,
-        Table: Table,
-        Menu: Menu,
-        MenuButton: MenuButton,
-        Select: Select,
-        Term: Term
-    });
-
-    exports.ActionButton = ActionButton;
     exports.ActorEntry = ActorEntry;
-    exports.Box = Box;
-    exports.Button = Button$2;
+    exports.Border = Border;
+    exports.Button = Button;
     exports.CellEntry = CellEntry;
-    exports.Column = Column$1;
-    exports.ComputedStyle = ComputedStyle$1;
-    exports.Dialog = Dialog;
-    exports.DialogBuilder = DialogBuilder;
-    exports.DropDownButton = DropDownButton;
+    exports.Column = Column;
+    exports.ComputedStyle = ComputedStyle;
+    exports.DataList = DataList;
+    exports.DataTable = DataTable;
     exports.EntryBase = EntryBase;
+    exports.Fieldset = Fieldset;
     exports.Flavor = Flavor;
-    exports.Input = Input$1;
+    exports.Input = Input;
     exports.ItemEntry = ItemEntry;
-    exports.List = List;
-    exports.Menu = Menu$1;
-    exports.MenuButton = MenuButton$1;
+    exports.Layer = Layer;
+    exports.Menu = Menu;
+    exports.MenuButton = MenuButton;
+    exports.MenuViewer = MenuViewer;
+    exports.Menubar = Menubar;
+    exports.MenubarButton = MenubarButton;
+    exports.MessageArchive = MessageArchive;
     exports.Messages = Messages;
-    exports.Sheet = Sheet$1;
+    exports.OrderedList = OrderedList;
+    exports.Select = Select;
+    exports.Sheet = Sheet;
     exports.Sidebar = Sidebar;
-    exports.Style = Style$1;
-    exports.Table = Table$1;
-    exports.Text = Text$1;
+    exports.Style = Style;
+    exports.Text = Text;
     exports.UI = UI;
+    exports.UnorderedList = UnorderedList;
     exports.Viewport = Viewport;
-    exports.Widget = Widget$1;
-    exports.buildDialog = buildDialog;
-    exports.defaultStyle = defaultStyle$1;
-    exports.html = index$1;
-    exports.makeStyle = makeStyle$1;
-    exports.makeTable = makeTable;
-    exports.showDropDown = showDropDown;
-    exports.term = index;
+    exports.Widget = Widget;
+    exports.defaultStyle = defaultStyle;
+    exports.drawBorder = drawBorder;
+    exports.makeStyle = makeStyle;
 
     Object.defineProperty(exports, '__esModule', { value: true });
 

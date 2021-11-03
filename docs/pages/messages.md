@@ -12,6 +12,8 @@ setInterval(() => {
     GWU.message.add('Test ' + count);
     ++count;
 }, 2000);
+
+GWI.defaultStyle.add('messages', { fg: 'dark_purple', bg: 'darkest_gray' });
 ```
 
 ## Basic Usage
@@ -23,17 +25,15 @@ const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
 SHOW(canvas.node);
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const messages = new GWI.Messages('MSG', {
+const layer = ui.startNewLayer();
+
+const messages = new GWI.Messages(layer, {
+    id: 'MSG',
     x: 0,
     y: 0,
     width: 80,
     height: 4,
-    bg: 'red',
-    fg: 'yellow',
 });
-const dialog = new GWI.Dialog(ui);
-dialog.widgets.push(messages);
-dialog.show();
 ```
 
 ## Positioning
@@ -45,16 +45,13 @@ const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
 SHOW(canvas.node);
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const messages = new GWI.Messages('MSG', {
+const layer = ui.startNewLayer();
+
+const messages = new GWI.Messages(layer, {
+    id: 'MSG',
     x: 20,
     y: canvas.height - 4,
     width: 80,
     height: 4,
-    bg: 'teal',
-    fg: 'black',
 });
-
-const dialog = new GWI.Dialog(ui);
-dialog.widgets.push(messages);
-dialog.show();
 ```

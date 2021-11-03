@@ -1,7 +1,7 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import { UICore } from '../ts/types';
-import * as Widget from '../ts/widget';
+import * as UI from '../ts/ui';
+import * as Layer from '../ts/layer';
 
 // export const rnd = jest.fn();
 // export const counts = new Array(100).fill(0);
@@ -85,73 +85,65 @@ export function mockItem(): GWM.item.Item {
     return item;
 }
 
-export function mockLoop(): GWU.io.Loop {
-    const loopKeymap = {};
-    let done: (value: unknown) => void;
-    return {
-        run: jest.fn().mockImplementation((keymap) => {
-            Object.assign(loopKeymap, keymap);
-            return new Promise((resolve) => {
-                done = resolve;
-            });
-        }),
-        stop() {
-            done(void 0);
-        },
-    } as unknown as GWU.io.Loop;
+// @ts-ignore
+export interface MockLoop extends GWU.io.Loop {
+    run: jest.Mock<Promise<void>, [GWU.io.IOMap, number]>;
+    stop: jest.Mock<void>;
 }
 
-export function mockUI(width = 100, height = 38): UICore {
-    const buffer = new GWU.canvas.DataBuffer(width, height);
+export function mockLoop() {
     // @ts-ignore
-    buffer.render = jest.fn();
-    const loop = new GWU.io.Loop();
+    const loop: MockLoop = new GWU.io.Loop();
+    jest.spyOn(loop, 'run');
+    jest.spyOn(loop, 'stop');
+    return loop;
+}
 
-    // @ts-ignore
-    jest.spyOn(loop, '_startTicks');
+export interface MockCanvas {
+    readonly width: number;
+    readonly height: number;
+    render: jest.Mock<void>;
+    copyTo: jest.Mock<void, [GWU.canvas.DataBuffer]>;
+    draw: jest.Mock<boolean>;
+    toGlyph: jest.Mock<number, [number | string]>;
+    buffer: GWU.canvas.Buffer;
+}
 
-    return {
-        width,
-        height,
-        buffer: buffer as GWU.canvas.Buffer,
-        loop, // GWU.loop
+export function mockCanvas(w: number, h: number): MockCanvas {
+    const canvas = {
+        width: w,
+        height: h,
         render: jest.fn(),
-        startLayer: jest.fn().mockReturnValue(buffer),
-        finishLayer: jest.fn(),
-        resetLayerBuffer: jest.fn().mockImplementation(() => {
-            buffer.blackOut();
+        copyTo: jest.fn(),
+        draw: jest.fn(),
+        toGlyph: jest.fn().mockImplementation((ch: string | number) => {
+            if (typeof ch === 'number') return ch;
+            return ch.charCodeAt(0);
         }),
-        getInputAt: jest.fn(),
-        fadeTo: jest.fn(),
-        alert: jest.fn(),
-    } as UICore;
-}
-
-export interface MockWidgetRunner {
-    fireAction: jest.Mock<
-        void | Promise<void>,
-        [action: string, widget: Widget.Widget]
-    >;
-    requestRedraw: jest.Mock<void, []>;
-    ui: UICore;
-}
-
-export function mockDialog(ui: UICore): MockWidgetRunner {
-    const dlg = {
-        fireAction: jest.fn(
-            (
-                _action: string,
-                _widget: Widget.Widget
-            ): void | Promise<void> => {}
-        ),
-        requestRedraw: jest.fn((): void => {}),
-        ui,
     };
 
-    jest.spyOn(dlg, 'fireAction');
-    jest.spyOn(dlg, 'requestRedraw');
+    const buffer = new GWU.canvas.Buffer(canvas);
+    buffer.render = jest.fn();
+    (<MockCanvas>canvas).buffer = buffer;
 
-    return dlg;
+    return canvas as MockCanvas;
+}
+
+export function mockUI(width = 100, height = 38) {
+    // @ts-ignore
+    const loop = mockLoop();
+    const canvas = mockCanvas(width, height);
+
+    return new UI.UI({
+        loop: loop as unknown as GWU.io.Loop,
+        canvas: canvas as unknown as GWU.canvas.BaseCanvas,
+    });
+}
+
+export function mockLayer(w: number, h: number): Layer.Layer {
+    const ui = mockUI(w, h);
+    const layer = new Layer.Layer(ui);
+    return layer;
 }
 
 export function getBufferText(

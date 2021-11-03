@@ -1411,10 +1411,16 @@
     function makeArray(l, fn) {
         if (fn === undefined)
             return new Array(l).fill(0);
-        fn = fn || (() => 0);
+        let initFn;
+        if (typeof fn !== 'function') {
+            initFn = () => fn;
+        }
+        else {
+            initFn = fn;
+        }
         const arr = new Array(l);
         for (let i = 0; i < l; ++i) {
-            arr[i] = fn(i);
+            arr[i] = initFn(i);
         }
         return arr;
     }
@@ -1524,11 +1530,14 @@
         }
         randomEach(fn) {
             const sequence = random.sequence(this.width * this.height);
-            sequence.forEach((n) => {
+            for (let i = 0; i < sequence.length; ++i) {
+                const n = sequence[i];
                 const x = n % this.width;
                 const y = Math.floor(n / this.width);
-                fn(this[x][y], x, y, this);
-            });
+                if (fn(this[x][y], x, y, this) === true)
+                    return true;
+            }
+            return false;
         }
         /**
          * Returns a new Grid with the cells mapped according to the supplied function.
@@ -1594,8 +1603,7 @@
         }
         update(fn) {
             forRect(this.width, this.height, (i, j) => {
-                if (this.hasXY(i, j))
-                    this[i][j] = fn(this[i][j], i, j, this);
+                this[i][j] = fn(this[i][j], i, j, this);
             });
         }
         updateRect(x, y, width, height, fn) {
@@ -1797,7 +1805,7 @@
                 --stats.active;
             }
         }
-        _resize(width, height, v = 0) {
+        _resize(width, height, v) {
             const fn = typeof v === 'function' ? v : () => v;
             while (this.length < width)
                 this.push([]);
@@ -1828,7 +1836,7 @@
         }
         // Flood-fills the grid from (x, y) along cells that are within the eligible range.
         // Returns the total count of filled cells.
-        floodFillRange(x, y, eligibleValueMin = 0, eligibleValueMax = 0, fillValue = 0) {
+        floodFillRange(x, y, eligibleValueMin, eligibleValueMax, fillValue) {
             let dir;
             let newX, newY, fillCount = 1;
             if (fillValue >= eligibleValueMin && fillValue <= eligibleValueMax) {
@@ -2296,7 +2304,7 @@
                 this.events.push(ev);
             }
         }
-        nextEvent(ms, match) {
+        nextEvent(ms = -1, match) {
             match = match || TRUE;
             let elapsed = 0;
             while (this.events.length) {
@@ -2311,9 +2319,6 @@
                 recycleEvent(e);
             }
             let done;
-            if (ms === undefined) {
-                ms = -1; // wait forever
-            }
             if (ms == 0 || this.ended)
                 return Promise.resolve(null);
             if (this.CURRENT_HANDLER) {
@@ -2332,11 +2337,11 @@
                     if (elapsed < ms) {
                         return;
                     }
+                    e.dt = elapsed;
                 }
                 else if (!match(e))
                     return;
                 this.CURRENT_HANDLER = null;
-                e.dt = elapsed;
                 done(e);
             };
             return new Promise((resolve) => (done = resolve));
@@ -2368,10 +2373,12 @@
         stop() {
             this.clearEvents();
             this.running = false;
-            this.pushEvent(makeStopEvent());
             if (this.interval) {
                 clearInterval(this.interval);
                 this.interval = 0;
+            }
+            if (this.CURRENT_HANDLER) {
+                this.pushEvent(makeStopEvent());
             }
             this.CURRENT_HANDLER = null;
         }
@@ -4807,7 +4814,6 @@
                 continue;
             }
             // one hyphen will work...
-            // if (spaceLeftOnLine + width > wordWidth) {
             const hyphenAt = Math.min(spaceLeftOnLine - 1, Math.floor(wordWidth / 2));
             const w = advanceChars(text, start, hyphenAt);
             text = splice(text, w, 0, '-\n');
@@ -4816,23 +4822,6 @@
             wordWidth -= hyphenAt;
         }
         return [text, end];
-        // // do not have a strategy for this right now...
-        // if (wordWidth + 1 > width * 2) {
-        //     throw new Error('Cannot hyphenate - word length > 2 * width');
-        // }
-        // }
-        // if (width >= wordWidth) {
-        //     return [text, end];
-        // }
-        // console.log('hyphenate', { text, start, end, width, wordWidth, spaceLeftOnLine });
-        // throw new Error('Did not expect to get here...');
-        // wordWidth >= spaceLeftOnLine + width
-        // text = splice(text, start - 1, 1, "\n");
-        // spaceLeftOnLine = width;
-        // const hyphenAt = Math.min(wordWidth, width - 1);
-        // const w = Utils.advanceChars(text, start, hyphenAt);
-        // text = splice(text, w, 0, "-\n");
-        // return [text, end + 2];
     }
     function wordWrap(text, width, indent = 0) {
         if (!width)

@@ -9,8 +9,8 @@ describe('selector', () => {
         props?: Record<string, boolean>;
         attrs?: Record<string, string>;
         classes?: string[];
-        parent?: Types.Selectable;
-        children?: Types.Selectable[];
+        parent?: Types.UISelectable;
+        children?: Types.UISelectable[];
     }
 
     function mockSelectable(opts: SelectableOptions = {}) {

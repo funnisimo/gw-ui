@@ -1,8 +1,8 @@
 import * as GWU from 'gw-utils';
-import { Selectable } from './types';
+import { UISelectable } from './types';
 
-export type MatchFn = (el: Selectable) => boolean;
-type BuildFn = (next: MatchFn, e: Selectable) => boolean;
+export type MatchFn = (el: UISelectable) => boolean;
+type BuildFn = (next: MatchFn, e: UISelectable) => boolean;
 
 export class Selector {
     text: string;
@@ -41,7 +41,7 @@ export class Selector {
     }
 
     protected _parentMatch(): BuildFn {
-        return function parentM(next: MatchFn, e: Selectable) {
+        return function parentM(next: MatchFn, e: UISelectable) {
             // console.log('parent', e.parent);
             if (!e.parent) return false;
             return next(e.parent);
@@ -86,7 +86,7 @@ export class Selector {
             match = re.exec(text);
         }
 
-        return (next: MatchFn, e: Selectable) => {
+        return (next: MatchFn, e: UISelectable) => {
             if (!parts.every((fn) => fn(e))) return false;
             return next(e);
         };
@@ -99,12 +99,12 @@ export class Selector {
             return null;
         }
         this.priority += 10;
-        return (el: Selectable) => el.tag === tag;
+        return (el: UISelectable) => el.tag === tag;
     }
 
     protected _matchClass(cls: string): MatchFn {
         this.priority += 100;
-        return (el: Selectable) => el.classes.includes(cls);
+        return (el: UISelectable) => el.classes.includes(cls);
     }
 
     protected _matchProp(prop: string): MatchFn {
@@ -123,23 +123,23 @@ export class Selector {
         }
 
         this.priority += 1; // prop
-        return (el: Selectable) => !!el.prop(prop);
+        return (el: UISelectable) => !!el.prop(prop);
     }
 
     protected _matchId(id: string): MatchFn {
         this.priority += 1000;
-        return (el: Selectable) => el.attr('id') === id;
+        return (el: UISelectable) => el.attr('id') === id;
     }
 
     protected _matchFirst(): MatchFn {
         this.priority += 1; // prop
-        return (el: Selectable) =>
+        return (el: UISelectable) =>
             !!el.parent && !!el.parent.children && el.parent.children[0] === el;
     }
 
     protected _matchLast(): MatchFn {
         this.priority += 1; // prop
-        return (el: Selectable) => {
+        return (el: UISelectable) => {
             if (!el.parent) return false;
             if (!el.parent.children) return false;
             return el.parent.children[el.parent.children.length - 1] === el;
@@ -147,10 +147,10 @@ export class Selector {
     }
 
     protected _matchNot(fn: MatchFn): MatchFn {
-        return (el: Selectable) => !fn(el);
+        return (el: UISelectable) => !fn(el);
     }
 
-    matches(obj: Selectable): boolean {
+    matches(obj: UISelectable): boolean {
         return this.matchFn(obj);
     }
 }

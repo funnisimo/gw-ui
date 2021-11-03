@@ -7,14 +7,18 @@ const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
 SHOW(canvas.node);
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const topMenu = new GWI.Menu('TOP_MENU', {
+const layer = ui.startNewLayer();
+
+layer.styles.add('menu', { fg: 'yellow', bg: 'red' });
+layer.styles.add('mi', { fg: 'yellow', bg: 'red' });
+layer.styles.add('mi:hover', { fg: 'teal', bg: 'blue' });
+layer.styles.add('mi:focus', { fg: 'white', bg: 'dark_red' });
+
+const topMenu = layer.menubar({
+    id: 'TOP_MENU',
+    x: 0,
+    y: 0,
     width: 80,
-    fg: 'yellow',
-    bg: 'red',
-    activeFg: 'white',
-    activeBg: 'dark_red',
-    hoverFg: 'teal',
-    hoverBg: 'blue',
     buttons: {
         File: 'PRINT',
         Insert: {
@@ -34,13 +38,11 @@ const topMenu = new GWI.Menu('TOP_MENU', {
     },
 });
 
-const bottomMenu = new GWI.Menu('BOTTOM_MENU', {
+const bottomMenu = layer.menubar({
+    id: 'BOTTOM_MENU',
     width: 80,
-    bg: 'blue',
-    fg: 'white',
-    activeFg: 'gold',
-    hoverFg: 'teal',
-    hoverBg: 'blue',
+    x: 0,
+    y: layer.height - 1,
 
     buttons: {
         Add: 'PRINT',
@@ -48,6 +50,11 @@ const bottomMenu = new GWI.Menu('BOTTOM_MENU', {
             Airplane: 'PRINT',
             Bicycle: 'PRINT',
             Car: 'PRINT',
+            Donkey: {
+                Sliced: 'PRINT',
+                'Chocolate Covered': 'PRINT',
+                Whole: 'PRINT',
+            },
         },
         Test: {
             Automobile: 'PRINT',
@@ -57,28 +64,17 @@ const bottomMenu = new GWI.Menu('BOTTOM_MENU', {
     },
 });
 
-const text = new GWI.Text('OUTPUT', {
-    wrap: 60,
-    height: 18,
-    text: 'Try out the menu!',
-    valign: 'middle',
-    align: 'center',
+const text = layer.text('Try out the menu!', {
+    id: 'OUTPUT',
+    x: 30,
+    y: 15,
+    width: 40,
 });
 
-const builder = GWI.buildDialog(ui, canvas.width, canvas.height);
-builder.with(topMenu, { x: 0, y: 0 });
-builder.with(text, { x: 20, y: 10 });
-builder.with(bottomMenu, { x: 0, bottom: 0 });
-const dialog = builder.done();
-
-dialog.setEventHandlers({
-    PRINT: (action, dialog, menu) => {
-        const button = menu.actionButton;
-        text.setText(button.text);
-        dialog.requestRedraw();
-        return true;
-    },
+layer.on('PRINT', (action, button) => {
+    topMenu.collapse();
+    bottomMenu.collapse();
+    text.text(button.text());
+    return true;
 });
-
-dialog.show();
 ```

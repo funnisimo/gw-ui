@@ -11,6 +11,10 @@ describe('UI', () => {
         canvas = UTILS.mockCanvas(50, 30) as unknown as GWU.canvas.BaseCanvas;
     });
 
+    afterEach(() => {
+        loop.stop();
+    });
+
     test('construct', () => {
         const ui = new UI.UI({ loop, canvas });
         expect(ui.loop).toBe(loop);
@@ -21,19 +25,17 @@ describe('UI', () => {
     test('stop layer', async () => {
         const ui = new UI.UI({ loop, canvas });
         const layer = ui.startNewLayer();
-        jest.spyOn(layer, 'click');
-
         expect(ui.layer).toBe(layer);
 
-        await loop.pushEvent(UTILS.click(2, 2));
-
-        layer.finish();
+        jest.spyOn(layer, 'click');
+        await UTILS.pushEvent(ui.loop, UTILS.click(2, 2));
         expect(layer.click).toHaveBeenCalled();
 
-        expect(ui._done).toBeTruthy();
-        await ui.stop();
-
+        layer.finish();
         expect(ui.layer).toBeNull();
+
+        await ui.stop();
+        expect(ui._done).toBeTruthy();
     });
 
     test('multiple layers', async () => {
@@ -47,16 +49,16 @@ describe('UI', () => {
         jest.spyOn(layer2, 'click');
         expect(ui.layer).toBe(layer2);
 
-        await loop.pushEvent(UTILS.click(2, 2));
+        await UTILS.pushEvent(ui.loop, UTILS.click(2, 2));
+
+        expect(layer.click).not.toHaveBeenCalled();
+        expect(layer2.click).toHaveBeenCalled();
 
         layer2.finish();
         layer.finish();
 
-        expect(ui._done).toBeTruthy();
         await ui.stop();
-
-        expect(layer.click).not.toHaveBeenCalled();
-        expect(layer2.click).toHaveBeenCalled();
+        expect(ui._done).toBeTruthy();
     });
 
     test('multiple layers 2', async () => {
@@ -87,14 +89,14 @@ describe('UI', () => {
 
         await UTILS.pushEvent(ui.loop, e3);
 
-        expect(ui._done).toBeTruthy();
-        await ui.stop();
-
         expect(layer.result).toEqual('TACO');
         expect(layer2.result).toEqual(null);
 
         expect(layer2.click).toHaveBeenCalledWith(e2);
         expect(layer.click).toHaveBeenCalledWith(e3);
+
+        await ui.stop();
+        expect(ui._done).toBeTruthy();
     });
 
     test('stop multiple layers', async () => {

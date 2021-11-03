@@ -116,6 +116,8 @@ describe('Layer', () => {
             const divB = layer.pos(0, 1).text('B', { tabStop: true });
             const divC = layer.pos(0, 2).text('C', { tabStop: true });
 
+            expect(layer._focusWidget).toBeNull();
+            layer.nextTabStop();
             expect(layer._focusWidget).toBe(divB);
             layer.nextTabStop();
             expect(layer._focusWidget).toBe(divC);
@@ -137,6 +139,8 @@ describe('Layer', () => {
             const divC = layer.pos(0, 2).text('DIV C', { tabStop: true });
 
             // initial value
+            expect(layer._focusWidget).toBeNull();
+            layer.nextTabStop();
             expect(layer._focusWidget).toBe(divB);
 
             // click C
@@ -163,6 +167,8 @@ describe('Layer', () => {
             const divE = layer.pos(0, 4).text('DIV E', { tabStop: true });
 
             // initial value
+            expect(layer._focusWidget).toBeNull();
+            layer.nextTabStop();
             expect(layer._focusWidget).toBe(divB);
 
             // tab
@@ -198,6 +204,8 @@ describe('Layer', () => {
                 .on('keypress', keypressFn);
 
             // initial value
+            expect(layer._focusWidget).toBeNull();
+            layer.nextTabStop();
             expect(layer._focusWidget).toBe(divB);
 
             // tab
@@ -237,6 +245,8 @@ describe('Layer', () => {
                 .on('focus', focusFn);
 
             // initial value
+            expect(layer._focusWidget).toBeNull();
+            layer.nextTabStop();
             expect(layer._focusWidget).toBe(divB);
 
             layer.keypress(UTILS.keypress('Tab'));
@@ -261,6 +271,8 @@ describe('Layer', () => {
                 .on('focus', focusFn);
 
             // initial value
+            expect(layer._focusWidget).toBeNull();
+            layer.nextTabStop();
             expect(layer._focusWidget).toBe(divB);
 
             layer.keypress(UTILS.keypress('Tab'));
@@ -285,6 +297,8 @@ describe('Layer', () => {
                 .on('focus', focusFn);
 
             // initial value
+            expect(layer._focusWidget).toBeNull();
+            layer.nextTabStop();
             expect(layer._focusWidget).toBe(divB);
 
             layer.keypress(UTILS.keypress('Tab'));
@@ -304,6 +318,8 @@ describe('Layer', () => {
             const divE = layer.pos(0, 4).text('DIV E', { tabStop: true });
 
             // initial value
+            expect(layer._focusWidget).toBeNull();
+            layer.nextTabStop();
             expect(layer._focusWidget).toBe(divB);
 
             // tab
@@ -336,6 +352,8 @@ describe('Layer', () => {
             const divE = layer.pos(0, 4).text('DIV E', { tabStop: true });
 
             // initial value
+            expect(layer._focusWidget).toBeNull();
+            layer.nextTabStop();
             expect(layer._focusWidget).toBe(divB);
 
             // tab

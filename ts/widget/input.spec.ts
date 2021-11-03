@@ -157,7 +157,7 @@ describe('Input Widget', () => {
             text: 'Test',
         });
         jest.spyOn(widget, '_fireEvent');
-        expect(widget.action).toEqual('ID');
+        expect(widget.prop('action')).toEqual('ID');
 
         expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
         expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget);

@@ -2,6 +2,7 @@ import * as GWU from 'gw-utils';
 import * as Style from './style';
 import * as Widget from './widget/widget';
 import { UILayer, UIStylesheet, StyleOptions } from './types';
+import { Grid } from './grid';
 
 export interface UICore {
     // buffer: GWU.canvas.Buffer;
@@ -30,8 +31,17 @@ export interface UICore {
     // alert(opts: number | AlertOptions, text: string, args: any): Promise<void>;
 }
 
+export interface LayerOptions {
+    id?: string;
+    depth?: number;
+    hidden?: boolean;
+}
+
 export class Layer implements UILayer {
     ui: UICore;
+    id: string = '';
+    depth: number = 0;
+    hidden: boolean = false;
     buffer: GWU.canvas.Buffer;
     body: Widget.Widget;
     styles: UIStylesheet;
@@ -44,10 +54,14 @@ export class Layer implements UILayer {
     _hasTabStop = false;
     timers: Record<string, number> = {};
 
-    _opts: Widget.WidgetOptions = {};
+    _opts: Widget.WidgetOptions = { x: 0, y: 0 };
 
-    constructor(ui: UICore) {
+    constructor(ui: UICore, opts: LayerOptions = {}) {
         this.ui = ui;
+        this.id = opts.id || 'root';
+        this.depth = opts.depth || 0;
+        this.hidden = opts.hidden === undefined ? false : opts.hidden;
+
         this.buffer = ui.canvas.buffer.clone();
         this.styles = new Style.Sheet(ui.styles);
         this.body = new Widget.Widget(this, {
@@ -125,9 +139,13 @@ export class Layer implements UILayer {
 
     // POSITION
 
-    pos(x: number, y: number): this {
+    pos(): GWU.xy.XY;
+    pos(x: number, y: number): this;
+    pos(x?: number, y?: number): this | GWU.xy.XY {
+        if (x === undefined) return this._opts as GWU.xy.XY;
+
         this._opts.x = GWU.clamp(x, 0, this.width);
-        this._opts.y = GWU.clamp(y, 0, this.height);
+        this._opts.y = GWU.clamp(y!, 0, this.height);
         return this;
     }
 
@@ -163,6 +181,10 @@ export class Layer implements UILayer {
 
     prevLine(n = 1): this {
         return this.pos(0, this._opts.y! - n);
+    }
+
+    grid(): Grid {
+        return new Grid(this);
     }
 
     // EDIT

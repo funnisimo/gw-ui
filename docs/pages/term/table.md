@@ -85,19 +85,16 @@ const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
 SHOW(canvas.node);
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
+const layer = ui.startNewLayer();
 
-const term = new GWI.term.Term(ui);
+layer.styles.add('td', { bg: 'blue', align: 'center' });
+layer.styles.add('th', { bg: 'white', fg: 'blue', align: 'center' });
 
-term.styles.add('td', { bg: 'blue', align: 'center' });
-term.styles.add('th', { bg: 'white', fg: 'blue', align: 'center' });
-
-term.pos(5, 5).table({
+layer.pos(5, 5).datatable({
     header: true,
     columns: [{ header: 'Name', width: 10 }],
     data: ['Sam', 'Jerome', 'Marsha', 'Natasha'],
 });
-
-term.render();
 ```
 
 ## Example - Multiple Columns
@@ -107,13 +104,12 @@ const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
 SHOW(canvas.node);
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
+const layer = ui.startNewLayer();
 
-const term = new GWI.term.Term(ui);
-
-term.styles.add('.center', { align: 'center' });
-term.styles.add('th', { bg: 'white', fg: 'blue' });
-term.styles.add('td', { bg: 'blue' });
-term.styles.add('td:hover', { bg: 'green', fg: 'black' });
+layer.styles.add('.center', { align: 'center' });
+layer.styles.add('th', { bg: 'white', fg: 'blue' });
+layer.styles.add('td', { bg: 'blue' });
+layer.styles.add('td:hover', { bg: 'green', fg: 'black' });
 
 const data = [
     ['Sam', 42],
@@ -122,7 +118,7 @@ const data = [
     ['Natasha', 78],
 ];
 
-term.pos(5, 5).table({
+layer.pos(5, 5).datatable({
     header: true,
     select: 'row',
     border: 'ascii',
@@ -140,6 +136,4 @@ term.pos(5, 5).table({
     ],
     data,
 });
-
-LOOP.run(term);
 ```

@@ -69,28 +69,29 @@ export class UI implements UICore {
     //     this.buffer.render();
     // }
 
-    // get baseBuffer(): GWU.canvas.Buffer {
-    //     return this.layers[this.layers.length - 1] || this.canvas.buffer;
-    // }
+    get baseBuffer(): GWU.canvas.Buffer {
+        const layer = this.layers[this.layers.length - 2] || null;
+        return layer ? layer.buffer : this.canvas.buffer;
+    }
 
-    // get canvasBuffer(): GWU.canvas.Buffer {
-    //     return this.canvas.buffer;
-    // }
+    get canvasBuffer(): GWU.canvas.Buffer {
+        return this.canvas.buffer;
+    }
 
     startNewLayer(): Layer {
         const layer = new Layer(this);
 
+        this.layers.push(layer);
+
         if (!this.layer) {
             this._promise = this.loop.run(this as unknown as GWU.io.IOMap);
-        } else {
-            this.layers.push(this.layer);
         }
         this.layer = layer;
         return layer;
     }
 
     copyUIBuffer(dest: GWU.canvas.DataBuffer): void {
-        const base = this.canvas.buffer;
+        const base = this.baseBuffer;
         dest.copy(base);
         dest.changed = false; // So you have to draw something to make the canvas render...
     }
@@ -99,18 +100,12 @@ export class UI implements UICore {
         GWU.arrayDelete(this.layers, layer);
         if (this.layer === layer) {
             this.layer = this.layers.pop() || null;
-            if (!this.layer) {
-                this._done = true;
-                this.loop.stop();
-            }
         }
     }
 
     stop(): Promise<void> | null {
-        while (this.layer) {
-            this.finishLayer(this.layer);
-        }
         this._done = true;
+        this.loop.stop();
         const p = this._promise;
         this._promise = null;
         return p;

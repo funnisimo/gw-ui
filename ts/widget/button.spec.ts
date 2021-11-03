@@ -112,7 +112,7 @@ describe('Button Widget', () => {
 
         expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
         // @ts-ignore
-        expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget);
+        expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget, undefined);
 
         // @ts-ignore
         widget._fireEvent.mockClear();
@@ -120,7 +120,7 @@ describe('Button Widget', () => {
         widget._fireEvent.mockResolvedValue(void 0);
 
         expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
-        expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget);
+        expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget, undefined);
 
         // @ts-ignore
         widget._fireEvent.mockClear();
@@ -138,7 +138,11 @@ describe('Button Widget', () => {
         jest.spyOn(widget, '_fireEvent');
 
         expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
-        expect(widget._fireEvent).toHaveBeenCalledWith('DONE', widget);
+        expect(widget._fireEvent).toHaveBeenCalledWith(
+            'DONE',
+            widget,
+            undefined
+        );
     });
 
     test('Click', async () => {
@@ -153,7 +157,7 @@ describe('Button Widget', () => {
         jest.spyOn(widget, '_fireEvent');
 
         expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
-        expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget);
+        expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget, undefined);
 
         // @ts-ignore
         widget._fireEvent.mockClear();
@@ -162,7 +166,7 @@ describe('Button Widget', () => {
 
         expect(widget.click(UTILS.click(0, 0))).toBeTruthy();
         // @ts-ignore
-        expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget);
+        expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget, undefined);
 
         // @ts-ignore
         widget._fireEvent.mockClear();
@@ -180,6 +184,10 @@ describe('Button Widget', () => {
         jest.spyOn(widget, '_fireEvent');
 
         expect(widget.click(UTILS.click(0, 0))).toBeTruthy();
-        expect(widget._fireEvent).toHaveBeenCalledWith('DONE', widget);
+        expect(widget._fireEvent).toHaveBeenCalledWith(
+            'DONE',
+            widget,
+            undefined
+        );
     });
 });

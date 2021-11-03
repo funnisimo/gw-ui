@@ -1,5 +1,10 @@
 import * as GWU from 'gw-utils';
 
+export interface GridTarget {
+    pos(): GWU.xy.XY;
+    pos(x: number, y: number): any;
+}
+
 export class Grid {
     _left = 0;
     _top = 0;
@@ -7,14 +12,13 @@ export class Grid {
     _rowHeights: number[] = [];
     _col = 0;
     _row = -1;
-    x = 0;
-    y = 0;
+    target: GridTarget;
 
-    constructor(x: number, y: number) {
-        this._left = x;
-        this._top = y;
-        this.x = x;
-        this.y = y;
+    constructor(target: GridTarget) {
+        this.target = target;
+        const pos = target.pos();
+        this._left = pos.x;
+        this._top = pos.y;
     }
 
     cols(): number[];
@@ -49,7 +53,7 @@ export class Grid {
         if (n === undefined) n = this._col;
         this._col = GWU.clamp(n, 0, this._colWidths.length - 1);
 
-        return this._resetX()._resetY(); // move back to top of our current row
+        return this._setPos(); // move back to top of our current row
     }
 
     nextCol(): this {
@@ -59,32 +63,30 @@ export class Grid {
     row(n?: number): this {
         if (n === undefined) n = this._row;
         this._row = GWU.clamp(n, 0, this._rowHeights.length - 1);
-        return this._resetY()._resetX(); // move back to beginning of current column
+        return this._setPos(); // move back to beginning of current column
     }
 
     nextRow(): this {
         return this.row(this._row + 1).col(0);
     }
 
-    setRowHeight(h: number): this {
-        if (h < 0) return this;
+    endRow(h: number): this {
+        if (h <= 0) return this;
         this._rowHeights[this._row] = h;
         return this;
     }
 
-    protected _resetX(): this {
-        this.x = this._left;
+    protected _setPos(): this {
+        let x = this._left;
         for (let i = 0; i < this._col; ++i) {
-            this.x += this._colWidths[i];
+            x += this._colWidths[i];
         }
-        return this;
-    }
 
-    protected _resetY(): this {
-        this.y = this._top;
+        let y = this._top;
         for (let i = 0; i < this._row; ++i) {
-            this.y += this._rowHeights[i];
+            y += this._rowHeights[i];
         }
+        this.target.pos(x, y);
         return this;
     }
 }

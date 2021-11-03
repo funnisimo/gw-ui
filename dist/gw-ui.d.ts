@@ -224,6 +224,33 @@ declare class Widget implements UIStylable {
     _bubbleEvent(name: string, source: Widget | null, args?: any): boolean;
 }
 
+interface GridTarget {
+    pos(): GWU.xy.XY;
+    pos(x: number, y: number): any;
+}
+declare class Grid {
+    _left: number;
+    _top: number;
+    _colWidths: number[];
+    _rowHeights: number[];
+    _col: number;
+    _row: number;
+    target: GridTarget;
+    constructor(target: GridTarget);
+    cols(): number[];
+    cols(count: number, width: number): this;
+    cols(widths: number[]): this;
+    rows(): number[];
+    rows(count: number, height?: number): this;
+    rows(heights: number[]): this;
+    col(n?: number): this;
+    nextCol(): this;
+    row(n?: number): this;
+    nextRow(): this;
+    endRow(h: number): this;
+    protected _setPos(): this;
+}
+
 interface UICore {
     readonly loop: GWU.io.Loop;
     readonly canvas: GWU.canvas.BaseCanvas;
@@ -235,8 +262,16 @@ interface UICore {
     finishLayer(layer: Layer): void;
     stop(): void;
 }
+interface LayerOptions {
+    id?: string;
+    depth?: number;
+    hidden?: boolean;
+}
 declare class Layer implements UILayer {
     ui: UICore;
+    id: string;
+    depth: number;
+    hidden: boolean;
     buffer: GWU.canvas.Buffer;
     body: Widget;
     styles: UIStylesheet;
@@ -248,7 +283,7 @@ declare class Layer implements UILayer {
     _hasTabStop: boolean;
     timers: Record<string, number>;
     _opts: WidgetOptions;
-    constructor(ui: UICore);
+    constructor(ui: UICore, opts?: LayerOptions);
     get width(): number;
     get height(): number;
     reset(): this;
@@ -258,6 +293,7 @@ declare class Layer implements UILayer {
     bright(pct?: number, fg?: boolean, bg?: boolean): this;
     invert(): this;
     style(opts: StyleOptions): this;
+    pos(): GWU.xy.XY;
     pos(x: number, y: number): this;
     moveTo(x: number, y: number): this;
     move(dx: number, dy: number): this;
@@ -267,6 +303,7 @@ declare class Layer implements UILayer {
     right(n?: number): this;
     nextLine(n?: number): this;
     prevLine(n?: number): this;
+    grid(): Grid;
     clear(color?: GWU.color.ColorBase): this;
     fadeTo(_color?: GWU.color.ColorBase, _duration?: number): void;
     sortWidgets(): this;
@@ -307,6 +344,8 @@ declare class UI implements UICore {
     get width(): number;
     get height(): number;
     get styles(): Sheet;
+    get baseBuffer(): GWU.canvas.Buffer;
+    get canvasBuffer(): GWU.canvas.Buffer;
     startNewLayer(): Layer;
     copyUIBuffer(dest: GWU.canvas.DataBuffer): void;
     finishLayer(layer: Layer): void;
@@ -847,4 +886,4 @@ declare class Viewport extends Widget {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActionConfig, ActorEntry, AddBorderOptions, AddDataListOptions, AddDataTableOptions, AddFieldsetOptions, AddInputOptions, AddMenuOptions, AddMenubarOptions, AddOrderedListOptions, AddSelectOptions, AddTextOptions, AddUnorderedListOptions, ArchiveMode, Border, BorderOptions, BorderType, Button, ButtonConfig, ButtonOptions, CellEntry, Column, ColumnOptions, ComputedStyle, DataItem, DataList, DataListOptions, DataObject, DataTable, DataTableOptions, DataType, DropdownConfig, EntryBase, EventCb, Fieldset, FieldsetOptions, Flavor, FlavorOptions, FormatFn, Input, InputOptions, ItemEntry, Layer, Menu, MenuButton, MenuButtonOptions, MenuOptions, MenuViewer, Menubar, MenubarButton, MenubarButtonOptions, MenubarOptions, MessageArchive, MessageOptions, Messages, OrderedList, OrderedListOptions, PrefixType, PropType, Rec, Select, SelectOptions, SelectType, SetParentOptions, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, Text, TextOptions, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, UnorderedList, UnorderedListOptions, Value, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, defaultStyle, drawBorder, makeStyle };
+export { ActionConfig, ActorEntry, AddBorderOptions, AddDataListOptions, AddDataTableOptions, AddFieldsetOptions, AddInputOptions, AddMenuOptions, AddMenubarOptions, AddOrderedListOptions, AddSelectOptions, AddTextOptions, AddUnorderedListOptions, ArchiveMode, Border, BorderOptions, BorderType, Button, ButtonConfig, ButtonOptions, CellEntry, Column, ColumnOptions, ComputedStyle, DataItem, DataList, DataListOptions, DataObject, DataTable, DataTableOptions, DataType, DropdownConfig, EntryBase, EventCb, Fieldset, FieldsetOptions, Flavor, FlavorOptions, FormatFn, Input, InputOptions, ItemEntry, Layer, LayerOptions, Menu, MenuButton, MenuButtonOptions, MenuOptions, MenuViewer, Menubar, MenubarButton, MenubarButtonOptions, MenubarOptions, MessageArchive, MessageOptions, Messages, OrderedList, OrderedListOptions, PrefixType, PropType, Rec, Select, SelectOptions, SelectType, SetParentOptions, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, Text, TextOptions, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, UnorderedList, UnorderedListOptions, Value, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, defaultStyle, drawBorder, makeStyle };

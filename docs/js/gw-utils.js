@@ -66,6 +66,19 @@
         a.splice(index, 1);
         return true;
     }
+    function arrayInsert(a, b, beforeFn) {
+        if (!beforeFn) {
+            a.push(b);
+            return;
+        }
+        const index = a.findIndex(beforeFn);
+        if (index < 0) {
+            a.push(b);
+        }
+        else {
+            a.splice(index, 0, b);
+        }
+    }
     function arrayFindRight(a, fn) {
         for (let i = a.length - 1; i >= 0; --i) {
             const e = a[i];
@@ -5395,7 +5408,7 @@
                 '\u25b2',
                 '\u25b6',
                 '\u25bc',
-                '\u25c0', // bug left arrow
+                '\u25c0', // big left arrow
             ].forEach((ch, i) => {
                 this.draw(i, ch);
             });
@@ -7064,6 +7077,7 @@ void main() {
     exports.arrayDelete = arrayDelete;
     exports.arrayFindRight = arrayFindRight;
     exports.arrayIncludesAll = arrayIncludesAll;
+    exports.arrayInsert = arrayInsert;
     exports.arrayNext = arrayNext;
     exports.arrayPrev = arrayPrev;
     exports.arraysIntersect = arraysIntersect;

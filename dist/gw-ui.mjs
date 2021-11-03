@@ -936,8 +936,84 @@ class Widget {
     }
 }
 
+class Grid {
+    constructor(target) {
+        this._left = 0;
+        this._top = 0;
+        this._colWidths = [];
+        this._rowHeights = [];
+        this._col = 0;
+        this._row = -1;
+        this.target = target;
+        const pos = target.pos();
+        this._left = pos.x;
+        this._top = pos.y;
+    }
+    cols(...args) {
+        if (args.length === 0)
+            return this._colWidths;
+        if (args.length == 2) {
+            args[0] = new Array(args[0]).fill(args[1]);
+        }
+        if (Array.isArray(args[0])) {
+            this._colWidths = args[0];
+        }
+        return this;
+    }
+    rows(...args) {
+        if (args.length === 0)
+            return this._rowHeights;
+        if (typeof args[0] === 'number') {
+            args[0] = new Array(args[0]).fill(args[1] || 1);
+        }
+        if (Array.isArray(args[0])) {
+            this._rowHeights = args[0];
+        }
+        return this;
+    }
+    col(n) {
+        if (n === undefined)
+            n = this._col;
+        this._col = GWU.clamp(n, 0, this._colWidths.length - 1);
+        return this._setPos(); // move back to top of our current row
+    }
+    nextCol() {
+        return this.col(this._col + 1);
+    }
+    row(n) {
+        if (n === undefined)
+            n = this._row;
+        this._row = GWU.clamp(n, 0, this._rowHeights.length - 1);
+        return this._setPos(); // move back to beginning of current column
+    }
+    nextRow() {
+        return this.row(this._row + 1).col(0);
+    }
+    endRow(h) {
+        if (h <= 0)
+            return this;
+        this._rowHeights[this._row] = h;
+        return this;
+    }
+    _setPos() {
+        let x = this._left;
+        for (let i = 0; i < this._col; ++i) {
+            x += this._colWidths[i];
+        }
+        let y = this._top;
+        for (let i = 0; i < this._row; ++i) {
+            y += this._rowHeights[i];
+        }
+        this.target.pos(x, y);
+        return this;
+    }
+}
+
 class Layer {
-    constructor(ui) {
+    constructor(ui, opts = {}) {
+        this.id = '';
+        this.depth = 0;
+        this.hidden = false;
         this.needsDraw = true;
         this.result = undefined;
         this._attachOrder = [];
@@ -945,8 +1021,11 @@ class Layer {
         this._focusWidget = null;
         this._hasTabStop = false;
         this.timers = {};
-        this._opts = {};
+        this._opts = { x: 0, y: 0 };
         this.ui = ui;
+        this.id = opts.id || 'root';
+        this.depth = opts.depth || 0;
+        this.hidden = opts.hidden === undefined ? false : opts.hidden;
         this.buffer = ui.canvas.buffer.clone();
         this.styles = new Sheet(ui.styles);
         this.body = new Widget(this, {
@@ -1011,8 +1090,9 @@ class Layer {
         Object.assign(this._opts, opts);
         return this;
     }
-    // POSITION
     pos(x, y) {
+        if (x === undefined)
+            return this._opts;
         this._opts.x = GWU.clamp(x, 0, this.width);
         this._opts.y = GWU.clamp(y, 0, this.height);
         return this;
@@ -1042,6 +1122,9 @@ class Layer {
     }
     prevLine(n = 1) {
         return this.pos(0, this._opts.y - n);
+    }
+    grid() {
+        return new Grid(this);
     }
     // EDIT
     // erase and move back to top left
@@ -1301,25 +1384,24 @@ class UI {
     // render() {
     //     this.buffer.render();
     // }
-    // get baseBuffer(): GWU.canvas.Buffer {
-    //     return this.layers[this.layers.length - 1] || this.canvas.buffer;
-    // }
-    // get canvasBuffer(): GWU.canvas.Buffer {
-    //     return this.canvas.buffer;
-    // }
+    get baseBuffer() {
+        const layer = this.layers[this.layers.length - 2] || null;
+        return layer ? layer.buffer : this.canvas.buffer;
+    }
+    get canvasBuffer() {
+        return this.canvas.buffer;
+    }
     startNewLayer() {
         const layer = new Layer(this);
+        this.layers.push(layer);
         if (!this.layer) {
             this._promise = this.loop.run(this);
-        }
-        else {
-            this.layers.push(this.layer);
         }
         this.layer = layer;
         return layer;
     }
     copyUIBuffer(dest) {
-        const base = this.canvas.buffer;
+        const base = this.baseBuffer;
         dest.copy(base);
         dest.changed = false; // So you have to draw something to make the canvas render...
     }
@@ -1327,17 +1409,11 @@ class UI {
         GWU.arrayDelete(this.layers, layer);
         if (this.layer === layer) {
             this.layer = this.layers.pop() || null;
-            if (!this.layer) {
-                this._done = true;
-                this.loop.stop();
-            }
         }
     }
     stop() {
-        while (this.layer) {
-            this.finishLayer(this.layer);
-        }
         this._done = true;
+        this.loop.stop();
         const p = this._promise;
         this._promise = null;
         return p;

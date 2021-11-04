@@ -102,7 +102,7 @@ export class Column {
             text = this.format(data);
         }
 
-        const widget = new Text(table.layer, {
+        const widget = new TD(table.layer, {
             text,
             x,
             y,
@@ -263,46 +263,51 @@ export class DataTable extends Widget {
         return true;
     }
 
-    mousemove(e: GWU.io.Event): boolean {
-        const active = (this.hovered = this.contains(e));
-        if (!active) {
-            this.selectedColumn = -1;
-            this.selectedRow = -1;
-            // this.children.forEach((c) => (c.hovered = false));
-            // return false;
-        } else {
-            const hovered = this.children.find((c) => c.contains(e));
+    mouseenter(e: GWU.io.Event, over: Widget): void {
+        super.mouseenter(e, over);
+        if (!this.hovered) return;
 
-            if (hovered) {
-                const col = hovered._propInt('col');
-                const row = hovered._propInt('row');
-                if (col !== this.selectedColumn || row !== this.selectedRow) {
-                    this.selectedColumn = col;
-                    this.selectedRow = row;
+        const hovered = this.children.find((c) => c.contains(e));
 
-                    if (this.select === 'none') {
-                        this.children.forEach((c) => (c.hovered = false));
-                    } else if (this.select === 'row') {
-                        this.children.forEach(
-                            (c) =>
-                                (c.hovered =
-                                    hovered.prop('row') == c.prop('row'))
-                        );
-                    } else if (this.select === 'column') {
-                        this.children.forEach(
-                            (c) =>
-                                (c.hovered =
-                                    hovered.prop('col') == c.prop('col'))
-                        );
-                    }
+        if (hovered) {
+            const col = hovered._propInt('col');
+            const row = hovered._propInt('row');
+            if (col !== this.selectedColumn || row !== this.selectedRow) {
+                this.selectedColumn = col;
+                this.selectedRow = row;
+
+                if (this.select === 'none') {
+                    this.children.forEach((c) => (c.hovered = false));
+                } else if (this.select === 'row') {
+                    this.children.forEach(
+                        (c) => (c.hovered = row == c.prop('row'))
+                    );
+                } else if (this.select === 'column') {
+                    this.children.forEach(
+                        (c) => (c.hovered = col == c.prop('col'))
+                    );
                 }
+                this._fireEvent('input', this, { row, col, cell: hovered });
             }
         }
-        return super.mousemove(e);
     }
 }
 
 installWidget('datatable', (l, opts) => new DataTable(l, opts));
+
+export class TD extends Text {
+    mouseleave(e: GWU.io.Event) {
+        super.mouseleave(e);
+        if (this.parent) {
+            const table = this.parent as DataTable;
+            if (table.select === 'row') {
+                this.hovered = this._propInt('row') === table.selectedRow;
+            } else if (table.select === 'column') {
+                this.hovered = this._propInt('col') === table.selectedColumn;
+            }
+        }
+    }
+}
 
 // extend Layer
 

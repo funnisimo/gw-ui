@@ -40,11 +40,11 @@ table.data([
     { a: 'fun', b: 'fun', c: '' },
 ]);
 
-table.on('mousemove', () => {
+table.on('input', () => {
     console.log(
-        'hover',
-        table.selectedRow,
+        'input',
         table.selectedColumn,
+        table.selectedRow,
         table.selectedData
     );
 });
@@ -52,8 +52,8 @@ table.on('mousemove', () => {
 table.on('click', () => {
     console.log(
         'click',
-        table.selectedRow,
         table.selectedColumn,
+        table.selectedRow,
         table.selectedData
     );
 });

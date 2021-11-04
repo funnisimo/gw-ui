@@ -1941,7 +1941,7 @@ class Column {
         else {
             text = this.format(data);
         }
-        const widget = new Text(table.layer, {
+        const widget = new TD(table.layer, {
             text,
             x,
             y,
@@ -2059,37 +2059,29 @@ class DataTable extends Widget {
         });
         return true;
     }
-    mousemove(e) {
-        const active = (this.hovered = this.contains(e));
-        if (!active) {
-            this.selectedColumn = -1;
-            this.selectedRow = -1;
-            // this.children.forEach((c) => (c.hovered = false));
-            // return false;
-        }
-        else {
-            const hovered = this.children.find((c) => c.contains(e));
-            if (hovered) {
-                const col = hovered._propInt('col');
-                const row = hovered._propInt('row');
-                if (col !== this.selectedColumn || row !== this.selectedRow) {
-                    this.selectedColumn = col;
-                    this.selectedRow = row;
-                    if (this.select === 'none') {
-                        this.children.forEach((c) => (c.hovered = false));
-                    }
-                    else if (this.select === 'row') {
-                        this.children.forEach((c) => (c.hovered =
-                            hovered.prop('row') == c.prop('row')));
-                    }
-                    else if (this.select === 'column') {
-                        this.children.forEach((c) => (c.hovered =
-                            hovered.prop('col') == c.prop('col')));
-                    }
+    mouseenter(e, over) {
+        super.mouseenter(e, over);
+        if (!this.hovered)
+            return;
+        const hovered = this.children.find((c) => c.contains(e));
+        if (hovered) {
+            const col = hovered._propInt('col');
+            const row = hovered._propInt('row');
+            if (col !== this.selectedColumn || row !== this.selectedRow) {
+                this.selectedColumn = col;
+                this.selectedRow = row;
+                if (this.select === 'none') {
+                    this.children.forEach((c) => (c.hovered = false));
                 }
+                else if (this.select === 'row') {
+                    this.children.forEach((c) => (c.hovered = row == c.prop('row')));
+                }
+                else if (this.select === 'column') {
+                    this.children.forEach((c) => (c.hovered = col == c.prop('col')));
+                }
+                this._fireEvent('input', this, { row, col, cell: hovered });
             }
         }
-        return super.mousemove(e);
     }
 }
 DataTable.default = {
@@ -2103,6 +2095,20 @@ DataTable.default = {
     prefix: 'none',
 };
 installWidget('datatable', (l, opts) => new DataTable(l, opts));
+class TD extends Text {
+    mouseleave(e) {
+        super.mouseleave(e);
+        if (this.parent) {
+            const table = this.parent;
+            if (table.select === 'row') {
+                this.hovered = this._propInt('row') === table.selectedRow;
+            }
+            else if (table.select === 'column') {
+                this.hovered = this._propInt('col') === table.selectedColumn;
+            }
+        }
+    }
+}
 Layer.prototype.datatable = function (opts) {
     const options = Object.assign({}, this._opts, opts);
     const list = new DataTable(this, options);
@@ -3337,4 +3343,4 @@ class Viewport extends Widget {
     }
 }
 
-export { ActorEntry, Border, Button, CellEntry, Column, ComputedStyle, DataList, DataTable, EntryBase, Fieldset, Flavor, Input, ItemEntry, Layer, Menu, MenuButton, MenuViewer, Menubar, MenubarButton, MessageArchive, Messages, OrderedList, Select, Sheet, Sidebar, Style, Text, UI, UnorderedList, Viewport, Widget, defaultStyle, drawBorder, makeStyle };
+export { ActorEntry, Border, Button, CellEntry, Column, ComputedStyle, DataList, DataTable, EntryBase, Fieldset, Flavor, Input, ItemEntry, Layer, Menu, MenuButton, MenuViewer, Menubar, MenubarButton, MessageArchive, Messages, OrderedList, Select, Sheet, Sidebar, Style, TD, Text, UI, UnorderedList, Viewport, Widget, defaultStyle, drawBorder, makeStyle };

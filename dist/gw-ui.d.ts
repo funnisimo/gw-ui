@@ -586,7 +586,10 @@ declare class DataTable extends Widget {
     data(): DataType;
     data(data: DataType): this;
     _draw(buffer: GWU.canvas.DataBuffer): boolean;
-    mousemove(e: GWU.io.Event): boolean;
+    mouseenter(e: GWU.io.Event, over: Widget): void;
+}
+declare class TD extends Text {
+    mouseleave(e: GWU.io.Event): void;
 }
 declare type AddDataTableOptions = DataTableOptions & SetParentOptions & {
     parent?: Widget;
@@ -889,4 +892,4 @@ declare class Viewport extends Widget {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActionConfig, ActorEntry, AddBorderOptions, AddDataListOptions, AddDataTableOptions, AddFieldsetOptions, AddInputOptions, AddMenuOptions, AddMenubarOptions, AddOrderedListOptions, AddSelectOptions, AddTextOptions, AddUnorderedListOptions, ArchiveMode, Border, BorderOptions, BorderType, Button, ButtonConfig, ButtonOptions, CellEntry, Column, ColumnOptions, ComputedStyle, DataItem, DataList, DataListOptions, DataObject, DataTable, DataTableOptions, DataType, DropdownConfig, EntryBase, EventCb, Fieldset, FieldsetOptions, Flavor, FlavorOptions, FormatFn, Input, InputOptions, ItemEntry, Layer, LayerOptions, Menu, MenuButton, MenuButtonOptions, MenuOptions, MenuViewer, Menubar, MenubarButton, MenubarButtonOptions, MenubarOptions, MessageArchive, MessageOptions, Messages, OrderedList, OrderedListOptions, PrefixType, PropType, Rec, Select, SelectOptions, SelectType, SetParentOptions, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, Text, TextOptions, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, UnorderedList, UnorderedListOptions, Value, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, defaultStyle, drawBorder, makeStyle };
+export { ActionConfig, ActorEntry, AddBorderOptions, AddDataListOptions, AddDataTableOptions, AddFieldsetOptions, AddInputOptions, AddMenuOptions, AddMenubarOptions, AddOrderedListOptions, AddSelectOptions, AddTextOptions, AddUnorderedListOptions, ArchiveMode, Border, BorderOptions, BorderType, Button, ButtonConfig, ButtonOptions, CellEntry, Column, ColumnOptions, ComputedStyle, DataItem, DataList, DataListOptions, DataObject, DataTable, DataTableOptions, DataType, DropdownConfig, EntryBase, EventCb, Fieldset, FieldsetOptions, Flavor, FlavorOptions, FormatFn, Input, InputOptions, ItemEntry, Layer, LayerOptions, Menu, MenuButton, MenuButtonOptions, MenuOptions, MenuViewer, Menubar, MenubarButton, MenubarButtonOptions, MenubarOptions, MessageArchive, MessageOptions, Messages, OrderedList, OrderedListOptions, PrefixType, PropType, Rec, Select, SelectOptions, SelectType, SetParentOptions, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, TD, Text, TextOptions, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, UnorderedList, UnorderedListOptions, Value, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, defaultStyle, drawBorder, makeStyle };

@@ -99,7 +99,7 @@ export class UI implements UICore {
     finishLayer(layer: Layer): void {
         GWU.arrayDelete(this.layers, layer);
         if (this.layer === layer) {
-            this.layer = this.layers.pop() || null;
+            this.layer = this.layers[this.layers.length - 1] || null;
         }
     }
 

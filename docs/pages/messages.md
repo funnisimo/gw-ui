@@ -9,8 +9,7 @@ Lets generically add some messages to the system every so often...
 ```js
 let count = 0;
 setInterval(() => {
-    GWU.message.add('Test ' + count);
-    ++count;
+    GWU.message.add('Test ' + ++count);
 }, 2000);
 
 GWI.defaultStyle.add('messages', { fg: 'dark_purple', bg: 'darkest_gray' });
@@ -41,17 +40,17 @@ const messages = new GWI.Messages(layer, {
 The messages component can also be positioned at the bottom of the canvas. If you do, the order of the messages is automatically set with the most recent at the top.
 
 ```js
-const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
-SHOW(canvas.node);
+// const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
+// SHOW(canvas.node);
 
-const ui = new GWI.UI({ canvas, loop: LOOP });
-const layer = ui.startNewLayer();
+// const ui = new GWI.UI({ canvas, loop: LOOP });
+// const layer = ui.startNewLayer();
 
-const messages = new GWI.Messages(layer, {
-    id: 'MSG',
-    x: 20,
-    y: canvas.height - 4,
-    width: 80,
-    height: 4,
-});
+// const messages = new GWI.Messages(layer, {
+//     id: 'MSG',
+//     x: 20,
+//     y: canvas.height - 4,
+//     width: 80,
+//     height: 4,
+// });
 ```

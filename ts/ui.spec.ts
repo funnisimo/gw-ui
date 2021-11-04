@@ -1,6 +1,7 @@
 import * as UTILS from '../test/utils';
 import * as GWU from 'gw-utils';
 import * as UI from './ui';
+import { Layer } from './layer';
 
 describe('UI', () => {
     let canvas: GWU.canvas.BaseCanvas;
@@ -55,7 +56,29 @@ describe('UI', () => {
         expect(layer2.click).toHaveBeenCalled();
 
         layer2.finish();
+        expect(ui.layer).toBe(layer);
         layer.finish();
+        expect(ui.layer).toBeNull();
+
+        await ui.stop();
+        expect(ui._done).toBeTruthy();
+    });
+
+    test('many layers', async () => {
+        const ui = new UI.UI({ loop, canvas });
+
+        const layers: Layer[] = [];
+        for (let i = 0; i < 5; ++i) {
+            layers.push(ui.startNewLayer());
+        }
+        expect(layers).toHaveLength(5);
+        expect(ui.layer).toBe(layers[layers.length - 1]);
+
+        while (layers.length) {
+            const last = layers.pop();
+            ui.finishLayer(last!);
+            expect(ui.layer).toBe(layers[layers.length - 1] || null);
+        }
 
         await ui.stop();
         expect(ui._done).toBeTruthy();

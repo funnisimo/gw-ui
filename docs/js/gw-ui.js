@@ -1435,7 +1435,7 @@
         finishLayer(layer) {
             GWU__namespace.arrayDelete(this.layers, layer);
             if (this.layer === layer) {
-                this.layer = this.layers.pop() || null;
+                this.layer = this.layers[this.layers.length - 1] || null;
             }
         }
         stop() {

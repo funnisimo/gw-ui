@@ -65,7 +65,7 @@ export class Column {
         this.dataClass = opts.dataClass || DataTable.default.dataClass;
     }
 
-    addHeader(table: DataTable, x: number, y: number): Text {
+    addHeader(table: DataTable, x: number, y: number, col: number): Text {
         const t = new Text(table.layer, {
             x,
             y,
@@ -76,6 +76,9 @@ export class Column {
             depth: table.depth + 1,
             text: this.header,
         });
+        t.prop('row', -1);
+        t.prop('col', col);
+
         t.setParent(table);
         table.layer.attach(t);
 
@@ -151,6 +154,9 @@ export class DataTable extends Widget {
     border: BorderType = 'none';
     size: number;
 
+    selectedRow = -1;
+    selectedColumn = -1;
+
     constructor(layer: Layer, opts: DataTableOptions) {
         super(layer, opts);
         this.tag = 'table';
@@ -182,6 +188,11 @@ export class DataTable extends Widget {
         this.data(opts.data || []);
     }
 
+    get selectedData(): any {
+        if (this.selectedRow < 0) return undefined;
+        return this._data[this.selectedRow];
+    }
+
     data(): DataType;
     data(data: DataType): this;
     data(data?: DataType): this | DataType {
@@ -199,8 +210,8 @@ export class DataTable extends Widget {
         let x = this.bounds.x + borderAdj;
         let y = this.bounds.y + borderAdj;
         if (this.showHeader) {
-            this.columns.forEach((col) => {
-                col.addHeader(this, x, y);
+            this.columns.forEach((col, i) => {
+                col.addHeader(this, x, y, i);
                 x += col.width + borderAdj;
             });
             y += this.rowHeight + borderAdj;
@@ -255,26 +266,39 @@ export class DataTable extends Widget {
     mousemove(e: GWU.io.Event): boolean {
         const active = (this.hovered = this.contains(e));
         if (!active) {
-            this.children.forEach((c) => (c.hovered = false));
-            return false;
-        }
+            this.selectedColumn = -1;
+            this.selectedRow = -1;
+            // this.children.forEach((c) => (c.hovered = false));
+            // return false;
+        } else {
+            const hovered = this.children.find((c) => c.contains(e));
 
-        const hovered = this.children.find((c) => c.contains(e));
+            if (hovered) {
+                const col = hovered._propInt('col');
+                const row = hovered._propInt('row');
+                if (col !== this.selectedColumn || row !== this.selectedRow) {
+                    this.selectedColumn = col;
+                    this.selectedRow = row;
 
-        if (hovered) {
-            if (this.select === 'none') {
-                this.children.forEach((c) => (c.hovered = false));
-            } else if (this.select === 'row') {
-                this.children.forEach(
-                    (c) => (c.hovered = hovered.prop('row') == c.prop('row'))
-                );
-            } else if (this.select === 'column') {
-                this.children.forEach(
-                    (c) => (c.hovered = hovered.prop('col') == c.prop('col'))
-                );
+                    if (this.select === 'none') {
+                        this.children.forEach((c) => (c.hovered = false));
+                    } else if (this.select === 'row') {
+                        this.children.forEach(
+                            (c) =>
+                                (c.hovered =
+                                    hovered.prop('row') == c.prop('row'))
+                        );
+                    } else if (this.select === 'column') {
+                        this.children.forEach(
+                            (c) =>
+                                (c.hovered =
+                                    hovered.prop('col') == c.prop('col'))
+                        );
+                    }
+                }
             }
         }
-        return true;
+        return super.mousemove(e);
     }
 }
 

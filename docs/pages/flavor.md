@@ -8,13 +8,18 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport('VIEW', {
+const layer = ui.startNewLayer();
+
+layer.styles.add('flavor', { fg: 'purple', bg: 'black' });
+
+const viewport = new GWI.Viewport(layer, {
+    id: 'VIEW',
     x: 0,
     y: 4,
     width: 80,
     height: 34,
 });
-const flavor = new GWI.Flavor('FLAVOR', { x: 0, y: 3, width: 80 });
+const flavor = new GWI.Flavor(layer, { id: 'FLAVOR', x: 0, y: 3, width: 80 });
 const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
 
 const tiles = Object.values(GWM.tile.tiles);
@@ -29,20 +34,11 @@ for (let x = 1; x < map.width - 2; ++x) {
 
 viewport.showMap(map);
 
-viewport.draw(ui.buffer);
-flavor.draw(ui.buffer);
-ui.render();
-
-LOOP.run({
-    async mousemove(e) {
-        if (!viewport.contains(e)) return;
-        const mapX = viewport.toMapX(e.x);
-        const mapY = viewport.toMapY(e.y);
-        const text = flavor.getFlavorText(map, mapX, mapY);
-        flavor.showText(text);
-
-        flavor.draw(ui.buffer);
-        ui.render();
-    },
+viewport.on('mousemove', (n, w, e) => {
+    if (!viewport.contains(e)) return;
+    const mapX = viewport.toMapX(e.x);
+    const mapY = viewport.toMapY(e.y);
+    const text = flavor.getFlavorText(map, mapX, mapY);
+    flavor.showText(text);
 });
 ```

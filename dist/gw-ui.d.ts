@@ -211,7 +211,7 @@ declare class Widget implements UIStylable {
     _addChild(w: Widget, opts?: SetParentOptions): this;
     _removeChild(w: Widget): this;
     resize(w: number, h: number): this;
-    mouseenter(e: GWU.io.Event): void;
+    mouseenter(e: GWU.io.Event, over: Widget): void;
     mousemove(e: GWU.io.Event): boolean;
     mouseleave(e: GWU.io.Event): void;
     click(e: GWU.io.Event): boolean;
@@ -554,7 +554,7 @@ declare class Column {
     dataClass: string;
     empty: string;
     constructor(opts: ColumnOptions);
-    addHeader(table: DataTable, x: number, y: number): Text;
+    addHeader(table: DataTable, x: number, y: number, col: number): Text;
     addData(table: DataTable, data: DataItem, x: number, y: number, col: number, row: number): Text;
     addEmpty(table: DataTable, x: number, y: number, col: number, row: number): Text;
 }
@@ -579,7 +579,10 @@ declare class DataTable extends Widget {
     rowHeight: number;
     border: BorderType;
     size: number;
+    selectedRow: number;
+    selectedColumn: number;
     constructor(layer: Layer, opts: DataTableOptions);
+    get selectedData(): any;
     data(): DataType;
     data(data: DataType): this;
     _draw(buffer: GWU.canvas.DataBuffer): boolean;
@@ -690,7 +693,7 @@ declare class Menubar extends Widget {
     get selectedButton(): Widget;
     focus(reverse?: boolean): boolean;
     blur(reverse?: boolean): boolean;
-    collapse(): this;
+    collapse(): boolean;
     keypress(e: GWU.io.Event): boolean;
     mousemove(e: GWU.io.Event): boolean;
     _initButtons(opts: MenubarOptions): void;
@@ -703,7 +706,7 @@ interface MenubarButtonOptions extends WidgetOptions {
 declare class MenubarButton extends Text {
     menu: Menu | null;
     constructor(layer: Layer, opts: MenubarButtonOptions);
-    collapse(): this;
+    collapse(): boolean;
     expand(): this;
     _setMenuPos(xy: GWU.xy.XY, opts: MenubarButtonOptions): void;
     _initMenu(opts: MenubarButtonOptions): Menu | null;

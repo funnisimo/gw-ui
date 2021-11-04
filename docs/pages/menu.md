@@ -77,4 +77,10 @@ layer.on('PRINT', (action, button) => {
     text.text(button.text());
     return true;
 });
+
+layer.on('click', () => {
+    topMenu.collapse();
+    bottomMenu.collapse();
+    return true;
+});
 ```

@@ -648,13 +648,13 @@
         let root = obj[name];
         sort = sort || (() => -1); // always insert first
         if (!root || sort(root, entry) < 0) {
-            obj.next = root;
+            entry.next = root;
             obj[name] = entry;
             return true;
         }
         let prev = root;
         let current = root.next;
-        while (current && sort(current, entry) < 0) {
+        while (current && sort(current, entry) > 0) {
             prev = current;
             current = current.next;
         }
@@ -664,9 +664,9 @@
     }
     function reduce(root, cb, out) {
         let current = root;
-        if (!current)
-            return out;
         if (out === undefined) {
+            if (!current)
+                throw new TypeError('Empty list reduce without initial value not allowed.');
             out = current;
             current = current.next;
         }

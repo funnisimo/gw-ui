@@ -74,13 +74,13 @@ export class Flavor extends Widget.Text {
 
         let intro: string;
         if (isDirectlyVisible) {
-            intro = 'you see';
+            intro = 'You see';
         } else if (isAnyKindOfVisible) {
-            intro = 'you sense';
+            intro = 'You sense';
         } else if (isRemembered) {
-            intro = 'you remember';
+            intro = 'You remember';
         } else if (isMapped) {
-            intro = 'you expect to see';
+            intro = 'You expect to see';
         } else {
             return '';
         }

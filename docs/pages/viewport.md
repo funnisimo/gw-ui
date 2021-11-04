@@ -18,7 +18,9 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport('VIEW', {
+const layer = ui.startNewLayer();
+const viewport = new GWI.Viewport(layer, {
+    id: 'VIEW',
     x: 0,
     y: 4,
     width: 80,
@@ -26,9 +28,6 @@ const viewport = new GWI.Viewport('VIEW', {
 });
 const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
 viewport.showMap(map);
-
-viewport.draw(ui.buffer);
-ui.render();
 ```
 
 ## Field of View
@@ -41,7 +40,9 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport('VIEW', {
+const layer = ui.startNewLayer();
+const viewport = new GWI.Viewport(layer, {
+    id: 'VIEW',
     x: 0,
     y: 4,
     width: 80,
@@ -61,20 +62,13 @@ map.addActor(1, 1, player);
 player.fov.update();
 viewport.subject = player;
 
-viewport.draw(ui.buffer);
-ui.render();
-
-LOOP.run({
-    mousemove(e) {
-        if (!viewport.contains(e)) return;
-        const x = viewport.toInnerX(e.x);
-        const y = viewport.toInnerY(e.y);
-        map.removeActor(player);
-        map.addActor(x, y, player);
-
-        player.fov.update();
-        viewport.draw(ui.buffer);
-        ui.render();
-    },
+viewport.on('mousemove', (n, w, e) => {
+    if (!viewport.contains(e)) return;
+    const x = viewport.toInnerX(e.x);
+    const y = viewport.toInnerY(e.y);
+    map.removeActor(player);
+    map.addActor(x, y, player);
+    player.fov.update();
+    layer.needsDraw = true;
 });
 ```

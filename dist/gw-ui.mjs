@@ -851,7 +851,7 @@ class Widget {
         return this;
     }
     // Events
-    mouseenter(e) {
+    mouseenter(e, over) {
         if (!this.contains(e))
             return;
         if (this.hovered)
@@ -859,14 +859,13 @@ class Widget {
         this.hovered = true;
         this._fireEvent('mouseenter', this, e);
         if (this._parent) {
-            this._parent.mouseenter(e);
+            this._parent.mouseenter(e, over);
         }
     }
     mousemove(e) {
         if (this.contains(e) && !e.defaultPrevented && !this.hidden) {
-            this.mouseenter(e);
-            this._bubbleEvent('mousemove', this, e);
-            e.preventDefault();
+            this._fireEvent('mousemove', this, e);
+            // e.preventDefault();
         }
         else {
             this.mouseleave(e);
@@ -880,9 +879,9 @@ class Widget {
             return;
         this.hovered = false;
         this._fireEvent('mouseleave', this, e);
-        if (this._parent) {
-            this._parent.mouseleave(e);
-        }
+        // if (this._parent) {
+        //     this._parent.mouseleave(e);
+        // }
     }
     click(e) {
         if (this.hidden)
@@ -1236,8 +1235,10 @@ class Layer {
         return this;
     }
     mousemove(e) {
+        const over = this.widgetAt(e);
+        over.mouseenter(e, over);
         this._depthOrder.forEach((w) => {
-            w.mousemove(e);
+            w.mousemove(e); // handles mouseleave
         });
         return false; // TODO - this._done
     }
@@ -1912,7 +1913,7 @@ class Column {
         this.empty = opts.empty || DataTable.default.empty;
         this.dataClass = opts.dataClass || DataTable.default.dataClass;
     }
-    addHeader(table, x, y) {
+    addHeader(table, x, y, col) {
         const t = new Text(table.layer, {
             x,
             y,
@@ -1923,6 +1924,8 @@ class Column {
             depth: table.depth + 1,
             text: this.header,
         });
+        t.prop('row', -1);
+        t.prop('col', col);
         t.setParent(table);
         table.layer.attach(t);
         return t;
@@ -1971,6 +1974,8 @@ class DataTable extends Widget {
         this.select = 'cell';
         this.rowHeight = 1;
         this.border = 'none';
+        this.selectedRow = -1;
+        this.selectedColumn = -1;
         this.tag = 'table';
         this.size = opts.size || layer.height;
         this.bounds.width = 0;
@@ -1995,6 +2000,11 @@ class DataTable extends Widget {
         this.select = opts.select || DataTable.default.select;
         this.data(opts.data || []);
     }
+    get selectedData() {
+        if (this.selectedRow < 0)
+            return undefined;
+        return this._data[this.selectedRow];
+    }
     data(data) {
         if (!data)
             return this._data;
@@ -2009,8 +2019,8 @@ class DataTable extends Widget {
         let x = this.bounds.x + borderAdj;
         let y = this.bounds.y + borderAdj;
         if (this.showHeader) {
-            this.columns.forEach((col) => {
-                col.addHeader(this, x, y);
+            this.columns.forEach((col, i) => {
+                col.addHeader(this, x, y, i);
                 x += col.width + borderAdj;
             });
             y += this.rowHeight + borderAdj;
@@ -2052,22 +2062,34 @@ class DataTable extends Widget {
     mousemove(e) {
         const active = (this.hovered = this.contains(e));
         if (!active) {
-            this.children.forEach((c) => (c.hovered = false));
-            return false;
+            this.selectedColumn = -1;
+            this.selectedRow = -1;
+            // this.children.forEach((c) => (c.hovered = false));
+            // return false;
         }
-        const hovered = this.children.find((c) => c.contains(e));
-        if (hovered) {
-            if (this.select === 'none') {
-                this.children.forEach((c) => (c.hovered = false));
-            }
-            else if (this.select === 'row') {
-                this.children.forEach((c) => (c.hovered = hovered.prop('row') == c.prop('row')));
-            }
-            else if (this.select === 'column') {
-                this.children.forEach((c) => (c.hovered = hovered.prop('col') == c.prop('col')));
+        else {
+            const hovered = this.children.find((c) => c.contains(e));
+            if (hovered) {
+                const col = hovered._propInt('col');
+                const row = hovered._propInt('row');
+                if (col !== this.selectedColumn || row !== this.selectedRow) {
+                    this.selectedColumn = col;
+                    this.selectedRow = row;
+                    if (this.select === 'none') {
+                        this.children.forEach((c) => (c.hovered = false));
+                    }
+                    else if (this.select === 'row') {
+                        this.children.forEach((c) => (c.hovered =
+                            hovered.prop('row') == c.prop('row')));
+                    }
+                    else if (this.select === 'column') {
+                        this.children.forEach((c) => (c.hovered =
+                            hovered.prop('col') == c.prop('col')));
+                    }
+                }
             }
         }
-        return true;
+        return super.mousemove(e);
     }
 }
 DataTable.default = {
@@ -2341,8 +2363,7 @@ class Menubar extends Widget {
         return super.blur(reverse);
     }
     collapse() {
-        this._buttons.forEach((b) => b.collapse());
-        return this;
+        return this._buttons.reduce((out, b) => b.collapse() || out, false);
     }
     keypress(e) {
         if (!e.key)
@@ -2451,11 +2472,11 @@ class MenubarButton extends Text {
         }
     }
     collapse() {
-        if (this.menu) {
-            this.menu.collapse();
-            this.menu.hidden = true;
-        }
-        return this;
+        if (!this.menu || this.menu.hidden)
+            return false;
+        this.menu.collapse();
+        this.menu.hidden = true;
+        return true;
     }
     expand() {
         if (this.menu) {
@@ -2833,16 +2854,16 @@ class Flavor extends Text {
         const isMapped = fov ? fov.isMagicMapped(x, y) : false;
         let intro;
         if (isDirectlyVisible) {
-            intro = 'you see';
+            intro = 'You see';
         }
         else if (isAnyKindOfVisible) {
-            intro = 'you sense';
+            intro = 'You sense';
         }
         else if (isRemembered) {
-            intro = 'you remember';
+            intro = 'You remember';
         }
         else if (isMapped) {
-            intro = 'you expect to see';
+            intro = 'You expect to see';
         }
         else {
             return '';

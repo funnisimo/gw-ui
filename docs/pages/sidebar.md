@@ -12,14 +12,17 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport('VIEW', {
+const layer = ui.startNewLayer();
+const viewport = new GWI.Viewport(layer, {
+    id: 'VIEW',
     x: 0,
     y: 4,
     width: 80,
     height: 34,
     lock: true,
 });
-const sidebar = new GWI.Sidebar('SIDE', {
+const sidebar = new GWI.Sidebar(layer, {
+    id: 'SIDE',
     x: 80,
     y: 0,
     width: 20,
@@ -54,38 +57,27 @@ fov.makeAlwaysVisible();
 
 sidebar.subject = player;
 viewport.subject = player;
-
 sidebar.update();
 
-viewport.draw(ui.buffer);
-sidebar.draw(ui.buffer);
-ui.render();
+sidebar.on('mousemove', (n, w, e) => {
+    if (sidebar.highlight) {
+        fov.setCursor(sidebar.highlight.x, sidebar.highlight.y);
+    } else {
+        fov.clearCursor();
+    }
+    layer.needsDraw = true;
+});
 
-let needsDraw = true;
-LOOP.run({
-    mousemove(e) {
-        if (sidebar.mousemove(e)) {
-            if (sidebar.highlight) {
-                fov.setCursor(sidebar.highlight.x, sidebar.highlight.y);
-            } else {
-                fov.clearCursor();
-            }
-            needsDraw = true;
-        }
+sidebar.on('mouseleave', () => {
+    fov.clearCursor();
+    layer.needsDraw = true;
+});
 
-        if (!viewport.contains(e)) return;
-        map.removeActor(player);
-        map.addActor(viewport.toMapX(e.x), viewport.toMapY(e.y), player);
-        sidebar.update();
-        needsDraw = true;
-    },
-    draw() {
-        if (!needsDraw) return;
-        needsDraw = false;
-        viewport.draw(ui.buffer);
-        sidebar.draw(ui.buffer);
-        ui.render();
-    },
+viewport.on('mousemove', (n, w, e) => {
+    map.removeActor(player);
+    map.addActor(viewport.toMapX(e.x), viewport.toMapY(e.y), player);
+    sidebar.update();
+    layer.needsDraw = true;
 });
 ```
 
@@ -109,14 +101,17 @@ const player = GWM.actor.from({
 });
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport('VIEW', {
+const layer = ui.startNewLayer();
+const viewport = new GWI.Viewport(layer, {
+    id: 'VIEW',
     x: 0,
     y: 4,
     width: 80,
     height: 34,
     lock: true,
 });
-const sidebar = new GWI.Sidebar('SIDE', {
+const sidebar = new GWI.Sidebar(layer, {
+    id: 'SIDE',
     x: 80,
     y: 0,
     width: 20,
@@ -147,35 +142,30 @@ const fov = player.fov;
 fov.update();
 sidebar.update();
 
-viewport.draw(ui.buffer);
-sidebar.draw(ui.buffer);
-ui.render();
+layer.on('dir', (n, w, e) => {
+    sidebar.clearHighlight();
+    const newX = player.x + e.dir[0];
+    const newY = player.y + e.dir[1];
+    if (map.hasXY(newX, newY)) {
+        map.removeActor(player);
+        map.addActor(newX, newY, player);
+        fov.update();
+        sidebar.update();
+        layer.needsDraw = true;
+    }
+});
 
-LOOP.run({
-    dir(e) {
-        sidebar.clearHighlight();
-        const newX = player.x + e.dir[0];
-        const newY = player.y + e.dir[1];
-        if (map.hasXY(newX, newY)) {
-            map.removeActor(player);
-            map.addActor(newX, newY, player);
-            fov.update();
-            sidebar.update();
-        }
-    },
-    mousemove(e) {
-        if (sidebar.mousemove(e)) {
-            if (sidebar.highlight) {
-                fov.setCursor(sidebar.highlight.x, sidebar.highlight.y);
-            } else {
-                fov.clearCursor();
-            }
-        }
-    },
-    draw() {
-        viewport.draw(ui.buffer);
-        sidebar.draw(ui.buffer);
-        ui.render();
-    },
+sidebar.on('mousemove', (n, w, e) => {
+    if (sidebar.highlight) {
+        fov.setCursor(sidebar.highlight.x, sidebar.highlight.y);
+    } else {
+        fov.clearCursor();
+    }
+    layer.needsDraw = true;
+});
+
+sidebar.on('mouseleave', () => {
+    fov.clearCursor();
+    layer.needsDraw = true;
 });
 ```

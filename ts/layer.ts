@@ -342,8 +342,10 @@ export class Layer implements UILayer {
     }
 
     mousemove(e: GWU.io.Event): boolean {
+        const over = this.widgetAt(e);
+        over.mouseenter(e, over);
         this._depthOrder.forEach((w) => {
-            w.mousemove(e);
+            w.mousemove(e); // handles mouseleave
         });
 
         return false; // TODO - this._done

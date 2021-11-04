@@ -390,21 +390,20 @@ export class Widget implements UIStylable {
 
     // Events
 
-    mouseenter(e: GWU.io.Event): void {
+    mouseenter(e: GWU.io.Event, over: Widget): void {
         if (!this.contains(e)) return;
         if (this.hovered) return;
         this.hovered = true;
         this._fireEvent('mouseenter', this, e);
         if (this._parent) {
-            this._parent.mouseenter(e);
+            this._parent.mouseenter(e, over);
         }
     }
 
     mousemove(e: GWU.io.Event): boolean {
         if (this.contains(e) && !e.defaultPrevented && !this.hidden) {
-            this.mouseenter(e);
-            this._bubbleEvent('mousemove', this, e);
-            e.preventDefault();
+            this._fireEvent('mousemove', this, e);
+            // e.preventDefault();
         } else {
             this.mouseleave(e);
         }
@@ -416,9 +415,9 @@ export class Widget implements UIStylable {
         if (!this.hovered) return;
         this.hovered = false;
         this._fireEvent('mouseleave', this, e);
-        if (this._parent) {
-            this._parent.mouseleave(e);
-        }
+        // if (this._parent) {
+        //     this._parent.mouseleave(e);
+        // }
     }
 
     click(e: GWU.io.Event): boolean {

@@ -105,9 +105,11 @@ export class Menubar extends Widget.Widget {
         return super.blur(reverse);
     }
 
-    collapse(): this {
-        this._buttons.forEach((b) => b.collapse());
-        return this;
+    collapse(): boolean {
+        return this._buttons.reduce(
+            (out: boolean, b) => b.collapse() || out,
+            false
+        );
     }
 
     keypress(e: GWU.io.Event): boolean {
@@ -224,12 +226,12 @@ export class MenubarButton extends Text.Text {
         }
     }
 
-    collapse(): this {
-        if (this.menu) {
-            this.menu.collapse();
-            this.menu.hidden = true;
-        }
-        return this;
+    collapse(): boolean {
+        if (!this.menu || this.menu.hidden) return false;
+
+        this.menu.collapse();
+        this.menu.hidden = true;
+        return true;
     }
 
     expand(): this {

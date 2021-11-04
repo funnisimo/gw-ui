@@ -12,11 +12,14 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport('VIEW', {
+const layer = ui.startNewLayer();
+const viewport = new GWI.Viewport(layer, {
+    id: 'VIEW',
     x: 0,
     y: 4,
     width: 40,
     height: 17,
+    bg: 'black',
 });
 const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
 
@@ -30,21 +33,14 @@ for (let i = 0; i < 40; ++i) {
 const camera = { x: 1, y: 1, map };
 viewport.subject = camera;
 
-viewport.draw(ui.buffer);
-ui.render();
-
-LOOP.run({
-    mousemove(e) {
-        if (!viewport.contains(e)) return;
-        camera.x = Math.round(
-            (map.width * viewport.toInnerX(e.x)) / viewport.bounds.width
-        );
-        camera.y = Math.round(
-            (map.height * viewport.toInnerY(e.y)) / viewport.bounds.height
-        );
-        viewport.draw(ui.buffer);
-        ui.render();
-    },
+viewport.on('mousemove', (n, w, e) => {
+    camera.x = Math.round(
+        (map.width * viewport.toInnerX(e.x)) / viewport.bounds.width
+    );
+    camera.y = Math.round(
+        (map.height * viewport.toInnerY(e.y)) / viewport.bounds.height
+    );
+    layer.needsDraw = true;
 });
 ```
 
@@ -58,7 +54,10 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport('VIEW', {
+const layer = ui.startNewLayer();
+
+const viewport = new GWI.Viewport(layer, {
+    id: 'VIEW',
     x: 0,
     y: 4,
     width: 40,
@@ -77,21 +76,14 @@ for (let i = 0; i < 40; ++i) {
 const camera = { x: 1, y: 1, map };
 viewport.subject = camera;
 
-viewport.draw(ui.buffer);
-ui.render();
-
-LOOP.run({
-    mousemove(e) {
-        if (!viewport.contains(e)) return;
-        camera.x = Math.round(
-            (map.width * viewport.toInnerX(e.x)) / viewport.bounds.width
-        );
-        camera.y = Math.round(
-            (map.height * viewport.toInnerY(e.y)) / viewport.bounds.height
-        );
-        viewport.draw(ui.buffer);
-        ui.render();
-    },
+viewport.on('mousemove', (n, w, e) => {
+    camera.x = Math.round(
+        (map.width * viewport.toInnerX(e.x)) / viewport.bounds.width
+    );
+    camera.y = Math.round(
+        (map.height * viewport.toInnerY(e.y)) / viewport.bounds.height
+    );
+    layer.needsDraw = true;
 });
 ```
 
@@ -105,7 +97,10 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport('VIEW', {
+const layer = ui.startNewLayer();
+
+const viewport = new GWI.Viewport(layer, {
+    id: 'VIEW',
     x: 0,
     y: 4,
     width: 40,
@@ -129,19 +124,14 @@ const player = GWM.actor.from({
 viewport.subject = player;
 
 map.addActor(40, 17, player);
-viewport.draw(ui.buffer);
-ui.render();
 
-LOOP.run({
-    async dir(e) {
-        const d = e.dir;
-        if (d) {
-            await map.removeActor(player);
-            await map.addActor(player.x + d[0], player.y + d[1], player);
-            viewport.draw(ui.buffer);
-            ui.render();
-        }
-    },
+layer.on('dir', (n, w, e) => {
+    const d = e.dir;
+    if (d) {
+        map.removeActor(player);
+        map.addActor(player.x + d[0], player.y + d[1], player);
+        layer.needsDraw = true;
+    }
 });
 ```
 
@@ -157,7 +147,9 @@ SHOW(canvas);
 canvas.buffer.fill('teal');
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const viewport = new GWI.Viewport('VIEW', {
+const layer = ui.startNewLayer();
+const viewport = new GWI.Viewport(layer, {
+    id: 'VIEW',
     x: 0,
     y: 4,
     width: 40,
@@ -180,22 +172,17 @@ const player = GWM.actor.from({
 
 map.addActor(40, 17, player);
 viewport.subject = player;
-viewport.draw(ui.buffer);
-ui.render();
 
-LOOP.run({
-    dir(e) {
-        const d = e.dir;
-        if (d) {
-            const newX = player.x + d[0];
-            const newY = player.y + d[1];
-            if (map.hasXY(newX, newY)) {
-                map.removeActor(player);
-                map.addActor(newX, newY, player);
-                viewport.draw(ui.buffer);
-                ui.render();
-            }
+layer.on('dir', (n, w, e) => {
+    const d = e.dir;
+    if (d) {
+        const newX = player.x + d[0];
+        const newY = player.y + d[1];
+        if (map.hasXY(newX, newY)) {
+            map.removeActor(player);
+            map.addActor(newX, newY, player);
+            layer.needsDraw = true;
         }
-    },
+    }
 });
 ```

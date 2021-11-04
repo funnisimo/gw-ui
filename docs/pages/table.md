@@ -7,52 +7,54 @@ const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
 SHOW(canvas.node);
 
 const ui = new GWI.UI({ canvas, loop: LOOP });
-const table = new GWI.Table('TABLE', {
+const layer = ui.startNewLayer();
+
+layer.styles.add('td', { fg: 'green' });
+layer.styles.add('td:hover', { bg: 'light_gray' });
+layer.styles.add('th', { fg: 'red' });
+layer.styles.add('datatable', { fg: 'blue' });
+
+const table = layer.datatable({
+    id: 'TABLE',
     // x: 10,
     // y: 5,
-    // width: 80,
     height: 28,
-    bg: 'teal',
-    fg: 'black',
-    headerBg: 'light_blue',
-    headerFg: 'white',
-    hoverBg: 'yellow',
-    hoverFg: 'black',
-    hover: 'cell',
+    select: 'cell',
+    header: true,
+    border: 'ascii',
     columns: [
-        { header: 'A', value: '§a§', width: 10, empty: 'ΩredΩNONE∆' },
+        { header: 'A', format: '§a§', width: 10, empty: 'ΩredΩNONE∆' },
         {
             header: 'B',
-            value: GWU.text.compile('^b^', { field: '^' }),
+            format: GWU.text.compile('^b^', { field: '^' }),
             width: 10,
         },
-        { header: 'C', value: (obj) => obj.c, width: 20, empty: '-' },
+        { header: 'C', format: (obj) => obj.c, width: 20, empty: '-' },
     ],
 });
 
-table.setData([
+table.data([
     { a: 1, b: '', c: '' },
     { a: '', b: 'value b', c: '' },
     { a: '', c: 'testing long values in shorter fields' },
     { a: 'fun', b: 'fun', c: '' },
 ]);
 
-ui.showWidget(table, {
-    TABLE_HOVER() {
-        console.log(
-            'hover',
-            table.selectedIndex,
-            table.selectedColumn.index,
-            table.selectedData
-        );
-    },
-    TABLE() {
-        console.log(
-            'click',
-            table.selectedIndex,
-            table.selectedColumn.index,
-            table.selectedData
-        );
-    },
+table.on('mousemove', () => {
+    console.log(
+        'hover',
+        table.selectedRow,
+        table.selectedColumn,
+        table.selectedData
+    );
+});
+
+table.on('click', () => {
+    console.log(
+        'click',
+        table.selectedRow,
+        table.selectedColumn,
+        table.selectedData
+    );
 });
 ```

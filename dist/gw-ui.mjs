@@ -1494,7 +1494,7 @@ class Text extends Widget {
             }
         }
         else {
-            this.bounds.height = this._lines.length;
+            this.bounds.height = Math.max(1, this._lines.length);
         }
         this.layer.needsDraw = true;
         return this;
@@ -2706,12 +2706,13 @@ class MessageArchive extends Widget {
         this.layer.on('FORWARD', this._forward.bind(this));
         this.layer.on('REVERSE', this._reverse.bind(this));
         this.layer.setTimeout('FORWARD', 16);
+        // confirm them as they are right now...
+        this.source.cache.confirmAll();
     }
     contains() {
         return true; // Eat all mouse activity
     }
     finish() {
-        this.source.cache.confirmAll();
         this.layer.finish();
     }
     keypress(e) {

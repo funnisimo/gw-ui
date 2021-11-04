@@ -2027,7 +2027,10 @@
     class Event {
         constructor(type, opts) {
             this.target = null;
+            // Used in UI
             this.defaultPrevented = false;
+            this.propagationStopped = false;
+            this.immediatePropagationStopped = false;
             // Key Event
             this.key = '';
             this.code = '';
@@ -2048,6 +2051,12 @@
         }
         preventDefault() {
             this.defaultPrevented = true;
+        }
+        stopPropagation() {
+            this.propagationStopped = true;
+        }
+        stopImmediatePropagation() {
+            this.immediatePropagationStopped = true;
         }
         reset(type, opts) {
             this.type = type;

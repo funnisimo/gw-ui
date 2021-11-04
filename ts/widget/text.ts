@@ -42,7 +42,7 @@ export class Text extends Widget {
                 this._lines.length = this.bounds.height;
             }
         } else {
-            this.bounds.height = this._lines.length;
+            this.bounds.height = Math.max(1, this._lines.length);
         }
 
         this.layer.needsDraw = true;

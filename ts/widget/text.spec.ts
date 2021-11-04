@@ -11,6 +11,24 @@ describe('Text Widget', () => {
         layer = UTILS.mockLayer(50, 30);
     });
 
+    test('text create empty', () => {
+        // Takes everything
+        let widget = new Text.Text(layer, {
+            id: 'TEST',
+            width: 30,
+            text: '',
+        });
+        expect(widget.text()).toEqual('');
+        expect(widget.bounds.width).toEqual(30);
+        expect(widget.bounds.height).toEqual(1);
+        expect(widget.bounds.x).toEqual(0);
+        expect(widget.bounds.y).toEqual(0);
+
+        expect(widget.parent).toBe(layer.body);
+        expect(layer._depthOrder).toContain(widget);
+        expect(layer._attachOrder).toContain(widget);
+    });
+
     test('text create', () => {
         // Takes everything
         let widget = new Text.Text(layer, {

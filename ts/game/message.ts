@@ -120,6 +120,9 @@ export class MessageArchive extends Widget.Widget {
         this.layer.on('FORWARD', this._forward.bind(this));
         this.layer.on('REVERSE', this._reverse.bind(this));
         this.layer.setTimeout('FORWARD', 16);
+
+        // confirm them as they are right now...
+        this.source.cache.confirmAll();
     }
 
     contains(): boolean {
@@ -127,7 +130,6 @@ export class MessageArchive extends Widget.Widget {
     }
 
     finish() {
-        this.source.cache.confirmAll();
         this.layer.finish();
     }
 

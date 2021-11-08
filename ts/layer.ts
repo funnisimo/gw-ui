@@ -4,6 +4,13 @@ import * as Widget from './widget/widget';
 import { UILayer, UIStylesheet, StyleOptions } from './types';
 import { Grid } from './grid';
 
+export type TimerFn = () => void | Promise<void>;
+
+export interface TimerInfo {
+    action: string | TimerFn;
+    time: number;
+}
+
 export interface UICore {
     // buffer: GWU.canvas.Buffer;
     readonly loop: GWU.io.Loop;
@@ -52,7 +59,7 @@ export class Layer implements UILayer {
     _depthOrder: Widget.Widget[] = [];
     _focusWidget: Widget.Widget | null = null;
     _hasTabStop = false;
-    timers: Record<string, number> = {};
+    timers: TimerInfo[] = [];
 
     _opts: Widget.WidgetOptions = { x: 0, y: 0 };
 
@@ -417,13 +424,17 @@ export class Layer implements UILayer {
         const dt = e.dt;
         let promises = [];
 
-        Object.entries(this.timers).forEach(([action, time]) => {
-            time -= dt;
-            if (time <= 0) {
-                delete this.timers[action];
-                promises.push(this.body._fireEvent(action, this.body));
-            } else {
-                this.timers[action] = time;
+        this.timers.forEach((timer) => {
+            if (timer.time <= 0) return; // ignore fired timers
+            timer.time -= dt;
+            if (timer.time <= 0) {
+                if (typeof timer.action === 'string') {
+                    promises.push(
+                        this.body._fireEvent(timer.action, this.body)
+                    );
+                } else {
+                    promises.push(timer.action());
+                }
             }
         });
 
@@ -459,12 +470,20 @@ export class Layer implements UILayer {
 
     // LOOP
 
-    setTimeout(action: string, time: number) {
-        this.timers[action] = time;
+    setTimeout(action: string | TimerFn, time: number) {
+        const slot = this.timers.findIndex((t) => t.time <= 0);
+        if (slot < 0) {
+            this.timers.push({ action, time });
+        } else {
+            this.timers[slot] = { action, time };
+        }
     }
 
-    clearTimeout(action: string) {
-        delete this.timers[action];
+    clearTimeout(action: string | TimerFn) {
+        const timer = this.timers.find((t) => t.action === action);
+        if (timer) {
+            timer.time = -1;
+        }
     }
 
     finish(result?: any) {

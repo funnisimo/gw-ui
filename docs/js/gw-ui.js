@@ -1059,7 +1059,7 @@
             this._depthOrder = [];
             this._focusWidget = null;
             this._hasTabStop = false;
-            this.timers = {};
+            this.timers = [];
             this._opts = { x: 0, y: 0 };
             this.ui = ui;
             this.id = opts.id || 'root';
@@ -1340,14 +1340,17 @@
         tick(e) {
             const dt = e.dt;
             let promises = [];
-            Object.entries(this.timers).forEach(([action, time]) => {
-                time -= dt;
-                if (time <= 0) {
-                    delete this.timers[action];
-                    promises.push(this.body._fireEvent(action, this.body));
-                }
-                else {
-                    this.timers[action] = time;
+            this.timers.forEach((timer) => {
+                if (timer.time <= 0)
+                    return; // ignore fired timers
+                timer.time -= dt;
+                if (timer.time <= 0) {
+                    if (typeof timer.action === 'string') {
+                        promises.push(this.body._fireEvent(timer.action, this.body));
+                    }
+                    else {
+                        promises.push(timer.action());
+                    }
                 }
             });
             for (let w of this._depthOrder) {
@@ -1379,10 +1382,19 @@
         }
         // LOOP
         setTimeout(action, time) {
-            this.timers[action] = time;
+            const slot = this.timers.findIndex((t) => t.time <= 0);
+            if (slot < 0) {
+                this.timers.push({ action, time });
+            }
+            else {
+                this.timers[slot] = { action, time };
+            }
         }
         clearTimeout(action) {
-            delete this.timers[action];
+            const timer = this.timers.find((t) => t.action === action);
+            if (timer) {
+                timer.time = -1;
+            }
         }
         finish(result) {
             this.result = result;

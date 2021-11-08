@@ -16,6 +16,89 @@ window.onload = async () => {
     console.log('DONE!');
 };
 
+class FireWidget extends GWI.Widget {
+    constructor(layer, opts = {}) {
+        super(
+            layer,
+            (() => {
+                opts.tag = opts.tag || 'fire';
+                opts.width = opts.width || 7;
+                opts.height = opts.height || 5;
+                if (opts.y) {
+                    opts.y = opts.y - opts.height;
+                } else {
+                    opts.y = opts.height;
+                }
+                return opts;
+            })()
+        );
+        this.data = GWU.grid.make(this.bounds.width, this.bounds.height);
+        this.decay = 1 - 1 / this.bounds.height;
+
+        layer.setTimeout(this._tick.bind(this), 300);
+    }
+
+    _tick(dt) {
+        this.data.update((v) => Math.floor(v * this.decay));
+
+        for (let x = 0; x < this.data.width; ++x) {
+            for (let y = 0; y < this.data.height; ++y) {
+                let val = 0;
+                val += Math.floor(0.4 * this.data.get(x - 1, y + 1) || 0);
+                val += Math.floor(0.2 * this.data.get(x, y + 1) || 0);
+                val += Math.floor(0.4 * this.data.get(x + 1, y + 1) || 0);
+                this.data.set(x, y, val);
+            }
+        }
+
+        for (let i = 0; i < this.bounds.width; ++i) {
+            this.data[i][this.bounds.height - 1] =
+                50 + GWU.rng.random.number(50);
+        }
+
+        this.layer.needsDraw = true;
+        layer.setTimeout(this._tick.bind(this), 300);
+    }
+
+    _ch(v) {
+        if (v > 20) {
+            let mod = v % 10;
+            if (mod < 2) {
+                return '(';
+            } else if (mod < 4) {
+                return ')';
+            } else if (mod < 5) {
+                return '{';
+            } else if (mod < 6) {
+                return '}';
+            } else if (mod < 8) {
+                return "'";
+            } else return ' ';
+        }
+        return ' ';
+    }
+
+    _fg(v) {
+        if (v > 80) return 0xff0;
+        if (v > 60) return 0xdd0;
+        if (v > 40) return 0x990;
+        if (v > 20) return 0x770;
+        return 0x550;
+    }
+
+    _draw(buffer) {
+        const color = GWU.color.from(this._used.bg);
+        this.data.forEach((v, x, y) => {
+            const bg = color.clone().scale(v);
+
+            const ch = this._ch(v);
+            const fg = this._fg(v);
+
+            buffer.draw(this.bounds.x + x, this.bounds.y + y, ch, fg, bg);
+        });
+    }
+}
+
 async function showIntro(ui) {
     layer = ui.startNewLayer();
 
@@ -30,7 +113,7 @@ async function showIntro(ui) {
     layer.pos(30, 12).fg('gray');
     layer.text("'Abandon all hope ye who enter here...'");
 
-    layer.reset().pos(37, 14).fg('red');
+    layer.reset().pos(39, 14).fg('red');
     layer.text('       ,      ,        ');
     layer.text('      /(.-""-.)\\    ');
     layer.text('  |\\  \\/      \\/  /|');
@@ -45,25 +128,57 @@ async function showIntro(ui) {
 
     // TODO - Fire widget (make flames move!)
 
-    layer.reset().pos(12, 19);
-    layer.text('          (_)L|J       ');
-    layer.text('   )      (ΩgreenΩ"∆) |    (  ');
-    layer.text('   ,(.  /`/ \\-|   (,`)');
-    layer.text("  )' (' \\/\\ / |  ) (.");
-    layer.text(" (' ),).  _W_ | (,)' ) ");
-    layer.fg('brown').text('^^^^^^^^^^^^^^^^^^^^^^^');
+    new FireWidget(layer, {
+        bg: 'red',
+        fg: 'yellow',
+        x: 5,
+        y: 25,
+    });
 
-    layer.reset().pos(61, 19);
-    layer.text('         L|J(_)             ');
-    layer.text('    )     | (ΩgreenΩ"∆)      (      ');
-    layer.text("   ,(.    |`/ \\'\\    (,`)    ");
-    layer.text("  )' ('   | \\ /\\/    ) (.     ");
-    layer.text(" (' ),)   | _W_     (,)' ).   ");
-    layer.fg('brown').text('^^^^^^^^^^^^^^^^^^^^^^^^^^^^');
+    // fire @ 40, 23
+    new FireWidget(layer, {
+        bg: 'red',
+        fg: 'yellow',
+        x: 28,
+        y: 25,
+    });
 
-    layer.reset().pos(26, 26);
+    layer.reset().pos(16, 20);
+    layer.text('  (_)L|J ');
+    layer.text('  (ΩgreenΩ"∆) | ');
+    layer.text('/`/ \\-| ');
+    layer.text('\\/\\ / | ');
+    layer.text('  _W_ | ');
+
+    layer.fg('brown').pos(4, 25).text('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^');
+
+    // fire @ 60,23
+    new FireWidget(layer, {
+        bg: 'red',
+        fg: 'yellow',
+        x: 65,
+        y: 25,
+    });
+
+    // fire @ 80,23
+    new FireWidget(layer, {
+        bg: 'red',
+        fg: 'yellow',
+        x: 88,
+        y: 25,
+    });
+
+    layer.reset().pos(76, 20);
+    layer.text('L|J(_)');
+    layer.text(' | (ΩgreenΩ"∆)');
+    layer.text(" |`/ \\'\\");
+    layer.text(' | \\ /\\/');
+    layer.text(' | _W_');
+    layer.fg('brown').pos(64, 25).text('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^');
+
+    layer.reset().pos(26, 28);
     layer.text('(See help file for credits, license and history)');
-    layer.pos(44, 29).text('Press Space');
+    layer.pos(44, 30).text('Press Space');
 
     let done;
 

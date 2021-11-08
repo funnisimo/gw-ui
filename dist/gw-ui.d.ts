@@ -254,6 +254,11 @@ declare class Grid {
     protected _setPos(): this;
 }
 
+declare type TimerFn = () => void | Promise<void>;
+interface TimerInfo {
+    action: string | TimerFn;
+    time: number;
+}
 interface UICore {
     readonly loop: GWU.io.Loop;
     readonly canvas: GWU.canvas.BaseCanvas;
@@ -284,7 +289,7 @@ declare class Layer implements UILayer {
     _depthOrder: Widget[];
     _focusWidget: Widget | null;
     _hasTabStop: boolean;
-    timers: Record<string, number>;
+    timers: TimerInfo[];
     _opts: WidgetOptions;
     constructor(ui: UICore, opts?: LayerOptions);
     get width(): number;
@@ -327,8 +332,8 @@ declare class Layer implements UILayer {
     dir(e: GWU.io.Event): boolean;
     tick(e: GWU.io.Event): boolean;
     draw(): void;
-    setTimeout(action: string, time: number): void;
-    clearTimeout(action: string): void;
+    setTimeout(action: string | TimerFn, time: number): void;
+    clearTimeout(action: string | TimerFn): void;
     finish(result?: any): void;
 }
 
@@ -1007,4 +1012,4 @@ declare class Viewport extends Widget {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActionConfig, ActorEntry, AddBorderOptions, AddChoiceOptions, AddDataListOptions, AddDataTableOptions, AddFieldsetOptions, AddInputOptions, AddMenuOptions, AddMenubarOptions, AddOrderedListOptions, AddSelectOptions, AddTextOptions, AddUnorderedListOptions, ArchiveMode, Border, BorderOptions, BorderType, Button, ButtonConfig, ButtonOptions, CellEntry, Choice, ChoiceOptions, Column, ColumnOptions, ComputedStyle, DataItem, DataList, DataListOptions, DataObject, DataTable, DataTableOptions, DataType, DropdownConfig, EntryBase, EventCb, Fieldset, FieldsetOptions, Flavor, FlavorOptions, FormatFn, HoverType, Input, InputOptions, Inquiry, ItemEntry, Layer, LayerOptions, Menu, MenuButton, MenuButtonOptions, MenuOptions, MenuViewer, Menubar, MenubarButton, MenubarButtonOptions, MenubarOptions, MessageArchive, MessageOptions, Messages, NextType, OrderedList, OrderedListOptions, PrefixType, Prompt, PromptChoice, PromptOptions, PropType, Rec, Select, SelectOptions, SelectType, SetParentOptions, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, TD, Text, TextOptions, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, UnorderedList, UnorderedListOptions, Value, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, defaultStyle, drawBorder, makeStyle };
+export { ActionConfig, ActorEntry, AddBorderOptions, AddChoiceOptions, AddDataListOptions, AddDataTableOptions, AddFieldsetOptions, AddInputOptions, AddMenuOptions, AddMenubarOptions, AddOrderedListOptions, AddSelectOptions, AddTextOptions, AddUnorderedListOptions, ArchiveMode, Border, BorderOptions, BorderType, Button, ButtonConfig, ButtonOptions, CellEntry, Choice, ChoiceOptions, Column, ColumnOptions, ComputedStyle, DataItem, DataList, DataListOptions, DataObject, DataTable, DataTableOptions, DataType, DropdownConfig, EntryBase, EventCb, Fieldset, FieldsetOptions, Flavor, FlavorOptions, FormatFn, HoverType, Input, InputOptions, Inquiry, ItemEntry, Layer, LayerOptions, Menu, MenuButton, MenuButtonOptions, MenuOptions, MenuViewer, Menubar, MenubarButton, MenubarButtonOptions, MenubarOptions, MessageArchive, MessageOptions, Messages, NextType, OrderedList, OrderedListOptions, PrefixType, Prompt, PromptChoice, PromptOptions, PropType, Rec, Select, SelectOptions, SelectType, SetParentOptions, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, TD, Text, TextOptions, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, UnorderedList, UnorderedListOptions, Value, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, defaultStyle, drawBorder, makeStyle };

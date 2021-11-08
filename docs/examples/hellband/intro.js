@@ -80,10 +80,10 @@ class FireWidget extends GWI.Widget {
 
     _fg(v) {
         if (v > 80) return 0xff0;
-        if (v > 60) return 0xdd0;
-        if (v > 40) return 0x990;
-        if (v > 20) return 0x770;
-        return 0x550;
+        if (v > 60) return 0xee0;
+        if (v > 40) return 0xdd0;
+        if (v > 20) return 0x990;
+        return 0x770;
     }
 
     _draw(buffer) {

@@ -352,11 +352,18 @@ export class Layer implements UILayer {
     }
 
     click(e: GWU.io.Event): boolean {
-        const w = this.widgetAt(e);
-        if (w.prop('tabStop') && !w.prop('disabled')) {
-            this.setFocusWidget(w);
+        let w: Widget.Widget | null = this.widgetAt(e);
+        let setFocus = false;
+
+        while (w) {
+            if (!setFocus && w.prop('tabStop') && !w.prop('disabled')) {
+                this.setFocusWidget(w);
+                setFocus = true;
+            }
+
+            if (w.click(e)) return false;
+            w = w.parent;
         }
-        w.click(e);
 
         return false; // TODO - this._done
     }
@@ -364,10 +371,11 @@ export class Layer implements UILayer {
     keypress(e: GWU.io.Event): boolean {
         if (!e.key) return false;
 
-        if (this.focusWidget) {
-            if (this.focusWidget.keypress(e)) {
-                return false;
-            }
+        let w: Widget.Widget | null = this.focusWidget || this.body;
+
+        while (w) {
+            if (w.keypress(e)) return false;
+            w = w.parent;
         }
 
         //         const fn =
@@ -380,14 +388,14 @@ export class Layer implements UILayer {
         //             }
         //         }
 
+        if (e.defaultPrevented) return false;
+
         if (e.key === 'Tab') {
             // Next widget
             this.nextTabStop();
-            return false; // not done
         } else if (e.key === 'TAB') {
             // Prev Widget
             this.prevTabStop();
-            return false; // not done
         }
 
         //         return this.done;
@@ -395,8 +403,12 @@ export class Layer implements UILayer {
     }
 
     dir(e: GWU.io.Event): boolean {
-        const target = this.focusWidget || this.body;
-        target.dir(e);
+        let target: Widget.Widget | null = this.focusWidget || this.body;
+
+        while (target) {
+            if (target.dir(e)) return false;
+            target = target.parent;
+        }
         // return this.done;
         return false;
     }

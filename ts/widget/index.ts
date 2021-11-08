@@ -10,4 +10,5 @@ export * from './datalist';
 export * from './menu';
 export * from './menubar';
 export * from './select';
+export * from './choice';
 // export * from './box';

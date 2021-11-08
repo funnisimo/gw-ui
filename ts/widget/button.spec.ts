@@ -47,6 +47,7 @@ describe('Button Widget', () => {
         expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.red);
         expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.gray);
 
+        widget.mouseenter(UTILS.mousemove(0, 0), widget);
         widget.mousemove(UTILS.mousemove(0, 0));
         expect(widget.hovered).toBeTruthy();
         widget.draw(buffer);
@@ -54,7 +55,7 @@ describe('Button Widget', () => {
         expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.red);
         expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.gray);
 
-        widget.mousemove(UTILS.mousemove(10, 10));
+        widget.mouseleave(UTILS.mousemove(10, 10));
         expect(widget.hovered).toBeFalsy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
@@ -81,6 +82,7 @@ describe('Button Widget', () => {
         expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.gray.toInt());
         expect(buffer.info(0, 1).bg).toEqual(GWU.color.colors.gray.toInt());
 
+        widget.mouseenter(UTILS.mousemove(0, 0), widget);
         widget.mousemove(UTILS.mousemove(0, 0));
         expect(widget.hovered).toBeTruthy();
         widget.draw(buffer);
@@ -89,7 +91,7 @@ describe('Button Widget', () => {
         expect(buffer.info(0, 0).bg).toEqual(GWU.color.colors.gray.toInt());
         expect(buffer.info(0, 1).bg).toEqual(GWU.color.colors.gray.toInt());
 
-        widget.mousemove(UTILS.mousemove(10, 10));
+        widget.mouseleave(UTILS.mousemove(10, 10));
         expect(widget.hovered).toBeFalsy();
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');

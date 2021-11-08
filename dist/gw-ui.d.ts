@@ -172,6 +172,9 @@ declare class Widget implements UIStylable {
     get parent(): Widget | null;
     set parent(v: Widget | null);
     setParent(v: Widget | null, opts?: SetParentOptions): void;
+    pos(): GWU.xy.XY;
+    pos(xy: GWU.xy.XY): this;
+    pos(x: number, y: number): this;
     text(): string;
     text(v: string): this;
     attr(name: string): PropType;
@@ -349,7 +352,7 @@ declare class UI implements UICore {
     startNewLayer(): Layer;
     copyUIBuffer(dest: GWU.canvas.DataBuffer): void;
     finishLayer(layer: Layer): void;
-    stop(): Promise<void> | null;
+    stop(): void;
     mousemove(e: GWU.io.Event): boolean;
     click(e: GWU.io.Event): boolean;
     keypress(e: GWU.io.Event): boolean;
@@ -522,6 +525,7 @@ declare module '../layer' {
 declare type FormatFn = GWU.text.Template;
 declare type Value = string | number;
 declare type SelectType = 'none' | 'column' | 'row' | 'cell';
+declare type HoverType = 'none' | 'column' | 'row' | 'cell' | 'select';
 declare type DataObject = Record<string, any>;
 declare type DataItem = Value | Value[] | DataObject;
 declare type DataType = DataItem[];
@@ -530,8 +534,10 @@ interface ColumnOptions {
     width?: number;
     format?: string | FormatFn;
     header?: string;
+    headerTag?: string;
     headerClass?: string;
     empty?: string;
+    dataTag?: string;
     dataClass?: string;
 }
 interface DataTableOptions extends Omit<WidgetOptions, 'height'> {
@@ -542,16 +548,26 @@ interface DataTableOptions extends Omit<WidgetOptions, 'height'> {
     dataTag?: string;
     prefix?: PrefixType;
     select?: SelectType;
+    hover?: HoverType;
+    wrap?: boolean;
     columns: ColumnOptions[];
     data?: DataType;
     border?: boolean | BorderType;
 }
 declare class Column {
+    static default: {
+        select: string;
+        hover: string;
+        tag: string;
+        headerTag: string;
+        dataTag: string;
+        border: string;
+    };
     width: number;
     format: GWU.text.Template;
     header: string;
-    headerClass: string;
-    dataClass: string;
+    headerTag: string;
+    dataTag: string;
     empty: string;
     constructor(opts: ColumnOptions);
     addHeader(table: DataTable, x: number, y: number, col: number): Text;
@@ -561,32 +577,39 @@ declare class Column {
 declare class DataTable extends Widget {
     static default: {
         columnWidth: number;
+        header: boolean;
         empty: string;
-        headerClass: string;
+        tag: string;
         headerTag: string;
-        dataClass: string;
         dataTag: string;
         select: SelectType;
+        hover: HoverType;
         prefix: PrefixType;
+        border: BorderType;
+        wrap: boolean;
     };
     _data: DataType;
     columns: Column[];
     showHeader: boolean;
-    headerTag: string;
-    dataTag: string;
-    prefix: PrefixType;
-    select: SelectType;
     rowHeight: number;
-    border: BorderType;
     size: number;
     selectedRow: number;
     selectedColumn: number;
     constructor(layer: Layer, opts: DataTableOptions);
     get selectedData(): any;
+    select(col: number, row: number): this;
+    selectNextRow(): this;
+    selectPrevRow(): this;
+    selectNextCol(): this;
+    selectPrevCol(): this;
+    blur(reverse?: boolean): boolean;
     data(): DataType;
     data(data: DataType): this;
     _draw(buffer: GWU.canvas.DataBuffer): boolean;
     mouseenter(e: GWU.io.Event, over: Widget): void;
+    click(e: GWU.io.Event): boolean;
+    keypress(e: GWU.io.Event): boolean;
+    dir(e: GWU.io.Event): boolean;
 }
 declare class TD extends Text {
     mouseleave(e: GWU.io.Event): void;
@@ -603,6 +626,7 @@ declare module '../layer' {
 interface DataListOptions extends ColumnOptions, WidgetOptions {
     size?: number;
     rowHeight?: number;
+    hover?: HoverType;
     headerTag?: string;
     dataTag?: string;
     prefix?: PrefixType;
@@ -754,6 +778,97 @@ declare module '../layer' {
     }
 }
 
+declare type NextType = string | null;
+interface PromptChoice {
+    text?: string;
+    next?: string;
+    value?: any;
+}
+interface PromptOptions {
+    field?: string;
+    next?: string;
+    id?: string;
+}
+declare class Prompt {
+    _id: string | null;
+    _field: string;
+    _prompt: string;
+    _choices: string[];
+    _infos: string[];
+    _next: NextType[];
+    _values: any[];
+    _defaultNext: NextType;
+    selection: number;
+    constructor(question: string, field?: string | PromptOptions);
+    field(): string;
+    field(v: string): this;
+    id(): string | null;
+    id(v: string | null): this;
+    prompt(): string;
+    prompt(v: string): this;
+    next(): string | null;
+    next(v: string | null): this;
+    choices(): string[];
+    choices(choices: Record<string, string>): this;
+    choices(choices: string[], infos?: string[]): this;
+    choice(choice: string, info?: string | PromptChoice): this;
+    infos(): string[];
+    info(n: number): string;
+    choose(n: number): this;
+    value(): any;
+}
+interface ChoiceOptions extends WidgetOptions {
+    width: number;
+    height: number;
+    choiceWidth: number;
+    border?: BorderType;
+    promptTag?: string;
+    promptClass?: string;
+    choiceTag?: string;
+    choiceClass?: string;
+    infoTag?: string;
+    infoClass?: string;
+    prompt?: Prompt;
+}
+declare class Choice extends Widget {
+    static default: {
+        tag: string;
+        border: string;
+        promptTag: string;
+        promptClass: string;
+        choiceTag: string;
+        choiceClass: string;
+        infoTag: string;
+        infoClass: string;
+    };
+    choiceWidth: number;
+    prompt: Widget;
+    list: DataList;
+    info: Text;
+    _prompt: Prompt | null;
+    _done: null | ((v: any) => void);
+    constructor(layer: Layer, opts: ChoiceOptions);
+    showPrompt(prompt: Prompt): Promise<any>;
+    _addList(): this;
+    _addInfo(): this;
+    _addLegend(): this;
+    _draw(buffer: GWU.canvas.DataBuffer): boolean;
+}
+declare type AddChoiceOptions = ChoiceOptions & SetParentOptions & {
+    parent?: Widget;
+};
+declare module '../layer' {
+    interface Layer {
+        choice(opts?: AddChoiceOptions): Choice;
+    }
+}
+declare class Inquiry {
+    widget: Choice;
+    _prompts: Prompt[];
+    constructor(widget: Choice);
+    prompt(p: Prompt): this;
+}
+
 interface MessageOptions extends WidgetOptions {
     length?: number;
 }
@@ -892,4 +1007,4 @@ declare class Viewport extends Widget {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActionConfig, ActorEntry, AddBorderOptions, AddDataListOptions, AddDataTableOptions, AddFieldsetOptions, AddInputOptions, AddMenuOptions, AddMenubarOptions, AddOrderedListOptions, AddSelectOptions, AddTextOptions, AddUnorderedListOptions, ArchiveMode, Border, BorderOptions, BorderType, Button, ButtonConfig, ButtonOptions, CellEntry, Column, ColumnOptions, ComputedStyle, DataItem, DataList, DataListOptions, DataObject, DataTable, DataTableOptions, DataType, DropdownConfig, EntryBase, EventCb, Fieldset, FieldsetOptions, Flavor, FlavorOptions, FormatFn, Input, InputOptions, ItemEntry, Layer, LayerOptions, Menu, MenuButton, MenuButtonOptions, MenuOptions, MenuViewer, Menubar, MenubarButton, MenubarButtonOptions, MenubarOptions, MessageArchive, MessageOptions, Messages, OrderedList, OrderedListOptions, PrefixType, PropType, Rec, Select, SelectOptions, SelectType, SetParentOptions, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, TD, Text, TextOptions, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, UnorderedList, UnorderedListOptions, Value, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, defaultStyle, drawBorder, makeStyle };
+export { ActionConfig, ActorEntry, AddBorderOptions, AddChoiceOptions, AddDataListOptions, AddDataTableOptions, AddFieldsetOptions, AddInputOptions, AddMenuOptions, AddMenubarOptions, AddOrderedListOptions, AddSelectOptions, AddTextOptions, AddUnorderedListOptions, ArchiveMode, Border, BorderOptions, BorderType, Button, ButtonConfig, ButtonOptions, CellEntry, Choice, ChoiceOptions, Column, ColumnOptions, ComputedStyle, DataItem, DataList, DataListOptions, DataObject, DataTable, DataTableOptions, DataType, DropdownConfig, EntryBase, EventCb, Fieldset, FieldsetOptions, Flavor, FlavorOptions, FormatFn, HoverType, Input, InputOptions, Inquiry, ItemEntry, Layer, LayerOptions, Menu, MenuButton, MenuButtonOptions, MenuOptions, MenuViewer, Menubar, MenubarButton, MenubarButtonOptions, MenubarOptions, MessageArchive, MessageOptions, Messages, NextType, OrderedList, OrderedListOptions, PrefixType, Prompt, PromptChoice, PromptOptions, PropType, Rec, Select, SelectOptions, SelectType, SetParentOptions, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, TD, Text, TextOptions, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, UnorderedList, UnorderedListOptions, Value, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, defaultStyle, drawBorder, makeStyle };

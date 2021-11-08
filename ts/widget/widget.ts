@@ -142,6 +142,24 @@ export class Widget implements UIStylable {
         }
     }
 
+    pos(): GWU.xy.XY;
+    pos(xy: GWU.xy.XY): this;
+    pos(x: number, y: number): this;
+    pos(x?: number | GWU.xy.XY, y?: number): this | GWU.xy.XY {
+        if (x === undefined) return this.bounds;
+
+        if (typeof x === 'number') {
+            this.bounds.x = x;
+            this.bounds.y = y || 0;
+        } else {
+            this.bounds.x = x.x;
+            this.bounds.y = x.y;
+        }
+        this.layer.needsDraw = true;
+
+        return this;
+    }
+
     text(): string;
     text(v: string): this;
     text(v?: string): this | string {
@@ -422,14 +440,14 @@ export class Widget implements UIStylable {
 
     click(e: GWU.io.Event): boolean {
         if (this.hidden) return false;
-        return this._bubbleEvent('click', this, e);
+        return this._fireEvent('click', this, e);
     }
 
     keypress(e: GWU.io.Event): boolean {
-        return this._bubbleEvent('keypress', this, e);
+        return this._fireEvent('keypress', this, e);
     }
     dir(e: GWU.io.Event): boolean {
-        return this._bubbleEvent('dir', this, e);
+        return this._fireEvent('dir', this, e);
     }
     tick(e: GWU.io.Event): boolean {
         return this._fireEvent('tick', this, e);

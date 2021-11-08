@@ -12,6 +12,7 @@ const layer = ui.startNewLayer();
 layer.styles.add('th', { bg: 'light_teal', fg: 'dark_blue' });
 layer.styles.add('td', { bg: 'darker_gray' });
 layer.styles.add('td:hover', { bg: 'gray' });
+layer.styles.add('td:selected', { bg: 'light_green' });
 
 const list = layer.datalist({
     id: 'LIST',
@@ -30,6 +31,7 @@ const text = layer.text('Choose.', {
 });
 
 list.data(['Taco', 'Burger', 'Salad', 'Fruit Cup']);
+list.select(0, 0);
 
 list.on('input', () => {
     if (!list.selectedData) return;

@@ -83,7 +83,7 @@ export class UI implements UICore {
 
         this.layers.push(layer);
 
-        if (!this.layer) {
+        if (!this._promise) {
             this._promise = this.loop.run(this as unknown as GWU.io.IOMap);
         }
         this.layer = layer;
@@ -103,12 +103,11 @@ export class UI implements UICore {
         }
     }
 
-    stop(): Promise<void> | null {
+    stop(): void {
         this._done = true;
-        this.loop.stop();
-        const p = this._promise;
-        this._promise = null;
-        return p;
+        while (this.layer) {
+            this.finishLayer(this.layer);
+        }
     }
 
     // run(): Promise<void> {

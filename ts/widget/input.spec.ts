@@ -35,7 +35,7 @@ describe('Input Widget', () => {
         expect(widget.isValid()).toBeTruthy();
     });
 
-    test.only('make', () => {
+    test('make', () => {
         const e = layer.input({
             id: 'ID',
             text: 'val',
@@ -157,7 +157,7 @@ describe('Input Widget', () => {
             text: 'Test',
         });
         jest.spyOn(widget, '_fireEvent');
-        expect(widget.prop('action')).toEqual('ID');
+        expect(widget.attr('action')).toEqual('ID');
 
         expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
         expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget);

@@ -103,5 +103,6 @@ Layer.prototype.text = function (
     if (opts.parent) {
         list.setParent(opts.parent, opts);
     }
+    this.pos(list.bounds.x, list.bounds.bottom);
     return list;
 };

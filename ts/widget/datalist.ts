@@ -9,6 +9,7 @@ export interface DataListOptions
         Widget.WidgetOptions {
     size?: number;
     rowHeight?: number;
+    hover?: DataTable.HoverType;
 
     headerTag?: string;
     dataTag?: string;
@@ -26,7 +27,13 @@ export class DataList extends DataTable.DataTable {
             (() => {
                 // @ts-ignore
                 const tableOpts: DataList.TableOptions = opts;
-                tableOpts.columns = [opts];
+                if (opts.border !== 'none' && opts.width) {
+                    opts.width -= 2;
+                }
+                tableOpts.columns = [Object.assign({}, opts)];
+                if (!opts.header || !opts.header.length) {
+                    tableOpts.header = false;
+                }
                 return tableOpts;
             })()
         );

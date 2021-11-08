@@ -642,6 +642,20 @@ class Widget {
             this._parent._addChild(this, opts);
         }
     }
+    pos(x, y) {
+        if (x === undefined)
+            return this.bounds;
+        if (typeof x === 'number') {
+            this.bounds.x = x;
+            this.bounds.y = y || 0;
+        }
+        else {
+            this.bounds.x = x.x;
+            this.bounds.y = x.y;
+        }
+        this.layer.needsDraw = true;
+        return this;
+    }
     text(v) {
         if (v === undefined)
             return this._attrStr('text');
@@ -886,13 +900,13 @@ class Widget {
     click(e) {
         if (this.hidden)
             return false;
-        return this._bubbleEvent('click', this, e);
+        return this._fireEvent('click', this, e);
     }
     keypress(e) {
-        return this._bubbleEvent('keypress', this, e);
+        return this._fireEvent('keypress', this, e);
     }
     dir(e) {
-        return this._bubbleEvent('dir', this, e);
+        return this._fireEvent('dir', this, e);
     }
     tick(e) {
         return this._fireEvent('tick', this, e);
@@ -1243,20 +1257,27 @@ class Layer {
         return false; // TODO - this._done
     }
     click(e) {
-        const w = this.widgetAt(e);
-        if (w.prop('tabStop') && !w.prop('disabled')) {
-            this.setFocusWidget(w);
+        let w = this.widgetAt(e);
+        let setFocus = false;
+        while (w) {
+            if (!setFocus && w.prop('tabStop') && !w.prop('disabled')) {
+                this.setFocusWidget(w);
+                setFocus = true;
+            }
+            if (w.click(e))
+                return false;
+            w = w.parent;
         }
-        w.click(e);
         return false; // TODO - this._done
     }
     keypress(e) {
         if (!e.key)
             return false;
-        if (this.focusWidget) {
-            if (this.focusWidget.keypress(e)) {
+        let w = this.focusWidget || this.body;
+        while (w) {
+            if (w.keypress(e))
                 return false;
-            }
+            w = w.parent;
         }
         //         const fn =
         //             this.eventHandlers[e.key] ||
@@ -1267,22 +1288,26 @@ class Layer {
         //                 return this.done;
         //             }
         //         }
+        if (e.defaultPrevented)
+            return false;
         if (e.key === 'Tab') {
             // Next widget
             this.nextTabStop();
-            return false; // not done
         }
         else if (e.key === 'TAB') {
             // Prev Widget
             this.prevTabStop();
-            return false; // not done
         }
         //         return this.done;
         return false;
     }
     dir(e) {
-        const target = this.focusWidget || this.body;
-        target.dir(e);
+        let target = this.focusWidget || this.body;
+        while (target) {
+            if (target.dir(e))
+                return false;
+            target = target.parent;
+        }
         // return this.done;
         return false;
     }
@@ -1395,7 +1420,7 @@ class UI {
     startNewLayer() {
         const layer = new Layer(this);
         this.layers.push(layer);
-        if (!this.layer) {
+        if (!this._promise) {
             this._promise = this.loop.run(this);
         }
         this.layer = layer;
@@ -1414,10 +1439,9 @@ class UI {
     }
     stop() {
         this._done = true;
-        this.loop.stop();
-        const p = this._promise;
-        this._promise = null;
-        return p;
+        while (this.layer) {
+            this.finishLayer(this.layer);
+        }
     }
     // run(): Promise<void> {
     //     // this._done = false;
@@ -1528,6 +1552,7 @@ Layer.prototype.text = function (text, opts = {}) {
     if (opts.parent) {
         list.setParent(opts.parent, opts);
     }
+    this.pos(list.bounds.x, list.bounds.bottom);
     return list;
 };
 
@@ -1909,16 +1934,16 @@ class Column {
             this.format = GWU.text.compile(opts.format);
         }
         this.header = opts.header || '';
-        this.headerClass = opts.headerClass || DataTable.default.headerClass;
+        this.headerTag = opts.headerTag || DataTable.default.headerTag;
         this.empty = opts.empty || DataTable.default.empty;
-        this.dataClass = opts.dataClass || DataTable.default.dataClass;
+        this.dataTag = opts.dataTag || DataTable.default.dataTag;
     }
     addHeader(table, x, y, col) {
         const t = new Text(table.layer, {
             x,
             y,
-            class: this.headerClass,
-            tag: table.headerTag,
+            class: table.classes,
+            tag: table._attrStr('headerTag'),
             width: this.width,
             height: table.rowHeight,
             depth: table.depth + 1,
@@ -1945,8 +1970,8 @@ class Column {
             text,
             x,
             y,
-            class: this.dataClass,
-            tag: table.dataTag,
+            class: table.classes,
+            tag: table._attrStr('dataTag'),
             width: this.width,
             height: table.rowHeight,
             depth: table.depth + 1,
@@ -1962,21 +1987,27 @@ class Column {
         return this.addData(table, [], x, y, col, row);
     }
 }
+Column.default = {
+    select: 'row',
+    hover: 'select',
+    tag: 'datatable',
+    headerTag: 'th',
+    dataTag: 'td',
+    border: 'ascii',
+};
 class DataTable extends Widget {
     constructor(layer, opts) {
-        super(layer, opts);
+        super(layer, (() => {
+            opts.tag = opts.tag || DataTable.default.tag;
+            opts.tabStop = opts.tabStop === undefined ? true : opts.tabStop;
+            return opts;
+        })());
         this._data = [];
         this.columns = [];
         this.showHeader = false;
-        this.headerTag = 'th';
-        this.dataTag = 'td';
-        this.prefix = 'none';
-        this.select = 'cell';
         this.rowHeight = 1;
-        this.border = 'none';
         this.selectedRow = -1;
-        this.selectedColumn = -1;
-        this.tag = 'table';
+        this.selectedColumn = 0;
         this.size = opts.size || layer.height;
         this.bounds.width = 0;
         opts.columns.forEach((o) => {
@@ -1987,17 +2018,20 @@ class DataTable extends Widget {
         if (opts.border) {
             if (opts.border === true)
                 opts.border = 'ascii';
-            this.border = opts.border;
         }
+        else if (opts.border === false) {
+            opts.border = 'none';
+        }
+        this.attr('border', opts.border || DataTable.default.border);
         this.rowHeight = opts.rowHeight || 1;
         this.bounds.height = 1;
-        if (opts.header) {
-            this.showHeader = true;
-        }
-        this.headerTag = opts.headerTag || DataTable.default.headerTag;
-        this.dataTag = opts.dataTag || DataTable.default.dataTag;
-        this.prefix = opts.prefix || DataTable.default.prefix;
-        this.select = opts.select || DataTable.default.select;
+        this.attr('wrap', opts.wrap === undefined ? DataTable.default.wrap : opts.wrap);
+        this.attr('header', opts.header === undefined ? DataTable.default.header : opts.header);
+        this.attr('headerTag', opts.headerTag || DataTable.default.headerTag);
+        this.attr('dataTag', opts.dataTag || DataTable.default.dataTag);
+        this.attr('prefix', opts.prefix || DataTable.default.prefix);
+        this.attr('select', opts.select || DataTable.default.select);
+        this.attr('hover', opts.hover || DataTable.default.hover);
         this.data(opts.data || []);
     }
     get selectedData() {
@@ -2005,20 +2039,84 @@ class DataTable extends Widget {
             return undefined;
         return this._data[this.selectedRow];
     }
+    select(col, row) {
+        if (!this._data || this._data.length == 0) {
+            this.selectedRow = this.selectedColumn = 0;
+            return this;
+        }
+        if (this.attr('wrap')) {
+            if (col < 0 || col >= this.columns.length) {
+                col += this.columns.length;
+                col %= this.columns.length;
+            }
+            if (row < 0 || row >= this._data.length) {
+                row += this._data.length;
+                row %= this._data.length;
+            }
+        }
+        col = this.selectedColumn = GWU.clamp(col, 0, this.columns.length - 1);
+        row = this.selectedRow = GWU.clamp(row, 0, this._data.length - 1);
+        const select = this._attrStr('select');
+        if (select === 'none') {
+            this.children.forEach((c) => {
+                c.prop('selected', false);
+            });
+        }
+        else if (select === 'row') {
+            this.children.forEach((c) => {
+                const active = row == c.prop('row');
+                c.prop('selected', active);
+            });
+        }
+        else if (select === 'column') {
+            this.children.forEach((c) => {
+                const active = col == c.prop('col');
+                c.prop('selected', active);
+            });
+        }
+        else if (select === 'cell') {
+            this.children.forEach((c) => {
+                const active = col == c.prop('col') && row == c.prop('row');
+                c.prop('selected', active);
+            });
+        }
+        this._bubbleEvent('input', this, { row, col, data: this.selectedData });
+        return this;
+    }
+    selectNextRow() {
+        return this.select(this.selectedColumn, this.selectedRow + 1);
+    }
+    selectPrevRow() {
+        return this.select(this.selectedColumn, this.selectedRow - 1);
+    }
+    selectNextCol() {
+        return this.select(this.selectedColumn + 1, this.selectedRow);
+    }
+    selectPrevCol() {
+        return this.select(this.selectedColumn - 1, this.selectedRow);
+    }
+    blur(reverse) {
+        this._bubbleEvent('change', this, {
+            col: this.selectedColumn,
+            row: this.selectedRow,
+            data: this.selectedData,
+        });
+        return super.blur(reverse);
+    }
     data(data) {
         if (!data)
             return this._data;
         this._data = data;
         for (let i = this.children.length - 1; i >= 0; --i) {
             const c = this.children[i];
-            if (c.tag !== this.headerTag) {
+            if (c.tag !== this.attr('headerTag')) {
                 this.layer.detach(c);
             }
         }
-        const borderAdj = this.border !== 'none' ? 1 : 0;
+        const borderAdj = this.attr('border') !== 'none' ? 1 : 0;
         let x = this.bounds.x + borderAdj;
         let y = this.bounds.y + borderAdj;
-        if (this.showHeader) {
+        if (this.attr('header')) {
             this.columns.forEach((col, i) => {
                 col.addHeader(this, x, y, i);
                 x += col.width + borderAdj;
@@ -2042,6 +2140,10 @@ class DataTable extends Widget {
                 x += col.width + borderAdj;
             });
             y += 1;
+            this.select(-1, -1);
+        }
+        else {
+            this.select(0, 0);
         }
         this.bounds.height = y - this.bounds.y;
         this.bounds.width = x - this.bounds.x;
@@ -2053,8 +2155,8 @@ class DataTable extends Widget {
         this.children.forEach((w) => {
             if (w.prop('row') >= this.size)
                 return;
-            if (this.border !== 'none') {
-                drawBorder(buffer, w.bounds.x - 1, w.bounds.y - 1, w.bounds.width + 2, w.bounds.height + 2, this._used, this.border == 'ascii');
+            if (this.attr('border') !== 'none') {
+                drawBorder(buffer, w.bounds.x - 1, w.bounds.y - 1, w.bounds.width + 2, w.bounds.height + 2, this._used, this.attr('border') == 'ascii');
             }
         });
         return true;
@@ -2070,29 +2172,104 @@ class DataTable extends Widget {
             if (col !== this.selectedColumn || row !== this.selectedRow) {
                 this.selectedColumn = col;
                 this.selectedRow = row;
-                if (this.select === 'none') {
-                    this.children.forEach((c) => (c.hovered = false));
+                let select = false;
+                let hover = this._attrStr('hover');
+                if (hover === 'select') {
+                    hover = this._attrStr('select');
+                    select = true;
                 }
-                else if (this.select === 'row') {
-                    this.children.forEach((c) => (c.hovered = row == c.prop('row')));
+                if (hover === 'none') {
+                    this.children.forEach((c) => {
+                        c.hovered = false;
+                        if (select)
+                            c.prop('selected', false);
+                    });
                 }
-                else if (this.select === 'column') {
-                    this.children.forEach((c) => (c.hovered = col == c.prop('col')));
+                else if (hover === 'row') {
+                    this.children.forEach((c) => {
+                        const active = row == c.prop('row');
+                        c.hovered = active;
+                        if (select)
+                            c.prop('selected', active);
+                    });
                 }
-                this._fireEvent('input', this, { row, col, cell: hovered });
+                else if (hover === 'column') {
+                    this.children.forEach((c) => {
+                        const active = col == c.prop('col');
+                        c.hovered = active;
+                        if (select)
+                            c.prop('selected', active);
+                    });
+                }
+                else if (hover === 'cell') {
+                    this.children.forEach((c) => {
+                        const active = col == c.prop('col') && row == c.prop('row');
+                        c.hovered = active;
+                        if (select)
+                            c.prop('selected', active);
+                    });
+                }
+                this._bubbleEvent('input', this, {
+                    row,
+                    col,
+                    data: this.selectedData,
+                });
             }
         }
+    }
+    click(e) {
+        if (!this.contains(e))
+            return false;
+        this._bubbleEvent('change', this, {
+            row: this.selectedRow,
+            col: this.selectedColumn,
+            data: this.selectedData,
+        });
+        return false;
+    }
+    keypress(e) {
+        if (!e.key)
+            return false;
+        if (e.key === 'Enter') {
+            this._bubbleEvent('change', this, {
+                row: this.selectedRow,
+                col: this.selectedColumn,
+                data: this.selectedData,
+            });
+            return true;
+        }
+        return false;
+    }
+    dir(e) {
+        if (!e.dir)
+            return false;
+        if (e.dir[1] == 1) {
+            this.selectNextRow();
+        }
+        else if (e.dir[1] == -1) {
+            this.selectPrevRow();
+        }
+        if (e.dir[0] == 1) {
+            this.selectNextCol();
+        }
+        else if (e.dir[0] == -1) {
+            this.selectPrevCol();
+        }
+        return true;
     }
 }
 DataTable.default = {
     columnWidth: 10,
+    header: true,
     empty: '-',
-    headerClass: 'header',
+    tag: 'datatable',
     headerTag: 'th',
-    dataClass: 'data',
     dataTag: 'td',
     select: 'cell',
+    hover: 'select',
     prefix: 'none',
+    border: 'ascii',
+    wrap: true,
 };
 installWidget('datatable', (l, opts) => new DataTable(l, opts));
 class TD extends Text {
@@ -2100,10 +2277,10 @@ class TD extends Text {
         super.mouseleave(e);
         if (this.parent) {
             const table = this.parent;
-            if (table.select === 'row') {
+            if (table.attr('select') === 'row') {
                 this.hovered = this._propInt('row') === table.selectedRow;
             }
-            else if (table.select === 'column') {
+            else if (table.attr('select') === 'column') {
                 this.hovered = this._propInt('col') === table.selectedColumn;
             }
         }
@@ -2123,7 +2300,13 @@ class DataList extends DataTable {
         super(layer, (() => {
             // @ts-ignore
             const tableOpts = opts;
-            tableOpts.columns = [opts];
+            if (opts.border !== 'none' && opts.width) {
+                opts.width -= 2;
+            }
+            tableOpts.columns = [Object.assign({}, opts)];
+            if (!opts.header || !opts.header.length) {
+                tableOpts.header = false;
+            }
             return tableOpts;
         })());
     }
@@ -2632,6 +2815,228 @@ Layer.prototype.select = function (opts) {
     }
     return list;
 };
+
+class Prompt {
+    constructor(question, field = {}) {
+        this._id = null;
+        this._defaultNext = null;
+        this.selection = -1;
+        if (typeof field === 'string') {
+            field = { field };
+        }
+        this._prompt = question;
+        this._field = field.field || '';
+        this._choices = [];
+        this._infos = [];
+        this._values = [];
+        this._next = [];
+        this._defaultNext = field.next || null;
+        this._id = field.id || field.field || '';
+    }
+    field(v) {
+        if (v === undefined)
+            return this._field;
+        this._field = v;
+        return this;
+    }
+    id(v) {
+        if (v === undefined)
+            return this._id;
+        this._id = v;
+        return this;
+    }
+    prompt(v) {
+        if (v === undefined)
+            return this._prompt;
+        this._prompt = v;
+        return this;
+    }
+    next(v) {
+        if (v === undefined)
+            return this._next[this.selection] || this._defaultNext;
+        this._defaultNext = v;
+        return this;
+    }
+    choices(choice, info) {
+        if (choice === undefined)
+            return this._choices;
+        if (!Array.isArray(choice)) {
+            info = Object.values(choice);
+            choice = Object.keys(choice);
+        }
+        else if (!Array.isArray(info)) {
+            info = new Array(choice.length).fill('');
+        }
+        if (choice.length !== info.length)
+            throw new Error('Choices and Infos must have same length.');
+        choice.forEach((c, i) => {
+            this.choice(c, info[i]);
+        });
+        return this;
+    }
+    choice(choice, info = {}) {
+        if (typeof info === 'string') {
+            info = { text: info };
+        }
+        this._choices.push(choice);
+        this._infos.push(info.text || '');
+        this._next.push(info.next || null);
+        this._values.push(info.value || choice);
+        return this;
+    }
+    infos() {
+        return this._infos;
+    }
+    info(n) {
+        return this._infos[n];
+    }
+    choose(n) {
+        this.selection = n;
+        return this;
+    }
+    value() {
+        return this._values[this.selection];
+    }
+}
+class Choice extends Widget {
+    constructor(layer, opts) {
+        super(layer, (() => {
+            opts.tag = opts.tag || Choice.default.tag;
+            return opts;
+        })());
+        this._prompt = null;
+        this._done = null;
+        this.choiceWidth = opts.choiceWidth;
+        this.attr('border', opts.border || Choice.default.border);
+        this.attr('promptTag', opts.promptTag || Choice.default.promptTag);
+        this.attr('promptClass', opts.promptClass || Choice.default.promptClass);
+        this.attr('choiceTag', opts.choiceTag || Choice.default.choiceTag);
+        this.attr('choiceClass', opts.choiceClass || Choice.default.choiceClass);
+        this.attr('infoTag', opts.infoTag || Choice.default.infoTag);
+        this.attr('infoClass', opts.infoClass || Choice.default.infoClass);
+        this._addLegend();
+        this._addList();
+        this._addInfo();
+        if (opts.prompt) {
+            this.showPrompt(opts.prompt);
+        }
+    }
+    showPrompt(prompt) {
+        this._prompt = prompt;
+        prompt.choose(0);
+        this.prompt.text(prompt.prompt());
+        this.list.data(prompt.choices());
+        this.info.text(prompt.info(prompt.selection));
+        this._bubbleEvent('input', this, this._prompt);
+        return new Promise((resolve) => (this._done = resolve));
+    }
+    _addList() {
+        this.list = new DataList(this.layer, {
+            height: this.bounds.height - 2,
+            x: this.bounds.x + 1,
+            width: this.choiceWidth,
+            y: this.bounds.y + 1,
+            dataTag: this._attrStr('choiceTag'),
+            dataClass: this._attrStr('choiceClass'),
+            tabStop: true,
+            border: 'none',
+            hover: 'select',
+        });
+        this.list.setParent(this);
+        this.list.on('input', () => {
+            if (!this._prompt)
+                return false;
+            const p = this._prompt;
+            const row = this.list.selectedRow;
+            p.choose(row);
+            if (row == -1) {
+                this.info.text('');
+            }
+            else {
+                this.info.text(p.info(row));
+            }
+            this._bubbleEvent('input', this, p);
+            return true; // I want to eat this event
+        });
+        this.list.on('change', () => {
+            if (!this._prompt)
+                return false;
+            const p = this._prompt;
+            p.choose(this.list.selectedRow);
+            this._bubbleEvent('change', this, p);
+            this._done(p.value());
+            return true; // eat this event
+        });
+        return this;
+    }
+    _addInfo() {
+        this.info = new Text(this.layer, {
+            text: '',
+            x: this.bounds.x + this.choiceWidth + 2,
+            y: this.bounds.y + 1,
+            width: this.bounds.width - this.choiceWidth - 3,
+            height: this.bounds.height - 2,
+            tag: this._attrStr('infoTag'),
+            class: this._attrStr('infoClass'),
+        });
+        this.info.setParent(this);
+        return this;
+    }
+    _addLegend() {
+        this.prompt = new Text(this.layer, {
+            text: '',
+            width: this.bounds.width - 4,
+            x: this.bounds.x + 2,
+            y: this.bounds.y,
+            tag: this._attrStr('promptTag'),
+            class: this._attrStr('promptClass'),
+        });
+        this.prompt.setParent(this);
+        return this;
+    }
+    _draw(buffer) {
+        let w = this.choiceWidth + 2;
+        const h = this.bounds.height;
+        let x = this.bounds.x;
+        const y = this.bounds.y;
+        const ascii = this.attr('border') === 'ascii';
+        drawBorder(buffer, x, y, w, h, this._used, ascii);
+        w = this.bounds.width - this.choiceWidth - 1;
+        x = this.bounds.x + this.choiceWidth + 1;
+        drawBorder(buffer, x, y, w, h, this._used, ascii);
+        return true;
+    }
+}
+Choice.default = {
+    tag: 'choice',
+    border: 'ascii',
+    promptTag: 'prompt',
+    promptClass: '',
+    choiceTag: 'choice',
+    choiceClass: '',
+    infoTag: 'info',
+    infoClass: '',
+};
+Layer.prototype.choice = function (opts) {
+    const options = Object.assign({}, this._opts, opts);
+    const widget = new Choice(this, options);
+    if (opts.parent) {
+        widget.setParent(opts.parent, opts);
+    }
+    return widget;
+};
+////////////////////////////////////////////////////////////////////////////////
+// INQUIRY
+class Inquiry {
+    constructor(widget) {
+        this._prompts = [];
+        this.widget = widget;
+    }
+    prompt(p) {
+        this._prompts.push(p);
+        return this;
+    }
+}
 
 class Messages extends Widget {
     constructor(layer, opts) {
@@ -3344,4 +3749,4 @@ class Viewport extends Widget {
     }
 }
 
-export { ActorEntry, Border, Button, CellEntry, Column, ComputedStyle, DataList, DataTable, EntryBase, Fieldset, Flavor, Input, ItemEntry, Layer, Menu, MenuButton, MenuViewer, Menubar, MenubarButton, MessageArchive, Messages, OrderedList, Select, Sheet, Sidebar, Style, TD, Text, UI, UnorderedList, Viewport, Widget, defaultStyle, drawBorder, makeStyle };
+export { ActorEntry, Border, Button, CellEntry, Choice, Column, ComputedStyle, DataList, DataTable, EntryBase, Fieldset, Flavor, Input, Inquiry, ItemEntry, Layer, Menu, MenuButton, MenuViewer, Menubar, MenubarButton, MessageArchive, Messages, OrderedList, Prompt, Select, Sheet, Sidebar, Style, TD, Text, UI, UnorderedList, Viewport, Widget, defaultStyle, drawBorder, makeStyle };

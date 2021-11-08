@@ -55,6 +55,8 @@ describe('Text Widget', () => {
         expect(widget.bounds.x).toEqual(0);
         expect(widget.bounds.y).toEqual(0);
 
+        expect(layer.pos()).toMatchObject({ x: 0, y: 1 }); // text auto moves to next line
+
         // Truncates
         widget = layer.text('Testing a long message.', {
             id: 'TEST',
@@ -66,7 +68,7 @@ describe('Text Widget', () => {
         expect(widget.bounds.width).toEqual(20);
         expect(widget.bounds.height).toEqual(1);
         expect(widget.bounds.x).toEqual(0);
-        expect(widget.bounds.y).toEqual(0);
+        expect(widget.bounds.y).toEqual(1);
 
         // Wraps
         widget = layer.text('Testing a long message.', {
@@ -80,6 +82,8 @@ describe('Text Widget', () => {
         expect(widget.bounds.height).toEqual(2);
         expect(widget.bounds.x).toEqual(0);
         expect(widget.bounds.y).toEqual(0);
+
+        expect(layer.pos()).toMatchObject({ x: 0, y: 2 }); // If you set the pos, then we move to the next line
 
         expect(widget._lines).toEqual(['Testing a long', 'message.']);
 

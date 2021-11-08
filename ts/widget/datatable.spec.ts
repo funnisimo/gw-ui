@@ -46,6 +46,7 @@ describe('Table Widget', () => {
             id: 'TABLE',
             header: true, // show a header on top of each column
             size: 10,
+            border: 'none',
             columns: [
                 {
                     width: 10,

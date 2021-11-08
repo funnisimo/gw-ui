@@ -21,6 +21,7 @@ describe('List Widget', () => {
             x: 10,
             y: 5,
             empty: '-',
+            border: 'none',
         });
 
         layer.draw();
@@ -43,7 +44,9 @@ describe('List Widget', () => {
     });
 
     test('legend', () => {
-        const dl = layer.pos(10, 5).datalist({ header: 'Foods' });
+        const dl = layer
+            .pos(10, 5)
+            .datalist({ header: 'Foods', border: 'none' });
 
         layer.draw(); // calculateStyles, updateLayout, draw
 
@@ -72,6 +75,7 @@ describe('List Widget', () => {
             x: 10,
             y: 5,
             data: ['Apple', 'Banana', 'Carrot'],
+            border: 'none',
         });
 
         expect(dl._data).toHaveLength(3);

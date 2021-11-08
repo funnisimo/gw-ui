@@ -631,7 +631,7 @@
                 current = prev.next;
             }
             if (current === entry) {
-                prev.next = current.next || null;
+                prev.next = current.next;
                 entry.next = null;
                 return true;
             }
@@ -4766,6 +4766,16 @@
         const postText = msg.substring(begin + deleteLength);
         return preText + add + postText;
     }
+    // https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript
+    function hash(str) {
+        let hash = 0;
+        const len = str.length;
+        for (let i = 0; i < len; i++) {
+            hash = (hash << 5) - hash + str.charCodeAt(i);
+            hash |= 0; // Convert to 32bit integer
+        }
+        return hash;
+    }
 
     function nextBreak(text, start) {
         const CS = options.colorStart;
@@ -4978,7 +4988,8 @@
         addHelper: addHelper,
         options: options,
         spliceRaw: spliceRaw,
-        truncate: truncate
+        truncate: truncate,
+        hash: hash
     });
 
     class DataBuffer {

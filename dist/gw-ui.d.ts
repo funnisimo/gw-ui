@@ -785,7 +785,7 @@ declare module '../layer' {
 
 declare type NextType = string | null;
 interface PromptChoice {
-    text?: string;
+    info?: string;
     next?: string;
     value?: any;
 }
@@ -814,13 +814,14 @@ declare class Prompt {
     next(): string | null;
     next(v: string | null): this;
     choices(): string[];
-    choices(choices: Record<string, string>): this;
-    choices(choices: string[], infos?: string[]): this;
+    choices(choices: Record<string, string | PromptChoice>): this;
+    choices(choices: string[], infos?: (string | PromptChoice)[]): this;
     choice(choice: string, info?: string | PromptChoice): this;
     infos(): string[];
     info(n: number): string;
     choose(n: number): this;
     value(): any;
+    updateResult(res: any): this;
 }
 interface ChoiceOptions extends WidgetOptions {
     width: number;
@@ -870,8 +871,11 @@ declare module '../layer' {
 declare class Inquiry {
     widget: Choice;
     _prompts: Prompt[];
+    _result: any;
+    _index: number;
     constructor(widget: Choice);
-    prompt(p: Prompt): this;
+    prompts(v: Prompt[] | Prompt, ...args: Prompt[]): this;
+    start(): Promise<any>;
 }
 
 interface MessageOptions extends WidgetOptions {

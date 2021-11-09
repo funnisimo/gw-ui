@@ -2879,6 +2879,11 @@ class Prompt {
         else if (!Array.isArray(info)) {
             info = new Array(choice.length).fill('');
         }
+        info = info.map((i) => {
+            if (typeof i === 'string')
+                return { info: i };
+            return i;
+        });
         if (choice.length !== info.length)
             throw new Error('Choices and Infos must have same length.');
         choice.forEach((c, i) => {
@@ -2888,10 +2893,10 @@ class Prompt {
     }
     choice(choice, info = {}) {
         if (typeof info === 'string') {
-            info = { text: info };
+            info = { info: info };
         }
         this._choices.push(choice);
-        this._infos.push(info.text || '');
+        this._infos.push(info.info || '');
         this._next.push(info.next || null);
         this._values.push(info.value || choice);
         return this;
@@ -2908,6 +2913,12 @@ class Prompt {
     }
     value() {
         return this._values[this.selection];
+    }
+    updateResult(res) {
+        if (this.selection < 0)
+            return this;
+        res[this._field] = this.value();
+        return this;
     }
 }
 class Choice extends Widget {
@@ -3024,7 +3035,7 @@ Choice.default = {
     border: 'ascii',
     promptTag: 'prompt',
     promptClass: '',
-    choiceTag: 'choice',
+    choiceTag: 'ci',
     choiceClass: '',
     infoTag: 'info',
     infoClass: '',
@@ -3042,11 +3053,36 @@ Layer.prototype.choice = function (opts) {
 class Inquiry {
     constructor(widget) {
         this._prompts = [];
+        this._result = {};
+        this._index = -1;
         this.widget = widget;
     }
-    prompt(p) {
-        this._prompts.push(p);
+    prompts(v, ...args) {
+        if (Array.isArray(v)) {
+            this._prompts = v.slice();
+        }
+        else {
+            args.unshift(v);
+            this._prompts = args;
+        }
         return this;
+    }
+    async start() {
+        let current = this._prompts[0];
+        while (current) {
+            await this.widget.showPrompt(current);
+            const next = current.next();
+            if (!next) {
+                const result = {};
+                this._prompts.forEach((p) => {
+                    p.updateResult(result);
+                });
+                return result;
+            }
+            else {
+                current = this._prompts.find((p) => p.id() === next) || null;
+            }
+        }
     }
 }
 

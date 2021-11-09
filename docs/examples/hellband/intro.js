@@ -184,13 +184,13 @@ async function showIntro(ui) {
 
     layer.on('click', () => {
         ui.finishLayer(layer);
-        done();
+        done(true);
     });
 
     layer.on('keypress', (n, w, e) => {
         if (e.key === ' ') {
             ui.finishLayer(layer);
-            done();
+            done(true);
         }
     });
 

@@ -73,8 +73,8 @@ describe('Prompt', () => {
             next: 'NEXT',
             id: 'ID',
         })
-            .choice('A', { text: 'text A', next: 'A', value: 'TACO' })
-            .choice('B', { text: 'text B', next: 'B', value: 'MILK' })
+            .choice('A', { info: 'text A', next: 'A', value: 'TACO' })
+            .choice('B', { info: 'text B', next: 'B', value: 'MILK' })
             .choice('C', 'text C');
 
         expect(q.prompt()).toEqual('question?');

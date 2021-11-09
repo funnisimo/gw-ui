@@ -12,7 +12,7 @@ import { DataList } from './datalist';
 export type NextType = string | null;
 
 export interface PromptChoice {
-    text?: string;
+    info?: string;
     next?: string;
     value?: any;
 }
@@ -84,11 +84,11 @@ export class Prompt {
     }
 
     choices(): string[];
-    choices(choices: Record<string, string>): this;
-    choices(choices: string[], infos?: string[]): this;
+    choices(choices: Record<string, string | PromptChoice>): this;
+    choices(choices: string[], infos?: (string | PromptChoice)[]): this;
     choices(
-        choice?: string[] | Record<string, string>,
-        info?: string[]
+        choice?: string[] | Record<string, string | PromptChoice>,
+        info?: (string | PromptChoice)[]
     ): this | string[] {
         if (choice === undefined) return this._choices;
 
@@ -98,6 +98,10 @@ export class Prompt {
         } else if (!Array.isArray(info)) {
             info = new Array(choice.length).fill('');
         }
+        info = info.map((i) => {
+            if (typeof i === 'string') return { info: i };
+            return i;
+        });
         if (choice.length !== info.length)
             throw new Error('Choices and Infos must have same length.');
 
@@ -109,10 +113,10 @@ export class Prompt {
 
     choice(choice: string, info: string | PromptChoice = {}): this {
         if (typeof info === 'string') {
-            info = { text: info };
+            info = { info: info };
         }
         this._choices.push(choice);
-        this._infos.push(info.text || '');
+        this._infos.push(info.info || '');
         this._next.push(info.next || null);
         this._values.push(info.value || choice);
         return this;
@@ -133,6 +137,12 @@ export class Prompt {
 
     value(): any {
         return this._values[this.selection];
+    }
+
+    updateResult(res: any): this {
+        if (this.selection < 0) return this;
+        res[this._field] = this.value();
+        return this;
     }
 }
 
@@ -165,7 +175,7 @@ export class Choice extends Widget.Widget {
         promptTag: 'prompt',
         promptClass: '',
 
-        choiceTag: 'choice',
+        choiceTag: 'ci',
         choiceClass: '',
 
         infoTag: 'info',
@@ -331,13 +341,39 @@ Layer.prototype.choice = function (opts: AddChoiceOptions): Choice {
 export class Inquiry {
     widget: Choice;
     _prompts: Prompt[] = [];
+    _result: any = {};
+    _index = -1;
 
     constructor(widget: Choice) {
         this.widget = widget;
     }
 
-    prompt(p: Prompt): this {
-        this._prompts.push(p);
+    prompts(v: Prompt[] | Prompt, ...args: Prompt[]): this {
+        if (Array.isArray(v)) {
+            this._prompts = v.slice();
+        } else {
+            args.unshift(v);
+            this._prompts = args;
+        }
         return this;
+    }
+
+    async start(): Promise<any> {
+        let current: Prompt | null = this._prompts[0];
+
+        while (current) {
+            await this.widget.showPrompt(current);
+
+            const next: string | null = current.next();
+            if (!next) {
+                const result = {} as any;
+                this._prompts.forEach((p) => {
+                    p.updateResult(result);
+                });
+                return result;
+            } else {
+                current = this._prompts.find((p) => p.id() === next) || null;
+            }
+        }
     }
 }

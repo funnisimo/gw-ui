@@ -13,10 +13,13 @@ const Q_GENDER = new GWI.Prompt('Will you be a Lady or a Gentleman?', {
         'male has made your progress in the League much easier.',
 });
 
-const Q_GENUS = new GWI.Prompt('What is your genus, §gender§?', {
-    field: 'genus',
-    id: 'GENUS',
-}).choices({
+const Q_GENUS = new GWI.Prompt(
+    GWU.text.compile('What is your genus, §gender§?'),
+    {
+        field: 'genus',
+        id: 'GENUS',
+    }
+).choices({
     Human: {
         info:
             'Humans rule the world in the year 1500, however not all\n' +
@@ -61,11 +64,14 @@ const Q_GENUS = new GWI.Prompt('What is your genus, §gender§?', {
     },
 });
 
-const Q_HUMAN = new GWI.Prompt('What type of §genus§ are you, §gender§?', {
-    field: 'species',
-    id: 'HUMAN',
-    next: 'SIGN',
-}).choices({
+const Q_HUMAN = new GWI.Prompt(
+    GWU.text.compile('What type of §genus§ are you, §gender§?'),
+    {
+        field: 'species',
+        id: 'HUMAN',
+        next: 'SIGN',
+    }
+).choices({
     Florentian:
         'Florentians are Italians from the city of Florence.\n' +
         'They are your basic human, with more than average \n' +
@@ -162,11 +168,14 @@ const Q_HUMAN = new GWI.Prompt('What type of §genus§ are you, §gender§?', {
         'effects of any constellation they were born under.',
 });
 
-const Q_FAERIE = new GWI.Prompt('What type of §genus§ are you, §gender§?', {
-    field: 'species',
-    id: 'FAERIE',
-    next: 'SIGN',
-}).choices({
+const Q_FAERIE = new GWI.Prompt(
+    GWU.text.compile('What type of §genus§ are you, §gender§?'),
+    {
+        field: 'species',
+        id: 'FAERIE',
+        next: 'SIGN',
+    }
+).choices({
     'Seelie Fae': {
         info:
             'Seelie Fae, or properly called Seelie Court, are good\n' +
@@ -199,11 +208,14 @@ const Q_FAERIE = new GWI.Prompt('What type of §genus§ are you, §gender§?', {
         'arent great lookers either.',
 });
 
-const Q_SPAWN = new GWI.Prompt('What type of §genus§ are you, §gender§?', {
-    field: 'species',
-    id: 'SPAWN',
-    next: 'SIGN',
-}).choices({
+const Q_SPAWN = new GWI.Prompt(
+    GWU.text.compile('What type of §genus§ are you, §gender§?'),
+    {
+        field: 'species',
+        id: 'SPAWN',
+        next: 'SIGN',
+    }
+).choices({
     Spawn:
         'Spawn are the progeny of mortals and demons. As\n' +
         'such, they inherit some of the raw strength of their\n' +
@@ -236,11 +248,14 @@ const Q_SPAWN = new GWI.Prompt('What type of §genus§ are you, §gender§?', {
         'and are very tough.',
 });
 
-const Q_ELDER = new GWI.Prompt('What type of §genus§ are you, §gender§?', {
-    field: 'species',
-    id: 'ELDER',
-    next: 'SIGN',
-}).choices({
+const Q_ELDER = new GWI.Prompt(
+    GWU.text.compile('What type of §genus§ are you, §gender§?'),
+    {
+        field: 'species',
+        id: 'ELDER',
+        next: 'SIGN',
+    }
+).choices({
     Elder:
         'The true Elder is a very tough creature, regenerating\n' +
         'wounds even when almost completely destroyed. They are\n' +
@@ -269,7 +284,7 @@ const Q_ELDER = new GWI.Prompt('What type of §genus§ are you, §gender§?', {
 });
 
 const Q_SIGN = new GWI.Prompt(
-    'Which constellation were you born under, §gender§?',
+    GWU.text.compile('Which constellation were you born under, §gender§?'),
     {
         field: 'sign',
         id: 'SIGN',
@@ -315,11 +330,14 @@ const Q_SIGN = new GWI.Prompt(
         'to spit acid.',
 });
 
-const Q_VOCATION = new GWI.Prompt('What is your vocation, §gender§?', {
-    field: 'vocation',
-    id: 'VOCATION',
-    next: null,
-}).choices({
+const Q_VOCATION = new GWI.Prompt(
+    GWU.text.compile('What is your vocation, §gender§?'),
+    {
+        field: 'vocation',
+        id: 'VOCATION',
+        next: null,
+    }
+).choices({
     Warrior:
         'To be a warriors is the simplest vocation. They gain\n' +
         'no special abilities, other than mastery of their fear.\n' +

@@ -785,7 +785,7 @@ declare module '../layer' {
 
 declare type NextType = string | null;
 interface PromptChoice {
-    info?: string;
+    info?: string | GWU.text.Template;
     next?: string;
     value?: any;
 }
@@ -797,28 +797,26 @@ interface PromptOptions {
 declare class Prompt {
     _id: string | null;
     _field: string;
-    _prompt: string;
+    _prompt: string | GWU.text.Template;
     _choices: string[];
-    _infos: string[];
+    _infos: (string | GWU.text.Template)[];
     _next: NextType[];
     _values: any[];
     _defaultNext: NextType;
     selection: number;
-    constructor(question: string, field?: string | PromptOptions);
+    constructor(question: string | GWU.text.Template, field?: string | PromptOptions);
     field(): string;
     field(v: string): this;
     id(): string | null;
     id(v: string | null): this;
-    prompt(): string;
-    prompt(v: string): this;
+    prompt(arg?: any): string;
     next(): string | null;
     next(v: string | null): this;
     choices(): string[];
     choices(choices: Record<string, string | PromptChoice>): this;
     choices(choices: string[], infos?: (string | PromptChoice)[]): this;
     choice(choice: string, info?: string | PromptChoice): this;
-    infos(): string[];
-    info(n: number): string;
+    info(arg?: any): string;
     choose(n: number): this;
     value(): any;
     updateResult(res: any): this;
@@ -854,7 +852,7 @@ declare class Choice extends Widget {
     _prompt: Prompt | null;
     _done: null | ((v: any) => void);
     constructor(layer: Layer, opts: ChoiceOptions);
-    showPrompt(prompt: Prompt): Promise<any>;
+    showPrompt(prompt: Prompt, arg?: any): Promise<any>;
     _addList(): this;
     _addInfo(): this;
     _addLegend(): this;

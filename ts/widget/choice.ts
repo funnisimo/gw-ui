@@ -12,7 +12,7 @@ import { DataList } from './datalist';
 export type NextType = string | null;
 
 export interface PromptChoice {
-    info?: string;
+    info?: string | GWU.text.Template;
     next?: string;
     value?: any;
 }
@@ -26,17 +26,20 @@ export interface PromptOptions {
 export class Prompt {
     _id: string | null = null;
     _field: string;
-    _prompt: string;
+    _prompt: string | GWU.text.Template;
 
     _choices: string[];
-    _infos!: string[];
+    _infos!: (string | GWU.text.Template)[];
     _next: NextType[];
     _values: any[];
 
     _defaultNext: NextType = null;
     selection = -1;
 
-    constructor(question: string, field: string | PromptOptions = {}) {
+    constructor(
+        question: string | GWU.text.Template,
+        field: string | PromptOptions = {}
+    ) {
         if (typeof field === 'string') {
             field = { field };
         }
@@ -66,12 +69,9 @@ export class Prompt {
         return this;
     }
 
-    prompt(): string;
-    prompt(v: string): this;
-    prompt(v?: string): this | string {
-        if (v === undefined) return this._prompt;
-        this._prompt = v;
-        return this;
+    prompt(arg?: any): string {
+        if (typeof this._prompt === 'string') return this._prompt;
+        return this._prompt(arg);
     }
 
     next(): string | null;
@@ -122,12 +122,10 @@ export class Prompt {
         return this;
     }
 
-    infos(): string[] {
-        return this._infos;
-    }
-
-    info(n: number): string {
-        return this._infos[n];
+    info(arg?: any): string {
+        const i = this._infos[this.selection] || '';
+        if (typeof i === 'string') return i;
+        return i(arg);
     }
 
     choose(n: number): this {
@@ -222,12 +220,12 @@ export class Choice extends Widget.Widget {
         }
     }
 
-    showPrompt(prompt: Prompt): Promise<any> {
+    showPrompt(prompt: Prompt, arg?: any): Promise<any> {
         this._prompt = prompt;
         prompt.choose(0);
-        this.prompt.text(prompt.prompt());
+        this.prompt.text(prompt.prompt(arg));
         this.list.data(prompt.choices());
-        this.info.text(prompt.info(prompt.selection));
+        this.info.text(prompt.info(arg));
 
         this._bubbleEvent('input', this, this._prompt);
         return new Promise((resolve) => (this._done = resolve));
@@ -251,11 +249,7 @@ export class Choice extends Widget.Widget {
             const p = this._prompt;
             const row = this.list.selectedRow;
             p.choose(row);
-            if (row == -1) {
-                this.info.text('');
-            } else {
-                this.info.text(p.info(row));
-            }
+            this.info.text(p.info());
             this._bubbleEvent('input', this, p);
             return true; // I want to eat this event
         });
@@ -360,9 +354,11 @@ export class Inquiry {
 
     async start(): Promise<any> {
         let current: Prompt | null = this._prompts[0];
+        const soFar = {} as any;
 
         while (current) {
-            await this.widget.showPrompt(current);
+            await this.widget.showPrompt(current, soFar);
+            current.updateResult(soFar);
 
             const next: string | null = current.next();
             if (!next) {

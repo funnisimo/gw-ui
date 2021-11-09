@@ -14,7 +14,7 @@ describe('Prompt', () => {
         expect(p.field()).toEqual('');
         expect(p.prompt()).toEqual('question?');
         expect(p.choices()).toEqual(['a', 'b', 'c']);
-        expect(p.infos()).toEqual(['', '', '']);
+        expect(p._infos).toEqual(['', '', '']);
     });
 
     test('basic - choice only', () => {
@@ -26,7 +26,7 @@ describe('Prompt', () => {
         expect(p2.field()).toEqual('field');
         expect(p2.prompt()).toEqual('question?');
         expect(p2.choices()).toEqual(['a', 'b', 'c']);
-        expect(p2.infos()).toEqual(['', '', '']);
+        expect(p2._infos).toEqual(['', '', '']);
     });
 
     test('basic - object', () => {
@@ -39,7 +39,7 @@ describe('Prompt', () => {
         expect(q.field()).toEqual('field');
         expect(q.prompt()).toEqual('question?');
         expect(q.choices()).toEqual(['A', 'B', 'C']);
-        expect(q.infos()).toEqual(['text A', 'text B', 'text C']);
+        expect(q._infos).toEqual(['text A', 'text B', 'text C']);
     });
 
     test('basic - array', () => {
@@ -50,7 +50,7 @@ describe('Prompt', () => {
 
         expect(q.prompt()).toEqual('question?');
         expect(q.choices()).toEqual(['A', 'B', 'C']);
-        expect(q.infos()).toEqual(['text A', 'text B', 'text C']);
+        expect(q._infos).toEqual(['text A', 'text B', 'text C']);
         expect(q.selection).toEqual(-1);
         expect(q.next()).toBeNull();
     });
@@ -64,7 +64,7 @@ describe('Prompt', () => {
         expect(q.field()).toEqual('field');
         expect(q.prompt()).toEqual('question?');
         expect(q.choices()).toEqual(['A', 'B', 'C']);
-        expect(q.infos()).toEqual(['text A', 'text B', 'text C']);
+        expect(q._infos).toEqual(['text A', 'text B', 'text C']);
     });
 
     test('next - individual', () => {
@@ -79,7 +79,7 @@ describe('Prompt', () => {
 
         expect(q.prompt()).toEqual('question?');
         expect(q.choices()).toEqual(['A', 'B', 'C']);
-        expect(q.infos()).toEqual(['text A', 'text B', 'text C']);
+        expect(q._infos).toEqual(['text A', 'text B', 'text C']);
         expect(q.next()).toEqual('NEXT');
         expect(q.id()).toEqual('ID');
 

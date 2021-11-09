@@ -2883,11 +2883,10 @@
             this._id = v;
             return this;
         }
-        prompt(v) {
-            if (v === undefined)
+        prompt(arg) {
+            if (typeof this._prompt === 'string')
                 return this._prompt;
-            this._prompt = v;
-            return this;
+            return this._prompt(arg);
         }
         next(v) {
             if (v === undefined)
@@ -2927,11 +2926,11 @@
             this._values.push(info.value || choice);
             return this;
         }
-        infos() {
-            return this._infos;
-        }
-        info(n) {
-            return this._infos[n];
+        info(arg) {
+            const i = this._infos[this.selection] || '';
+            if (typeof i === 'string')
+                return i;
+            return i(arg);
         }
         choose(n) {
             this.selection = n;
@@ -2970,12 +2969,12 @@
                 this.showPrompt(opts.prompt);
             }
         }
-        showPrompt(prompt) {
+        showPrompt(prompt, arg) {
             this._prompt = prompt;
             prompt.choose(0);
-            this.prompt.text(prompt.prompt());
+            this.prompt.text(prompt.prompt(arg));
             this.list.data(prompt.choices());
-            this.info.text(prompt.info(prompt.selection));
+            this.info.text(prompt.info(arg));
             this._bubbleEvent('input', this, this._prompt);
             return new Promise((resolve) => (this._done = resolve));
         }
@@ -2998,12 +2997,7 @@
                 const p = this._prompt;
                 const row = this.list.selectedRow;
                 p.choose(row);
-                if (row == -1) {
-                    this.info.text('');
-                }
-                else {
-                    this.info.text(p.info(row));
-                }
+                this.info.text(p.info());
                 this._bubbleEvent('input', this, p);
                 return true; // I want to eat this event
             });
@@ -3095,8 +3089,10 @@
         }
         async start() {
             let current = this._prompts[0];
+            const soFar = {};
             while (current) {
-                await this.widget.showPrompt(current);
+                await this.widget.showPrompt(current, soFar);
+                current.updateResult(soFar);
                 const next = current.next();
                 if (!next) {
                     const result = {};

@@ -474,10 +474,14 @@ async function showBirth(ui) {
         Q_VOCATION
     );
 
-    const result = await inquiry.start();
+    try {
+        const result = await inquiry.start();
+        console.log('You chose: ', result);
+    } catch (e) {
+        ui.finishLayer(layer);
+        return false;
+    }
 
-    console.log('You chose: ', result);
-
-    if (result) return true;
-    return false;
+    ui.finishLayer(layer);
+    return true;
 }

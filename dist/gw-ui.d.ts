@@ -805,6 +805,7 @@ declare class Prompt {
     _defaultNext: NextType;
     selection: number;
     constructor(question: string | GWU.text.Template, field?: string | PromptOptions);
+    reset(): void;
     field(): string;
     field(v: string): this;
     id(): string | null;
@@ -870,10 +871,17 @@ declare class Inquiry {
     widget: Choice;
     _prompts: Prompt[];
     _result: any;
-    _index: number;
+    _stack: Prompt[];
+    _current: Prompt | null;
+    _resolve: (v?: any) => void;
+    _reject: (v?: any) => void;
     constructor(widget: Choice);
     prompts(v: Prompt[] | Prompt, ...args: Prompt[]): this;
+    _finish(): void;
+    _cancel(): void;
     start(): Promise<any>;
+    _keypress(_n: string, _w: Widget | null, e: GWU.io.Event): boolean;
+    _change(_n: string, _w: Widget | null, p: Prompt): boolean;
 }
 
 interface MessageOptions extends WidgetOptions {

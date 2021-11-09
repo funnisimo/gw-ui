@@ -2871,6 +2871,9 @@
             this._defaultNext = field.next || null;
             this._id = field.id || field.field || '';
         }
+        reset() {
+            this.selection = -1;
+        }
         field(v) {
             if (v === undefined)
                 return this._field;
@@ -3074,8 +3077,11 @@
         constructor(widget) {
             this._prompts = [];
             this._result = {};
-            this._index = -1;
+            this._stack = [];
+            this._current = null;
             this.widget = widget;
+            this._keypress = this._keypress.bind(this);
+            this._change = this._change.bind(this);
         }
         prompts(v, ...args) {
             if (Array.isArray(v)) {
@@ -3087,24 +3093,70 @@
             }
             return this;
         }
-        async start() {
-            let current = this._prompts[0];
-            const soFar = {};
-            while (current) {
-                await this.widget.showPrompt(current, soFar);
-                current.updateResult(soFar);
-                const next = current.next();
-                if (!next) {
-                    const result = {};
-                    this._prompts.forEach((p) => {
-                        p.updateResult(result);
-                    });
-                    return result;
+        _finish() {
+            this.widget.off('keypress', this._keypress);
+            this.widget.off('change', this._change);
+            this._resolve(this._result);
+        }
+        _cancel() {
+            this.widget.off('keypress', this._keypress);
+            this.widget.off('change', this._change);
+            this._reject('Quit');
+        }
+        start() {
+            this._current = this._prompts[0];
+            this._result = {};
+            this.widget.on('keypress', this._keypress);
+            this.widget.on('change', this._change);
+            this.widget.showPrompt(this._current, this._result);
+            return new Promise((resolve, reject) => {
+                this._resolve = resolve;
+                this._reject = reject;
+            });
+        }
+        _keypress(_n, _w, e) {
+            if (!e.key)
+                return false;
+            if (e.key === 'Escape') {
+                this._current.reset();
+                this._current = this._stack.pop() || null;
+                if (!this._current) {
+                    this._cancel();
                 }
                 else {
-                    current = this._prompts.find((p) => p.id() === next) || null;
+                    this._current.reset(); // also reset the one we are going back to
+                    this._result = {};
+                    this._prompts.forEach((p) => p.updateResult(this._result));
+                    this.widget.showPrompt(this._current, this._result);
+                }
+                return true;
+            }
+            else if (e.key === 'R') {
+                this._prompts.forEach((p) => p.reset());
+                this._result = {};
+                this._current = this._prompts[0];
+                this.widget.showPrompt(this._current, this._result);
+                return true;
+            }
+            else if (e.key === 'Q') {
+                this._cancel();
+                return true;
+            }
+            return false;
+        }
+        _change(_n, _w, p) {
+            p.updateResult(this._result);
+            const next = p.next();
+            if (next) {
+                this._current = this._prompts.find((p) => p.id() === next) || null;
+                if (this._current) {
+                    this._stack.push(p);
+                    this.widget.showPrompt(this._current, this._result);
+                    return true;
                 }
             }
+            this._finish();
+            return true;
         }
     }
 

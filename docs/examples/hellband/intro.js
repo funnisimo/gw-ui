@@ -10,8 +10,18 @@ window.onload = async () => {
     // const div = document.getElementById('game');
     document.onkeydown = ui.loop.onkeydown.bind(ui.loop);
 
-    await showIntro(ui);
-    await showBirth(ui);
+    const fns = [showIntro, showBirth];
+
+    let index = 0;
+
+    while (index < fns.length) {
+        const fn = fns[index];
+        if (await fn(ui)) {
+            ++index;
+        } else {
+            --index;
+        }
+    }
 
     console.log('DONE!');
 };
@@ -188,7 +198,7 @@ async function showIntro(ui) {
     });
 
     layer.on('keypress', (n, w, e) => {
-        if (e.key === ' ') {
+        if (e.key === ' ' || e.key === 'Enter') {
             ui.finishLayer(layer);
             done(true);
         }

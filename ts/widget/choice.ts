@@ -53,6 +53,10 @@ export class Prompt {
         this._id = field.id || field.field || '';
     }
 
+    reset() {
+        this.selection = -1;
+    }
+
     field(): string;
     field(v: string): this;
     field(v?: string): this | string {
@@ -335,11 +339,18 @@ Layer.prototype.choice = function (opts: AddChoiceOptions): Choice {
 export class Inquiry {
     widget: Choice;
     _prompts: Prompt[] = [];
+
     _result: any = {};
-    _index = -1;
+    _stack: Prompt[] = [];
+    _current: Prompt | null = null;
+    _resolve!: (v?: any) => void;
+    _reject!: (v?: any) => void;
 
     constructor(widget: Choice) {
         this.widget = widget;
+
+        this._keypress = this._keypress.bind(this);
+        this._change = this._change.bind(this);
     }
 
     prompts(v: Prompt[] | Prompt, ...args: Prompt[]): this {
@@ -352,24 +363,73 @@ export class Inquiry {
         return this;
     }
 
-    async start(): Promise<any> {
-        let current: Prompt | null = this._prompts[0];
-        const soFar = {} as any;
+    _finish() {
+        this.widget.off('keypress', this._keypress);
+        this.widget.off('change', this._change);
+        this._resolve(this._result);
+    }
 
-        while (current) {
-            await this.widget.showPrompt(current, soFar);
-            current.updateResult(soFar);
+    _cancel() {
+        this.widget.off('keypress', this._keypress);
+        this.widget.off('change', this._change);
+        this._reject('Quit');
+    }
 
-            const next: string | null = current.next();
-            if (!next) {
-                const result = {} as any;
-                this._prompts.forEach((p) => {
-                    p.updateResult(result);
-                });
-                return result;
+    start(): Promise<any> {
+        this._current = this._prompts[0];
+        this._result = {};
+
+        this.widget.on('keypress', this._keypress);
+        this.widget.on('change', this._change);
+        this.widget.showPrompt(this._current, this._result);
+
+        return new Promise((resolve, reject) => {
+            this._resolve = resolve;
+            this._reject = reject;
+        });
+    }
+
+    _keypress(_n: string, _w: Widget.Widget | null, e: GWU.io.Event): boolean {
+        if (!e.key) return false;
+
+        if (e.key === 'Escape') {
+            this._current!.reset();
+            this._current = this._stack.pop() || null;
+            if (!this._current) {
+                this._cancel();
             } else {
-                current = this._prompts.find((p) => p.id() === next) || null;
+                this._current.reset(); // also reset the one we are going back to
+                this._result = {};
+                this._prompts.forEach((p) => p.updateResult(this._result));
+                this.widget.showPrompt(this._current, this._result);
+            }
+            return true;
+        } else if (e.key === 'R') {
+            this._prompts.forEach((p) => p.reset());
+            this._result = {};
+            this._current = this._prompts[0];
+            this.widget.showPrompt(this._current, this._result);
+            return true;
+        } else if (e.key === 'Q') {
+            this._cancel();
+            return true;
+        }
+        return false;
+    }
+
+    _change(_n: string, _w: Widget.Widget | null, p: Prompt): boolean {
+        p.updateResult(this._result);
+
+        const next: string | null = p.next();
+        if (next) {
+            this._current = this._prompts.find((p) => p.id() === next) || null;
+            if (this._current) {
+                this._stack.push(p);
+                this.widget.showPrompt(this._current, this._result);
+                return true;
             }
         }
+        this._finish();
+        return true;
     }
 }

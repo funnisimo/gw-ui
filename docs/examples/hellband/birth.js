@@ -432,6 +432,9 @@ async function showBirth(ui) {
     const layer = ui.startNewLayer();
     let done;
 
+    layer.styles.add('.dark_gray', { fg: 'dark_gray' });
+    layer.styles.add('.dark_gray:hover', { fg: 'teal' });
+
     layer.styles.add('prompt', { fg: 'dark_yellow' });
     layer.styles.add('.color', { fg: 'green' });
     layer.styles.add('ci', { fg: 'blue' });
@@ -458,11 +461,6 @@ async function showBirth(ui) {
 
     choice.prompt.pos(20, 9);
 
-    layer.reset().pos(15, 36).fg('dark_gray');
-    layer.text(
-        '?) Help         Escape) Back              R) Restart           Q) Quit'
-    );
-
     const inquiry = new GWI.Inquiry(choice).prompts(
         Q_GENDER,
         Q_GENUS,
@@ -473,6 +471,27 @@ async function showBirth(ui) {
         Q_SIGN,
         Q_VOCATION
     );
+
+    layer.reset().pos(15, 36).class('dark_gray');
+    layer.pos(19, 36).text('?) Help');
+    layer
+        .pos(34, 36)
+        .text('Escape) Back')
+        .on('click', () => {
+            inquiry.back();
+        });
+    layer
+        .pos(59, 36)
+        .text('R) Restart')
+        .on('click', () => {
+            inquiry.restart();
+        });
+    layer
+        .pos(79, 36)
+        .text('Q) Quit')
+        .on('click', () => {
+            inquiry.quit();
+        });
 
     try {
         const result = await inquiry.start();

@@ -389,29 +389,41 @@ export class Inquiry {
         });
     }
 
+    back() {
+        this._current!.reset();
+        this._current = this._stack.pop() || null;
+        if (!this._current) {
+            this._cancel();
+        } else {
+            this._current.reset(); // also reset the one we are going back to
+            this._result = {};
+            this._prompts.forEach((p) => p.updateResult(this._result));
+            this.widget.showPrompt(this._current, this._result);
+        }
+    }
+
+    restart() {
+        this._prompts.forEach((p) => p.reset());
+        this._result = {};
+        this._current = this._prompts[0];
+        this.widget.showPrompt(this._current, this._result);
+    }
+
+    quit() {
+        this._cancel();
+    }
+
     _keypress(_n: string, _w: Widget.Widget | null, e: GWU.io.Event): boolean {
         if (!e.key) return false;
 
         if (e.key === 'Escape') {
-            this._current!.reset();
-            this._current = this._stack.pop() || null;
-            if (!this._current) {
-                this._cancel();
-            } else {
-                this._current.reset(); // also reset the one we are going back to
-                this._result = {};
-                this._prompts.forEach((p) => p.updateResult(this._result));
-                this.widget.showPrompt(this._current, this._result);
-            }
+            this.back();
             return true;
         } else if (e.key === 'R') {
-            this._prompts.forEach((p) => p.reset());
-            this._result = {};
-            this._current = this._prompts[0];
-            this.widget.showPrompt(this._current, this._result);
+            this.restart();
             return true;
         } else if (e.key === 'Q') {
-            this._cancel();
+            this.quit();
             return true;
         }
         return false;

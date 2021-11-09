@@ -301,6 +301,7 @@ declare class Layer implements UILayer {
     bright(pct?: number, fg?: boolean, bg?: boolean): this;
     invert(): this;
     style(opts: StyleOptions): this;
+    class(c: string): this;
     pos(): GWU.xy.XY;
     pos(x: number, y: number): this;
     moveTo(x: number, y: number): this;
@@ -880,6 +881,9 @@ declare class Inquiry {
     _finish(): void;
     _cancel(): void;
     start(): Promise<any>;
+    back(): void;
+    restart(): void;
+    quit(): void;
     _keypress(_n: string, _w: Widget | null, e: GWU.io.Event): boolean;
     _change(_n: string, _w: Widget | null, p: Prompt): boolean;
 }

@@ -144,6 +144,12 @@ export class Layer implements UILayer {
         return this;
     }
 
+    class(c: string): this {
+        this._opts.class = this._opts.class || '';
+        this._opts.class += ' ' + c;
+        return this;
+    }
+
     // POSITION
 
     pos(): GWU.xy.XY;

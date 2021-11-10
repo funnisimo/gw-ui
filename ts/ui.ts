@@ -97,6 +97,7 @@ export class UI implements UICore {
     }
 
     finishLayer(layer: Layer): void {
+        layer._finish();
         GWU.arrayDelete(this.layers, layer);
         if (this.layer === layer) {
             this.layer = this.layers[this.layers.length - 1] || null;

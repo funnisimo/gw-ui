@@ -339,12 +339,11 @@ Layer.prototype.choice = function (opts: AddChoiceOptions): Choice {
 export class Inquiry {
     widget: Choice;
     _prompts: Prompt[] = [];
+    events: Record<string, Widget.EventCb[]> = {};
 
     _result: any = {};
     _stack: Prompt[] = [];
     _current: Prompt | null = null;
-    _resolve!: (v?: any) => void;
-    _reject!: (v?: any) => void;
 
     constructor(widget: Choice) {
         this.widget = widget;
@@ -366,27 +365,22 @@ export class Inquiry {
     _finish() {
         this.widget.off('keypress', this._keypress);
         this.widget.off('change', this._change);
-        this._resolve(this._result);
+        this._fireEvent('finish', this.widget, this._result);
     }
 
     _cancel() {
         this.widget.off('keypress', this._keypress);
         this.widget.off('change', this._change);
-        this._reject('Quit');
+        this._fireEvent('cancel', this.widget);
     }
 
-    start(): Promise<any> {
+    start() {
         this._current = this._prompts[0];
         this._result = {};
 
         this.widget.on('keypress', this._keypress);
         this.widget.on('change', this._change);
         this.widget.showPrompt(this._current, this._result);
-
-        return new Promise((resolve, reject) => {
-            this._resolve = resolve;
-            this._reject = reject;
-        });
     }
 
     back() {
@@ -438,10 +432,56 @@ export class Inquiry {
             if (this._current) {
                 this._stack.push(p);
                 this.widget.showPrompt(this._current, this._result);
+                this._fireEvent('step', this.widget, {
+                    prompt: this._current,
+                    data: this._result,
+                });
                 return true;
             }
         }
         this._finish();
         return true;
+    }
+
+    on(event: string, cb: Widget.EventCb): this {
+        let handlers = this.events[event];
+        if (!handlers) {
+            handlers = this.events[event] = [];
+        }
+        if (!handlers.includes(cb)) {
+            handlers.push(cb);
+        }
+        return this;
+    }
+
+    off(event: string, cb?: Widget.EventCb): this {
+        let handlers = this.events[event];
+        if (!handlers) return this;
+        if (cb) {
+            GWU.arrayDelete(handlers, cb);
+        } else {
+            handlers.length = 0; // clear all handlers
+        }
+        return this;
+    }
+
+    _fireEvent(
+        name: string,
+        source: Widget.Widget | null,
+        args?: any
+    ): boolean {
+        const handlers = this.events[name] || [];
+        let handled = handlers.reduce(
+            (out, h) => h(name, source || this.widget, args) || out,
+            false
+        );
+        if (!handled) {
+            handled = this.widget._bubbleEvent(
+                name,
+                source || this.widget,
+                args
+            );
+        }
+        return handled;
     }
 }

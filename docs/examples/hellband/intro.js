@@ -1,31 +1,3 @@
-var layer;
-var ui;
-var canvas;
-
-window.onload = async () => {
-    canvas = GWU.canvas.make(100, 38, { div: 'game', io: true });
-
-    ui = new GWI.UI({ canvas });
-
-    // const div = document.getElementById('game');
-    document.onkeydown = ui.loop.onkeydown.bind(ui.loop);
-
-    const fns = [showIntro, showBirth];
-
-    let index = 0;
-
-    while (index < fns.length) {
-        const fn = fns[index];
-        if (await fn(ui)) {
-            ++index;
-        } else {
-            --index;
-        }
-    }
-
-    console.log('DONE!');
-};
-
 class FireWidget extends GWI.Widget {
     constructor(layer, opts = {}) {
         super(
@@ -109,7 +81,7 @@ class FireWidget extends GWI.Widget {
     }
 }
 
-async function showIntro(ui) {
+function showIntro(ui) {
     layer = ui.startNewLayer();
 
     layer.pos(29, 5).fg('red');
@@ -190,21 +162,15 @@ async function showIntro(ui) {
     layer.text('(See help file for credits, license and history)');
     layer.pos(44, 30).text('Press Space');
 
-    let done;
-
     layer.on('click', () => {
-        ui.finishLayer(layer);
-        done(true);
+        layer.finish('BIRTH');
     });
 
     layer.on('keypress', (n, w, e) => {
         if (e.key === ' ' || e.key === 'Enter') {
-            ui.finishLayer(layer);
-            done(true);
+            layer.finish('BIRTH');
         }
     });
 
-    return new Promise((resolve) => {
-        done = resolve;
-    });
+    return layer.promise;
 }

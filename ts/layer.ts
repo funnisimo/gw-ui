@@ -61,6 +61,9 @@ export class Layer implements UILayer {
     _hasTabStop = false;
     timers: TimerInfo[] = [];
 
+    promise: Promise<any>;
+    _done: Function | null = null;
+
     _opts: Widget.WidgetOptions = { x: 0, y: 0 };
 
     constructor(ui: UICore, opts: LayerOptions = {}) {
@@ -77,6 +80,9 @@ export class Layer implements UILayer {
             depth: -1,
             width: this.buffer.width,
             height: this.buffer.height,
+        });
+        this.promise = new Promise((resolve) => {
+            this._done = resolve;
         });
     }
 
@@ -495,5 +501,11 @@ export class Layer implements UILayer {
     finish(result?: any) {
         this.result = result;
         this.ui.finishLayer(this);
+    }
+
+    _finish() {
+        if (!this._done) return;
+        this._done(this.result);
+        this._done = null;
     }
 }

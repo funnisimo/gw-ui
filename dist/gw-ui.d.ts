@@ -290,6 +290,8 @@ declare class Layer implements UILayer {
     _focusWidget: Widget | null;
     _hasTabStop: boolean;
     timers: TimerInfo[];
+    promise: Promise<any>;
+    _done: Function | null;
     _opts: WidgetOptions;
     constructor(ui: UICore, opts?: LayerOptions);
     get width(): number;
@@ -336,6 +338,7 @@ declare class Layer implements UILayer {
     setTimeout(action: string | TimerFn, time: number): void;
     clearTimeout(action: string | TimerFn): void;
     finish(result?: any): void;
+    _finish(): void;
 }
 
 interface UIOptions {
@@ -528,6 +531,7 @@ interface FieldsetOptions extends WidgetOptions {
     dataWidth: number;
     border?: BorderType;
     separator?: string;
+    pad?: boolean | number | number[];
     legend?: string;
     legendTag?: string;
     legendClass?: string;
@@ -542,6 +546,7 @@ declare class Fieldset extends Widget {
         tag: string;
         border: BorderType;
         separator: string;
+        pad: boolean;
         legendTag: string;
         legendClass: string;
         legendAlign: "left" | "center" | "right";
@@ -897,21 +902,23 @@ declare module '../layer' {
 declare class Inquiry {
     widget: Choice;
     _prompts: Prompt[];
+    events: Record<string, EventCb[]>;
     _result: any;
     _stack: Prompt[];
     _current: Prompt | null;
-    _resolve: (v?: any) => void;
-    _reject: (v?: any) => void;
     constructor(widget: Choice);
     prompts(v: Prompt[] | Prompt, ...args: Prompt[]): this;
     _finish(): void;
     _cancel(): void;
-    start(): Promise<any>;
+    start(): void;
     back(): void;
     restart(): void;
     quit(): void;
     _keypress(_n: string, _w: Widget | null, e: GWU.io.Event): boolean;
     _change(_n: string, _w: Widget | null, p: Prompt): boolean;
+    on(event: string, cb: EventCb): this;
+    off(event: string, cb?: EventCb): this;
+    _fireEvent(name: string, source: Widget | null, args?: any): boolean;
 }
 
 interface MessageOptions extends WidgetOptions {

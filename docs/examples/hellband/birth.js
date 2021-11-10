@@ -428,7 +428,7 @@ const Q_VOCATION = new GWI.Prompt(
         'their patron involves only using the power of chaos.',
 });
 
-async function showBirth(ui) {
+function showBirth(ui) {
     const layer = ui.startNewLayer();
     let done;
 
@@ -461,16 +461,26 @@ async function showBirth(ui) {
 
     choice.prompt.pos(20, 9);
 
-    const inquiry = new GWI.Inquiry(choice).prompts(
-        Q_GENDER,
-        Q_GENUS,
-        Q_HUMAN,
-        Q_FAERIE,
-        Q_SPAWN,
-        Q_ELDER,
-        Q_SIGN,
-        Q_VOCATION
-    );
+    const inquiry = new GWI.Inquiry(choice)
+        .prompts(
+            Q_GENDER,
+            Q_GENUS,
+            Q_HUMAN,
+            Q_FAERIE,
+            Q_SPAWN,
+            Q_ELDER,
+            Q_SIGN,
+            Q_VOCATION
+        )
+        .on('cancel', () => {
+            layer.finish('INTRO');
+            return true;
+        })
+        .on('finish', (n, w, result) => {
+            createCharacter(result);
+            layer.finish('CHARACTER');
+            return true;
+        });
 
     layer.reset().pos(15, 36).class('dark_gray');
     layer.pos(19, 36).text('?) Help');
@@ -493,14 +503,7 @@ async function showBirth(ui) {
             inquiry.quit();
         });
 
-    try {
-        const result = await inquiry.start();
-        console.log('You chose: ', result);
-    } catch (e) {
-        ui.finishLayer(layer);
-        return false;
-    }
+    inquiry.start();
 
-    ui.finishLayer(layer);
-    return true;
+    return layer.promise;
 }

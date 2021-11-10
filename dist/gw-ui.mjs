@@ -1034,6 +1034,7 @@ class Layer {
         this._focusWidget = null;
         this._hasTabStop = false;
         this.timers = [];
+        this._done = null;
         this._opts = { x: 0, y: 0 };
         this.ui = ui;
         this.id = opts.id || 'root';
@@ -1047,6 +1048,9 @@ class Layer {
             depth: -1,
             width: this.buffer.width,
             height: this.buffer.height,
+        });
+        this.promise = new Promise((resolve) => {
+            this._done = resolve;
         });
     }
     get width() {
@@ -1379,6 +1383,12 @@ class Layer {
         this.result = result;
         this.ui.finishLayer(this);
     }
+    _finish() {
+        if (!this._done)
+            return;
+        this._done(this.result);
+        this._done = null;
+    }
 }
 
 // export interface AlertOptions extends Widget.WidgetOptions {
@@ -1449,6 +1459,7 @@ class UI {
         dest.changed = false; // So you have to draw something to make the canvas render...
     }
     finishLayer(layer) {
+        layer._finish();
         GWU.arrayDelete(this.layers, layer);
         if (this.layer === layer) {
             this.layer = this.layers[this.layers.length - 1] || null;
@@ -1673,9 +1684,30 @@ class Fieldset extends Widget {
         })());
         this.legend = null;
         this.fields = [];
-        const border = opts.border || Fieldset.default.border;
+        let border = opts.border || Fieldset.default.border;
         this.attr('border', border);
         this.attr('separator', opts.separator || Fieldset.default.separator);
+        let pad = opts.pad || Fieldset.default.pad;
+        if (pad) {
+            if (pad === true) {
+                pad = [1, 1, 1, 1];
+            }
+            else if (typeof pad === 'number') {
+                pad = [pad, pad, pad, pad];
+            }
+            else if (pad.length == 1) {
+                const p = pad[0];
+                pad = [p, p, p, p];
+            }
+            else if (pad.length == 2) {
+                const [pv, ph] = pad;
+                pad = [pv, ph, pv, ph];
+            }
+            this.attr('padTop', pad[0]);
+            this.attr('padRight', pad[1]);
+            this.attr('padBottom', pad[2]);
+            this.attr('padLeft', pad[3]);
+        }
         this.attr('legendTag', opts.legendTag || Fieldset.default.legendTag);
         this.attr('legendClass', opts.legendClass || Fieldset.default.legendClass);
         this.attr('legendAlign', opts.legendAlign || Fieldset.default.legendAlign);
@@ -1684,31 +1716,32 @@ class Fieldset extends Widget {
         this.attr('dataWidth', opts.dataWidth);
         this.attr('labelTag', opts.labelTag || Fieldset.default.labelTag);
         this.attr('labelClass', opts.labelClass || Fieldset.default.labelClass);
-        this.attr('labelWidth', opts.width - opts.dataWidth - (border !== 'none' ? 2 : 0));
+        const totalPad = this._attrInt('padLeft') +
+            this._attrInt('padRight') +
+            (border !== 'none' ? 2 : 0);
+        this.attr('labelWidth', opts.width - opts.dataWidth - totalPad);
         this._addLegend(opts);
     }
     get _labelLeft() {
         const border = this._attrStr('border');
-        if (border === 'none')
-            return this.bounds.x;
-        return this.bounds.x + 1;
+        const padLeft = this._attrInt('padLeft');
+        return this.bounds.x + padLeft + (border === 'none' ? 0 : 1);
     }
     get _dataLeft() {
-        const border = this._attrStr('border');
-        const base = this.bounds.x + this._attrInt('labelWidth');
-        if (border === 'none')
-            return base;
-        return base + 1;
+        return this._labelLeft + this._attrInt('labelWidth');
     }
     get _nextY() {
         const border = this._attrStr('border');
-        if (border === 'none')
-            return this.bounds.bottom;
-        return this.bounds.bottom - 1;
+        const padBottom = this._attrInt('padBottom');
+        return this.bounds.bottom - (border === 'none' ? 0 : 1) - padBottom;
     }
     _addLegend(opts) {
-        if (!opts.legend)
+        if (!opts.legend) {
+            if (this._attrStr('border') === 'none') {
+                this.bounds.height = 0;
+            }
             return this;
+        }
         const border = this._attrStr('border') !== 'none';
         const textWidth = GWU.text.length(opts.legend);
         const width = this.bounds.width - (border ? 4 : 0);
@@ -1731,6 +1764,8 @@ class Fieldset extends Widget {
         if (this.bounds.width < this.legend.bounds.width + 4) {
             this.bounds.width = this.legend.bounds.width + 4;
         }
+        this.bounds.height +=
+            this._attrInt('padTop') + this._attrInt('padBottom');
         this.legend.setParent(this);
         return this;
     }
@@ -1774,7 +1809,8 @@ class Fieldset extends Widget {
 Fieldset.default = {
     tag: 'fieldset',
     border: 'none',
-    separator: ':',
+    separator: ' : ',
+    pad: false,
     legendTag: 'legend',
     legendClass: 'legend',
     legendAlign: 'left',
@@ -3141,6 +3177,7 @@ Layer.prototype.choice = function (opts) {
 class Inquiry {
     constructor(widget) {
         this._prompts = [];
+        this.events = {};
         this._result = {};
         this._stack = [];
         this._current = null;
@@ -3161,12 +3198,12 @@ class Inquiry {
     _finish() {
         this.widget.off('keypress', this._keypress);
         this.widget.off('change', this._change);
-        this._resolve(this._result);
+        this._fireEvent('finish', this.widget, this._result);
     }
     _cancel() {
         this.widget.off('keypress', this._keypress);
         this.widget.off('change', this._change);
-        this._reject('Quit');
+        this._fireEvent('cancel', this.widget);
     }
     start() {
         this._current = this._prompts[0];
@@ -3174,10 +3211,6 @@ class Inquiry {
         this.widget.on('keypress', this._keypress);
         this.widget.on('change', this._change);
         this.widget.showPrompt(this._current, this._result);
-        return new Promise((resolve, reject) => {
-            this._resolve = resolve;
-            this._reject = reject;
-        });
     }
     back() {
         this._current.reset();
@@ -3226,11 +3259,45 @@ class Inquiry {
             if (this._current) {
                 this._stack.push(p);
                 this.widget.showPrompt(this._current, this._result);
+                this._fireEvent('step', this.widget, {
+                    prompt: this._current,
+                    data: this._result,
+                });
                 return true;
             }
         }
         this._finish();
         return true;
+    }
+    on(event, cb) {
+        let handlers = this.events[event];
+        if (!handlers) {
+            handlers = this.events[event] = [];
+        }
+        if (!handlers.includes(cb)) {
+            handlers.push(cb);
+        }
+        return this;
+    }
+    off(event, cb) {
+        let handlers = this.events[event];
+        if (!handlers)
+            return this;
+        if (cb) {
+            GWU.arrayDelete(handlers, cb);
+        }
+        else {
+            handlers.length = 0; // clear all handlers
+        }
+        return this;
+    }
+    _fireEvent(name, source, args) {
+        const handlers = this.events[name] || [];
+        let handled = handlers.reduce((out, h) => h(name, source || this.widget, args) || out, false);
+        if (!handled) {
+            handled = this.widget._bubbleEvent(name, source || this.widget, args);
+        }
+        return handled;
     }
 }
 

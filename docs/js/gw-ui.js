@@ -1687,64 +1687,129 @@
     }
     installWidget('button', (l, opts) => new Button(l, opts));
 
-    class Fieldset extends Border {
+    class Fieldset extends Widget {
         constructor(layer, opts) {
             super(layer, (() => {
-                const bopts = Object.assign({}, opts);
-                if (!bopts.height)
-                    bopts.height = 4;
-                if (!bopts.width)
-                    bopts.width = 4;
-                bopts.tag = bopts.tag || 'fieldset';
-                return bopts;
+                opts.tag = opts.tag || Fieldset.default.tag;
+                const border = opts.border || Fieldset.default.border;
+                if (border !== 'none') {
+                    opts.height = opts.height || 2;
+                }
+                return opts;
             })());
-            this._fixedWidth = false;
-            this._fixedHeight = false;
             this.legend = null;
+            this.fields = [];
+            const border = opts.border || Fieldset.default.border;
+            this.attr('border', border);
+            this.attr('separator', opts.separator || Fieldset.default.separator);
+            this.attr('legendTag', opts.legendTag || Fieldset.default.legendTag);
+            this.attr('legendClass', opts.legendClass || Fieldset.default.legendClass);
+            this.attr('legendAlign', opts.legendAlign || Fieldset.default.legendAlign);
+            this.attr('dataTag', opts.dataTag || Fieldset.default.dataTag);
+            this.attr('dataClass', opts.dataClass || Fieldset.default.dataClass);
+            this.attr('dataWidth', opts.dataWidth);
+            this.attr('labelTag', opts.labelTag || Fieldset.default.labelTag);
+            this.attr('labelClass', opts.labelClass || Fieldset.default.labelClass);
+            this.attr('labelWidth', opts.width - opts.dataWidth - (border !== 'none' ? 2 : 0));
             this._addLegend(opts);
-            this._fixedHeight = !!opts.height;
-            this._fixedWidth = !!opts.width;
+        }
+        get _labelLeft() {
+            const border = this._attrStr('border');
+            if (border === 'none')
+                return this.bounds.x;
+            return this.bounds.x + 1;
+        }
+        get _dataLeft() {
+            const border = this._attrStr('border');
+            const base = this.bounds.x + this._attrInt('labelWidth');
+            if (border === 'none')
+                return base;
+            return base + 1;
+        }
+        get _nextY() {
+            const border = this._attrStr('border');
+            if (border === 'none')
+                return this.bounds.bottom;
+            return this.bounds.bottom - 1;
         }
         _addLegend(opts) {
             if (!opts.legend)
                 return this;
+            const border = this._attrStr('border') !== 'none';
+            const textWidth = GWU__namespace.text.length(opts.legend);
+            const width = this.bounds.width - (border ? 4 : 0);
+            const align = this._attrStr('legendAlign');
+            let x = this.bounds.x + (border ? 2 : 0);
+            if (align === 'center') {
+                x += Math.floor((width - textWidth) / 2);
+            }
+            else if (align === 'right') {
+                x += width - textWidth;
+            }
             this.legend = new Text(this.layer, {
                 text: opts.legend,
-                x: this.bounds.x + 2,
+                x,
                 y: this.bounds.y,
                 depth: this.depth + 1,
-                tag: opts.legendTag || Fieldset.default.legendTag,
-                class: opts.legendClass || Fieldset.default.legendClass,
+                tag: this._attrStr('legendTag'),
+                class: this._attrStr('legendClass'),
             });
             if (this.bounds.width < this.legend.bounds.width + 4) {
                 this.bounds.width = this.legend.bounds.width + 4;
             }
             this.legend.setParent(this);
-            this.layer.attach(this.legend);
             return this;
         }
-        _addChild(w, opts = {}) {
-            if (w !== this.legend) {
-                w.bounds.x = this.bounds.x + 2;
-                if (!this._fixedHeight) {
-                    w.bounds.y = this.bounds.bottom - 2;
-                    this.bounds.height += w.bounds.height;
-                }
-                if (this._fixedWidth) {
-                    w.bounds.width = Math.min(w.bounds.width, this.bounds.width - 4);
-                }
-                else if (w.bounds.width > this.bounds.width - 4) {
-                    this.bounds.width = w.bounds.width + 4;
-                }
+        add(label, format) {
+            const sep = this._attrStr('separator');
+            const labelText = GWU__namespace.text.padEnd(label, this._attrInt('labelWidth') - sep.length, ' ') + sep;
+            this.layer.text(labelText, {
+                x: this._labelLeft,
+                y: this._nextY,
+                width: this._attrInt('labelWidth'),
+                tag: this._attrStr('labelTag'),
+                class: this._attrStr('labelClass'),
+            });
+            if (typeof format === 'string') {
+                format = { format };
             }
-            return super._addChild(w, opts);
+            format.x = this._dataLeft;
+            format.y = this._nextY;
+            format.width = this._attrInt('dataWidth');
+            format.tag = format.tag || this._attrStr('dataTag');
+            format.class = format.class || this._attrStr('dataClass');
+            const field = new Field(this.layer, format);
+            field.setParent(this);
+            this.bounds.height += 1;
+            this.fields.push(field);
+            return this;
+        }
+        data(d) {
+            this.fields.forEach((f) => f.data(d));
+            this.layer.needsDraw = true;
+            return this;
+        }
+        _draw(buffer) {
+            const border = this._attrStr('border');
+            if (!border || border === 'none')
+                return false;
+            drawBorder(buffer, this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, this._used, border === 'ascii');
+            return true;
         }
     }
     Fieldset.default = {
+        tag: 'fieldset',
+        border: 'none',
+        separator: ':',
         legendTag: 'legend',
         legendClass: 'legend',
+        legendAlign: 'left',
+        labelTag: 'label',
+        labelClass: '',
+        dataTag: 'field',
+        dataClass: '',
     };
-    Layer.prototype.fieldset = function (opts = {}) {
+    Layer.prototype.fieldset = function (opts) {
         const options = Object.assign({}, this._opts, opts);
         const widget = new Fieldset(this, options);
         if (opts.parent) {
@@ -1752,6 +1817,27 @@
         }
         return widget;
     };
+    class Field extends Text {
+        constructor(layer, opts) {
+            super(layer, (() => {
+                // @ts-ignore
+                const topts = opts;
+                topts.tag = topts.tag || 'field';
+                topts.text = '';
+                return topts;
+            })());
+            if (typeof opts.format === 'string') {
+                this._format = GWU__namespace.text.compile(opts.format);
+            }
+            else {
+                this._format = opts.format;
+            }
+        }
+        data(v) {
+            const t = this._format(v) || '';
+            return this.text(t);
+        }
+    }
 
     class OrderedList extends Widget {
         constructor(layer, opts) {
@@ -3895,6 +3981,7 @@
     exports.DataList = DataList;
     exports.DataTable = DataTable;
     exports.EntryBase = EntryBase;
+    exports.Field = Field;
     exports.Fieldset = Fieldset;
     exports.Flavor = Flavor;
     exports.Input = Input;

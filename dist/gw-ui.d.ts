@@ -422,112 +422,6 @@ declare class Button extends Text {
     click(ev: GWU.io.Event): boolean;
 }
 
-interface FieldsetOptions extends WidgetOptions {
-    width?: number;
-    height?: number;
-    ascii?: boolean;
-    legend?: string;
-    legendTag?: string;
-    legendClass?: string;
-}
-declare class Fieldset extends Border {
-    static default: {
-        legendTag: string;
-        legendClass: string;
-    };
-    _fixedWidth: boolean;
-    _fixedHeight: boolean;
-    legend: Widget | null;
-    constructor(layer: Layer, opts: FieldsetOptions);
-    _addLegend(opts: FieldsetOptions): this;
-    _addChild(w: Widget, opts?: SetParentOptions): this;
-}
-declare type AddFieldsetOptions = FieldsetOptions & SetParentOptions & {
-    parent?: Widget;
-};
-declare module '../layer' {
-    interface Layer {
-        fieldset(opts?: AddFieldsetOptions): Fieldset;
-    }
-}
-
-interface OrderedListOptions extends WidgetOptions {
-    pad?: number;
-}
-declare class OrderedList extends Widget {
-    static default: {
-        pad: number;
-    };
-    _fixedWidth: boolean;
-    _fixedHeight: boolean;
-    constructor(layer: Layer, opts: OrderedListOptions);
-    _addChild(w: Widget, opts?: SetParentOptions): this;
-    _draw(buffer: GWU.canvas.DataBuffer): boolean;
-    _getBullet(index: number): string;
-    _drawBulletFor(widget: Widget, buffer: GWU.canvas.DataBuffer, index: number): void;
-}
-interface UnorderedListOptions extends OrderedListOptions {
-    bullet?: string;
-}
-declare class UnorderedList extends OrderedList {
-    static default: {
-        bullet: string;
-        pad: number;
-    };
-    constructor(layer: Layer, opts: UnorderedListOptions);
-    _getBullet(_index: number): string;
-}
-declare type AddOrderedListOptions = OrderedListOptions & SetParentOptions & {
-    parent?: Widget;
-};
-declare type AddUnorderedListOptions = UnorderedListOptions & SetParentOptions & {
-    parent?: Widget;
-};
-declare module '../layer' {
-    interface Layer {
-        ol(opts?: AddOrderedListOptions): OrderedList;
-        ul(opts?: AddUnorderedListOptions): UnorderedList;
-    }
-}
-
-interface InputOptions extends Omit<TextOptions, 'text'> {
-    text?: string;
-    id: string;
-    placeholder?: string;
-    minLength?: number;
-    maxLength?: number;
-    numbersOnly?: boolean;
-    min?: number;
-    max?: number;
-    required?: boolean;
-    disabled?: boolean;
-}
-declare class Input extends Text {
-    placeholder: string;
-    default: string;
-    minLength: number;
-    maxLength: number;
-    numbersOnly: boolean;
-    min: number;
-    max: number;
-    constructor(layer: Layer, opts: InputOptions);
-    reset(): void;
-    _setProp(name: string, v: PropType): void;
-    isValid(): boolean;
-    keypress(ev: GWU.io.Event): boolean;
-    text(): string;
-    text(v: string): this;
-    _draw(buffer: GWU.canvas.DataBuffer, _force?: boolean): boolean;
-}
-declare type AddInputOptions = InputOptions & SetParentOptions & {
-    parent?: Widget;
-};
-declare module '../layer' {
-    interface Layer {
-        input(opts: AddInputOptions): Input;
-    }
-}
-
 declare type FormatFn = GWU.text.Template;
 declare type Value = string | number;
 declare type SelectType = 'none' | 'column' | 'row' | 'cell';
@@ -626,6 +520,138 @@ declare type AddDataTableOptions = DataTableOptions & SetParentOptions & {
 declare module '../layer' {
     interface Layer {
         datatable(opts: AddDataTableOptions): DataTable;
+    }
+}
+
+interface FieldsetOptions extends WidgetOptions {
+    width: number;
+    dataWidth: number;
+    border?: BorderType;
+    separator?: string;
+    legend?: string;
+    legendTag?: string;
+    legendClass?: string;
+    legendAlign?: GWU.text.Align;
+    labelTag?: string;
+    labelClass?: string;
+    dataTag?: string;
+    dataClass?: string;
+}
+declare class Fieldset extends Widget {
+    static default: {
+        tag: string;
+        border: BorderType;
+        separator: string;
+        legendTag: string;
+        legendClass: string;
+        legendAlign: "left" | "center" | "right";
+        labelTag: string;
+        labelClass: string;
+        dataTag: string;
+        dataClass: string;
+    };
+    legend: Widget | null;
+    fields: Field[];
+    constructor(layer: Layer, opts: FieldsetOptions);
+    get _labelLeft(): number;
+    get _dataLeft(): number;
+    get _nextY(): number;
+    _addLegend(opts: FieldsetOptions): this;
+    add(label: string, format: string | FieldOptions): this;
+    data(d: any): this;
+    _draw(buffer: GWU.canvas.DataBuffer): boolean;
+}
+declare type AddFieldsetOptions = FieldsetOptions & SetParentOptions & {
+    parent?: Widget;
+};
+declare module '../layer' {
+    interface Layer {
+        fieldset(opts?: AddFieldsetOptions): Fieldset;
+    }
+}
+interface FieldOptions extends WidgetOptions {
+    format: string | GWU.text.Template;
+}
+declare class Field extends Text {
+    _format: GWU.text.Template;
+    constructor(layer: Layer, opts: FieldOptions);
+    data(v: any): this;
+}
+
+interface OrderedListOptions extends WidgetOptions {
+    pad?: number;
+}
+declare class OrderedList extends Widget {
+    static default: {
+        pad: number;
+    };
+    _fixedWidth: boolean;
+    _fixedHeight: boolean;
+    constructor(layer: Layer, opts: OrderedListOptions);
+    _addChild(w: Widget, opts?: SetParentOptions): this;
+    _draw(buffer: GWU.canvas.DataBuffer): boolean;
+    _getBullet(index: number): string;
+    _drawBulletFor(widget: Widget, buffer: GWU.canvas.DataBuffer, index: number): void;
+}
+interface UnorderedListOptions extends OrderedListOptions {
+    bullet?: string;
+}
+declare class UnorderedList extends OrderedList {
+    static default: {
+        bullet: string;
+        pad: number;
+    };
+    constructor(layer: Layer, opts: UnorderedListOptions);
+    _getBullet(_index: number): string;
+}
+declare type AddOrderedListOptions = OrderedListOptions & SetParentOptions & {
+    parent?: Widget;
+};
+declare type AddUnorderedListOptions = UnorderedListOptions & SetParentOptions & {
+    parent?: Widget;
+};
+declare module '../layer' {
+    interface Layer {
+        ol(opts?: AddOrderedListOptions): OrderedList;
+        ul(opts?: AddUnorderedListOptions): UnorderedList;
+    }
+}
+
+interface InputOptions extends Omit<TextOptions, 'text'> {
+    text?: string;
+    id: string;
+    placeholder?: string;
+    minLength?: number;
+    maxLength?: number;
+    numbersOnly?: boolean;
+    min?: number;
+    max?: number;
+    required?: boolean;
+    disabled?: boolean;
+}
+declare class Input extends Text {
+    placeholder: string;
+    default: string;
+    minLength: number;
+    maxLength: number;
+    numbersOnly: boolean;
+    min: number;
+    max: number;
+    constructor(layer: Layer, opts: InputOptions);
+    reset(): void;
+    _setProp(name: string, v: PropType): void;
+    isValid(): boolean;
+    keypress(ev: GWU.io.Event): boolean;
+    text(): string;
+    text(v: string): this;
+    _draw(buffer: GWU.canvas.DataBuffer, _force?: boolean): boolean;
+}
+declare type AddInputOptions = InputOptions & SetParentOptions & {
+    parent?: Widget;
+};
+declare module '../layer' {
+    interface Layer {
+        input(opts: AddInputOptions): Input;
     }
 }
 
@@ -1026,4 +1052,4 @@ declare class Viewport extends Widget {
     draw(buffer: GWU.canvas.DataBuffer): boolean;
 }
 
-export { ActionConfig, ActorEntry, AddBorderOptions, AddChoiceOptions, AddDataListOptions, AddDataTableOptions, AddFieldsetOptions, AddInputOptions, AddMenuOptions, AddMenubarOptions, AddOrderedListOptions, AddSelectOptions, AddTextOptions, AddUnorderedListOptions, ArchiveMode, Border, BorderOptions, BorderType, Button, ButtonConfig, ButtonOptions, CellEntry, Choice, ChoiceOptions, Column, ColumnOptions, ComputedStyle, DataItem, DataList, DataListOptions, DataObject, DataTable, DataTableOptions, DataType, DropdownConfig, EntryBase, EventCb, Fieldset, FieldsetOptions, Flavor, FlavorOptions, FormatFn, HoverType, Input, InputOptions, Inquiry, ItemEntry, Layer, LayerOptions, Menu, MenuButton, MenuButtonOptions, MenuOptions, MenuViewer, Menubar, MenubarButton, MenubarButtonOptions, MenubarOptions, MessageArchive, MessageOptions, Messages, NextType, OrderedList, OrderedListOptions, PrefixType, Prompt, PromptChoice, PromptOptions, PropType, Rec, Select, SelectOptions, SelectType, SetParentOptions, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, TD, Text, TextOptions, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, UnorderedList, UnorderedListOptions, Value, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, defaultStyle, drawBorder, makeStyle };
+export { ActionConfig, ActorEntry, AddBorderOptions, AddChoiceOptions, AddDataListOptions, AddDataTableOptions, AddFieldsetOptions, AddInputOptions, AddMenuOptions, AddMenubarOptions, AddOrderedListOptions, AddSelectOptions, AddTextOptions, AddUnorderedListOptions, ArchiveMode, Border, BorderOptions, BorderType, Button, ButtonConfig, ButtonOptions, CellEntry, Choice, ChoiceOptions, Column, ColumnOptions, ComputedStyle, DataItem, DataList, DataListOptions, DataObject, DataTable, DataTableOptions, DataType, DropdownConfig, EntryBase, EventCb, Field, FieldOptions, Fieldset, FieldsetOptions, Flavor, FlavorOptions, FormatFn, HoverType, Input, InputOptions, Inquiry, ItemEntry, Layer, LayerOptions, Menu, MenuButton, MenuButtonOptions, MenuOptions, MenuViewer, Menubar, MenubarButton, MenubarButtonOptions, MenubarOptions, MessageArchive, MessageOptions, Messages, NextType, OrderedList, OrderedListOptions, PrefixType, Prompt, PromptChoice, PromptOptions, PropType, Rec, Select, SelectOptions, SelectType, SetParentOptions, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, TD, Text, TextOptions, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, UnorderedList, UnorderedListOptions, Value, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, defaultStyle, drawBorder, makeStyle };

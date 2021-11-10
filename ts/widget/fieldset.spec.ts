@@ -14,6 +14,7 @@ describe('Fieldset Widget', () => {
     test('create obj', () => {
         const e = new Fieldset.Fieldset(layer, {
             width: 30,
+            dataWidth: 10,
             height: 10,
             x: 5,
             y: 5,
@@ -24,7 +25,7 @@ describe('Fieldset Widget', () => {
 
         layer.draw();
 
-        expect(UTILS.getBufferText(layer.buffer, 7, 5, 20)).toEqual('LEGEND');
+        expect(UTILS.getBufferText(layer.buffer, 5, 5, 20)).toEqual('LEGEND');
         // layer.buffer.dump();
     });
 
@@ -40,35 +41,39 @@ describe('Fieldset Widget', () => {
             legend: 'LEGEND',
             x: 10,
             y: 5,
+            separator: ':',
+            width: 20,
+            dataWidth: 10,
         });
 
         // console.log(layer.allWidgets.map((w) => info(w)));
+        fs.add('Age', '§age%10d§');
+        fs.add('Height', '§height%10s§');
+        fs.add('Weight', '§weight%10d§');
 
-        for (let i = 0; i < 5; ++i) {
-            layer.text('Field ' + i, { parent: fs });
-        }
+        fs.data({ age: 4, height: "6'2", weight: 190 });
 
         // console.log(layer.allWidgets.map((w) => info(w)));
         layer.draw();
 
         // layer.buffer.dump();
 
-        expect(UTILS.getBufferText(layer.buffer, 12, 5, 20)).toEqual('LEGEND');
-        expect(UTILS.getBufferText(layer.buffer, 12, 7, 20)).toEqual('Field 0');
-        expect(UTILS.getBufferText(layer.buffer, 12, 8, 20)).toEqual('Field 1');
-        expect(UTILS.getBufferText(layer.buffer, 12, 9, 20)).toEqual('Field 2');
-        expect(UTILS.getBufferText(layer.buffer, 12, 10, 20)).toEqual(
-            'Field 3'
+        expect(UTILS.getBufferText(layer.buffer, 10, 5, 20)).toEqual('LEGEND');
+        expect(UTILS.getBufferText(layer.buffer, 10, 6, 20)).toEqual(
+            'Age      :         4'
         );
-        expect(UTILS.getBufferText(layer.buffer, 12, 11, 20)).toEqual(
-            'Field 4'
+        expect(UTILS.getBufferText(layer.buffer, 10, 7, 20)).toEqual(
+            "Height   :       6'2"
+        );
+        expect(UTILS.getBufferText(layer.buffer, 10, 8, 20)).toEqual(
+            'Weight   :       190'
         );
 
         expect(fs.bounds).toMatchObject({
             x: 10,
             y: 5,
-            width: 11,
-            height: 9,
+            width: 20,
+            height: 4,
         });
     });
 

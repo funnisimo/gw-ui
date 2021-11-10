@@ -23,7 +23,7 @@ export interface UICore {
     // readonly layer: UILayer;
 
     startNewLayer(): Layer;
-    copyUIBuffer(dest: GWU.canvas.DataBuffer): void;
+    copyUIBuffer(dest: GWU.buffer.Buffer): void;
     finishLayer(layer: Layer): void;
 
     stop(): void;

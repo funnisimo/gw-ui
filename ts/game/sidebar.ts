@@ -21,7 +21,7 @@ export abstract class EntryBase {
     abstract get x(): number;
     abstract get y(): number;
 
-    draw(_buffer: GWU.canvas.DataBuffer, _bounds: GWU.xy.Bounds): number {
+    draw(_buffer: GWU.buffer.Buffer, _bounds: GWU.xy.Bounds): number {
         return 0;
     }
 }
@@ -41,7 +41,7 @@ export class ActorEntry extends EntryBase {
         return this.actor.y;
     }
 
-    draw(buffer: GWU.canvas.DataBuffer, bounds: GWU.xy.Bounds): number {
+    draw(buffer: GWU.buffer.Buffer, bounds: GWU.xy.Bounds): number {
         return this.actor.drawStatus(buffer, bounds);
     }
 }
@@ -61,7 +61,7 @@ export class ItemEntry extends EntryBase {
         return this.item.y;
     }
 
-    draw(buffer: GWU.canvas.DataBuffer, bounds: GWU.xy.Bounds): number {
+    draw(buffer: GWU.buffer.Buffer, bounds: GWU.xy.Bounds): number {
         return this.item.drawStatus(buffer, bounds);
     }
 }
@@ -81,7 +81,7 @@ export class CellEntry extends EntryBase {
         return this.cell.y;
     }
 
-    draw(buffer: GWU.canvas.DataBuffer, bounds: GWU.xy.Bounds): number {
+    draw(buffer: GWU.buffer.Buffer, bounds: GWU.xy.Bounds): number {
         return this.cell.drawStatus(buffer, bounds);
     }
 }
@@ -334,7 +334,7 @@ export class Sidebar extends Widget.Widget {
         return true;
     }
 
-    draw(buffer: GWU.canvas.DataBuffer) {
+    draw(buffer: GWU.buffer.Buffer) {
         buffer.fillRect(
             this.bounds.x,
             this.bounds.y,

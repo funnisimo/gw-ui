@@ -43,7 +43,7 @@ export class OrderedList extends Widget.Widget {
         return super._addChild(w, opts);
     }
 
-    _draw(buffer: GWU.canvas.DataBuffer): boolean {
+    _draw(buffer: GWU.buffer.Buffer): boolean {
         this._drawFill(buffer);
 
         this.children.forEach((c, i) => {
@@ -59,7 +59,7 @@ export class OrderedList extends Widget.Widget {
 
     _drawBulletFor(
         widget: Widget.Widget,
-        buffer: GWU.canvas.DataBuffer,
+        buffer: GWU.buffer.Buffer,
         index: number
     ): void {
         const bullet = this._getBullet(index);

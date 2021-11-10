@@ -183,7 +183,7 @@ export class Viewport extends Widget.Widget {
         }
     }
 
-    draw(buffer: GWU.canvas.DataBuffer): boolean {
+    draw(buffer: GWU.buffer.Buffer): boolean {
         buffer.blackOutRect(
             this.bounds.x,
             this.bounds.y,

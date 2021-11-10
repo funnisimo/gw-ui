@@ -21,7 +21,7 @@ describe('Input Widget', () => {
 
         widget.bounds.x = widget.bounds.y = 0;
 
-        const buffer = new GWU.canvas.DataBuffer(40, 40);
+        const buffer = new GWU.buffer.Buffer(40, 40);
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Test'); // default
 
@@ -133,7 +133,7 @@ describe('Input Widget', () => {
         expect(widget.bounds.height).toEqual(1);
         expect(widget.text()).toEqual('Test');
 
-        const buffer = new GWU.canvas.DataBuffer(40, 40);
+        const buffer = new GWU.buffer.Buffer(40, 40);
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Test'); // default
 

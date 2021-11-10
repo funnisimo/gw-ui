@@ -347,7 +347,7 @@ export class DataTable extends Widget {
         return this;
     }
 
-    _draw(buffer: GWU.canvas.DataBuffer): boolean {
+    _draw(buffer: GWU.buffer.Buffer): boolean {
         this._drawFill(buffer);
 
         this.children.forEach((w) => {

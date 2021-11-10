@@ -2782,7 +2782,7 @@
             return true;
         }
         drawInto(dest, map, opts = {}) {
-            const buffer = dest instanceof GWU__namespace.canvas.DataBuffer ? dest : dest.buffer;
+            const buffer = dest instanceof GWU__namespace.buffer.Buffer ? dest : dest.buffer;
             const offsetX = opts.offsetX || 0;
             const offsetY = opts.offsetY || 0;
             const mixer = new GWU__namespace.sprite.Mixer();

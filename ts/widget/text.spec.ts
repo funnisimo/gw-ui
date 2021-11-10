@@ -87,7 +87,7 @@ describe('Text Widget', () => {
 
         expect(widget._lines).toEqual(['Testing a long', 'message.']);
 
-        const buffer = new GWU.canvas.DataBuffer(100, 40);
+        const buffer = new GWU.buffer.Buffer(100, 40);
         widget.draw(buffer);
         // buffer.dump();
         expect(UTILS.getBufferText(buffer, 0, 0, 20)).toEqual('Testing a long');
@@ -108,7 +108,7 @@ describe('Text Widget', () => {
         expect(widget.bounds.width).toEqual(4);
         expect(widget.bounds.height).toEqual(1);
 
-        const buffer = new GWU.canvas.DataBuffer(100, 40);
+        const buffer = new GWU.buffer.Buffer(100, 40);
         widget.draw(buffer);
         // buffer.dump();
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Test');

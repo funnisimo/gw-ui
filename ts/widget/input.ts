@@ -145,7 +145,7 @@ export class Input extends Text.Text {
         return this;
     }
 
-    _draw(buffer: GWU.canvas.DataBuffer, _force = false): boolean {
+    _draw(buffer: GWU.buffer.Buffer, _force = false): boolean {
         this._drawFill(buffer);
 
         let vOffset = 0;

@@ -101,7 +101,7 @@ describe('Fieldset Widget', () => {
         // console.log(layer.allWidgets.map((w) => info(w)));
         layer.draw();
 
-        layer.buffer.dump();
+        // layer.buffer.dump();
 
         expect(UTILS.getBufferText(layer.buffer, 10, 5, 25)).toEqual(
             '+-LEGEND----------------+'

@@ -29,7 +29,7 @@ export class Border extends Widget.Widget {
         return false;
     }
 
-    _draw(buffer: GWU.canvas.DataBuffer): boolean {
+    _draw(buffer: GWU.buffer.Buffer): boolean {
         const w = this.bounds.width;
         const h = this.bounds.height;
         const x = this.bounds.x;
@@ -62,7 +62,7 @@ Layer.prototype.border = function (opts: AddBorderOptions): Border {
 };
 
 export function drawBorder(
-    buffer: GWU.canvas.DataBuffer,
+    buffer: GWU.buffer.Buffer,
     x: number,
     y: number,
     w: number,

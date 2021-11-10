@@ -176,7 +176,7 @@ describe('Sidebar', () => {
         sidebar.mousemove(UTILS.mousemove(1, 1));
         expect(sidebar.highlight).toBeNull(); // not drawn yet -- no y information on entries
 
-        const buffer = new GWU.canvas.DataBuffer(100, 40);
+        const buffer = new GWU.buffer.Buffer(100, 40);
         sidebar.draw(buffer);
 
         sidebar.mousemove(UTILS.mousemove(1, 1));

@@ -297,7 +297,7 @@ export class Choice extends Widget.Widget {
         return this;
     }
 
-    _draw(buffer: GWU.canvas.DataBuffer): boolean {
+    _draw(buffer: GWU.buffer.Buffer): boolean {
         let w = this.choiceWidth + 2;
         const h = this.bounds.height;
         let x = this.bounds.x;

@@ -745,7 +745,7 @@
 
 //     // DRAWING
 
-//     draw(buffer: GWU.canvas.DataBuffer): boolean {
+//     draw(buffer: GWU.buffer.Buffer): boolean {
 //         const used = this._usedStyle;
 
 //         if (used.border) {
@@ -760,7 +760,7 @@
 //         return true;
 //     }
 
-//     _drawBorder(buffer: GWU.canvas.DataBuffer) {
+//     _drawBorder(buffer: GWU.buffer.Buffer) {
 //         const used = this._usedStyle;
 //         const bounds = this.bounds;
 
@@ -775,7 +775,7 @@
 //         );
 //     }
 
-//     _fill(buffer: GWU.canvas.DataBuffer) {
+//     _fill(buffer: GWU.buffer.Buffer) {
 //         const used = this._usedStyle;
 //         const bg = used.bg;
 //         const bounds = this.bounds;
@@ -797,7 +797,7 @@
 //         );
 //     }
 
-//     _drawContent(buffer: GWU.canvas.DataBuffer) {
+//     _drawContent(buffer: GWU.buffer.Buffer) {
 //         if (this.children.length) {
 //             this._drawChildren(buffer);
 //         } else {
@@ -805,7 +805,7 @@
 //         }
 //     }
 
-//     _drawChildren(buffer: GWU.canvas.DataBuffer) {
+//     _drawChildren(buffer: GWU.buffer.Buffer) {
 //         // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/Stacking_without_z-index
 //         this.children.forEach((c) => {
 //             if (!c.isPositioned()) c.draw(buffer);
@@ -815,7 +815,7 @@
 //         });
 //     }
 
-//     _drawText(buffer: GWU.canvas.DataBuffer) {
+//     _drawText(buffer: GWU.buffer.Buffer) {
 //         if (this._lines.length) {
 //             const fg = this.used('fg') || 'white';
 //             const top = this.innerTop;

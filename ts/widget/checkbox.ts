@@ -63,7 +63,7 @@ export class Checkbox extends Text.Text {
         return true;
     }
 
-    _draw(buffer: GWU.canvas.DataBuffer): boolean {
+    _draw(buffer: GWU.buffer.Buffer): boolean {
         const fg = this._used.fg || 'white';
         const align = this._used.align;
 

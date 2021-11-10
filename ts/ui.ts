@@ -78,6 +78,10 @@ export class UI implements UICore {
         return this.canvas.buffer;
     }
 
+    get buffer(): GWU.canvas.Buffer {
+        return this.layer ? this.layer.buffer : this.canvas.buffer;
+    }
+
     startNewLayer(): Layer {
         const layer = new Layer(this);
 
@@ -90,7 +94,7 @@ export class UI implements UICore {
         return layer;
     }
 
-    copyUIBuffer(dest: GWU.canvas.DataBuffer): void {
+    copyUIBuffer(dest: GWU.buffer.Buffer): void {
         const base = this.baseBuffer;
         dest.copy(base);
         dest.changed = false; // So you have to draw something to make the canvas render...

@@ -76,7 +76,7 @@
 //     }
 
 //     setBounds(
-//         buffer: GWU.canvas.DataBuffer,
+//         buffer: GWU.buffer.Buffer,
 //         px: number,
 //         py: number,
 //         pw: number
@@ -117,7 +117,7 @@
 //         return this.buttons[index] || null;
 //     }
 
-//     draw(buffer: GWU.canvas.DataBuffer) {
+//     draw(buffer: GWU.buffer.Buffer) {
 //         const width = this.bounds.width;
 //         const height = this.bounds.height;
 //         const x = this.bounds.x;
@@ -524,7 +524,7 @@
 //         this.buttons.push(button);
 //     }
 
-//     draw(buffer: GWU.canvas.DataBuffer): boolean {
+//     draw(buffer: GWU.buffer.Buffer): boolean {
 //         const bg = this.active ? this.activeBg : this.bg;
 //         const fg = this.active ? this.activeFg : this.fg;
 

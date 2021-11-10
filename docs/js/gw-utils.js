@@ -1198,7 +1198,7 @@
     }
     const random = new Random();
     const cosmetic = new Random();
-    function make$a(seed) {
+    function make$b(seed) {
         return new Random(seed);
     }
 
@@ -1209,7 +1209,7 @@
         Random: Random,
         random: random,
         cosmetic: cosmetic,
-        make: make$a
+        make: make$b
     });
 
     class Range {
@@ -1246,7 +1246,7 @@
             return `${this.lo}-${this.hi}`;
         }
     }
-    function make$9(config) {
+    function make$a(config) {
         if (!config)
             return new Range(0, 0, 0);
         if (config instanceof Range)
@@ -1302,16 +1302,16 @@
         }
         throw new Error('Not a valid range - ' + config);
     }
-    const from$4 = make$9;
+    const from$4 = make$a;
     function asFn(config) {
-        const range = make$9(config);
+        const range = make$a(config);
         return () => range.value();
     }
 
     var range = /*#__PURE__*/Object.freeze({
         __proto__: null,
         Range: Range,
-        make: make$9,
+        make: make$a,
         from: from$4,
         asFn: asFn
     });
@@ -1402,7 +1402,7 @@
         }
         return result;
     }
-    function make$8(obj) {
+    function make$9(obj) {
         const out = {};
         Object.entries(obj).forEach(([key, value]) => {
             out[key] = from$3(out, value);
@@ -1415,7 +1415,7 @@
         fl: fl,
         toString: toString,
         from: from$3,
-        make: make$8
+        make: make$9
     });
 
     const DIRS$1 = DIRS$2;
@@ -1974,7 +1974,7 @@
     // Grid.fillBlob = fillBlob;
     const alloc = NumGrid.alloc.bind(NumGrid);
     const free = NumGrid.free.bind(NumGrid);
-    function make$7(w, h, v) {
+    function make$8(w, h, v) {
         if (v === undefined)
             return new NumGrid(w, h, 0);
         if (typeof v === 'number')
@@ -2016,1592 +2016,10 @@
         NumGrid: NumGrid,
         alloc: alloc,
         free: free,
-        make: make$7,
+        make: make$8,
         offsetZip: offsetZip,
         intersection: intersection,
         unite: unite
-    });
-
-    class Event {
-        constructor(type, opts) {
-            this.target = null;
-            // Used in UI
-            this.defaultPrevented = false;
-            this.propagationStopped = false;
-            this.immediatePropagationStopped = false;
-            // Key Event
-            this.key = '';
-            this.code = '';
-            this.shiftKey = false;
-            this.ctrlKey = false;
-            this.altKey = false;
-            this.metaKey = false;
-            // Dir Event extends KeyEvent
-            this.dir = null;
-            // Mouse Event
-            this.x = -1;
-            this.y = -1;
-            this.clientX = -1;
-            this.clientY = -1;
-            // Tick Event
-            this.dt = 0;
-            this.reset(type, opts);
-        }
-        preventDefault() {
-            this.defaultPrevented = true;
-        }
-        stopPropagation() {
-            this.propagationStopped = true;
-        }
-        stopImmediatePropagation() {
-            this.immediatePropagationStopped = true;
-        }
-        reset(type, opts) {
-            this.type = type;
-            this.target = null;
-            this.defaultPrevented = false;
-            this.shiftKey = false;
-            this.ctrlKey = false;
-            this.altKey = false;
-            this.metaKey = false;
-            this.key = '';
-            this.code = '';
-            this.x = -1;
-            this.y = -1;
-            this.dir = null;
-            this.dt = 0;
-            this.target = null;
-            if (opts) {
-                Object.assign(this, opts);
-            }
-        }
-    }
-    let IOMAP = {};
-    const DEAD_EVENTS = [];
-    const KEYPRESS = 'keypress';
-    const MOUSEMOVE = 'mousemove';
-    const CLICK = 'click';
-    const TICK = 'tick';
-    const MOUSEUP = 'mouseup';
-    const STOP = 'stop';
-    const CONTROL_CODES = [
-        'ShiftLeft',
-        'ShiftRight',
-        'ControlLeft',
-        'ControlRight',
-        'AltLeft',
-        'AltRight',
-        'MetaLeft',
-        'MetaRight',
-    ];
-    function setKeymap(keymap) {
-        IOMAP = keymap;
-    }
-    function handlerFor(ev, km) {
-        let c;
-        if (ev.dir) {
-            c = km.dir || km.keypress;
-        }
-        else if (ev.type === KEYPRESS) {
-            c = km[ev.key] || km[ev.code] || km.keypress;
-        }
-        else if (km[ev.type]) {
-            c = km[ev.type];
-        }
-        if (!c) {
-            c = km.dispatch;
-        }
-        return c || null;
-    }
-    async function dispatchEvent(ev, km) {
-        let result;
-        km = km || IOMAP;
-        if (ev.type === STOP) {
-            recycleEvent(ev);
-            return true; // Should stop loops, etc...
-        }
-        const handler = handlerFor(ev, km);
-        if (handler) {
-            // if (typeof c === 'function') {
-            result = await handler.call(km, ev);
-            // } else if (commands[c]) {
-            //     result = await commands[c](ev);
-            // } else {
-            //     Utils.WARN('No command found: ' + c);
-            // }
-        }
-        // TODO - what is this here for?
-        // if ('next' in km && km.next === false) {
-        //     result = false;
-        // }
-        recycleEvent(ev);
-        return result;
-    }
-    function recycleEvent(ev) {
-        DEAD_EVENTS.push(ev);
-    }
-    // STOP
-    function makeStopEvent() {
-        return makeCustomEvent(STOP);
-    }
-    // CUSTOM
-    function makeCustomEvent(type, opts) {
-        const ev = DEAD_EVENTS.pop() || null;
-        if (!ev)
-            return new Event(type, opts);
-        ev.reset(type, opts);
-        return ev;
-    }
-    // TICK
-    function makeTickEvent(dt) {
-        const ev = makeCustomEvent(TICK);
-        ev.dt = dt;
-        return ev;
-    }
-    // KEYBOARD
-    function makeKeyEvent(e) {
-        let key = e.key;
-        let code = e.code.toLowerCase();
-        if (e.shiftKey) {
-            key = key.toUpperCase();
-            code = code.toUpperCase();
-        }
-        if (e.ctrlKey) {
-            key = '^' + key;
-            code = '^' + code;
-        }
-        if (e.metaKey) {
-            key = '#' + key;
-            code = '#' + code;
-        }
-        if (e.altKey) {
-            code = '/' + code;
-        }
-        const ev = DEAD_EVENTS.pop() || new Event(KEYPRESS);
-        ev.shiftKey = e.shiftKey;
-        ev.ctrlKey = e.ctrlKey;
-        ev.altKey = e.altKey;
-        ev.metaKey = e.metaKey;
-        ev.type = KEYPRESS;
-        ev.defaultPrevented = false;
-        ev.key = key;
-        ev.code = code;
-        ev.x = -1;
-        ev.y = -1;
-        ev.clientX = -1;
-        ev.clientY = -1;
-        ev.dir = keyCodeDirection(e.code);
-        ev.dt = 0;
-        ev.target = null;
-        return ev;
-    }
-    function keyCodeDirection(key) {
-        const lowerKey = key.toLowerCase();
-        if (lowerKey === 'arrowup') {
-            return [0, -1];
-        }
-        else if (lowerKey === 'arrowdown') {
-            return [0, 1];
-        }
-        else if (lowerKey === 'arrowleft') {
-            return [-1, 0];
-        }
-        else if (lowerKey === 'arrowright') {
-            return [1, 0];
-        }
-        return null;
-    }
-    function ignoreKeyEvent(e) {
-        return CONTROL_CODES.includes(e.code);
-    }
-    // MOUSE
-    function makeMouseEvent(e, x, y) {
-        const ev = DEAD_EVENTS.pop() || new Event(e.type);
-        ev.shiftKey = e.shiftKey;
-        ev.ctrlKey = e.ctrlKey;
-        ev.altKey = e.altKey;
-        ev.metaKey = e.metaKey;
-        ev.type = e.type;
-        if (e.buttons && e.type !== 'mouseup') {
-            ev.type = CLICK;
-        }
-        ev.defaultPrevented = false;
-        ev.key = '';
-        ev.code = '';
-        ev.x = x;
-        ev.y = y;
-        ev.clientX = e.clientX;
-        ev.clientY = e.clientY;
-        ev.dir = null;
-        ev.dt = 0;
-        ev.target = null;
-        return ev;
-    }
-    class Loop {
-        constructor() {
-            this.running = true;
-            this.events = [];
-            this.mouse = { x: -1, y: -1 };
-            this.CURRENT_HANDLER = null;
-            this.PAUSED = null;
-            this.LAST_CLICK = { x: -1, y: -1 };
-            this.interval = 0;
-            this.intervalCount = 0;
-            this.ended = false;
-        }
-        hasEvents() {
-            return this.events.length;
-        }
-        clearEvents() {
-            while (this.events.length) {
-                const ev = this.events.shift();
-                DEAD_EVENTS.push(ev);
-            }
-        }
-        _startTicks() {
-            ++this.intervalCount;
-            if (this.interval)
-                return;
-            this.interval = setInterval(() => {
-                const e = makeTickEvent(16);
-                this.pushEvent(e);
-            }, 16);
-        }
-        _stopTicks() {
-            if (!this.intervalCount)
-                return; // too many calls to stop
-            --this.intervalCount;
-            if (this.intervalCount)
-                return; // still have a loop running
-            clearInterval(this.interval);
-            this.interval = 0;
-        }
-        pushEvent(ev) {
-            if (this.ended)
-                return;
-            if (this.PAUSED) {
-                console.log('PAUSED EVENT', ev.type);
-            }
-            if (this.events.length) {
-                const last = this.events[this.events.length - 1];
-                if (last.type === ev.type) {
-                    if (last.type === MOUSEMOVE) {
-                        last.x = ev.x;
-                        last.y = ev.y;
-                        recycleEvent(ev);
-                        return;
-                    }
-                }
-            }
-            // Keep clicks down to one per cell if holding down mouse button
-            if (ev.type === CLICK) {
-                if (this.LAST_CLICK.x == ev.x && this.LAST_CLICK.y == ev.y) {
-                    recycleEvent(ev);
-                    return;
-                }
-                this.LAST_CLICK.x = ev.x;
-                this.LAST_CLICK.y = ev.y;
-            }
-            else if (ev.type == MOUSEUP) {
-                this.LAST_CLICK.x = -1;
-                this.LAST_CLICK.y = -1;
-                recycleEvent(ev);
-                return;
-            }
-            if (this.CURRENT_HANDLER) {
-                this.CURRENT_HANDLER(ev);
-            }
-            else if (ev.type === TICK) {
-                const first = this.events[0];
-                if (first && first.type === TICK) {
-                    first.dt += ev.dt;
-                    recycleEvent(ev);
-                    return;
-                }
-                this.events.unshift(ev); // ticks go first
-            }
-            else {
-                this.events.push(ev);
-            }
-        }
-        nextEvent(ms = -1, match) {
-            match = match || TRUE;
-            let elapsed = 0;
-            while (this.events.length) {
-                const e = this.events.shift();
-                if (e.type === MOUSEMOVE) {
-                    this.mouse.x = e.x;
-                    this.mouse.y = e.y;
-                }
-                if (match(e)) {
-                    return Promise.resolve(e);
-                }
-                recycleEvent(e);
-            }
-            let done;
-            if (ms == 0 || this.ended)
-                return Promise.resolve(null);
-            if (this.CURRENT_HANDLER) {
-                throw new Error('OVERWRITE HANDLER -- Check for a missing await around Loop function calls.');
-            }
-            else if (this.events.length) {
-                console.warn('SET HANDLER WITH QUEUED EVENTS - nextEvent');
-            }
-            this.CURRENT_HANDLER = (e) => {
-                if (e.type === MOUSEMOVE) {
-                    this.mouse.x = e.x;
-                    this.mouse.y = e.y;
-                }
-                if (e.type === TICK && ms > 0) {
-                    elapsed += e.dt;
-                    if (elapsed < ms) {
-                        return;
-                    }
-                    e.dt = elapsed;
-                }
-                else if (!match(e))
-                    return;
-                this.CURRENT_HANDLER = null;
-                done(e);
-            };
-            return new Promise((resolve) => (done = resolve));
-        }
-        async run(keymap, ms = -1) {
-            if (this.ended)
-                return;
-            this.running = true;
-            this.clearEvents(); // ??? Should we do this?
-            this._startTicks();
-            if (keymap.start && typeof keymap.start === 'function') {
-                await keymap.start();
-            }
-            let running = true;
-            while (this.running && running) {
-                if (keymap.draw && typeof keymap.draw === 'function') {
-                    keymap.draw();
-                }
-                const ev = await this.nextEvent(ms);
-                if (ev && (await dispatchEvent(ev, keymap))) {
-                    running = false;
-                }
-            }
-            if (keymap.stop && typeof keymap.stop === 'function') {
-                await keymap.stop();
-            }
-            this._stopTicks();
-        }
-        stop() {
-            this.clearEvents();
-            this.running = false;
-            if (this.interval) {
-                clearInterval(this.interval);
-                this.interval = 0;
-            }
-            if (this.CURRENT_HANDLER) {
-                this.pushEvent(makeStopEvent());
-            }
-            this.CURRENT_HANDLER = null;
-        }
-        end() {
-            this.stop();
-            this.ended = true;
-        }
-        start() {
-            this.ended = false;
-        }
-        pauseEvents() {
-            if (this.PAUSED)
-                return;
-            this.PAUSED = this.CURRENT_HANDLER;
-            this.CURRENT_HANDLER = null;
-            // io.debug('events paused');
-        }
-        resumeEvents() {
-            if (!this.PAUSED)
-                return;
-            if (this.CURRENT_HANDLER) {
-                console.warn('overwrite CURRENT HANDLER!');
-            }
-            this.CURRENT_HANDLER = this.PAUSED;
-            this.PAUSED = null;
-            // io.debug('resuming events');
-            if (this.events.length && this.CURRENT_HANDLER) {
-                const e = this.events.shift();
-                // io.debug('- processing paused event', e.type);
-                this.CURRENT_HANDLER(e);
-                // io.recycleEvent(e);	// DO NOT DO THIS B/C THE HANDLER MAY PUT IT BACK ON THE QUEUE (see tickMs)
-            }
-            // io.debug('events resumed');
-        }
-        // IO
-        async tickMs(ms = 1) {
-            let done;
-            setTimeout(() => done(), ms);
-            return new Promise((resolve) => (done = resolve));
-        }
-        async nextKeyPress(ms, match) {
-            if (ms === undefined)
-                ms = -1;
-            match = match || TRUE;
-            function matchingKey(e) {
-                if (e.type !== KEYPRESS)
-                    return false;
-                return match(e);
-            }
-            return this.nextEvent(ms, matchingKey);
-        }
-        async nextKeyOrClick(ms, matchFn) {
-            if (ms === undefined)
-                ms = -1;
-            matchFn = matchFn || TRUE;
-            function match(e) {
-                if (e.type !== KEYPRESS && e.type !== CLICK)
-                    return false;
-                return matchFn(e);
-            }
-            return this.nextEvent(ms, match);
-        }
-        async pause(ms) {
-            const e = await this.nextKeyOrClick(ms);
-            return e && e.type !== TICK;
-        }
-        waitForAck() {
-            return this.pause(5 * 60 * 1000); // 5 min
-        }
-        onkeydown(e) {
-            if (ignoreKeyEvent(e))
-                return;
-            if (e.code === 'Escape') {
-                this.clearEvents(); // clear all current events, then push on the escape
-            }
-            const ev = makeKeyEvent(e);
-            this.pushEvent(ev);
-            e.preventDefault();
-        }
-    }
-    function make$6() {
-        return new Loop();
-    }
-    // Makes a default global loop that you access through these funcitons...
-    const loop = make$6();
-
-    var io = /*#__PURE__*/Object.freeze({
-        __proto__: null,
-        Event: Event,
-        KEYPRESS: KEYPRESS,
-        MOUSEMOVE: MOUSEMOVE,
-        CLICK: CLICK,
-        TICK: TICK,
-        MOUSEUP: MOUSEUP,
-        STOP: STOP,
-        setKeymap: setKeymap,
-        handlerFor: handlerFor,
-        dispatchEvent: dispatchEvent,
-        makeStopEvent: makeStopEvent,
-        makeCustomEvent: makeCustomEvent,
-        makeTickEvent: makeTickEvent,
-        makeKeyEvent: makeKeyEvent,
-        keyCodeDirection: keyCodeDirection,
-        ignoreKeyEvent: ignoreKeyEvent,
-        makeMouseEvent: makeMouseEvent,
-        Loop: Loop,
-        make: make$6,
-        loop: loop
-    });
-
-    var FovFlags;
-    (function (FovFlags) {
-        FovFlags[FovFlags["VISIBLE"] = fl(0)] = "VISIBLE";
-        FovFlags[FovFlags["WAS_VISIBLE"] = fl(1)] = "WAS_VISIBLE";
-        FovFlags[FovFlags["CLAIRVOYANT_VISIBLE"] = fl(2)] = "CLAIRVOYANT_VISIBLE";
-        FovFlags[FovFlags["WAS_CLAIRVOYANT_VISIBLE"] = fl(3)] = "WAS_CLAIRVOYANT_VISIBLE";
-        FovFlags[FovFlags["TELEPATHIC_VISIBLE"] = fl(4)] = "TELEPATHIC_VISIBLE";
-        FovFlags[FovFlags["WAS_TELEPATHIC_VISIBLE"] = fl(5)] = "WAS_TELEPATHIC_VISIBLE";
-        FovFlags[FovFlags["ITEM_DETECTED"] = fl(6)] = "ITEM_DETECTED";
-        FovFlags[FovFlags["WAS_ITEM_DETECTED"] = fl(7)] = "WAS_ITEM_DETECTED";
-        FovFlags[FovFlags["ACTOR_DETECTED"] = fl(8)] = "ACTOR_DETECTED";
-        FovFlags[FovFlags["WAS_ACTOR_DETECTED"] = fl(9)] = "WAS_ACTOR_DETECTED";
-        FovFlags[FovFlags["REVEALED"] = fl(10)] = "REVEALED";
-        FovFlags[FovFlags["MAGIC_MAPPED"] = fl(11)] = "MAGIC_MAPPED";
-        FovFlags[FovFlags["IN_FOV"] = fl(12)] = "IN_FOV";
-        FovFlags[FovFlags["WAS_IN_FOV"] = fl(13)] = "WAS_IN_FOV";
-        FovFlags[FovFlags["ALWAYS_VISIBLE"] = fl(14)] = "ALWAYS_VISIBLE";
-        FovFlags[FovFlags["IS_CURSOR"] = fl(15)] = "IS_CURSOR";
-        FovFlags[FovFlags["IS_HIGHLIGHTED"] = fl(16)] = "IS_HIGHLIGHTED";
-        FovFlags[FovFlags["ANY_KIND_OF_VISIBLE"] = FovFlags.VISIBLE | FovFlags.CLAIRVOYANT_VISIBLE | FovFlags.TELEPATHIC_VISIBLE] = "ANY_KIND_OF_VISIBLE";
-        FovFlags[FovFlags["IS_WAS_ANY_KIND_OF_VISIBLE"] = FovFlags.VISIBLE |
-            FovFlags.WAS_VISIBLE |
-            FovFlags.CLAIRVOYANT_VISIBLE |
-            FovFlags.WAS_CLAIRVOYANT_VISIBLE |
-            FovFlags.TELEPATHIC_VISIBLE |
-            FovFlags.WAS_TELEPATHIC_VISIBLE] = "IS_WAS_ANY_KIND_OF_VISIBLE";
-        FovFlags[FovFlags["WAS_ANY_KIND_OF_VISIBLE"] = FovFlags.WAS_VISIBLE |
-            FovFlags.WAS_CLAIRVOYANT_VISIBLE |
-            FovFlags.WAS_TELEPATHIC_VISIBLE] = "WAS_ANY_KIND_OF_VISIBLE";
-        FovFlags[FovFlags["WAS_DETECTED"] = FovFlags.WAS_ITEM_DETECTED | FovFlags.WAS_ACTOR_DETECTED] = "WAS_DETECTED";
-        FovFlags[FovFlags["IS_DETECTED"] = FovFlags.ITEM_DETECTED | FovFlags.ACTOR_DETECTED] = "IS_DETECTED";
-        FovFlags[FovFlags["PLAYER"] = FovFlags.IN_FOV] = "PLAYER";
-        FovFlags[FovFlags["CLAIRVOYANT"] = FovFlags.CLAIRVOYANT_VISIBLE] = "CLAIRVOYANT";
-        FovFlags[FovFlags["TELEPATHIC"] = FovFlags.TELEPATHIC_VISIBLE] = "TELEPATHIC";
-        FovFlags[FovFlags["VIEWPORT_TYPES"] = FovFlags.PLAYER | FovFlags.VISIBLE |
-            FovFlags.CLAIRVOYANT |
-            FovFlags.TELEPATHIC |
-            FovFlags.ITEM_DETECTED |
-            FovFlags.ACTOR_DETECTED] = "VIEWPORT_TYPES";
-    })(FovFlags || (FovFlags = {}));
-
-    // CREDIT - This is adapted from: http://roguebasin.roguelikedevelopment.org/index.php?title=Improved_Shadowcasting_in_Java
-    class FOV {
-        constructor(strategy) {
-            this._setVisible = null;
-            this._startX = -1;
-            this._startY = -1;
-            this._maxRadius = 100;
-            this._isBlocked = strategy.isBlocked;
-            this._calcRadius = strategy.calcRadius || calcRadius;
-            this._hasXY = strategy.hasXY || TRUE;
-            this._debug = strategy.debug || NOOP;
-        }
-        calculate(x, y, maxRadius, setVisible) {
-            this._setVisible = setVisible;
-            this._setVisible(x, y, 1);
-            this._startX = x;
-            this._startY = y;
-            this._maxRadius = maxRadius + 1;
-            // uses the diagonals
-            for (let i = 4; i < 8; ++i) {
-                const d = DIRS$2[i];
-                this.castLight(1, 1.0, 0.0, 0, d[0], d[1], 0);
-                this.castLight(1, 1.0, 0.0, d[0], 0, 0, d[1]);
-            }
-        }
-        // NOTE: slope starts a 1 and ends at 0.
-        castLight(row, startSlope, endSlope, xx, xy, yx, yy) {
-            if (row >= this._maxRadius) {
-                this._debug('CAST: row=%d, start=%d, end=%d, row >= maxRadius => cancel', row, startSlope.toFixed(2), endSlope.toFixed(2));
-                return;
-            }
-            if (startSlope < endSlope) {
-                this._debug('CAST: row=%d, start=%d, end=%d, start < end => cancel', row, startSlope.toFixed(2), endSlope.toFixed(2));
-                return;
-            }
-            this._debug('CAST: row=%d, start=%d, end=%d, x=%d,%d, y=%d,%d', row, startSlope.toFixed(2), endSlope.toFixed(2), xx, xy, yx, yy);
-            let nextStart = startSlope;
-            let blocked = false;
-            let deltaY = -row;
-            let currentX, currentY, outerSlope, innerSlope, maxSlope, minSlope = 0;
-            for (let deltaX = -row; deltaX <= 0; deltaX++) {
-                currentX = Math.floor(this._startX + deltaX * xx + deltaY * xy);
-                currentY = Math.floor(this._startY + deltaX * yx + deltaY * yy);
-                outerSlope = (deltaX - 0.5) / (deltaY + 0.5);
-                innerSlope = (deltaX + 0.5) / (deltaY - 0.5);
-                maxSlope = deltaX / (deltaY + 0.5);
-                minSlope = (deltaX + 0.5) / deltaY;
-                if (!this._hasXY(currentX, currentY)) {
-                    blocked = true;
-                    // nextStart = innerSlope;
-                    continue;
-                }
-                this._debug('- test %d,%d ... start=%d, min=%d, max=%d, end=%d, dx=%d, dy=%d', currentX, currentY, startSlope.toFixed(2), maxSlope.toFixed(2), minSlope.toFixed(2), endSlope.toFixed(2), deltaX, deltaY);
-                if (startSlope < minSlope) {
-                    blocked = this._isBlocked(currentX, currentY);
-                    continue;
-                }
-                else if (endSlope > maxSlope) {
-                    break;
-                }
-                //check if it's within the lightable area and light if needed
-                const radius = this._calcRadius(deltaX, deltaY);
-                if (radius < this._maxRadius) {
-                    const bright = 1 - radius / this._maxRadius;
-                    this._setVisible(currentX, currentY, bright);
-                    this._debug('       - visible');
-                }
-                if (blocked) {
-                    //previous cell was a blocking one
-                    if (this._isBlocked(currentX, currentY)) {
-                        //hit a wall
-                        this._debug('       - blocked ... nextStart: %d', innerSlope.toFixed(2));
-                        nextStart = innerSlope;
-                        continue;
-                    }
-                    else {
-                        blocked = false;
-                    }
-                }
-                else {
-                    if (this._isBlocked(currentX, currentY) &&
-                        row < this._maxRadius) {
-                        //hit a wall within sight line
-                        this._debug('       - blocked ... start:%d, end:%d, nextStart: %d', nextStart.toFixed(2), outerSlope.toFixed(2), innerSlope.toFixed(2));
-                        blocked = true;
-                        this.castLight(row + 1, nextStart, outerSlope, xx, xy, yx, yy);
-                        nextStart = innerSlope;
-                    }
-                }
-            }
-            if (!blocked) {
-                this.castLight(row + 1, nextStart, endSlope, xx, xy, yx, yy);
-            }
-        }
-    }
-
-    // import * as GWU from 'gw-utils';
-    class FovSystem {
-        constructor(site, opts = {}) {
-            // needsUpdate: boolean;
-            this.changed = true;
-            this._callback = NOOP;
-            this.follow = null;
-            this.site = site;
-            let flag = 0;
-            const visible = opts.visible || opts.alwaysVisible;
-            if (opts.revealed || (visible && opts.revealed !== false))
-                flag |= FovFlags.REVEALED;
-            if (visible)
-                flag |= FovFlags.VISIBLE;
-            this.flags = make$7(site.width, site.height, flag);
-            // this.needsUpdate = true;
-            if (opts.callback) {
-                this.callback = opts.callback;
-            }
-            this.fov = new FOV({
-                isBlocked: (x, y) => {
-                    return this.site.blocksVision(x, y);
-                },
-                hasXY: (x, y) => {
-                    return (x >= 0 &&
-                        y >= 0 &&
-                        x < this.site.width &&
-                        y < this.site.height);
-                },
-            });
-            if (opts.alwaysVisible) {
-                this.makeAlwaysVisible();
-            }
-            if (opts.visible || opts.alwaysVisible) {
-                forRect(site.width, site.height, (x, y) => this._callback(x, y, true));
-            }
-        }
-        get callback() {
-            return this._callback;
-        }
-        set callback(v) {
-            if (!v) {
-                this._callback = NOOP;
-            }
-            else if (typeof v === 'function') {
-                this._callback = v;
-            }
-            else {
-                this._callback = v.onFovChange.bind(v);
-            }
-        }
-        getFlag(x, y) {
-            return this.flags[x][y];
-        }
-        isVisible(x, y) {
-            return !!((this.flags.get(x, y) || 0) & FovFlags.VISIBLE);
-        }
-        isAnyKindOfVisible(x, y) {
-            return !!((this.flags.get(x, y) || 0) & FovFlags.ANY_KIND_OF_VISIBLE);
-        }
-        isClairvoyantVisible(x, y) {
-            return !!((this.flags.get(x, y) || 0) & FovFlags.CLAIRVOYANT_VISIBLE);
-        }
-        isTelepathicVisible(x, y) {
-            return !!((this.flags.get(x, y) || 0) & FovFlags.TELEPATHIC_VISIBLE);
-        }
-        isInFov(x, y) {
-            return !!((this.flags.get(x, y) || 0) & FovFlags.IN_FOV);
-        }
-        isDirectlyVisible(x, y) {
-            const flags = FovFlags.VISIBLE | FovFlags.IN_FOV;
-            return ((this.flags.get(x, y) || 0) & flags) === flags;
-        }
-        isActorDetected(x, y) {
-            return !!((this.flags.get(x, y) || 0) & FovFlags.ACTOR_DETECTED);
-        }
-        isItemDetected(x, y) {
-            return !!((this.flags.get(x, y) || 0) & FovFlags.ITEM_DETECTED);
-        }
-        isMagicMapped(x, y) {
-            return !!((this.flags.get(x, y) || 0) & FovFlags.MAGIC_MAPPED);
-        }
-        isRevealed(x, y) {
-            return !!((this.flags.get(x, y) || 0) & FovFlags.REVEALED);
-        }
-        fovChanged(x, y) {
-            const flags = this.flags.get(x, y) || 0;
-            const isVisible = !!(flags & FovFlags.ANY_KIND_OF_VISIBLE);
-            const wasVisible = !!(flags & FovFlags.WAS_ANY_KIND_OF_VISIBLE);
-            return isVisible !== wasVisible;
-        }
-        wasAnyKindOfVisible(x, y) {
-            return !!((this.flags.get(x, y) || 0) & FovFlags.WAS_ANY_KIND_OF_VISIBLE);
-        }
-        makeAlwaysVisible() {
-            this.flags.update((v) => v |
-                (FovFlags.ALWAYS_VISIBLE | FovFlags.REVEALED | FovFlags.VISIBLE));
-            // TODO - onFovChange?
-            this.changed = true;
-        }
-        makeCellAlwaysVisible(x, y) {
-            this.flags[x][y] |=
-                FovFlags.ALWAYS_VISIBLE | FovFlags.REVEALED | FovFlags.VISIBLE;
-            // TODO - onFovChange?
-            this.changed = true;
-        }
-        revealAll(makeVisibleToo = true) {
-            const flag = FovFlags.REVEALED | (makeVisibleToo ? FovFlags.VISIBLE : 0);
-            this.flags.update((v) => v | flag);
-            // TODO - onFovChange?
-            this.changed = true;
-        }
-        revealCell(x, y, makeVisibleToo = true) {
-            const flag = FovFlags.REVEALED | (makeVisibleToo ? FovFlags.VISIBLE : 0);
-            this.flags[x][y] |= flag;
-            // TODO - onFovChange?
-            this.changed = true;
-        }
-        hideCell(x, y) {
-            this.flags[x][y] &= ~(FovFlags.MAGIC_MAPPED |
-                FovFlags.REVEALED |
-                FovFlags.ALWAYS_VISIBLE);
-            this.flags[x][y] = this.demoteCellVisibility(this.flags[x][y]); // clears visible, etc...
-            // TODO - onFovChange?
-            this.changed = true;
-        }
-        magicMapCell(x, y) {
-            this.flags[x][y] |= FovFlags.MAGIC_MAPPED;
-            this.changed = true;
-            // TODO - onFovChange?
-        }
-        reset() {
-            this.flags.fill(0);
-            this.changed = true;
-            // TODO - onFovChange?
-        }
-        // get changed(): boolean {
-        //     return this._changed;
-        // }
-        // set changed(v: boolean) {
-        //     this._changed = v;
-        //     this.needsUpdate = this.needsUpdate || v;
-        // }
-        // CURSOR
-        setCursor(x, y, keep = false) {
-            if (!keep) {
-                this.flags.update((f) => f & ~FovFlags.IS_CURSOR);
-            }
-            this.flags[x][y] |= FovFlags.IS_CURSOR;
-            this.changed = true;
-        }
-        clearCursor(x, y) {
-            if (x === undefined || y === undefined) {
-                this.flags.update((f) => f & ~FovFlags.IS_CURSOR);
-            }
-            else {
-                this.flags[x][y] &= ~FovFlags.IS_CURSOR;
-            }
-            this.changed = true;
-        }
-        isCursor(x, y) {
-            return !!(this.flags[x][y] & FovFlags.IS_CURSOR);
-        }
-        // HIGHLIGHT
-        setHighlight(x, y, keep = false) {
-            if (!keep) {
-                this.flags.update((f) => f & ~FovFlags.IS_HIGHLIGHTED);
-            }
-            this.flags[x][y] |= FovFlags.IS_HIGHLIGHTED;
-            this.changed = true;
-        }
-        clearHighlight(x, y) {
-            if (x === undefined || y === undefined) {
-                this.flags.update((f) => f & ~FovFlags.IS_HIGHLIGHTED);
-            }
-            else {
-                this.flags[x][y] &= ~FovFlags.IS_HIGHLIGHTED;
-            }
-            this.changed = true;
-        }
-        isHighlight(x, y) {
-            return !!(this.flags[x][y] & FovFlags.IS_HIGHLIGHTED);
-        }
-        // COPY
-        // copy(other: FovSystem) {
-        //     this.site = other.site;
-        //     this.flags.copy(other.flags);
-        //     this.fov = other.fov;
-        //     this.follow = other.follow;
-        //     this.onFovChange = other.onFovChange;
-        //     // this.needsUpdate = other.needsUpdate;
-        //     // this._changed = other._changed;
-        // }
-        //////////////////////////
-        // UPDATE
-        demoteCellVisibility(flag) {
-            flag &= ~(FovFlags.WAS_ANY_KIND_OF_VISIBLE | FovFlags.WAS_IN_FOV | FovFlags.WAS_DETECTED);
-            if (flag & FovFlags.IN_FOV) {
-                flag &= ~FovFlags.IN_FOV;
-                flag |= FovFlags.WAS_IN_FOV;
-            }
-            if (flag & FovFlags.VISIBLE) {
-                flag &= ~FovFlags.VISIBLE;
-                flag |= FovFlags.WAS_VISIBLE;
-            }
-            if (flag & FovFlags.CLAIRVOYANT_VISIBLE) {
-                flag &= ~FovFlags.CLAIRVOYANT_VISIBLE;
-                flag |= FovFlags.WAS_CLAIRVOYANT_VISIBLE;
-            }
-            if (flag & FovFlags.TELEPATHIC_VISIBLE) {
-                flag &= ~FovFlags.TELEPATHIC_VISIBLE;
-                flag |= FovFlags.WAS_TELEPATHIC_VISIBLE;
-            }
-            if (flag & FovFlags.ALWAYS_VISIBLE) {
-                flag |= FovFlags.VISIBLE;
-            }
-            if (flag & FovFlags.ITEM_DETECTED) {
-                flag &= ~FovFlags.ITEM_DETECTED;
-                flag |= FovFlags.WAS_ITEM_DETECTED;
-            }
-            if (flag & FovFlags.ACTOR_DETECTED) {
-                flag &= ~FovFlags.ACTOR_DETECTED;
-                flag |= FovFlags.WAS_ACTOR_DETECTED;
-            }
-            return flag;
-        }
-        updateCellVisibility(flag, x, y) {
-            const isVisible = !!(flag & FovFlags.ANY_KIND_OF_VISIBLE);
-            const wasVisible = !!(flag & FovFlags.WAS_ANY_KIND_OF_VISIBLE);
-            if (isVisible && wasVisible) ;
-            else if (isVisible && !wasVisible) {
-                // if the cell became visible this move
-                this.flags[x][y] |= FovFlags.REVEALED;
-                this._callback(x, y, isVisible);
-            }
-            else if (!isVisible && wasVisible) {
-                // if the cell ceased being visible this move
-                this._callback(x, y, isVisible);
-            }
-            return isVisible;
-        }
-        // protected updateCellClairyvoyance(
-        //     flag: number,
-        //     x: number,
-        //     y: number
-        // ): boolean {
-        //     const isClairy = !!(flag & FovFlags.CLAIRVOYANT_VISIBLE);
-        //     const wasClairy = !!(flag & FovFlags.WAS_CLAIRVOYANT_VISIBLE);
-        //     if (isClairy && wasClairy) {
-        //         // if (this.site.lightChanged(x, y)) {
-        //         //     this.site.redrawCell(x, y);
-        //         // }
-        //     } else if (!isClairy && wasClairy) {
-        //         // ceased being clairvoyantly visible
-        //         this._callback(x, y, isClairy);
-        //     } else if (!wasClairy && isClairy) {
-        //         // became clairvoyantly visible
-        //         this._callback(x, y, isClairy);
-        //     }
-        //     return isClairy;
-        // }
-        // protected updateCellTelepathy(flag: number, x: number, y: number): boolean {
-        //     const isTele = !!(flag & FovFlags.TELEPATHIC_VISIBLE);
-        //     const wasTele = !!(flag & FovFlags.WAS_TELEPATHIC_VISIBLE);
-        //     if (isTele && wasTele) {
-        //         // if (this.site.lightChanged(x, y)) {
-        //         //     this.site.redrawCell(x, y);
-        //         // }
-        //     } else if (!isTele && wasTele) {
-        //         // ceased being telepathically visible
-        //         this._callback(x, y, isTele);
-        //     } else if (!wasTele && isTele) {
-        //         // became telepathically visible
-        //         this._callback(x, y, isTele);
-        //     }
-        //     return isTele;
-        // }
-        updateCellDetect(flag, x, y) {
-            const isDetect = !!(flag & FovFlags.IS_DETECTED);
-            const wasDetect = !!(flag & FovFlags.WAS_DETECTED);
-            if (isDetect && wasDetect) ;
-            else if (!isDetect && wasDetect) {
-                // ceased being detected visible
-                this._callback(x, y, isDetect);
-            }
-            else if (!wasDetect && isDetect) {
-                // became detected visible
-                this._callback(x, y, isDetect);
-            }
-            return isDetect;
-        }
-        // protected updateItemDetect(flag: number, x: number, y: number): boolean {
-        //     const isItem = !!(flag & FovFlags.ITEM_DETECTED);
-        //     const wasItem = !!(flag & FovFlags.WAS_ITEM_DETECTED);
-        //     if (isItem && wasItem) {
-        //         // if (this.site.lightChanged(x, y)) {
-        //         //     this.site.redrawCell(x, y);
-        //         // }
-        //     } else if (!isItem && wasItem) {
-        //         // ceased being detected visible
-        //         this._callback(x, y, isItem);
-        //     } else if (!wasItem && isItem) {
-        //         // became detected visible
-        //         this._callback(x, y, isItem);
-        //     }
-        //     return isItem;
-        // }
-        promoteCellVisibility(flag, x, y) {
-            if (flag & FovFlags.IN_FOV &&
-                this.site.hasVisibleLight(x, y) // &&
-            // !(cell.flags.cellMech & FovFlagsMech.DARKENED)
-            ) {
-                flag = this.flags[x][y] |= FovFlags.VISIBLE;
-            }
-            if (this.updateCellVisibility(flag, x, y))
-                return;
-            // if (this.updateCellClairyvoyance(flag, x, y)) return;
-            // if (this.updateCellTelepathy(flag, x, y)) return;
-            if (this.updateCellDetect(flag, x, y))
-                return;
-            // if (this.updateItemDetect(flag, x, y)) return;
-        }
-        updateFor(subject) {
-            return this.update(subject.x, subject.y, subject.visionDistance);
-        }
-        update(cx, cy, cr) {
-            if (cx === undefined) {
-                if (this.follow) {
-                    return this.updateFor(this.follow);
-                }
-            }
-            // if (
-            //     // !this.needsUpdate &&
-            //     cx === undefined &&
-            //     !this.site.lightingChanged()
-            // ) {
-            //     return false;
-            // }
-            if (cr === undefined) {
-                cr = this.site.width + this.site.height;
-            }
-            // this.needsUpdate = false;
-            this.changed = true; // we updated something...
-            this.flags.update(this.demoteCellVisibility.bind(this));
-            this.site.eachViewport((x, y, radius, type) => {
-                let flag = type & FovFlags.VIEWPORT_TYPES;
-                if (!flag)
-                    flag = FovFlags.VISIBLE;
-                // if (!flag)
-                //     throw new Error('Received invalid viewport type: ' + Flag.toString(FovFlags, type));
-                if (radius == 0) {
-                    this.flags[x][y] |= flag;
-                    return;
-                }
-                this.fov.calculate(x, y, radius, (x, y, v) => {
-                    if (v) {
-                        this.flags[x][y] |= flag;
-                    }
-                });
-            });
-            if (cx !== undefined && cy !== undefined) {
-                this.fov.calculate(cx, cy, cr, (x, y, v) => {
-                    if (v) {
-                        this.flags[x][y] |= FovFlags.PLAYER;
-                    }
-                });
-            }
-            // if (PLAYER.bonus.clairvoyance < 0) {
-            //   discoverCell(PLAYER.xLoc, PLAYER.yLoc);
-            // }
-            //
-            // if (PLAYER.bonus.clairvoyance != 0) {
-            // 	updateClairvoyance();
-            // }
-            //
-            // updateTelepathy();
-            // updateMonsterDetection();
-            // updateLighting();
-            this.flags.forEach(this.promoteCellVisibility.bind(this));
-            // if (PLAYER.status.hallucinating > 0) {
-            // 	for (theItem of DUNGEON.items) {
-            // 		if ((pmap[theItem.xLoc][theItem.yLoc].flags & DISCOVERED) && refreshDisplay) {
-            // 			refreshDungeonCell(theItem.xLoc, theItem.yLoc);
-            // 		}
-            // 	}
-            // 	for (monst of DUNGEON.monsters) {
-            // 		if ((pmap[monst.xLoc][monst.yLoc].flags & DISCOVERED) && refreshDisplay) {
-            // 			refreshDungeonCell(monst.xLoc, monst.yLoc);
-            // 		}
-            // 	}
-            // }
-            return true;
-        }
-    }
-
-    var index$5 = /*#__PURE__*/Object.freeze({
-        __proto__: null,
-        get FovFlags () { return FovFlags; },
-        FOV: FOV,
-        FovSystem: FovSystem
-    });
-
-    const FORBIDDEN = -1;
-    const OBSTRUCTION = -2;
-    const AVOIDED = 10;
-    const NO_PATH = 30000;
-    function makeCostLink(i) {
-        return {
-            distance: 0,
-            cost: 0,
-            index: i,
-            left: null,
-            right: null,
-        };
-    }
-    function makeDijkstraMap(w, h) {
-        return {
-            eightWays: false,
-            front: makeCostLink(-1),
-            links: makeArray(w * h, (i) => makeCostLink(i)),
-            width: w,
-            height: h,
-        };
-    }
-    function getLink(map, x, y) {
-        return map.links[x + map.width * y];
-    }
-    const DIRS = DIRS$2;
-    function update(map) {
-        let dir, dirs;
-        let linkIndex;
-        let left = null, right = null, link = null;
-        dirs = map.eightWays ? 8 : 4;
-        let head = map.front.right;
-        map.front.right = null;
-        while (head != null) {
-            for (dir = 0; dir < dirs; dir++) {
-                linkIndex = head.index + (DIRS[dir][0] + map.width * DIRS[dir][1]);
-                if (linkIndex < 0 || linkIndex >= map.width * map.height)
-                    continue;
-                link = map.links[linkIndex];
-                // verify passability
-                if (link.cost < 0)
-                    continue;
-                let diagCost = 0;
-                if (dir >= 4) {
-                    diagCost = 0.4142;
-                    let way1, way1index, way2, way2index;
-                    way1index = head.index + DIRS[dir][0];
-                    if (way1index < 0 || way1index >= map.width * map.height)
-                        continue;
-                    way2index = head.index + map.width * DIRS[dir][1];
-                    if (way2index < 0 || way2index >= map.width * map.height)
-                        continue;
-                    way1 = map.links[way1index];
-                    way2 = map.links[way2index];
-                    if (way1.cost == OBSTRUCTION || way2.cost == OBSTRUCTION)
-                        continue;
-                }
-                if (head.distance + link.cost + diagCost < link.distance) {
-                    link.distance = head.distance + link.cost + diagCost;
-                    // reinsert the touched cell; it'll be close to the beginning of the list now, so
-                    // this will be very fast.  start by removing it.
-                    if (link.right != null)
-                        link.right.left = link.left;
-                    if (link.left != null)
-                        link.left.right = link.right;
-                    left = head;
-                    right = head.right;
-                    while (right != null && right.distance < link.distance) {
-                        left = right;
-                        right = right.right;
-                    }
-                    if (left != null)
-                        left.right = link;
-                    link.right = right;
-                    link.left = left;
-                    if (right != null)
-                        right.left = link;
-                }
-            }
-            right = head.right;
-            head.left = null;
-            head.right = null;
-            head = right;
-        }
-    }
-    function clear(map, maxDistance, eightWays) {
-        let i;
-        map.eightWays = eightWays;
-        map.front.right = null;
-        for (i = 0; i < map.width * map.height; i++) {
-            map.links[i].distance = maxDistance;
-            map.links[i].left = map.links[i].right = null;
-        }
-    }
-    function setDistance(map, x, y, distance) {
-        let left, right, link;
-        if (x > 0 && y > 0 && x < map.width - 1 && y < map.height - 1) {
-            link = getLink(map, x, y);
-            if (link.distance > distance) {
-                link.distance = distance;
-                if (link.right != null)
-                    link.right.left = link.left;
-                if (link.left != null)
-                    link.left.right = link.right;
-                left = map.front;
-                right = map.front.right;
-                while (right != null && right.distance < link.distance) {
-                    left = right;
-                    right = right.right;
-                }
-                link.right = right;
-                link.left = left;
-                left.right = link;
-                if (right != null)
-                    right.left = link;
-            }
-        }
-    }
-    function isBoundaryXY(data, x, y) {
-        if (x <= 0 || y <= 0)
-            return true;
-        if (x >= data.length - 1 || y >= data[0].length - 1)
-            return true;
-        return false;
-    }
-    function batchOutput(map, distanceMap) {
-        let i, j;
-        update(map);
-        // transfer results to the distanceMap
-        for (i = 0; i < map.width; i++) {
-            for (j = 0; j < map.height; j++) {
-                distanceMap[i][j] = getLink(map, i, j).distance;
-            }
-        }
-    }
-    var DIJKSTRA_MAP;
-    function calculateDistances(distanceMap, destinationX, destinationY, costMap, eightWays = false, maxDistance = NO_PATH) {
-        const width = distanceMap.length;
-        const height = distanceMap[0].length;
-        if (maxDistance <= 0)
-            maxDistance = NO_PATH;
-        if (!DIJKSTRA_MAP ||
-            DIJKSTRA_MAP.width < width ||
-            DIJKSTRA_MAP.height < height) {
-            DIJKSTRA_MAP = makeDijkstraMap(width, height);
-        }
-        DIJKSTRA_MAP.width = width;
-        DIJKSTRA_MAP.height = height;
-        let i, j;
-        for (i = 0; i < width; i++) {
-            for (j = 0; j < height; j++) {
-                getLink(DIJKSTRA_MAP, i, j).cost = isBoundaryXY(costMap, i, j)
-                    ? OBSTRUCTION
-                    : costMap[i][j];
-            }
-        }
-        clear(DIJKSTRA_MAP, maxDistance, eightWays);
-        setDistance(DIJKSTRA_MAP, destinationX, destinationY, 0);
-        batchOutput(DIJKSTRA_MAP, distanceMap);
-        // TODO - Add this where called!
-        //   distanceMap.x = destinationX;
-        //   distanceMap.y = destinationY;
-    }
-    // Returns null if there are no beneficial moves.
-    // If preferDiagonals is true, we will prefer diagonal moves.
-    // Always rolls downhill on the distance map.
-    // If monst is provided, do not return a direction pointing to
-    // a cell that the monster avoids.
-    function nextStep(distanceMap, x, y, isBlocked, useDiagonals = false) {
-        let newX, newY, bestScore;
-        let dir, bestDir;
-        let blocked;
-        // brogueAssert(coordinatesAreInMap(x, y));
-        bestScore = 0;
-        bestDir = NO_DIRECTION;
-        for (dir = 0; dir < (useDiagonals ? 8 : 4); ++dir) {
-            newX = x + DIRS$2[dir][0];
-            newY = y + DIRS$2[dir][1];
-            blocked = isBlocked(newX, newY, x, y, distanceMap);
-            if (!blocked &&
-                distanceMap[x][y] - distanceMap[newX][newY] > bestScore) {
-                bestDir = dir;
-                bestScore = distanceMap[x][y] - distanceMap[newX][newY];
-            }
-        }
-        return DIRS$2[bestDir] || null;
-    }
-    function getClosestValidLocationOnMap(distanceMap, x, y) {
-        let i, j, dist, closestDistance, lowestMapScore;
-        let locX = -1;
-        let locY = -1;
-        const width = distanceMap.length;
-        const height = distanceMap[0].length;
-        closestDistance = 10000;
-        lowestMapScore = 10000;
-        for (i = 1; i < width - 1; i++) {
-            for (j = 1; j < height - 1; j++) {
-                if (distanceMap[i][j] >= 0 && distanceMap[i][j] < NO_PATH) {
-                    dist = (i - x) * (i - x) + (j - y) * (j - y);
-                    if (dist < closestDistance ||
-                        (dist == closestDistance &&
-                            distanceMap[i][j] < lowestMapScore)) {
-                        locX = i;
-                        locY = j;
-                        closestDistance = dist;
-                        lowestMapScore = distanceMap[i][j];
-                    }
-                }
-            }
-        }
-        if (locX >= 0)
-            return [locX, locY];
-        return null;
-    }
-    // Populates path[][] with a list of coordinates starting at origin and traversing down the map. Returns the number of steps in the path.
-    function getPath(distanceMap, originX, originY, isBlocked, eightWays = false) {
-        // actor = actor || GW.PLAYER;
-        let x = originX;
-        let y = originY;
-        let steps = 0;
-        if (distanceMap[x][y] < 0 || distanceMap[x][y] >= NO_PATH) {
-            const loc = getClosestValidLocationOnMap(distanceMap, x, y);
-            if (loc) {
-                x = loc[0];
-                y = loc[1];
-            }
-        }
-        const path = [[x, y]];
-        let dir;
-        do {
-            dir = nextStep(distanceMap, x, y, isBlocked, eightWays);
-            if (dir) {
-                x += dir[0];
-                y += dir[1];
-                // path[steps][0] = x;
-                // path[steps][1] = y;
-                path.push([x, y]);
-                steps++;
-                // brogueAssert(coordinatesAreInMap(x, y));
-            }
-        } while (dir);
-        return steps ? path : null;
-    }
-
-    var path = /*#__PURE__*/Object.freeze({
-        __proto__: null,
-        FORBIDDEN: FORBIDDEN,
-        OBSTRUCTION: OBSTRUCTION,
-        AVOIDED: AVOIDED,
-        NO_PATH: NO_PATH,
-        calculateDistances: calculateDistances,
-        nextStep: nextStep,
-        getPath: getPath
-    });
-
-    /**
-     * Data for an event listener.
-     */
-    class Listener {
-        /**
-         * Creates a Listener.
-         * @param {EventFn} fn The listener function.
-         * @param {any} [context=null] The context to invoke the listener with.
-         * @param {boolean} [once=false] Specify if the listener is a one-time listener.
-         */
-        constructor(fn, context, once = false) {
-            this.fn = fn;
-            this.context = context || null;
-            this.once = once || false;
-            this.next = null;
-        }
-        /**
-         * Compares this Listener to the parameters.
-         * @param {EventFn} fn - The function
-         * @param {any} [context] - The context Object.
-         * @param {boolean} [once] - Whether or not it is a one time handler.
-         * @returns Whether or not this Listener matches the parameters.
-         */
-        matches(fn, context, once) {
-            return (this.fn === fn &&
-                (once === undefined || once == this.once) &&
-                (!context || this.context === context));
-        }
-    }
-    var EVENTS = {};
-    /**
-     * Add a listener for a given event.
-     *
-     * @param {String} event The event name.
-     * @param {EventFn} fn The listener function.
-     * @param {*} context The context to invoke the listener with.
-     * @param {boolean} once Specify if the listener is a one-time listener.
-     * @returns {Listener}
-     */
-    function addListener(event, fn, context, once = false) {
-        if (typeof fn !== 'function') {
-            throw new TypeError('The listener must be a function');
-        }
-        const listener = new Listener(fn, context || null, once);
-        push(EVENTS, event, listener);
-        return listener;
-    }
-    /**
-     * Add a listener for a given event.
-     *
-     * @param {String} event The event name.
-     * @param {EventFn} fn The listener function.
-     * @param {*} context The context to invoke the listener with.
-     * @param {boolean} once Specify if the listener is a one-time listener.
-     * @returns {Listener}
-     */
-    function on(event, fn, context, once = false) {
-        return addListener(event, fn, context, once);
-    }
-    /**
-     * Add a one-time listener for a given event.
-     *
-     * @param {(String|Symbol)} event The event name.
-     * @param {EventFn} fn The listener function.
-     * @param {*} [context=this] The context to invoke the listener with.
-     * @returns {EventEmitter} `this`.
-     * @public
-     */
-    function once(event, fn, context) {
-        return addListener(event, fn, context, true);
-    }
-    /**
-     * Remove the listeners of a given event.
-     *
-     * @param {String} event The event name.
-     * @param {EventFn} fn Only remove the listeners that match this function.
-     * @param {*} context Only remove the listeners that have this context.
-     * @param {boolean} once Only remove one-time listeners.
-     * @returns {EventEmitter} `this`.
-     * @public
-     */
-    function removeListener(event, fn, context, once = false) {
-        if (!EVENTS[event])
-            return false;
-        if (!fn)
-            return false;
-        let success = false;
-        forEach(EVENTS[event], (obj) => {
-            if (obj.matches(fn, context, once)) {
-                remove(EVENTS, event, obj);
-                success = true;
-            }
-        });
-        return success;
-    }
-    /**
-     * Remove the listeners of a given event.
-     *
-     * @param {String} event The event name.
-     * @param {EventFn} fn Only remove the listeners that match this function.
-     * @param {*} context Only remove the listeners that have this context.
-     * @param {boolean} once Only remove one-time listeners.
-     * @returns {EventEmitter} `this`.
-     * @public
-     */
-    function off(event, fn, context, once = false) {
-        return removeListener(event, fn, context, once);
-    }
-    /**
-     * Clear event by name.
-     *
-     * @param {String} evt The Event name.
-     */
-    function clearEvent(event) {
-        if (EVENTS[event]) {
-            EVENTS[event] = null;
-        }
-    }
-    /**
-     * Remove all listeners, or those of the specified event.
-     *
-     * @param {(String|Symbol)} [event] The event name.
-     * @returns {EventEmitter} `this`.
-     * @public
-     */
-    function removeAllListeners(event) {
-        if (event) {
-            clearEvent(event);
-        }
-        else {
-            EVENTS = {};
-        }
-    }
-    /**
-     * Calls each of the listeners registered for a given event.
-     *
-     * @param {String} event The event name.
-     * @param {...*} args The additional arguments to the event handlers.
-     * @returns {boolean} `true` if the event had listeners, else `false`.
-     * @public
-     */
-    async function emit(...args) {
-        const event = args[0];
-        if (!EVENTS[event])
-            return false; // no events to send
-        let listener = EVENTS[event];
-        while (listener) {
-            let next = listener.next;
-            if (listener.once)
-                remove(EVENTS, event, listener);
-            await listener.fn.apply(listener.context, args);
-            listener = next;
-        }
-        return true;
-    }
-
-    var events = /*#__PURE__*/Object.freeze({
-        __proto__: null,
-        Listener: Listener,
-        addListener: addListener,
-        on: on,
-        once: once,
-        removeListener: removeListener,
-        off: off,
-        clearEvent: clearEvent,
-        removeAllListeners: removeAllListeners,
-        emit: emit
-    });
-
-    function make$5(v) {
-        if (v === undefined)
-            return () => 100;
-        if (v === null)
-            return () => 0;
-        if (typeof v === 'number')
-            return () => v;
-        if (typeof v === 'function')
-            return v;
-        let base = {};
-        if (typeof v === 'string') {
-            const parts = v.split(/[,|]/).map((t) => t.trim());
-            base = {};
-            parts.forEach((p) => {
-                let [level, weight] = p.split(':');
-                base[level] = Number.parseInt(weight) || 100;
-            });
-        }
-        else {
-            base = v;
-        }
-        const parts = Object.entries(base);
-        const funcs = parts.map(([levels, frequency]) => {
-            let value = 0;
-            if (typeof frequency === 'string') {
-                value = Number.parseInt(frequency);
-            }
-            else {
-                value = frequency;
-            }
-            if (levels.includes('-')) {
-                let [start, end] = levels
-                    .split('-')
-                    .map((t) => t.trim())
-                    .map((v) => Number.parseInt(v));
-                return (level) => level >= start && level <= end ? value : 0;
-            }
-            else if (levels.endsWith('+')) {
-                const found = Number.parseInt(levels);
-                return (level) => (level >= found ? value : 0);
-            }
-            else {
-                const found = Number.parseInt(levels);
-                return (level) => (level === found ? value : 0);
-            }
-        });
-        if (funcs.length == 1)
-            return funcs[0];
-        return (level) => funcs.reduce((out, fn) => out || fn(level), 0);
-    }
-
-    var frequency = /*#__PURE__*/Object.freeze({
-        __proto__: null,
-        make: make$5
-    });
-
-    class Scheduler {
-        constructor() {
-            this.next = null;
-            this.time = 0;
-            this.cache = null;
-        }
-        clear() {
-            while (this.next) {
-                const current = this.next;
-                this.next = current.next;
-                current.next = this.cache;
-                this.cache = current;
-            }
-        }
-        push(fn, delay = 1) {
-            let item;
-            if (this.cache) {
-                item = this.cache;
-                this.cache = item.next;
-                item.next = null;
-            }
-            else {
-                item = { fn: null, time: 0, next: null };
-            }
-            item.fn = fn;
-            item.time = this.time + delay;
-            if (!this.next) {
-                this.next = item;
-            }
-            else {
-                let current = this;
-                let next = current.next;
-                while (next && next.time <= item.time) {
-                    current = next;
-                    next = current.next;
-                }
-                item.next = current.next;
-                current.next = item;
-            }
-            return item;
-        }
-        pop() {
-            const n = this.next;
-            if (!n)
-                return null;
-            this.next = n.next;
-            n.next = this.cache;
-            this.cache = n;
-            this.time = Math.max(n.time, this.time); // so you can schedule -1 as a time uint
-            return n.fn;
-        }
-        remove(item) {
-            if (!item || !this.next)
-                return;
-            if (this.next === item) {
-                this.next = item.next;
-                return;
-            }
-            let prev = this.next;
-            let current = prev.next;
-            while (current && current !== item) {
-                prev = current;
-                current = current.next;
-            }
-            if (current === item) {
-                prev.next = current.next;
-            }
-        }
-    }
-    // export const scheduler = new Scheduler();
-
-    var scheduler = /*#__PURE__*/Object.freeze({
-        __proto__: null,
-        Scheduler: Scheduler
     });
 
     function toColorInt(r, g, b, base256) {
@@ -4044,7 +2462,7 @@
         }
         return c;
     }
-    function make$4(...args) {
+    function make$7(...args) {
         let arg = args[0];
         let base256 = args[1];
         if (args.length == 0)
@@ -4083,7 +2501,7 @@
                 return fromName(arg);
             }
         }
-        return make$4(arg, args[1]);
+        return make$7(arg, args[1]);
     }
     // adjusts the luminosity of 2 colors to ensure there is enough separation between them
     function separate(a, b) {
@@ -4143,7 +2561,7 @@
         if (args.length == 1) {
             info = args[0];
         }
-        const c = info instanceof Color ? info : make$4(info);
+        const c = info instanceof Color ? info : make$7(info);
         // @ts-ignore
         c._const = true;
         colors[name] = c;
@@ -4198,7 +2616,7 @@
     installSpread('silver', [75, 75, 75]);
     installSpread('gold', [100, 85, 0]);
 
-    var index$4 = /*#__PURE__*/Object.freeze({
+    var index$5 = /*#__PURE__*/Object.freeze({
         __proto__: null,
         colors: colors,
         Color: Color,
@@ -4206,7 +2624,7 @@
         fromCss: fromCss,
         fromName: fromName,
         fromNumber: fromNumber,
-        make: make$4,
+        make: make$7,
         from: from$2,
         separate: separate,
         swap: swap,
@@ -4221,8 +2639,8 @@
     class Mixer {
         constructor(base) {
             this.ch = first(base === null || base === void 0 ? void 0 : base.ch, -1);
-            this.fg = make$4(base === null || base === void 0 ? void 0 : base.fg);
-            this.bg = make$4(base === null || base === void 0 ? void 0 : base.bg);
+            this.fg = make$7(base === null || base === void 0 ? void 0 : base.fg);
+            this.bg = make$7(base === null || base === void 0 ? void 0 : base.bg);
         }
         _changed() {
             return this;
@@ -4973,7 +3391,7 @@
         }
     }
 
-    var index$3 = /*#__PURE__*/Object.freeze({
+    var index$4 = /*#__PURE__*/Object.freeze({
         __proto__: null,
         configure: configure,
         compile: compile,
@@ -4996,7 +3414,7 @@
         hash: hash
     });
 
-    class DataBuffer {
+    class Buffer$1 {
         constructor(width, height) {
             this.changed = false;
             this._width = width;
@@ -5016,7 +3434,7 @@
             return x >= 0 && y >= 0 && x < this.width && y < this.height;
         }
         clone() {
-            const other = new DataBuffer(this._width, this._height);
+            const other = new Buffer$1(this._width, this._height);
             other.copy(this);
             return other;
         }
@@ -5272,7 +3690,1599 @@
             console.log(data.join('\n'));
         }
     }
-    class Buffer extends DataBuffer {
+    function make$6(width, height) {
+        return new Buffer$1(width, height);
+    }
+
+    var buffer = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        Buffer: Buffer$1,
+        make: make$6
+    });
+
+    class Event {
+        constructor(type, opts) {
+            this.target = null;
+            // Used in UI
+            this.defaultPrevented = false;
+            this.propagationStopped = false;
+            this.immediatePropagationStopped = false;
+            // Key Event
+            this.key = '';
+            this.code = '';
+            this.shiftKey = false;
+            this.ctrlKey = false;
+            this.altKey = false;
+            this.metaKey = false;
+            // Dir Event extends KeyEvent
+            this.dir = null;
+            // Mouse Event
+            this.x = -1;
+            this.y = -1;
+            this.clientX = -1;
+            this.clientY = -1;
+            // Tick Event
+            this.dt = 0;
+            this.reset(type, opts);
+        }
+        preventDefault() {
+            this.defaultPrevented = true;
+        }
+        stopPropagation() {
+            this.propagationStopped = true;
+        }
+        stopImmediatePropagation() {
+            this.immediatePropagationStopped = true;
+        }
+        reset(type, opts) {
+            this.type = type;
+            this.target = null;
+            this.defaultPrevented = false;
+            this.shiftKey = false;
+            this.ctrlKey = false;
+            this.altKey = false;
+            this.metaKey = false;
+            this.key = '';
+            this.code = '';
+            this.x = -1;
+            this.y = -1;
+            this.dir = null;
+            this.dt = 0;
+            this.target = null;
+            if (opts) {
+                Object.assign(this, opts);
+            }
+        }
+    }
+    let IOMAP = {};
+    const DEAD_EVENTS = [];
+    const KEYPRESS = 'keypress';
+    const MOUSEMOVE = 'mousemove';
+    const CLICK = 'click';
+    const TICK = 'tick';
+    const MOUSEUP = 'mouseup';
+    const STOP = 'stop';
+    const CONTROL_CODES = [
+        'ShiftLeft',
+        'ShiftRight',
+        'ControlLeft',
+        'ControlRight',
+        'AltLeft',
+        'AltRight',
+        'MetaLeft',
+        'MetaRight',
+    ];
+    function setKeymap(keymap) {
+        IOMAP = keymap;
+    }
+    function handlerFor(ev, km) {
+        let c;
+        if (ev.dir) {
+            c = km.dir || km.keypress;
+        }
+        else if (ev.type === KEYPRESS) {
+            c = km[ev.key] || km[ev.code] || km.keypress;
+        }
+        else if (km[ev.type]) {
+            c = km[ev.type];
+        }
+        if (!c) {
+            c = km.dispatch;
+        }
+        return c || null;
+    }
+    async function dispatchEvent(ev, km) {
+        let result;
+        km = km || IOMAP;
+        if (ev.type === STOP) {
+            recycleEvent(ev);
+            return true; // Should stop loops, etc...
+        }
+        const handler = handlerFor(ev, km);
+        if (handler) {
+            // if (typeof c === 'function') {
+            result = await handler.call(km, ev);
+            // } else if (commands[c]) {
+            //     result = await commands[c](ev);
+            // } else {
+            //     Utils.WARN('No command found: ' + c);
+            // }
+        }
+        // TODO - what is this here for?
+        // if ('next' in km && km.next === false) {
+        //     result = false;
+        // }
+        recycleEvent(ev);
+        return result;
+    }
+    function recycleEvent(ev) {
+        DEAD_EVENTS.push(ev);
+    }
+    // STOP
+    function makeStopEvent() {
+        return makeCustomEvent(STOP);
+    }
+    // CUSTOM
+    function makeCustomEvent(type, opts) {
+        const ev = DEAD_EVENTS.pop() || null;
+        if (!ev)
+            return new Event(type, opts);
+        ev.reset(type, opts);
+        return ev;
+    }
+    // TICK
+    function makeTickEvent(dt) {
+        const ev = makeCustomEvent(TICK);
+        ev.dt = dt;
+        return ev;
+    }
+    // KEYBOARD
+    function makeKeyEvent(e) {
+        let key = e.key;
+        let code = e.code.toLowerCase();
+        if (e.shiftKey) {
+            key = key.toUpperCase();
+            code = code.toUpperCase();
+        }
+        if (e.ctrlKey) {
+            key = '^' + key;
+            code = '^' + code;
+        }
+        if (e.metaKey) {
+            key = '#' + key;
+            code = '#' + code;
+        }
+        if (e.altKey) {
+            code = '/' + code;
+        }
+        const ev = DEAD_EVENTS.pop() || new Event(KEYPRESS);
+        ev.shiftKey = e.shiftKey;
+        ev.ctrlKey = e.ctrlKey;
+        ev.altKey = e.altKey;
+        ev.metaKey = e.metaKey;
+        ev.type = KEYPRESS;
+        ev.defaultPrevented = false;
+        ev.key = key;
+        ev.code = code;
+        ev.x = -1;
+        ev.y = -1;
+        ev.clientX = -1;
+        ev.clientY = -1;
+        ev.dir = keyCodeDirection(e.code);
+        ev.dt = 0;
+        ev.target = null;
+        return ev;
+    }
+    function keyCodeDirection(key) {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey === 'arrowup') {
+            return [0, -1];
+        }
+        else if (lowerKey === 'arrowdown') {
+            return [0, 1];
+        }
+        else if (lowerKey === 'arrowleft') {
+            return [-1, 0];
+        }
+        else if (lowerKey === 'arrowright') {
+            return [1, 0];
+        }
+        return null;
+    }
+    function ignoreKeyEvent(e) {
+        return CONTROL_CODES.includes(e.code);
+    }
+    // MOUSE
+    function makeMouseEvent(e, x, y) {
+        const ev = DEAD_EVENTS.pop() || new Event(e.type);
+        ev.shiftKey = e.shiftKey;
+        ev.ctrlKey = e.ctrlKey;
+        ev.altKey = e.altKey;
+        ev.metaKey = e.metaKey;
+        ev.type = e.type;
+        if (e.buttons && e.type !== 'mouseup') {
+            ev.type = CLICK;
+        }
+        ev.defaultPrevented = false;
+        ev.key = '';
+        ev.code = '';
+        ev.x = x;
+        ev.y = y;
+        ev.clientX = e.clientX;
+        ev.clientY = e.clientY;
+        ev.dir = null;
+        ev.dt = 0;
+        ev.target = null;
+        return ev;
+    }
+    class Loop {
+        constructor() {
+            this.running = true;
+            this.events = [];
+            this.mouse = { x: -1, y: -1 };
+            this.CURRENT_HANDLER = null;
+            this.PAUSED = null;
+            this.LAST_CLICK = { x: -1, y: -1 };
+            this.interval = 0;
+            this.intervalCount = 0;
+            this.ended = false;
+        }
+        hasEvents() {
+            return this.events.length;
+        }
+        clearEvents() {
+            while (this.events.length) {
+                const ev = this.events.shift();
+                DEAD_EVENTS.push(ev);
+            }
+        }
+        _startTicks() {
+            ++this.intervalCount;
+            if (this.interval)
+                return;
+            this.interval = setInterval(() => {
+                const e = makeTickEvent(16);
+                this.pushEvent(e);
+            }, 16);
+        }
+        _stopTicks() {
+            if (!this.intervalCount)
+                return; // too many calls to stop
+            --this.intervalCount;
+            if (this.intervalCount)
+                return; // still have a loop running
+            clearInterval(this.interval);
+            this.interval = 0;
+        }
+        pushEvent(ev) {
+            if (this.ended)
+                return;
+            if (this.PAUSED) {
+                console.log('PAUSED EVENT', ev.type);
+            }
+            if (this.events.length) {
+                const last = this.events[this.events.length - 1];
+                if (last.type === ev.type) {
+                    if (last.type === MOUSEMOVE) {
+                        last.x = ev.x;
+                        last.y = ev.y;
+                        recycleEvent(ev);
+                        return;
+                    }
+                }
+            }
+            // Keep clicks down to one per cell if holding down mouse button
+            if (ev.type === CLICK) {
+                if (this.LAST_CLICK.x == ev.x && this.LAST_CLICK.y == ev.y) {
+                    recycleEvent(ev);
+                    return;
+                }
+                this.LAST_CLICK.x = ev.x;
+                this.LAST_CLICK.y = ev.y;
+            }
+            else if (ev.type == MOUSEUP) {
+                this.LAST_CLICK.x = -1;
+                this.LAST_CLICK.y = -1;
+                recycleEvent(ev);
+                return;
+            }
+            if (this.CURRENT_HANDLER) {
+                this.CURRENT_HANDLER(ev);
+            }
+            else if (ev.type === TICK) {
+                const first = this.events[0];
+                if (first && first.type === TICK) {
+                    first.dt += ev.dt;
+                    recycleEvent(ev);
+                    return;
+                }
+                this.events.unshift(ev); // ticks go first
+            }
+            else {
+                this.events.push(ev);
+            }
+        }
+        nextEvent(ms = -1, match) {
+            match = match || TRUE;
+            let elapsed = 0;
+            while (this.events.length) {
+                const e = this.events.shift();
+                if (e.type === MOUSEMOVE) {
+                    this.mouse.x = e.x;
+                    this.mouse.y = e.y;
+                }
+                if (match(e)) {
+                    return Promise.resolve(e);
+                }
+                recycleEvent(e);
+            }
+            let done;
+            if (ms == 0 || this.ended)
+                return Promise.resolve(null);
+            if (this.CURRENT_HANDLER) {
+                throw new Error('OVERWRITE HANDLER -- Check for a missing await around Loop function calls.');
+            }
+            else if (this.events.length) {
+                console.warn('SET HANDLER WITH QUEUED EVENTS - nextEvent');
+            }
+            this.CURRENT_HANDLER = (e) => {
+                if (e.type === MOUSEMOVE) {
+                    this.mouse.x = e.x;
+                    this.mouse.y = e.y;
+                }
+                if (e.type === TICK && ms > 0) {
+                    elapsed += e.dt;
+                    if (elapsed < ms) {
+                        return;
+                    }
+                    e.dt = elapsed;
+                }
+                else if (!match(e))
+                    return;
+                this.CURRENT_HANDLER = null;
+                done(e);
+            };
+            return new Promise((resolve) => (done = resolve));
+        }
+        async run(keymap, ms = -1) {
+            if (this.ended)
+                return;
+            this.running = true;
+            this.clearEvents(); // ??? Should we do this?
+            this._startTicks();
+            if (keymap.start && typeof keymap.start === 'function') {
+                await keymap.start();
+            }
+            let running = true;
+            while (this.running && running) {
+                if (keymap.draw && typeof keymap.draw === 'function') {
+                    keymap.draw();
+                }
+                const ev = await this.nextEvent(ms);
+                if (ev && (await dispatchEvent(ev, keymap))) {
+                    running = false;
+                }
+            }
+            if (keymap.stop && typeof keymap.stop === 'function') {
+                await keymap.stop();
+            }
+            this._stopTicks();
+        }
+        stop() {
+            this.clearEvents();
+            this.running = false;
+            if (this.interval) {
+                clearInterval(this.interval);
+                this.interval = 0;
+            }
+            if (this.CURRENT_HANDLER) {
+                this.pushEvent(makeStopEvent());
+            }
+            this.CURRENT_HANDLER = null;
+        }
+        end() {
+            this.stop();
+            this.ended = true;
+        }
+        start() {
+            this.ended = false;
+        }
+        pauseEvents() {
+            if (this.PAUSED)
+                return;
+            this.PAUSED = this.CURRENT_HANDLER;
+            this.CURRENT_HANDLER = null;
+            // io.debug('events paused');
+        }
+        resumeEvents() {
+            if (!this.PAUSED)
+                return;
+            if (this.CURRENT_HANDLER) {
+                console.warn('overwrite CURRENT HANDLER!');
+            }
+            this.CURRENT_HANDLER = this.PAUSED;
+            this.PAUSED = null;
+            // io.debug('resuming events');
+            if (this.events.length && this.CURRENT_HANDLER) {
+                const e = this.events.shift();
+                // io.debug('- processing paused event', e.type);
+                this.CURRENT_HANDLER(e);
+                // io.recycleEvent(e);	// DO NOT DO THIS B/C THE HANDLER MAY PUT IT BACK ON THE QUEUE (see tickMs)
+            }
+            // io.debug('events resumed');
+        }
+        // IO
+        async tickMs(ms = 1) {
+            let done;
+            setTimeout(() => done(), ms);
+            return new Promise((resolve) => (done = resolve));
+        }
+        async nextKeyPress(ms, match) {
+            if (ms === undefined)
+                ms = -1;
+            match = match || TRUE;
+            function matchingKey(e) {
+                if (e.type !== KEYPRESS)
+                    return false;
+                return match(e);
+            }
+            return this.nextEvent(ms, matchingKey);
+        }
+        async nextKeyOrClick(ms, matchFn) {
+            if (ms === undefined)
+                ms = -1;
+            matchFn = matchFn || TRUE;
+            function match(e) {
+                if (e.type !== KEYPRESS && e.type !== CLICK)
+                    return false;
+                return matchFn(e);
+            }
+            return this.nextEvent(ms, match);
+        }
+        async pause(ms) {
+            const e = await this.nextKeyOrClick(ms);
+            return e && e.type !== TICK;
+        }
+        waitForAck() {
+            return this.pause(5 * 60 * 1000); // 5 min
+        }
+        onkeydown(e) {
+            if (ignoreKeyEvent(e))
+                return;
+            if (e.code === 'Escape') {
+                this.clearEvents(); // clear all current events, then push on the escape
+            }
+            const ev = makeKeyEvent(e);
+            this.pushEvent(ev);
+            e.preventDefault();
+        }
+    }
+    function make$5() {
+        return new Loop();
+    }
+    // Makes a default global loop that you access through these funcitons...
+    const loop = make$5();
+
+    var io = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        Event: Event,
+        KEYPRESS: KEYPRESS,
+        MOUSEMOVE: MOUSEMOVE,
+        CLICK: CLICK,
+        TICK: TICK,
+        MOUSEUP: MOUSEUP,
+        STOP: STOP,
+        setKeymap: setKeymap,
+        handlerFor: handlerFor,
+        dispatchEvent: dispatchEvent,
+        makeStopEvent: makeStopEvent,
+        makeCustomEvent: makeCustomEvent,
+        makeTickEvent: makeTickEvent,
+        makeKeyEvent: makeKeyEvent,
+        keyCodeDirection: keyCodeDirection,
+        ignoreKeyEvent: ignoreKeyEvent,
+        makeMouseEvent: makeMouseEvent,
+        Loop: Loop,
+        make: make$5,
+        loop: loop
+    });
+
+    var FovFlags;
+    (function (FovFlags) {
+        FovFlags[FovFlags["VISIBLE"] = fl(0)] = "VISIBLE";
+        FovFlags[FovFlags["WAS_VISIBLE"] = fl(1)] = "WAS_VISIBLE";
+        FovFlags[FovFlags["CLAIRVOYANT_VISIBLE"] = fl(2)] = "CLAIRVOYANT_VISIBLE";
+        FovFlags[FovFlags["WAS_CLAIRVOYANT_VISIBLE"] = fl(3)] = "WAS_CLAIRVOYANT_VISIBLE";
+        FovFlags[FovFlags["TELEPATHIC_VISIBLE"] = fl(4)] = "TELEPATHIC_VISIBLE";
+        FovFlags[FovFlags["WAS_TELEPATHIC_VISIBLE"] = fl(5)] = "WAS_TELEPATHIC_VISIBLE";
+        FovFlags[FovFlags["ITEM_DETECTED"] = fl(6)] = "ITEM_DETECTED";
+        FovFlags[FovFlags["WAS_ITEM_DETECTED"] = fl(7)] = "WAS_ITEM_DETECTED";
+        FovFlags[FovFlags["ACTOR_DETECTED"] = fl(8)] = "ACTOR_DETECTED";
+        FovFlags[FovFlags["WAS_ACTOR_DETECTED"] = fl(9)] = "WAS_ACTOR_DETECTED";
+        FovFlags[FovFlags["REVEALED"] = fl(10)] = "REVEALED";
+        FovFlags[FovFlags["MAGIC_MAPPED"] = fl(11)] = "MAGIC_MAPPED";
+        FovFlags[FovFlags["IN_FOV"] = fl(12)] = "IN_FOV";
+        FovFlags[FovFlags["WAS_IN_FOV"] = fl(13)] = "WAS_IN_FOV";
+        FovFlags[FovFlags["ALWAYS_VISIBLE"] = fl(14)] = "ALWAYS_VISIBLE";
+        FovFlags[FovFlags["IS_CURSOR"] = fl(15)] = "IS_CURSOR";
+        FovFlags[FovFlags["IS_HIGHLIGHTED"] = fl(16)] = "IS_HIGHLIGHTED";
+        FovFlags[FovFlags["ANY_KIND_OF_VISIBLE"] = FovFlags.VISIBLE | FovFlags.CLAIRVOYANT_VISIBLE | FovFlags.TELEPATHIC_VISIBLE] = "ANY_KIND_OF_VISIBLE";
+        FovFlags[FovFlags["IS_WAS_ANY_KIND_OF_VISIBLE"] = FovFlags.VISIBLE |
+            FovFlags.WAS_VISIBLE |
+            FovFlags.CLAIRVOYANT_VISIBLE |
+            FovFlags.WAS_CLAIRVOYANT_VISIBLE |
+            FovFlags.TELEPATHIC_VISIBLE |
+            FovFlags.WAS_TELEPATHIC_VISIBLE] = "IS_WAS_ANY_KIND_OF_VISIBLE";
+        FovFlags[FovFlags["WAS_ANY_KIND_OF_VISIBLE"] = FovFlags.WAS_VISIBLE |
+            FovFlags.WAS_CLAIRVOYANT_VISIBLE |
+            FovFlags.WAS_TELEPATHIC_VISIBLE] = "WAS_ANY_KIND_OF_VISIBLE";
+        FovFlags[FovFlags["WAS_DETECTED"] = FovFlags.WAS_ITEM_DETECTED | FovFlags.WAS_ACTOR_DETECTED] = "WAS_DETECTED";
+        FovFlags[FovFlags["IS_DETECTED"] = FovFlags.ITEM_DETECTED | FovFlags.ACTOR_DETECTED] = "IS_DETECTED";
+        FovFlags[FovFlags["PLAYER"] = FovFlags.IN_FOV] = "PLAYER";
+        FovFlags[FovFlags["CLAIRVOYANT"] = FovFlags.CLAIRVOYANT_VISIBLE] = "CLAIRVOYANT";
+        FovFlags[FovFlags["TELEPATHIC"] = FovFlags.TELEPATHIC_VISIBLE] = "TELEPATHIC";
+        FovFlags[FovFlags["VIEWPORT_TYPES"] = FovFlags.PLAYER | FovFlags.VISIBLE |
+            FovFlags.CLAIRVOYANT |
+            FovFlags.TELEPATHIC |
+            FovFlags.ITEM_DETECTED |
+            FovFlags.ACTOR_DETECTED] = "VIEWPORT_TYPES";
+    })(FovFlags || (FovFlags = {}));
+
+    // CREDIT - This is adapted from: http://roguebasin.roguelikedevelopment.org/index.php?title=Improved_Shadowcasting_in_Java
+    class FOV {
+        constructor(strategy) {
+            this._setVisible = null;
+            this._startX = -1;
+            this._startY = -1;
+            this._maxRadius = 100;
+            this._isBlocked = strategy.isBlocked;
+            this._calcRadius = strategy.calcRadius || calcRadius;
+            this._hasXY = strategy.hasXY || TRUE;
+            this._debug = strategy.debug || NOOP;
+        }
+        calculate(x, y, maxRadius, setVisible) {
+            this._setVisible = setVisible;
+            this._setVisible(x, y, 1);
+            this._startX = x;
+            this._startY = y;
+            this._maxRadius = maxRadius + 1;
+            // uses the diagonals
+            for (let i = 4; i < 8; ++i) {
+                const d = DIRS$2[i];
+                this.castLight(1, 1.0, 0.0, 0, d[0], d[1], 0);
+                this.castLight(1, 1.0, 0.0, d[0], 0, 0, d[1]);
+            }
+        }
+        // NOTE: slope starts a 1 and ends at 0.
+        castLight(row, startSlope, endSlope, xx, xy, yx, yy) {
+            if (row >= this._maxRadius) {
+                this._debug('CAST: row=%d, start=%d, end=%d, row >= maxRadius => cancel', row, startSlope.toFixed(2), endSlope.toFixed(2));
+                return;
+            }
+            if (startSlope < endSlope) {
+                this._debug('CAST: row=%d, start=%d, end=%d, start < end => cancel', row, startSlope.toFixed(2), endSlope.toFixed(2));
+                return;
+            }
+            this._debug('CAST: row=%d, start=%d, end=%d, x=%d,%d, y=%d,%d', row, startSlope.toFixed(2), endSlope.toFixed(2), xx, xy, yx, yy);
+            let nextStart = startSlope;
+            let blocked = false;
+            let deltaY = -row;
+            let currentX, currentY, outerSlope, innerSlope, maxSlope, minSlope = 0;
+            for (let deltaX = -row; deltaX <= 0; deltaX++) {
+                currentX = Math.floor(this._startX + deltaX * xx + deltaY * xy);
+                currentY = Math.floor(this._startY + deltaX * yx + deltaY * yy);
+                outerSlope = (deltaX - 0.5) / (deltaY + 0.5);
+                innerSlope = (deltaX + 0.5) / (deltaY - 0.5);
+                maxSlope = deltaX / (deltaY + 0.5);
+                minSlope = (deltaX + 0.5) / deltaY;
+                if (!this._hasXY(currentX, currentY)) {
+                    blocked = true;
+                    // nextStart = innerSlope;
+                    continue;
+                }
+                this._debug('- test %d,%d ... start=%d, min=%d, max=%d, end=%d, dx=%d, dy=%d', currentX, currentY, startSlope.toFixed(2), maxSlope.toFixed(2), minSlope.toFixed(2), endSlope.toFixed(2), deltaX, deltaY);
+                if (startSlope < minSlope) {
+                    blocked = this._isBlocked(currentX, currentY);
+                    continue;
+                }
+                else if (endSlope > maxSlope) {
+                    break;
+                }
+                //check if it's within the lightable area and light if needed
+                const radius = this._calcRadius(deltaX, deltaY);
+                if (radius < this._maxRadius) {
+                    const bright = 1 - radius / this._maxRadius;
+                    this._setVisible(currentX, currentY, bright);
+                    this._debug('       - visible');
+                }
+                if (blocked) {
+                    //previous cell was a blocking one
+                    if (this._isBlocked(currentX, currentY)) {
+                        //hit a wall
+                        this._debug('       - blocked ... nextStart: %d', innerSlope.toFixed(2));
+                        nextStart = innerSlope;
+                        continue;
+                    }
+                    else {
+                        blocked = false;
+                    }
+                }
+                else {
+                    if (this._isBlocked(currentX, currentY) &&
+                        row < this._maxRadius) {
+                        //hit a wall within sight line
+                        this._debug('       - blocked ... start:%d, end:%d, nextStart: %d', nextStart.toFixed(2), outerSlope.toFixed(2), innerSlope.toFixed(2));
+                        blocked = true;
+                        this.castLight(row + 1, nextStart, outerSlope, xx, xy, yx, yy);
+                        nextStart = innerSlope;
+                    }
+                }
+            }
+            if (!blocked) {
+                this.castLight(row + 1, nextStart, endSlope, xx, xy, yx, yy);
+            }
+        }
+    }
+
+    // import * as GWU from 'gw-utils';
+    class FovSystem {
+        constructor(site, opts = {}) {
+            // needsUpdate: boolean;
+            this.changed = true;
+            this._callback = NOOP;
+            this.follow = null;
+            this.site = site;
+            let flag = 0;
+            const visible = opts.visible || opts.alwaysVisible;
+            if (opts.revealed || (visible && opts.revealed !== false))
+                flag |= FovFlags.REVEALED;
+            if (visible)
+                flag |= FovFlags.VISIBLE;
+            this.flags = make$8(site.width, site.height, flag);
+            // this.needsUpdate = true;
+            if (opts.callback) {
+                this.callback = opts.callback;
+            }
+            this.fov = new FOV({
+                isBlocked: (x, y) => {
+                    return this.site.blocksVision(x, y);
+                },
+                hasXY: (x, y) => {
+                    return (x >= 0 &&
+                        y >= 0 &&
+                        x < this.site.width &&
+                        y < this.site.height);
+                },
+            });
+            if (opts.alwaysVisible) {
+                this.makeAlwaysVisible();
+            }
+            if (opts.visible || opts.alwaysVisible) {
+                forRect(site.width, site.height, (x, y) => this._callback(x, y, true));
+            }
+        }
+        get callback() {
+            return this._callback;
+        }
+        set callback(v) {
+            if (!v) {
+                this._callback = NOOP;
+            }
+            else if (typeof v === 'function') {
+                this._callback = v;
+            }
+            else {
+                this._callback = v.onFovChange.bind(v);
+            }
+        }
+        getFlag(x, y) {
+            return this.flags[x][y];
+        }
+        isVisible(x, y) {
+            return !!((this.flags.get(x, y) || 0) & FovFlags.VISIBLE);
+        }
+        isAnyKindOfVisible(x, y) {
+            return !!((this.flags.get(x, y) || 0) & FovFlags.ANY_KIND_OF_VISIBLE);
+        }
+        isClairvoyantVisible(x, y) {
+            return !!((this.flags.get(x, y) || 0) & FovFlags.CLAIRVOYANT_VISIBLE);
+        }
+        isTelepathicVisible(x, y) {
+            return !!((this.flags.get(x, y) || 0) & FovFlags.TELEPATHIC_VISIBLE);
+        }
+        isInFov(x, y) {
+            return !!((this.flags.get(x, y) || 0) & FovFlags.IN_FOV);
+        }
+        isDirectlyVisible(x, y) {
+            const flags = FovFlags.VISIBLE | FovFlags.IN_FOV;
+            return ((this.flags.get(x, y) || 0) & flags) === flags;
+        }
+        isActorDetected(x, y) {
+            return !!((this.flags.get(x, y) || 0) & FovFlags.ACTOR_DETECTED);
+        }
+        isItemDetected(x, y) {
+            return !!((this.flags.get(x, y) || 0) & FovFlags.ITEM_DETECTED);
+        }
+        isMagicMapped(x, y) {
+            return !!((this.flags.get(x, y) || 0) & FovFlags.MAGIC_MAPPED);
+        }
+        isRevealed(x, y) {
+            return !!((this.flags.get(x, y) || 0) & FovFlags.REVEALED);
+        }
+        fovChanged(x, y) {
+            const flags = this.flags.get(x, y) || 0;
+            const isVisible = !!(flags & FovFlags.ANY_KIND_OF_VISIBLE);
+            const wasVisible = !!(flags & FovFlags.WAS_ANY_KIND_OF_VISIBLE);
+            return isVisible !== wasVisible;
+        }
+        wasAnyKindOfVisible(x, y) {
+            return !!((this.flags.get(x, y) || 0) & FovFlags.WAS_ANY_KIND_OF_VISIBLE);
+        }
+        makeAlwaysVisible() {
+            this.flags.update((v) => v |
+                (FovFlags.ALWAYS_VISIBLE | FovFlags.REVEALED | FovFlags.VISIBLE));
+            // TODO - onFovChange?
+            this.changed = true;
+        }
+        makeCellAlwaysVisible(x, y) {
+            this.flags[x][y] |=
+                FovFlags.ALWAYS_VISIBLE | FovFlags.REVEALED | FovFlags.VISIBLE;
+            // TODO - onFovChange?
+            this.changed = true;
+        }
+        revealAll(makeVisibleToo = true) {
+            const flag = FovFlags.REVEALED | (makeVisibleToo ? FovFlags.VISIBLE : 0);
+            this.flags.update((v) => v | flag);
+            // TODO - onFovChange?
+            this.changed = true;
+        }
+        revealCell(x, y, makeVisibleToo = true) {
+            const flag = FovFlags.REVEALED | (makeVisibleToo ? FovFlags.VISIBLE : 0);
+            this.flags[x][y] |= flag;
+            // TODO - onFovChange?
+            this.changed = true;
+        }
+        hideCell(x, y) {
+            this.flags[x][y] &= ~(FovFlags.MAGIC_MAPPED |
+                FovFlags.REVEALED |
+                FovFlags.ALWAYS_VISIBLE);
+            this.flags[x][y] = this.demoteCellVisibility(this.flags[x][y]); // clears visible, etc...
+            // TODO - onFovChange?
+            this.changed = true;
+        }
+        magicMapCell(x, y) {
+            this.flags[x][y] |= FovFlags.MAGIC_MAPPED;
+            this.changed = true;
+            // TODO - onFovChange?
+        }
+        reset() {
+            this.flags.fill(0);
+            this.changed = true;
+            // TODO - onFovChange?
+        }
+        // get changed(): boolean {
+        //     return this._changed;
+        // }
+        // set changed(v: boolean) {
+        //     this._changed = v;
+        //     this.needsUpdate = this.needsUpdate || v;
+        // }
+        // CURSOR
+        setCursor(x, y, keep = false) {
+            if (!keep) {
+                this.flags.update((f) => f & ~FovFlags.IS_CURSOR);
+            }
+            this.flags[x][y] |= FovFlags.IS_CURSOR;
+            this.changed = true;
+        }
+        clearCursor(x, y) {
+            if (x === undefined || y === undefined) {
+                this.flags.update((f) => f & ~FovFlags.IS_CURSOR);
+            }
+            else {
+                this.flags[x][y] &= ~FovFlags.IS_CURSOR;
+            }
+            this.changed = true;
+        }
+        isCursor(x, y) {
+            return !!(this.flags[x][y] & FovFlags.IS_CURSOR);
+        }
+        // HIGHLIGHT
+        setHighlight(x, y, keep = false) {
+            if (!keep) {
+                this.flags.update((f) => f & ~FovFlags.IS_HIGHLIGHTED);
+            }
+            this.flags[x][y] |= FovFlags.IS_HIGHLIGHTED;
+            this.changed = true;
+        }
+        clearHighlight(x, y) {
+            if (x === undefined || y === undefined) {
+                this.flags.update((f) => f & ~FovFlags.IS_HIGHLIGHTED);
+            }
+            else {
+                this.flags[x][y] &= ~FovFlags.IS_HIGHLIGHTED;
+            }
+            this.changed = true;
+        }
+        isHighlight(x, y) {
+            return !!(this.flags[x][y] & FovFlags.IS_HIGHLIGHTED);
+        }
+        // COPY
+        // copy(other: FovSystem) {
+        //     this.site = other.site;
+        //     this.flags.copy(other.flags);
+        //     this.fov = other.fov;
+        //     this.follow = other.follow;
+        //     this.onFovChange = other.onFovChange;
+        //     // this.needsUpdate = other.needsUpdate;
+        //     // this._changed = other._changed;
+        // }
+        //////////////////////////
+        // UPDATE
+        demoteCellVisibility(flag) {
+            flag &= ~(FovFlags.WAS_ANY_KIND_OF_VISIBLE | FovFlags.WAS_IN_FOV | FovFlags.WAS_DETECTED);
+            if (flag & FovFlags.IN_FOV) {
+                flag &= ~FovFlags.IN_FOV;
+                flag |= FovFlags.WAS_IN_FOV;
+            }
+            if (flag & FovFlags.VISIBLE) {
+                flag &= ~FovFlags.VISIBLE;
+                flag |= FovFlags.WAS_VISIBLE;
+            }
+            if (flag & FovFlags.CLAIRVOYANT_VISIBLE) {
+                flag &= ~FovFlags.CLAIRVOYANT_VISIBLE;
+                flag |= FovFlags.WAS_CLAIRVOYANT_VISIBLE;
+            }
+            if (flag & FovFlags.TELEPATHIC_VISIBLE) {
+                flag &= ~FovFlags.TELEPATHIC_VISIBLE;
+                flag |= FovFlags.WAS_TELEPATHIC_VISIBLE;
+            }
+            if (flag & FovFlags.ALWAYS_VISIBLE) {
+                flag |= FovFlags.VISIBLE;
+            }
+            if (flag & FovFlags.ITEM_DETECTED) {
+                flag &= ~FovFlags.ITEM_DETECTED;
+                flag |= FovFlags.WAS_ITEM_DETECTED;
+            }
+            if (flag & FovFlags.ACTOR_DETECTED) {
+                flag &= ~FovFlags.ACTOR_DETECTED;
+                flag |= FovFlags.WAS_ACTOR_DETECTED;
+            }
+            return flag;
+        }
+        updateCellVisibility(flag, x, y) {
+            const isVisible = !!(flag & FovFlags.ANY_KIND_OF_VISIBLE);
+            const wasVisible = !!(flag & FovFlags.WAS_ANY_KIND_OF_VISIBLE);
+            if (isVisible && wasVisible) ;
+            else if (isVisible && !wasVisible) {
+                // if the cell became visible this move
+                this.flags[x][y] |= FovFlags.REVEALED;
+                this._callback(x, y, isVisible);
+            }
+            else if (!isVisible && wasVisible) {
+                // if the cell ceased being visible this move
+                this._callback(x, y, isVisible);
+            }
+            return isVisible;
+        }
+        // protected updateCellClairyvoyance(
+        //     flag: number,
+        //     x: number,
+        //     y: number
+        // ): boolean {
+        //     const isClairy = !!(flag & FovFlags.CLAIRVOYANT_VISIBLE);
+        //     const wasClairy = !!(flag & FovFlags.WAS_CLAIRVOYANT_VISIBLE);
+        //     if (isClairy && wasClairy) {
+        //         // if (this.site.lightChanged(x, y)) {
+        //         //     this.site.redrawCell(x, y);
+        //         // }
+        //     } else if (!isClairy && wasClairy) {
+        //         // ceased being clairvoyantly visible
+        //         this._callback(x, y, isClairy);
+        //     } else if (!wasClairy && isClairy) {
+        //         // became clairvoyantly visible
+        //         this._callback(x, y, isClairy);
+        //     }
+        //     return isClairy;
+        // }
+        // protected updateCellTelepathy(flag: number, x: number, y: number): boolean {
+        //     const isTele = !!(flag & FovFlags.TELEPATHIC_VISIBLE);
+        //     const wasTele = !!(flag & FovFlags.WAS_TELEPATHIC_VISIBLE);
+        //     if (isTele && wasTele) {
+        //         // if (this.site.lightChanged(x, y)) {
+        //         //     this.site.redrawCell(x, y);
+        //         // }
+        //     } else if (!isTele && wasTele) {
+        //         // ceased being telepathically visible
+        //         this._callback(x, y, isTele);
+        //     } else if (!wasTele && isTele) {
+        //         // became telepathically visible
+        //         this._callback(x, y, isTele);
+        //     }
+        //     return isTele;
+        // }
+        updateCellDetect(flag, x, y) {
+            const isDetect = !!(flag & FovFlags.IS_DETECTED);
+            const wasDetect = !!(flag & FovFlags.WAS_DETECTED);
+            if (isDetect && wasDetect) ;
+            else if (!isDetect && wasDetect) {
+                // ceased being detected visible
+                this._callback(x, y, isDetect);
+            }
+            else if (!wasDetect && isDetect) {
+                // became detected visible
+                this._callback(x, y, isDetect);
+            }
+            return isDetect;
+        }
+        // protected updateItemDetect(flag: number, x: number, y: number): boolean {
+        //     const isItem = !!(flag & FovFlags.ITEM_DETECTED);
+        //     const wasItem = !!(flag & FovFlags.WAS_ITEM_DETECTED);
+        //     if (isItem && wasItem) {
+        //         // if (this.site.lightChanged(x, y)) {
+        //         //     this.site.redrawCell(x, y);
+        //         // }
+        //     } else if (!isItem && wasItem) {
+        //         // ceased being detected visible
+        //         this._callback(x, y, isItem);
+        //     } else if (!wasItem && isItem) {
+        //         // became detected visible
+        //         this._callback(x, y, isItem);
+        //     }
+        //     return isItem;
+        // }
+        promoteCellVisibility(flag, x, y) {
+            if (flag & FovFlags.IN_FOV &&
+                this.site.hasVisibleLight(x, y) // &&
+            // !(cell.flags.cellMech & FovFlagsMech.DARKENED)
+            ) {
+                flag = this.flags[x][y] |= FovFlags.VISIBLE;
+            }
+            if (this.updateCellVisibility(flag, x, y))
+                return;
+            // if (this.updateCellClairyvoyance(flag, x, y)) return;
+            // if (this.updateCellTelepathy(flag, x, y)) return;
+            if (this.updateCellDetect(flag, x, y))
+                return;
+            // if (this.updateItemDetect(flag, x, y)) return;
+        }
+        updateFor(subject) {
+            return this.update(subject.x, subject.y, subject.visionDistance);
+        }
+        update(cx, cy, cr) {
+            if (cx === undefined) {
+                if (this.follow) {
+                    return this.updateFor(this.follow);
+                }
+            }
+            // if (
+            //     // !this.needsUpdate &&
+            //     cx === undefined &&
+            //     !this.site.lightingChanged()
+            // ) {
+            //     return false;
+            // }
+            if (cr === undefined) {
+                cr = this.site.width + this.site.height;
+            }
+            // this.needsUpdate = false;
+            this.changed = true; // we updated something...
+            this.flags.update(this.demoteCellVisibility.bind(this));
+            this.site.eachViewport((x, y, radius, type) => {
+                let flag = type & FovFlags.VIEWPORT_TYPES;
+                if (!flag)
+                    flag = FovFlags.VISIBLE;
+                // if (!flag)
+                //     throw new Error('Received invalid viewport type: ' + Flag.toString(FovFlags, type));
+                if (radius == 0) {
+                    this.flags[x][y] |= flag;
+                    return;
+                }
+                this.fov.calculate(x, y, radius, (x, y, v) => {
+                    if (v) {
+                        this.flags[x][y] |= flag;
+                    }
+                });
+            });
+            if (cx !== undefined && cy !== undefined) {
+                this.fov.calculate(cx, cy, cr, (x, y, v) => {
+                    if (v) {
+                        this.flags[x][y] |= FovFlags.PLAYER;
+                    }
+                });
+            }
+            // if (PLAYER.bonus.clairvoyance < 0) {
+            //   discoverCell(PLAYER.xLoc, PLAYER.yLoc);
+            // }
+            //
+            // if (PLAYER.bonus.clairvoyance != 0) {
+            // 	updateClairvoyance();
+            // }
+            //
+            // updateTelepathy();
+            // updateMonsterDetection();
+            // updateLighting();
+            this.flags.forEach(this.promoteCellVisibility.bind(this));
+            // if (PLAYER.status.hallucinating > 0) {
+            // 	for (theItem of DUNGEON.items) {
+            // 		if ((pmap[theItem.xLoc][theItem.yLoc].flags & DISCOVERED) && refreshDisplay) {
+            // 			refreshDungeonCell(theItem.xLoc, theItem.yLoc);
+            // 		}
+            // 	}
+            // 	for (monst of DUNGEON.monsters) {
+            // 		if ((pmap[monst.xLoc][monst.yLoc].flags & DISCOVERED) && refreshDisplay) {
+            // 			refreshDungeonCell(monst.xLoc, monst.yLoc);
+            // 		}
+            // 	}
+            // }
+            return true;
+        }
+    }
+
+    var index$3 = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        get FovFlags () { return FovFlags; },
+        FOV: FOV,
+        FovSystem: FovSystem
+    });
+
+    const FORBIDDEN = -1;
+    const OBSTRUCTION = -2;
+    const AVOIDED = 10;
+    const NO_PATH = 30000;
+    function makeCostLink(i) {
+        return {
+            distance: 0,
+            cost: 0,
+            index: i,
+            left: null,
+            right: null,
+        };
+    }
+    function makeDijkstraMap(w, h) {
+        return {
+            eightWays: false,
+            front: makeCostLink(-1),
+            links: makeArray(w * h, (i) => makeCostLink(i)),
+            width: w,
+            height: h,
+        };
+    }
+    function getLink(map, x, y) {
+        return map.links[x + map.width * y];
+    }
+    const DIRS = DIRS$2;
+    function update(map) {
+        let dir, dirs;
+        let linkIndex;
+        let left = null, right = null, link = null;
+        dirs = map.eightWays ? 8 : 4;
+        let head = map.front.right;
+        map.front.right = null;
+        while (head != null) {
+            for (dir = 0; dir < dirs; dir++) {
+                linkIndex = head.index + (DIRS[dir][0] + map.width * DIRS[dir][1]);
+                if (linkIndex < 0 || linkIndex >= map.width * map.height)
+                    continue;
+                link = map.links[linkIndex];
+                // verify passability
+                if (link.cost < 0)
+                    continue;
+                let diagCost = 0;
+                if (dir >= 4) {
+                    diagCost = 0.4142;
+                    let way1, way1index, way2, way2index;
+                    way1index = head.index + DIRS[dir][0];
+                    if (way1index < 0 || way1index >= map.width * map.height)
+                        continue;
+                    way2index = head.index + map.width * DIRS[dir][1];
+                    if (way2index < 0 || way2index >= map.width * map.height)
+                        continue;
+                    way1 = map.links[way1index];
+                    way2 = map.links[way2index];
+                    if (way1.cost == OBSTRUCTION || way2.cost == OBSTRUCTION)
+                        continue;
+                }
+                if (head.distance + link.cost + diagCost < link.distance) {
+                    link.distance = head.distance + link.cost + diagCost;
+                    // reinsert the touched cell; it'll be close to the beginning of the list now, so
+                    // this will be very fast.  start by removing it.
+                    if (link.right != null)
+                        link.right.left = link.left;
+                    if (link.left != null)
+                        link.left.right = link.right;
+                    left = head;
+                    right = head.right;
+                    while (right != null && right.distance < link.distance) {
+                        left = right;
+                        right = right.right;
+                    }
+                    if (left != null)
+                        left.right = link;
+                    link.right = right;
+                    link.left = left;
+                    if (right != null)
+                        right.left = link;
+                }
+            }
+            right = head.right;
+            head.left = null;
+            head.right = null;
+            head = right;
+        }
+    }
+    function clear(map, maxDistance, eightWays) {
+        let i;
+        map.eightWays = eightWays;
+        map.front.right = null;
+        for (i = 0; i < map.width * map.height; i++) {
+            map.links[i].distance = maxDistance;
+            map.links[i].left = map.links[i].right = null;
+        }
+    }
+    function setDistance(map, x, y, distance) {
+        let left, right, link;
+        if (x > 0 && y > 0 && x < map.width - 1 && y < map.height - 1) {
+            link = getLink(map, x, y);
+            if (link.distance > distance) {
+                link.distance = distance;
+                if (link.right != null)
+                    link.right.left = link.left;
+                if (link.left != null)
+                    link.left.right = link.right;
+                left = map.front;
+                right = map.front.right;
+                while (right != null && right.distance < link.distance) {
+                    left = right;
+                    right = right.right;
+                }
+                link.right = right;
+                link.left = left;
+                left.right = link;
+                if (right != null)
+                    right.left = link;
+            }
+        }
+    }
+    function isBoundaryXY(data, x, y) {
+        if (x <= 0 || y <= 0)
+            return true;
+        if (x >= data.length - 1 || y >= data[0].length - 1)
+            return true;
+        return false;
+    }
+    function batchOutput(map, distanceMap) {
+        let i, j;
+        update(map);
+        // transfer results to the distanceMap
+        for (i = 0; i < map.width; i++) {
+            for (j = 0; j < map.height; j++) {
+                distanceMap[i][j] = getLink(map, i, j).distance;
+            }
+        }
+    }
+    var DIJKSTRA_MAP;
+    function calculateDistances(distanceMap, destinationX, destinationY, costMap, eightWays = false, maxDistance = NO_PATH) {
+        const width = distanceMap.length;
+        const height = distanceMap[0].length;
+        if (maxDistance <= 0)
+            maxDistance = NO_PATH;
+        if (!DIJKSTRA_MAP ||
+            DIJKSTRA_MAP.width < width ||
+            DIJKSTRA_MAP.height < height) {
+            DIJKSTRA_MAP = makeDijkstraMap(width, height);
+        }
+        DIJKSTRA_MAP.width = width;
+        DIJKSTRA_MAP.height = height;
+        let i, j;
+        for (i = 0; i < width; i++) {
+            for (j = 0; j < height; j++) {
+                getLink(DIJKSTRA_MAP, i, j).cost = isBoundaryXY(costMap, i, j)
+                    ? OBSTRUCTION
+                    : costMap[i][j];
+            }
+        }
+        clear(DIJKSTRA_MAP, maxDistance, eightWays);
+        setDistance(DIJKSTRA_MAP, destinationX, destinationY, 0);
+        batchOutput(DIJKSTRA_MAP, distanceMap);
+        // TODO - Add this where called!
+        //   distanceMap.x = destinationX;
+        //   distanceMap.y = destinationY;
+    }
+    // Returns null if there are no beneficial moves.
+    // If preferDiagonals is true, we will prefer diagonal moves.
+    // Always rolls downhill on the distance map.
+    // If monst is provided, do not return a direction pointing to
+    // a cell that the monster avoids.
+    function nextStep(distanceMap, x, y, isBlocked, useDiagonals = false) {
+        let newX, newY, bestScore;
+        let dir, bestDir;
+        let blocked;
+        // brogueAssert(coordinatesAreInMap(x, y));
+        bestScore = 0;
+        bestDir = NO_DIRECTION;
+        for (dir = 0; dir < (useDiagonals ? 8 : 4); ++dir) {
+            newX = x + DIRS$2[dir][0];
+            newY = y + DIRS$2[dir][1];
+            blocked = isBlocked(newX, newY, x, y, distanceMap);
+            if (!blocked &&
+                distanceMap[x][y] - distanceMap[newX][newY] > bestScore) {
+                bestDir = dir;
+                bestScore = distanceMap[x][y] - distanceMap[newX][newY];
+            }
+        }
+        return DIRS$2[bestDir] || null;
+    }
+    function getClosestValidLocationOnMap(distanceMap, x, y) {
+        let i, j, dist, closestDistance, lowestMapScore;
+        let locX = -1;
+        let locY = -1;
+        const width = distanceMap.length;
+        const height = distanceMap[0].length;
+        closestDistance = 10000;
+        lowestMapScore = 10000;
+        for (i = 1; i < width - 1; i++) {
+            for (j = 1; j < height - 1; j++) {
+                if (distanceMap[i][j] >= 0 && distanceMap[i][j] < NO_PATH) {
+                    dist = (i - x) * (i - x) + (j - y) * (j - y);
+                    if (dist < closestDistance ||
+                        (dist == closestDistance &&
+                            distanceMap[i][j] < lowestMapScore)) {
+                        locX = i;
+                        locY = j;
+                        closestDistance = dist;
+                        lowestMapScore = distanceMap[i][j];
+                    }
+                }
+            }
+        }
+        if (locX >= 0)
+            return [locX, locY];
+        return null;
+    }
+    // Populates path[][] with a list of coordinates starting at origin and traversing down the map. Returns the number of steps in the path.
+    function getPath(distanceMap, originX, originY, isBlocked, eightWays = false) {
+        // actor = actor || GW.PLAYER;
+        let x = originX;
+        let y = originY;
+        let steps = 0;
+        if (distanceMap[x][y] < 0 || distanceMap[x][y] >= NO_PATH) {
+            const loc = getClosestValidLocationOnMap(distanceMap, x, y);
+            if (loc) {
+                x = loc[0];
+                y = loc[1];
+            }
+        }
+        const path = [[x, y]];
+        let dir;
+        do {
+            dir = nextStep(distanceMap, x, y, isBlocked, eightWays);
+            if (dir) {
+                x += dir[0];
+                y += dir[1];
+                // path[steps][0] = x;
+                // path[steps][1] = y;
+                path.push([x, y]);
+                steps++;
+                // brogueAssert(coordinatesAreInMap(x, y));
+            }
+        } while (dir);
+        return steps ? path : null;
+    }
+
+    var path = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        FORBIDDEN: FORBIDDEN,
+        OBSTRUCTION: OBSTRUCTION,
+        AVOIDED: AVOIDED,
+        NO_PATH: NO_PATH,
+        calculateDistances: calculateDistances,
+        nextStep: nextStep,
+        getPath: getPath
+    });
+
+    /**
+     * Data for an event listener.
+     */
+    class Listener {
+        /**
+         * Creates a Listener.
+         * @param {EventFn} fn The listener function.
+         * @param {any} [context=null] The context to invoke the listener with.
+         * @param {boolean} [once=false] Specify if the listener is a one-time listener.
+         */
+        constructor(fn, context, once = false) {
+            this.fn = fn;
+            this.context = context || null;
+            this.once = once || false;
+            this.next = null;
+        }
+        /**
+         * Compares this Listener to the parameters.
+         * @param {EventFn} fn - The function
+         * @param {any} [context] - The context Object.
+         * @param {boolean} [once] - Whether or not it is a one time handler.
+         * @returns Whether or not this Listener matches the parameters.
+         */
+        matches(fn, context, once) {
+            return (this.fn === fn &&
+                (once === undefined || once == this.once) &&
+                (!context || this.context === context));
+        }
+    }
+    var EVENTS = {};
+    /**
+     * Add a listener for a given event.
+     *
+     * @param {String} event The event name.
+     * @param {EventFn} fn The listener function.
+     * @param {*} context The context to invoke the listener with.
+     * @param {boolean} once Specify if the listener is a one-time listener.
+     * @returns {Listener}
+     */
+    function addListener(event, fn, context, once = false) {
+        if (typeof fn !== 'function') {
+            throw new TypeError('The listener must be a function');
+        }
+        const listener = new Listener(fn, context || null, once);
+        push(EVENTS, event, listener);
+        return listener;
+    }
+    /**
+     * Add a listener for a given event.
+     *
+     * @param {String} event The event name.
+     * @param {EventFn} fn The listener function.
+     * @param {*} context The context to invoke the listener with.
+     * @param {boolean} once Specify if the listener is a one-time listener.
+     * @returns {Listener}
+     */
+    function on(event, fn, context, once = false) {
+        return addListener(event, fn, context, once);
+    }
+    /**
+     * Add a one-time listener for a given event.
+     *
+     * @param {(String|Symbol)} event The event name.
+     * @param {EventFn} fn The listener function.
+     * @param {*} [context=this] The context to invoke the listener with.
+     * @returns {EventEmitter} `this`.
+     * @public
+     */
+    function once(event, fn, context) {
+        return addListener(event, fn, context, true);
+    }
+    /**
+     * Remove the listeners of a given event.
+     *
+     * @param {String} event The event name.
+     * @param {EventFn} fn Only remove the listeners that match this function.
+     * @param {*} context Only remove the listeners that have this context.
+     * @param {boolean} once Only remove one-time listeners.
+     * @returns {EventEmitter} `this`.
+     * @public
+     */
+    function removeListener(event, fn, context, once = false) {
+        if (!EVENTS[event])
+            return false;
+        if (!fn)
+            return false;
+        let success = false;
+        forEach(EVENTS[event], (obj) => {
+            if (obj.matches(fn, context, once)) {
+                remove(EVENTS, event, obj);
+                success = true;
+            }
+        });
+        return success;
+    }
+    /**
+     * Remove the listeners of a given event.
+     *
+     * @param {String} event The event name.
+     * @param {EventFn} fn Only remove the listeners that match this function.
+     * @param {*} context Only remove the listeners that have this context.
+     * @param {boolean} once Only remove one-time listeners.
+     * @returns {EventEmitter} `this`.
+     * @public
+     */
+    function off(event, fn, context, once = false) {
+        return removeListener(event, fn, context, once);
+    }
+    /**
+     * Clear event by name.
+     *
+     * @param {String} evt The Event name.
+     */
+    function clearEvent(event) {
+        if (EVENTS[event]) {
+            EVENTS[event] = null;
+        }
+    }
+    /**
+     * Remove all listeners, or those of the specified event.
+     *
+     * @param {(String|Symbol)} [event] The event name.
+     * @returns {EventEmitter} `this`.
+     * @public
+     */
+    function removeAllListeners(event) {
+        if (event) {
+            clearEvent(event);
+        }
+        else {
+            EVENTS = {};
+        }
+    }
+    /**
+     * Calls each of the listeners registered for a given event.
+     *
+     * @param {String} event The event name.
+     * @param {...*} args The additional arguments to the event handlers.
+     * @returns {boolean} `true` if the event had listeners, else `false`.
+     * @public
+     */
+    async function emit(...args) {
+        const event = args[0];
+        if (!EVENTS[event])
+            return false; // no events to send
+        let listener = EVENTS[event];
+        while (listener) {
+            let next = listener.next;
+            if (listener.once)
+                remove(EVENTS, event, listener);
+            await listener.fn.apply(listener.context, args);
+            listener = next;
+        }
+        return true;
+    }
+
+    var events = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        Listener: Listener,
+        addListener: addListener,
+        on: on,
+        once: once,
+        removeListener: removeListener,
+        off: off,
+        clearEvent: clearEvent,
+        removeAllListeners: removeAllListeners,
+        emit: emit
+    });
+
+    function make$4(v) {
+        if (v === undefined)
+            return () => 100;
+        if (v === null)
+            return () => 0;
+        if (typeof v === 'number')
+            return () => v;
+        if (typeof v === 'function')
+            return v;
+        let base = {};
+        if (typeof v === 'string') {
+            const parts = v.split(/[,|]/).map((t) => t.trim());
+            base = {};
+            parts.forEach((p) => {
+                let [level, weight] = p.split(':');
+                base[level] = Number.parseInt(weight) || 100;
+            });
+        }
+        else {
+            base = v;
+        }
+        const parts = Object.entries(base);
+        const funcs = parts.map(([levels, frequency]) => {
+            let value = 0;
+            if (typeof frequency === 'string') {
+                value = Number.parseInt(frequency);
+            }
+            else {
+                value = frequency;
+            }
+            if (levels.includes('-')) {
+                let [start, end] = levels
+                    .split('-')
+                    .map((t) => t.trim())
+                    .map((v) => Number.parseInt(v));
+                return (level) => level >= start && level <= end ? value : 0;
+            }
+            else if (levels.endsWith('+')) {
+                const found = Number.parseInt(levels);
+                return (level) => (level >= found ? value : 0);
+            }
+            else {
+                const found = Number.parseInt(levels);
+                return (level) => (level === found ? value : 0);
+            }
+        });
+        if (funcs.length == 1)
+            return funcs[0];
+        return (level) => funcs.reduce((out, fn) => out || fn(level), 0);
+    }
+
+    var frequency = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        make: make$4
+    });
+
+    class Scheduler {
+        constructor() {
+            this.next = null;
+            this.time = 0;
+            this.cache = null;
+        }
+        clear() {
+            while (this.next) {
+                const current = this.next;
+                this.next = current.next;
+                current.next = this.cache;
+                this.cache = current;
+            }
+        }
+        push(fn, delay = 1) {
+            let item;
+            if (this.cache) {
+                item = this.cache;
+                this.cache = item.next;
+                item.next = null;
+            }
+            else {
+                item = { fn: null, time: 0, next: null };
+            }
+            item.fn = fn;
+            item.time = this.time + delay;
+            if (!this.next) {
+                this.next = item;
+            }
+            else {
+                let current = this;
+                let next = current.next;
+                while (next && next.time <= item.time) {
+                    current = next;
+                    next = current.next;
+                }
+                item.next = current.next;
+                current.next = item;
+            }
+            return item;
+        }
+        pop() {
+            const n = this.next;
+            if (!n)
+                return null;
+            this.next = n.next;
+            n.next = this.cache;
+            this.cache = n;
+            this.time = Math.max(n.time, this.time); // so you can schedule -1 as a time uint
+            return n.fn;
+        }
+        remove(item) {
+            if (!item || !this.next)
+                return;
+            if (this.next === item) {
+                this.next = item.next;
+                return;
+            }
+            let prev = this.next;
+            let current = prev.next;
+            while (current && current !== item) {
+                prev = current;
+                current = current.next;
+            }
+            if (current === item) {
+                prev.next = current.next;
+            }
+        }
+    }
+    // export const scheduler = new Scheduler();
+
+    var scheduler = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        Scheduler: Scheduler
+    });
+
+    class Buffer extends Buffer$1 {
         constructor(canvas) {
             super(canvas.width, canvas.height);
             this._target = canvas;
@@ -6205,21 +6215,16 @@ void main() {
         }
         return canvas;
     }
-    function makeBuffer(width, height) {
-        return new DataBuffer(width, height);
-    }
 
     var index$2 = /*#__PURE__*/Object.freeze({
         __proto__: null,
-        DataBuffer: DataBuffer,
         Buffer: Buffer,
         Glyphs: Glyphs,
         NotSupportedError: NotSupportedError,
         BaseCanvas: BaseCanvas,
         Canvas2D: Canvas2D,
         CanvasGL: CanvasGL,
-        make: make$3,
-        makeBuffer: makeBuffer
+        make: make$3
     });
 
     class Sprite {
@@ -6293,13 +6298,13 @@ void main() {
         if (typeof fg === 'string')
             fg = from$2(fg);
         else if (Array.isArray(fg))
-            fg = make$4(fg);
+            fg = make$7(fg);
         else if (fg === undefined || fg === null)
             fg = -1;
         if (typeof bg === 'string')
             bg = from$2(bg);
         else if (Array.isArray(bg))
-            bg = make$4(bg);
+            bg = make$7(bg);
         else if (bg === undefined || bg === null)
             bg = -1;
         return new Sprite(ch, fg, bg, opacity);
@@ -6647,14 +6652,14 @@ void main() {
         INTENSITY_DARK: 20,
         INTENSITY_SHADOW: 50,
     }); // less than 20% for highest color in rgb
-    const LIGHT_COMPONENTS = make$4();
+    const LIGHT_COMPONENTS = make$7();
     class Light {
         constructor(color, radius = 1, fadeTo = 0, pass = false) {
             this.fadeTo = 0;
             this.passThroughActors = false;
             this.id = null;
             this.color = from$2(color); /* color */
-            this.radius = make$9(radius);
+            this.radius = make$a(radius);
             this.fadeTo = fadeTo;
             this.passThroughActors = pass; // generally no, but miner light does (TODO - string parameter?  'false' or 'true')
         }
@@ -6824,10 +6829,10 @@ void main() {
             this.changed = false;
             this.glowLightChanged = false;
             this.dynamicLightChanged = false;
-            this.light = make$7(map.width, map.height, () => this.ambient.slice());
-            this.glowLight = make$7(map.width, map.height, () => this.ambient.slice());
-            this.oldLight = make$7(map.width, map.height, () => this.ambient.slice());
-            this.flags = make$7(map.width, map.height);
+            this.light = make$8(map.width, map.height, () => this.ambient.slice());
+            this.glowLight = make$8(map.width, map.height, () => this.ambient.slice());
+            this.oldLight = make$8(map.width, map.height, () => this.ambient.slice());
+            this.flags = make$8(map.width, map.height);
             this.finishLightUpdate();
         }
         copy(other) {
@@ -7106,16 +7111,17 @@ void main() {
     exports.arrayPrev = arrayPrev;
     exports.arraysIntersect = arraysIntersect;
     exports.blob = blob;
+    exports.buffer = buffer;
     exports.canvas = index$2;
     exports.clamp = clamp;
-    exports.color = index$4;
+    exports.color = index$5;
     exports.colors = colors;
     exports.config = config$1;
     exports.data = data;
     exports.events = events;
     exports.first = first;
     exports.flag = flag;
-    exports.fov = index$5;
+    exports.fov = index$3;
     exports.frequency = frequency;
     exports.grid = grid;
     exports.io = io;
@@ -7133,7 +7139,7 @@ void main() {
     exports.sprite = index$1;
     exports.sprites = sprites;
     exports.sum = sum;
-    exports.text = index$3;
+    exports.text = index$4;
     exports.types = types;
     exports.xy = xy;
 

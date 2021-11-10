@@ -199,7 +199,7 @@ export class Fieldset extends Widget.Widget {
         return this;
     }
 
-    _draw(buffer: GWU.canvas.DataBuffer): boolean {
+    _draw(buffer: GWU.buffer.Buffer): boolean {
         const border = this._attrStr('border');
         if (!border || border === 'none') return false;
 

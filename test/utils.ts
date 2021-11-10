@@ -103,7 +103,7 @@ export interface MockCanvas {
     readonly width: number;
     readonly height: number;
     render: jest.Mock<void>;
-    copyTo: jest.Mock<void, [GWU.canvas.DataBuffer]>;
+    copyTo: jest.Mock<void, [GWU.buffer.Buffer]>;
     draw: jest.Mock<boolean>;
     toGlyph: jest.Mock<number, [number | string]>;
     buffer: GWU.canvas.Buffer;
@@ -147,7 +147,7 @@ export function mockLayer(w: number, h: number): Layer.Layer {
 }
 
 export function getBufferText(
-    buffer: GWU.canvas.DataBuffer,
+    buffer: GWU.buffer.Buffer,
     x: number,
     y: number,
     width: number
@@ -162,7 +162,7 @@ export function getBufferText(
 }
 
 export function getBufferFg(
-    buffer: GWU.canvas.DataBuffer,
+    buffer: GWU.buffer.Buffer,
     x: number,
     y: number
 ): number {
@@ -171,7 +171,7 @@ export function getBufferFg(
 }
 
 export function getBufferBg(
-    buffer: GWU.canvas.DataBuffer,
+    buffer: GWU.buffer.Buffer,
     x: number,
     y: number
 ): number {

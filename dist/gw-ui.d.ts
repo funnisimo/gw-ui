@@ -206,9 +206,9 @@ declare class Widget implements UIStylable {
     get hidden(): boolean;
     set hidden(v: boolean);
     updateStyle(): void;
-    draw(buffer: GWU.canvas.DataBuffer): boolean;
-    protected _draw(buffer: GWU.canvas.DataBuffer): boolean;
-    protected _drawFill(buffer: GWU.canvas.DataBuffer): void;
+    draw(buffer: GWU.buffer.Buffer): boolean;
+    protected _draw(buffer: GWU.buffer.Buffer): boolean;
+    protected _drawFill(buffer: GWU.buffer.Buffer): void;
     childAt(xy: GWU.xy.XY): Widget | null;
     childAt(x: number, y: number): Widget | null;
     _addChild(w: Widget, opts?: SetParentOptions): this;
@@ -266,7 +266,7 @@ interface UICore {
     readonly height: number;
     readonly styles: Sheet;
     startNewLayer(): Layer;
-    copyUIBuffer(dest: GWU.canvas.DataBuffer): void;
+    copyUIBuffer(dest: GWU.buffer.Buffer): void;
     finishLayer(layer: Layer): void;
     stop(): void;
 }
@@ -358,8 +358,9 @@ declare class UI implements UICore {
     get styles(): Sheet;
     get baseBuffer(): GWU.canvas.Buffer;
     get canvasBuffer(): GWU.canvas.Buffer;
+    get buffer(): GWU.canvas.Buffer;
     startNewLayer(): Layer;
-    copyUIBuffer(dest: GWU.canvas.DataBuffer): void;
+    copyUIBuffer(dest: GWU.buffer.Buffer): void;
     finishLayer(layer: Layer): void;
     stop(): void;
     mousemove(e: GWU.io.Event): boolean;
@@ -382,7 +383,7 @@ declare class Text extends Widget {
     text(): string;
     text(v: string): this;
     resize(w: number, h: number): this;
-    _draw(buffer: GWU.canvas.DataBuffer): boolean;
+    _draw(buffer: GWU.buffer.Buffer): boolean;
 }
 declare type AddTextOptions = Omit<TextOptions, 'text'> & SetParentOptions & {
     parent?: Widget;
@@ -403,7 +404,7 @@ declare class Border extends Widget {
     constructor(layer: Layer, opts: BorderOptions);
     contains(e: GWU.xy.XY): boolean;
     contains(x: number, y: number): boolean;
-    _draw(buffer: GWU.canvas.DataBuffer): boolean;
+    _draw(buffer: GWU.buffer.Buffer): boolean;
 }
 declare type AddBorderOptions = BorderOptions & SetParentOptions & {
     parent?: Widget;
@@ -413,7 +414,7 @@ declare module '../layer' {
         border(opts: AddBorderOptions): Border;
     }
 }
-declare function drawBorder(buffer: GWU.canvas.DataBuffer, x: number, y: number, w: number, h: number, style: UIStyle, ascii: boolean): void;
+declare function drawBorder(buffer: GWU.buffer.Buffer, x: number, y: number, w: number, h: number, style: UIStyle, ascii: boolean): void;
 
 interface ButtonOptions extends Omit<TextOptions, 'text'> {
     text?: string;
@@ -508,7 +509,7 @@ declare class DataTable extends Widget {
     blur(reverse?: boolean): boolean;
     data(): DataType;
     data(data: DataType): this;
-    _draw(buffer: GWU.canvas.DataBuffer): boolean;
+    _draw(buffer: GWU.buffer.Buffer): boolean;
     mouseenter(e: GWU.io.Event, over: Widget): void;
     click(e: GWU.io.Event): boolean;
     keypress(e: GWU.io.Event): boolean;
@@ -564,7 +565,7 @@ declare class Fieldset extends Widget {
     _addLegend(opts: FieldsetOptions): this;
     add(label: string, format: string | FieldOptions): this;
     data(d: any): this;
-    _draw(buffer: GWU.canvas.DataBuffer): boolean;
+    _draw(buffer: GWU.buffer.Buffer): boolean;
 }
 declare type AddFieldsetOptions = FieldsetOptions & SetParentOptions & {
     parent?: Widget;
@@ -594,9 +595,9 @@ declare class OrderedList extends Widget {
     _fixedHeight: boolean;
     constructor(layer: Layer, opts: OrderedListOptions);
     _addChild(w: Widget, opts?: SetParentOptions): this;
-    _draw(buffer: GWU.canvas.DataBuffer): boolean;
+    _draw(buffer: GWU.buffer.Buffer): boolean;
     _getBullet(index: number): string;
-    _drawBulletFor(widget: Widget, buffer: GWU.canvas.DataBuffer, index: number): void;
+    _drawBulletFor(widget: Widget, buffer: GWU.buffer.Buffer, index: number): void;
 }
 interface UnorderedListOptions extends OrderedListOptions {
     bullet?: string;
@@ -649,7 +650,7 @@ declare class Input extends Text {
     keypress(ev: GWU.io.Event): boolean;
     text(): string;
     text(v: string): this;
-    _draw(buffer: GWU.canvas.DataBuffer, _force?: boolean): boolean;
+    _draw(buffer: GWU.buffer.Buffer, _force?: boolean): boolean;
 }
 declare type AddInputOptions = InputOptions & SetParentOptions & {
     parent?: Widget;
@@ -889,7 +890,7 @@ declare class Choice extends Widget {
     _addList(): this;
     _addInfo(): this;
     _addLegend(): this;
-    _draw(buffer: GWU.canvas.DataBuffer): boolean;
+    _draw(buffer: GWU.buffer.Buffer): boolean;
 }
 declare type AddChoiceOptions = ChoiceOptions & SetParentOptions & {
     parent?: Widget;
@@ -928,7 +929,7 @@ declare class Messages extends Widget {
     cache: GWU.message.MessageCache;
     constructor(layer: Layer, opts: MessageOptions);
     click(e: GWU.io.Event): boolean;
-    draw(buffer: GWU.canvas.DataBuffer): boolean;
+    draw(buffer: GWU.buffer.Buffer): boolean;
     showArchive(): void;
 }
 declare type ArchiveMode = 'forward' | 'ack' | 'reverse';
@@ -945,7 +946,7 @@ declare class MessageArchive extends Widget {
     click(_e: GWU.io.Event): boolean;
     _forward(): boolean;
     _reverse(): boolean;
-    _draw(buffer: GWU.canvas.DataBuffer): boolean;
+    _draw(buffer: GWU.buffer.Buffer): boolean;
 }
 
 interface FlavorOptions extends WidgetOptions {
@@ -971,28 +972,28 @@ declare abstract class EntryBase {
     sidebarY: number;
     abstract get x(): number;
     abstract get y(): number;
-    draw(_buffer: GWU.canvas.DataBuffer, _bounds: GWU.xy.Bounds): number;
+    draw(_buffer: GWU.buffer.Buffer, _bounds: GWU.xy.Bounds): number;
 }
 declare class ActorEntry extends EntryBase {
     actor: GWM.actor.Actor;
     constructor(actor: GWM.actor.Actor);
     get x(): number;
     get y(): number;
-    draw(buffer: GWU.canvas.DataBuffer, bounds: GWU.xy.Bounds): number;
+    draw(buffer: GWU.buffer.Buffer, bounds: GWU.xy.Bounds): number;
 }
 declare class ItemEntry extends EntryBase {
     item: GWM.item.Item;
     constructor(item: GWM.item.Item);
     get x(): number;
     get y(): number;
-    draw(buffer: GWU.canvas.DataBuffer, bounds: GWU.xy.Bounds): number;
+    draw(buffer: GWU.buffer.Buffer, bounds: GWU.xy.Bounds): number;
 }
 declare class CellEntry extends EntryBase {
     cell: GWM.map.CellInfoType;
     constructor(cell: GWM.map.CellInfoType);
     get x(): number;
     get y(): number;
-    draw(buffer: GWU.canvas.DataBuffer, bounds: GWU.xy.Bounds): number;
+    draw(buffer: GWU.buffer.Buffer, bounds: GWU.xy.Bounds): number;
 }
 declare type SidebarEntry = ActorEntry | ItemEntry | CellEntry;
 declare class Sidebar extends Widget {
@@ -1022,7 +1023,7 @@ declare class Sidebar extends Widget {
     update(): boolean;
     updateFor(subject: UISubject): boolean;
     updateAt(map: GWM.map.Map, cx: number, cy: number, fov?: GWU.fov.FovTracker): boolean;
-    draw(buffer: GWU.canvas.DataBuffer): boolean;
+    draw(buffer: GWU.buffer.Buffer): boolean;
 }
 
 declare type ViewFilterFn = (mixer: GWU.sprite.Mixer, x: number, y: number, map: GWM.map.Map) => void;
@@ -1056,7 +1057,7 @@ declare class Viewport extends Widget {
     centerOn(map: GWM.map.Map, x: number, y: number): void;
     showMap(map: GWM.map.Map, x?: number, y?: number): void;
     updateOffset(): void;
-    draw(buffer: GWU.canvas.DataBuffer): boolean;
+    draw(buffer: GWU.buffer.Buffer): boolean;
 }
 
 export { ActionConfig, ActorEntry, AddBorderOptions, AddChoiceOptions, AddDataListOptions, AddDataTableOptions, AddFieldsetOptions, AddInputOptions, AddMenuOptions, AddMenubarOptions, AddOrderedListOptions, AddSelectOptions, AddTextOptions, AddUnorderedListOptions, ArchiveMode, Border, BorderOptions, BorderType, Button, ButtonConfig, ButtonOptions, CellEntry, Choice, ChoiceOptions, Column, ColumnOptions, ComputedStyle, DataItem, DataList, DataListOptions, DataObject, DataTable, DataTableOptions, DataType, DropdownConfig, EntryBase, EventCb, Field, FieldOptions, Fieldset, FieldsetOptions, Flavor, FlavorOptions, FormatFn, HoverType, Input, InputOptions, Inquiry, ItemEntry, Layer, LayerOptions, Menu, MenuButton, MenuButtonOptions, MenuOptions, MenuViewer, Menubar, MenubarButton, MenubarButtonOptions, MenubarOptions, MessageArchive, MessageOptions, Messages, NextType, OrderedList, OrderedListOptions, PrefixType, Prompt, PromptChoice, PromptOptions, PropType, Rec, Select, SelectOptions, SelectType, SetParentOptions, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, TD, Text, TextOptions, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, UnorderedList, UnorderedListOptions, Value, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, defaultStyle, drawBorder, makeStyle };

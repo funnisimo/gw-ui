@@ -1470,6 +1470,9 @@
         get canvasBuffer() {
             return this.canvas.buffer;
         }
+        get buffer() {
+            return this.layer ? this.layer.buffer : this.canvas.buffer;
+        }
         startNewLayer() {
             const layer = new Layer(this);
             this.layers.push(layer);

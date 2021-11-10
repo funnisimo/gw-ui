@@ -340,17 +340,17 @@ export class Widget implements UIStylable {
         this.layer.needsDraw = true; // changed style or state
     }
 
-    draw(buffer: GWU.canvas.DataBuffer): boolean {
+    draw(buffer: GWU.buffer.Buffer): boolean {
         if (this.hidden) return false;
         return this._draw(buffer);
     }
 
-    protected _draw(buffer: GWU.canvas.DataBuffer): boolean {
+    protected _draw(buffer: GWU.buffer.Buffer): boolean {
         this._drawFill(buffer);
         return true;
     }
 
-    protected _drawFill(buffer: GWU.canvas.DataBuffer): void {
+    protected _drawFill(buffer: GWU.buffer.Buffer): void {
         buffer.fillRect(
             this.bounds.x,
             this.bounds.y,

@@ -37,7 +37,7 @@ export class Messages extends Widget.Widget {
         return true;
     }
 
-    draw(buffer: GWU.canvas.DataBuffer) {
+    draw(buffer: GWU.buffer.Buffer) {
         const isOnTop = this.bounds.y < 10;
 
         // black out the message area
@@ -188,7 +188,7 @@ export class MessageArchive extends Widget.Widget {
         return true;
     }
 
-    _draw(buffer: GWU.canvas.DataBuffer): boolean {
+    _draw(buffer: GWU.buffer.Buffer): boolean {
         let fadePercent = 0;
         // let reverse = this.mode === 'reverse';
 

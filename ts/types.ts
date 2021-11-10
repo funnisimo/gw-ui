@@ -111,7 +111,7 @@ export interface UIStylesheet {
 //     blur(): void;
 
 //     updateStyle(): void;
-//     draw(buffer: GWU.canvas.DataBuffer): void;
+//     draw(buffer: GWU.buffer.Buffer): void;
 
 //     mouseenter(e: GWU.io.Event): void;
 //     mousemove(e: GWU.io.Event): boolean;

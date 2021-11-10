@@ -20,7 +20,7 @@ describe('Button Widget', () => {
 
         widget.bounds.x = widget.bounds.y = 0;
 
-        const buffer = new GWU.canvas.DataBuffer(40, 40);
+        const buffer = new GWU.buffer.Buffer(40, 40);
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
         expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.white);
@@ -41,7 +41,7 @@ describe('Button Widget', () => {
         expect(widget.bounds.width).toEqual(6);
         expect(widget.bounds.height).toEqual(1);
 
-        const buffer = new GWU.canvas.DataBuffer(40, 40);
+        const buffer = new GWU.buffer.Buffer(40, 40);
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
         expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.red);
@@ -75,7 +75,7 @@ describe('Button Widget', () => {
             y: 0,
         });
 
-        const buffer = new GWU.canvas.DataBuffer(40, 40);
+        const buffer = new GWU.buffer.Buffer(40, 40);
         widget.draw(buffer);
         expect(UTILS.getBufferText(buffer, 0, 0, 10)).toEqual('Button');
         expect(buffer.info(0, 0).fg).toEqual(GWU.color.colors.red.toInt());

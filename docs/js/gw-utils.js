@@ -4362,7 +4362,10 @@
         defaultBg: null,
     };
     var helpers = {
-        default: (name, _, value) => {
+        default: (_name, _, _value) => {
+            return '';
+        },
+        debug: (name, _, value) => {
             if (value !== undefined)
                 return `${value}.!!${name}!!`;
             return `!!${name}!!`;
@@ -4380,7 +4383,7 @@
                 return textSegment(part);
             if (part.length == 0)
                 return textSegment(F);
-            return makeVariable(part);
+            return makeVariable(part, opts);
         });
         return function (args = {}) {
             if (typeof args === 'string') {
@@ -4397,7 +4400,7 @@
     function textSegment(value) {
         return () => value;
     }
-    function baseValue(name) {
+    function baseValue(name, debug = false) {
         return function (args) {
             let h = helpers[name];
             if (h) {
@@ -4406,23 +4409,25 @@
             const v = args[name];
             if (v !== undefined)
                 return v;
-            h = helpers.default;
+            h = debug ? helpers.debug : helpers.default;
             return h(name, args);
         };
     }
-    function fieldValue(name, source) {
+    function fieldValue(name, source, debug = false) {
+        const helper = debug ? helpers.debug : helpers.default;
         return function (args) {
             const obj = source(args);
             if (!obj)
-                return helpers.default(name, args, obj);
+                return helper(name, args, obj);
             const value = obj[name];
             if (value === undefined)
-                return helpers.default(name, args, obj);
+                return helper(name, args, obj);
             return value;
         };
     }
-    function helperValue(name, source) {
-        const helper = helpers[name] || helpers.default;
+    function helperValue(name, source, debug = false) {
+        const helper = helpers[name] ||
+            (debug ? helpers.debug : helpers.default);
         return function (args) {
             const base = source(args);
             return helper(name, args, base);
@@ -4489,18 +4494,18 @@
             return text;
         };
     }
-    function makeVariable(pattern) {
+    function makeVariable(pattern, opts = {}) {
         const data = /((\w+) )?(\w+)(\.(\w+))?(%[\+\.\-\d]*[dsf])?/.exec(pattern) || [];
         const helper = data[2];
         const base = data[3];
         const field = data[5];
         const format = data[6];
-        let result = baseValue(base);
+        let result = baseValue(base, opts.debug);
         if (field && field.length) {
-            result = fieldValue(field, result);
+            result = fieldValue(field, result, opts.debug);
         }
         if (helper && helper.length) {
-            result = helperValue(helper, result);
+            result = helperValue(helper, result, opts.debug);
         }
         if (format && format.length) {
             if (format.endsWith('s')) {
@@ -4970,23 +4975,24 @@
 
     var index$3 = /*#__PURE__*/Object.freeze({
         __proto__: null,
+        configure: configure,
         compile: compile,
         apply: apply,
         eachChar: eachChar,
+        wordWrap: wordWrap,
+        splitIntoLines: splitIntoLines,
+        addHelper: addHelper,
+        options: options,
         length: length,
+        advanceChars: advanceChars,
+        firstChar: firstChar,
         padStart: padStart,
         padEnd: padEnd,
         center: center,
-        firstChar: firstChar,
+        truncate: truncate,
         capitalize: capitalize,
         removeColors: removeColors,
-        wordWrap: wordWrap,
-        splitIntoLines: splitIntoLines,
-        configure: configure,
-        addHelper: addHelper,
-        options: options,
         spliceRaw: spliceRaw,
-        truncate: truncate,
         hash: hash
     });
 

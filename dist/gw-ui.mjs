@@ -1933,11 +1933,27 @@ Layer.prototype.ul = function (opts = {}) {
     return widget;
 };
 
+defaultStyle.add('input', {
+    bg: 'light_gray',
+    fg: 'black',
+    align: 'left',
+    valign: 'top',
+});
+defaultStyle.add('input:invalid', {
+    fg: 'red',
+});
+defaultStyle.add('input:empty', {
+    fg: 'darkest_green',
+});
+defaultStyle.add('input:focus', {
+    bg: 'lighter_gray',
+});
 class Input extends Text {
     constructor(layer, opts) {
         super(layer, (() => {
             opts.text = opts.text || '';
             opts.tag = opts.tag || 'input';
+            opts.tabStop = opts.tabStop === undefined ? true : opts.tabStop;
             opts.action = opts.action || opts.id;
             opts.width =
                 opts.width ||
@@ -1945,15 +1961,13 @@ class Input extends Text {
                     Math.max(opts.minLength || 0, 10);
             return opts;
         })());
-        this.placeholder = '';
         this.minLength = 0;
         this.maxLength = 0;
         this.numbersOnly = false;
         this.min = 0;
         this.max = 0;
-        this.default = this._text;
-        if (opts.placeholder)
-            this.placeholder = opts.placeholder;
+        this.attr('default', this._text);
+        this.attr('placeholder', opts.placeholder || Input.default.placeholder);
         if (opts.numbersOnly) {
             this.numbersOnly = true;
             this.min = opts.min || 0;
@@ -1973,9 +1987,10 @@ class Input extends Text {
         }
         this.prop('valid', this.isValid()); // redo b/c rules are now set
         this.on('blur', () => this._fireEvent('change', this));
+        this.reset();
     }
     reset() {
-        this.text(this.default);
+        this.text(this._attrStr('default'));
     }
     _setProp(name, v) {
         super._setProp(name, v);
@@ -2013,6 +2028,7 @@ class Input extends Text {
             if (this._text.length) {
                 this.text(GWU.text.spliceRaw(this._text, this._text.length - 1, 1));
                 this._fireEvent('input', this);
+                this._draw(this.layer.buffer); // save some work?
             }
             return true;
         }
@@ -2026,6 +2042,7 @@ class Input extends Text {
             if (!this.maxLength || this._text.length < this.maxLength) {
                 this.text(this._text + ev.key);
                 this._fireEvent('input', this);
+                this._draw(this.layer.buffer); // save some work?
             }
         }
         return true;
@@ -2048,6 +2065,9 @@ class Input extends Text {
             vOffset = Math.floor((this.bounds.height - this._lines.length) / 2);
         }
         let show = this._text;
+        if (show.length == 0) {
+            show = this._attrStr('placeholder');
+        }
         if (this._text.length > this.bounds.width) {
             show = this._text.slice(this._text.length - this.bounds.width);
         }
@@ -2055,6 +2075,11 @@ class Input extends Text {
         return true;
     }
 }
+Input.default = {
+    tag: 'input',
+    width: 10,
+    placeholder: '',
+};
 installWidget('input', (l, opts) => new Input(l, opts));
 Layer.prototype.input = function (opts) {
     const options = Object.assign({}, this._opts, opts);
@@ -3304,6 +3329,35 @@ class Inquiry {
     }
 }
 
+// export * from './box';
+
+var index = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    Widget: Widget,
+    Text: Text,
+    Border: Border,
+    drawBorder: drawBorder,
+    Button: Button,
+    Fieldset: Fieldset,
+    Field: Field,
+    OrderedList: OrderedList,
+    UnorderedList: UnorderedList,
+    Input: Input,
+    Column: Column,
+    DataTable: DataTable,
+    TD: TD,
+    DataList: DataList,
+    Menu: Menu,
+    MenuButton: MenuButton,
+    Menubar: Menubar,
+    MenubarButton: MenubarButton,
+    MenuViewer: MenuViewer,
+    Select: Select,
+    Prompt: Prompt,
+    Choice: Choice,
+    Inquiry: Inquiry
+});
+
 class Messages extends Widget {
     constructor(layer, opts) {
         super(layer, (() => {
@@ -4015,4 +4069,4 @@ class Viewport extends Widget {
     }
 }
 
-export { ActorEntry, Border, Button, CellEntry, Choice, Column, ComputedStyle, DataList, DataTable, EntryBase, Field, Fieldset, Flavor, Input, Inquiry, ItemEntry, Layer, Menu, MenuButton, MenuViewer, Menubar, MenubarButton, MessageArchive, Messages, OrderedList, Prompt, Select, Sheet, Sidebar, Style, TD, Text, UI, UnorderedList, Viewport, Widget, defaultStyle, drawBorder, makeStyle };
+export { ActorEntry, CellEntry, ComputedStyle, EntryBase, Flavor, ItemEntry, Layer, MessageArchive, Messages, Sheet, Sidebar, Style, UI, Viewport, defaultStyle, makeStyle, index as widget };

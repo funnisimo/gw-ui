@@ -636,8 +636,11 @@ interface InputOptions extends Omit<TextOptions, 'text'> {
     disabled?: boolean;
 }
 declare class Input extends Text {
-    placeholder: string;
-    default: string;
+    static default: {
+        tag: string;
+        width: number;
+        placeholder: string;
+    };
     minLength: number;
     maxLength: number;
     numbersOnly: boolean;
@@ -922,6 +925,173 @@ declare class Inquiry {
     _fireEvent(name: string, source: Widget | null, args?: any): boolean;
 }
 
+type index_d_EventCb = EventCb;
+type index_d_WidgetOptions = WidgetOptions;
+type index_d_SetParentOptions = SetParentOptions;
+type index_d_Widget = Widget;
+declare const index_d_Widget: typeof Widget;
+type index_d_TextOptions = TextOptions;
+type index_d_Text = Text;
+declare const index_d_Text: typeof Text;
+type index_d_AddTextOptions = AddTextOptions;
+type index_d_BorderOptions = BorderOptions;
+type index_d_Border = Border;
+declare const index_d_Border: typeof Border;
+type index_d_AddBorderOptions = AddBorderOptions;
+declare const index_d_drawBorder: typeof drawBorder;
+type index_d_ButtonOptions = ButtonOptions;
+type index_d_Button = Button;
+declare const index_d_Button: typeof Button;
+type index_d_FieldsetOptions = FieldsetOptions;
+type index_d_Fieldset = Fieldset;
+declare const index_d_Fieldset: typeof Fieldset;
+type index_d_AddFieldsetOptions = AddFieldsetOptions;
+type index_d_FieldOptions = FieldOptions;
+type index_d_Field = Field;
+declare const index_d_Field: typeof Field;
+type index_d_OrderedListOptions = OrderedListOptions;
+type index_d_OrderedList = OrderedList;
+declare const index_d_OrderedList: typeof OrderedList;
+type index_d_UnorderedListOptions = UnorderedListOptions;
+type index_d_UnorderedList = UnorderedList;
+declare const index_d_UnorderedList: typeof UnorderedList;
+type index_d_AddOrderedListOptions = AddOrderedListOptions;
+type index_d_AddUnorderedListOptions = AddUnorderedListOptions;
+type index_d_InputOptions = InputOptions;
+type index_d_Input = Input;
+declare const index_d_Input: typeof Input;
+type index_d_AddInputOptions = AddInputOptions;
+type index_d_FormatFn = FormatFn;
+type index_d_Value = Value;
+type index_d_SelectType = SelectType;
+type index_d_HoverType = HoverType;
+type index_d_DataObject = DataObject;
+type index_d_DataItem = DataItem;
+type index_d_DataType = DataType;
+type index_d_BorderType = BorderType;
+type index_d_ColumnOptions = ColumnOptions;
+type index_d_DataTableOptions = DataTableOptions;
+type index_d_Column = Column;
+declare const index_d_Column: typeof Column;
+type index_d_DataTable = DataTable;
+declare const index_d_DataTable: typeof DataTable;
+type index_d_TD = TD;
+declare const index_d_TD: typeof TD;
+type index_d_AddDataTableOptions = AddDataTableOptions;
+type index_d_DataListOptions = DataListOptions;
+type index_d_DataList = DataList;
+declare const index_d_DataList: typeof DataList;
+type index_d_AddDataListOptions = AddDataListOptions;
+type index_d_Rec<_0> = Rec<_0>;
+type index_d_DropdownConfig = DropdownConfig;
+type index_d_ActionConfig = ActionConfig;
+type index_d_ButtonConfig = ButtonConfig;
+type index_d_MenuOptions = MenuOptions;
+type index_d_Menu = Menu;
+declare const index_d_Menu: typeof Menu;
+type index_d_MenuButtonOptions = MenuButtonOptions;
+type index_d_MenuButton = MenuButton;
+declare const index_d_MenuButton: typeof MenuButton;
+type index_d_AddMenuOptions = AddMenuOptions;
+type index_d_MenubarOptions = MenubarOptions;
+type index_d_Menubar = Menubar;
+declare const index_d_Menubar: typeof Menubar;
+type index_d_MenubarButtonOptions = MenubarButtonOptions;
+type index_d_MenubarButton = MenubarButton;
+declare const index_d_MenubarButton: typeof MenubarButton;
+type index_d_AddMenubarOptions = AddMenubarOptions;
+type index_d_MenuViewer = MenuViewer;
+declare const index_d_MenuViewer: typeof MenuViewer;
+type index_d_SelectOptions = SelectOptions;
+type index_d_Select = Select;
+declare const index_d_Select: typeof Select;
+type index_d_AddSelectOptions = AddSelectOptions;
+type index_d_NextType = NextType;
+type index_d_PromptChoice = PromptChoice;
+type index_d_PromptOptions = PromptOptions;
+type index_d_Prompt = Prompt;
+declare const index_d_Prompt: typeof Prompt;
+type index_d_ChoiceOptions = ChoiceOptions;
+type index_d_Choice = Choice;
+declare const index_d_Choice: typeof Choice;
+type index_d_AddChoiceOptions = AddChoiceOptions;
+type index_d_Inquiry = Inquiry;
+declare const index_d_Inquiry: typeof Inquiry;
+declare namespace index_d {
+  export {
+    index_d_EventCb as EventCb,
+    index_d_WidgetOptions as WidgetOptions,
+    index_d_SetParentOptions as SetParentOptions,
+    index_d_Widget as Widget,
+    index_d_TextOptions as TextOptions,
+    index_d_Text as Text,
+    index_d_AddTextOptions as AddTextOptions,
+    index_d_BorderOptions as BorderOptions,
+    index_d_Border as Border,
+    index_d_AddBorderOptions as AddBorderOptions,
+    index_d_drawBorder as drawBorder,
+    index_d_ButtonOptions as ButtonOptions,
+    index_d_Button as Button,
+    index_d_FieldsetOptions as FieldsetOptions,
+    index_d_Fieldset as Fieldset,
+    index_d_AddFieldsetOptions as AddFieldsetOptions,
+    index_d_FieldOptions as FieldOptions,
+    index_d_Field as Field,
+    index_d_OrderedListOptions as OrderedListOptions,
+    index_d_OrderedList as OrderedList,
+    index_d_UnorderedListOptions as UnorderedListOptions,
+    index_d_UnorderedList as UnorderedList,
+    index_d_AddOrderedListOptions as AddOrderedListOptions,
+    index_d_AddUnorderedListOptions as AddUnorderedListOptions,
+    index_d_InputOptions as InputOptions,
+    index_d_Input as Input,
+    index_d_AddInputOptions as AddInputOptions,
+    index_d_FormatFn as FormatFn,
+    index_d_Value as Value,
+    index_d_SelectType as SelectType,
+    index_d_HoverType as HoverType,
+    index_d_DataObject as DataObject,
+    index_d_DataItem as DataItem,
+    index_d_DataType as DataType,
+    index_d_BorderType as BorderType,
+    index_d_ColumnOptions as ColumnOptions,
+    index_d_DataTableOptions as DataTableOptions,
+    index_d_Column as Column,
+    index_d_DataTable as DataTable,
+    index_d_TD as TD,
+    index_d_AddDataTableOptions as AddDataTableOptions,
+    index_d_DataListOptions as DataListOptions,
+    index_d_DataList as DataList,
+    index_d_AddDataListOptions as AddDataListOptions,
+    index_d_Rec as Rec,
+    index_d_DropdownConfig as DropdownConfig,
+    index_d_ActionConfig as ActionConfig,
+    index_d_ButtonConfig as ButtonConfig,
+    index_d_MenuOptions as MenuOptions,
+    index_d_Menu as Menu,
+    index_d_MenuButtonOptions as MenuButtonOptions,
+    index_d_MenuButton as MenuButton,
+    index_d_AddMenuOptions as AddMenuOptions,
+    index_d_MenubarOptions as MenubarOptions,
+    index_d_Menubar as Menubar,
+    index_d_MenubarButtonOptions as MenubarButtonOptions,
+    index_d_MenubarButton as MenubarButton,
+    index_d_AddMenubarOptions as AddMenubarOptions,
+    index_d_MenuViewer as MenuViewer,
+    index_d_SelectOptions as SelectOptions,
+    index_d_Select as Select,
+    index_d_AddSelectOptions as AddSelectOptions,
+    index_d_NextType as NextType,
+    index_d_PromptChoice as PromptChoice,
+    index_d_PromptOptions as PromptOptions,
+    index_d_Prompt as Prompt,
+    index_d_ChoiceOptions as ChoiceOptions,
+    index_d_Choice as Choice,
+    index_d_AddChoiceOptions as AddChoiceOptions,
+    index_d_Inquiry as Inquiry,
+  };
+}
+
 interface MessageOptions extends WidgetOptions {
     length?: number;
 }
@@ -1060,4 +1230,4 @@ declare class Viewport extends Widget {
     draw(buffer: GWU.buffer.Buffer): boolean;
 }
 
-export { ActionConfig, ActorEntry, AddBorderOptions, AddChoiceOptions, AddDataListOptions, AddDataTableOptions, AddFieldsetOptions, AddInputOptions, AddMenuOptions, AddMenubarOptions, AddOrderedListOptions, AddSelectOptions, AddTextOptions, AddUnorderedListOptions, ArchiveMode, Border, BorderOptions, BorderType, Button, ButtonConfig, ButtonOptions, CellEntry, Choice, ChoiceOptions, Column, ColumnOptions, ComputedStyle, DataItem, DataList, DataListOptions, DataObject, DataTable, DataTableOptions, DataType, DropdownConfig, EntryBase, EventCb, Field, FieldOptions, Fieldset, FieldsetOptions, Flavor, FlavorOptions, FormatFn, HoverType, Input, InputOptions, Inquiry, ItemEntry, Layer, LayerOptions, Menu, MenuButton, MenuButtonOptions, MenuOptions, MenuViewer, Menubar, MenubarButton, MenubarButtonOptions, MenubarOptions, MessageArchive, MessageOptions, Messages, NextType, OrderedList, OrderedListOptions, PrefixType, Prompt, PromptChoice, PromptOptions, PropType, Rec, Select, SelectOptions, SelectType, SetParentOptions, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, TD, Text, TextOptions, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, UnorderedList, UnorderedListOptions, Value, ViewFilterFn, Viewport, ViewportOptions, Widget, WidgetOptions, defaultStyle, drawBorder, makeStyle };
+export { ActorEntry, ArchiveMode, CellEntry, ComputedStyle, EntryBase, Flavor, FlavorOptions, ItemEntry, Layer, LayerOptions, MessageArchive, MessageOptions, Messages, PrefixType, PropType, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, ViewFilterFn, Viewport, ViewportOptions, defaultStyle, makeStyle, index_d as widget };

@@ -4,6 +4,7 @@ import * as Text from './text';
 import { installWidget } from './make';
 import * as Widget from './widget';
 import { PropType } from '../types';
+import * as Style from '../style';
 
 export interface InputOptions extends Omit<Text.TextOptions, 'text'> {
     text?: string; // don't have to have text
@@ -21,10 +22,32 @@ export interface InputOptions extends Omit<Text.TextOptions, 'text'> {
     disabled?: boolean;
 }
 
-export class Input extends Text.Text {
-    placeholder = '';
+Style.defaultStyle.add('input', {
+    bg: 'light_gray',
+    fg: 'black',
+    align: 'left',
+    valign: 'top',
+});
 
-    default: string;
+Style.defaultStyle.add('input:invalid', {
+    fg: 'red',
+});
+
+Style.defaultStyle.add('input:empty', {
+    fg: 'darkest_green',
+});
+
+Style.defaultStyle.add('input:focus', {
+    bg: 'lighter_gray',
+});
+
+export class Input extends Text.Text {
+    static default = {
+        tag: 'input',
+        width: 10,
+        placeholder: '',
+    };
+
     minLength = 0;
     maxLength = 0;
 
@@ -38,6 +61,7 @@ export class Input extends Text.Text {
             (() => {
                 opts.text = opts.text || '';
                 opts.tag = opts.tag || 'input';
+                opts.tabStop = opts.tabStop === undefined ? true : opts.tabStop;
                 opts.action = opts.action || opts.id;
                 opts.width =
                     opts.width ||
@@ -47,8 +71,9 @@ export class Input extends Text.Text {
             })()
         );
 
-        this.default = this._text;
-        if (opts.placeholder) this.placeholder = opts.placeholder;
+        this.attr('default', this._text);
+        this.attr('placeholder', opts.placeholder || Input.default.placeholder);
+
         if (opts.numbersOnly) {
             this.numbersOnly = true;
             this.min = opts.min || 0;
@@ -68,10 +93,12 @@ export class Input extends Text.Text {
 
         this.prop('valid', this.isValid()); // redo b/c rules are now set
         this.on('blur', () => this._fireEvent('change', this));
+
+        this.reset();
     }
 
     reset() {
-        this.text(this.default);
+        this.text(this._attrStr('default'));
     }
 
     _setProp(name: string, v: PropType): void {
@@ -117,6 +144,7 @@ export class Input extends Text.Text {
                     GWU.text.spliceRaw(this._text, this._text.length - 1, 1)
                 );
                 this._fireEvent('input', this);
+                this._draw(this.layer.buffer); // save some work?
             }
             return true;
         } else if (ev.key.length > 1) {
@@ -130,6 +158,7 @@ export class Input extends Text.Text {
             if (!this.maxLength || this._text.length < this.maxLength) {
                 this.text(this._text + ev.key);
                 this._fireEvent('input', this);
+                this._draw(this.layer.buffer); // save some work?
             }
         }
         return true;
@@ -156,6 +185,9 @@ export class Input extends Text.Text {
         }
 
         let show = this._text;
+        if (show.length == 0) {
+            show = this._attrStr('placeholder');
+        }
         if (this._text.length > this.bounds.width) {
             show = this._text.slice(this._text.length - this.bounds.width);
         }

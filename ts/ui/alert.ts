@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { Layer } from '../ui/layer';
+import { Layer } from './layer';
 import * as Dialog from '../widget/dialog';
 
 export interface AlertOptions extends Dialog.DialogOptions {
@@ -11,7 +11,7 @@ export interface AlertOptions extends Dialog.DialogOptions {
 
 // extend Layer
 
-declare module '../ui/layer' {
+declare module './layer' {
     interface Layer {
         alert(
             opts: AlertOptions | number,
@@ -37,8 +37,6 @@ Layer.prototype.alert = function (
     opts.class = opts.class || 'alert';
     opts.border = opts.border || 'ascii';
     opts.pad = opts.pad || 1;
-
-    // const width = opts.width || GWU.text.length(text);
 
     const layer = this.ui.startNewLayer();
 
@@ -77,35 +75,6 @@ Layer.prototype.alert = function (
     layer.setTimeout(() => {
         layer.finish(true);
     }, opts.duration || 3000);
-
-    // const textOpts: Widget.TextOptions = {
-    //     fg: opts.fg,
-    //     text,
-    //     x: 0,
-    //     y: 0,
-    //     wrap: width,
-    // };
-    // const textWidget = new Widget.Text('TEXT', textOpts);
-
-    // const height = textWidget.bounds.height;
-
-    // const dlg: Widget.Dialog = Widget.buildDialog(this, width, height)
-    //     .with(textWidget, { x: 0, y: 0 })
-    //     .addBox(opts.box)
-    //     .center()
-    //     .done();
-
-    // dlg.setEventHandlers({
-    //     click: () => dlg.close(true),
-    //     keypress: () => dlg.close(true),
-    //     TIMEOUT: () => dlg.close(false),
-    // });
-
-    // if (!opts.waitForAck) {
-    //     dlg.setTimeout('TIMEOUT', opts.duration || 3000);
-    // }
-
-    // return await dlg.show();
 
     return layer.promise;
 };

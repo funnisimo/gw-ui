@@ -207,12 +207,6 @@ export class Layer implements UILayer {
         return this;
     }
 
-    // Effects
-
-    fadeTo(_color?: GWU.color.ColorBase, _duration?: number): void {
-        throw new Error('Method not implemented.');
-    }
-
     // Widgets
 
     // create(tag: string, opts: any): UIWidget {

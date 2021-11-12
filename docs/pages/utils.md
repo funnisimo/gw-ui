@@ -7,19 +7,18 @@ Here are some utility function examples...
 FadeTo allows you to fade the entire screen to a color over a set time. It is useful for transitions.
 
 ```js
-// const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
-// SHOW(canvas.node);
+const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
+SHOW(canvas.node);
 
-// const ui = new GWI.UI({ canvas, loop: LOOP });
+const ui = new GWI.UI({ canvas, loop: LOOP });
+const layer = ui.startNewLayer();
 
-// canvas.buffer.drawText(20, 17, 'Click the canvas to fade it.', 'yellow');
-// canvas.render();
+layer.pos(20, 17).text('Click the canvas to fade it.', { fg: 'yellow' });
 
-// LOOP.run({
-//     async click() {
-//         await ui.fadeTo('green', 1000);
-//     },
-// });
+layer.on('click', () => {
+    layer.fadeTo('green', 1000);
+    return true;
+});
 ```
 
 ## alert

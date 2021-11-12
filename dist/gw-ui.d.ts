@@ -308,7 +308,6 @@ declare class Layer implements UILayer {
     prevLine(n?: number): this;
     grid(): Grid;
     clear(color?: GWU.color.ColorBase): this;
-    fadeTo(_color?: GWU.color.ColorBase, _duration?: number): void;
     sortWidgets(): this;
     attach(w: Widget): this;
     detach(w: Widget): this;
@@ -503,9 +502,15 @@ interface AlertOptions extends DialogOptions {
     textClass?: string;
     opacity?: number;
 }
-declare module '../ui/layer' {
+declare module './layer' {
     interface Layer {
         alert(opts: AlertOptions | number, text: string, args?: any): Promise<boolean>;
+    }
+}
+
+declare module './layer' {
+    interface Layer {
+        fadeTo(color?: GWU.color.ColorBase, time?: number): Promise<void>;
     }
 }
 

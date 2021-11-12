@@ -1210,10 +1210,6 @@
             }
             return this;
         }
-        // Effects
-        fadeTo(_color, _duration) {
-            throw new Error('Method not implemented.');
-        }
         // Widgets
         // create(tag: string, opts: any): UIWidget {
         //     const options = Object.assign({ tag }, this._opts, opts);
@@ -1450,7 +1446,6 @@
         opts.class = opts.class || 'alert';
         opts.border = opts.border || 'ascii';
         opts.pad = opts.pad || 1;
-        // const width = opts.width || GWU.text.length(text);
         const layer = this.ui.startNewLayer();
         // Fade the background
         const opacity = opts.opacity !== undefined ? opts.opacity : 50;
@@ -1482,29 +1477,25 @@
         layer.setTimeout(() => {
             layer.finish(true);
         }, opts.duration || 3000);
-        // const textOpts: Widget.TextOptions = {
-        //     fg: opts.fg,
-        //     text,
-        //     x: 0,
-        //     y: 0,
-        //     wrap: width,
-        // };
-        // const textWidget = new Widget.Text('TEXT', textOpts);
-        // const height = textWidget.bounds.height;
-        // const dlg: Widget.Dialog = Widget.buildDialog(this, width, height)
-        //     .with(textWidget, { x: 0, y: 0 })
-        //     .addBox(opts.box)
-        //     .center()
-        //     .done();
-        // dlg.setEventHandlers({
-        //     click: () => dlg.close(true),
-        //     keypress: () => dlg.close(true),
-        //     TIMEOUT: () => dlg.close(false),
-        // });
-        // if (!opts.waitForAck) {
-        //     dlg.setTimeout('TIMEOUT', opts.duration || 3000);
-        // }
-        // return await dlg.show();
+        return layer.promise;
+    };
+
+    // Effects
+    Layer.prototype.fadeTo = function (color = 0, time = 1000) {
+        const layer = this.ui.startNewLayer();
+        let elapsed = 0;
+        layer.on('tick', (_n, _w, e) => {
+            elapsed += e.dt;
+            const pct = GWU__namespace.clamp(Math.round((100 * elapsed) / time), 0, 100);
+            this.ui.copyUIBuffer(layer.buffer);
+            layer.buffer.mix(color, pct);
+            layer.buffer.render();
+            // layer.needsDraw = true;
+            if (pct >= 100) {
+                layer.finish();
+            }
+            return true;
+        });
         return layer.promise;
     };
 

@@ -6,4 +6,5 @@ export * from './layer';
 export * from './alert';
 export * from './fadeTo';
 export * from './confirm';
+export * from './inputBox';
 export * from './ui';

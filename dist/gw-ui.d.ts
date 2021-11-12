@@ -550,6 +550,30 @@ declare module './layer' {
     }
 }
 
+interface InputBoxOptions extends Omit<DialogOptions, 'width' | 'height'> {
+    width?: number;
+    height?: number;
+    textClass?: string;
+    opacity?: number;
+    buttonWidth?: number;
+    label?: string;
+    labelClass?: string;
+    default?: string;
+    placeholder?: string;
+    inputClass?: string;
+    minLength?: number;
+    maxLength?: number;
+    numbersOnly?: boolean;
+    min?: number;
+    max?: number;
+}
+declare module './layer' {
+    interface Layer {
+        inputbox(text: string, args?: any): Layer;
+        inputbox(opts: InputBoxOptions, text: string, args?: any): Layer;
+    }
+}
+
 interface UIOptions {
     canvas: GWU.canvas.BaseCanvas;
     loop: GWU.io.Loop;
@@ -1361,4 +1385,4 @@ declare namespace index_d {
   };
 }
 
-export { AlertOptions, ComputedStyle, ConfirmOptions, Grid, GridTarget, Layer, LayerOptions, MatchFn, PrefixType, PropType, Selector, Sheet, Size, Style, StyleOptions, StyleType, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UISubject, compile, defaultStyle, index_d as game, makeStyle, index_d$1 as widget };
+export { AlertOptions, ComputedStyle, ConfirmOptions, Grid, GridTarget, InputBoxOptions, Layer, LayerOptions, MatchFn, PrefixType, PropType, Selector, Sheet, Size, Style, StyleOptions, StyleType, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UISubject, compile, defaultStyle, index_d as game, makeStyle, index_d$1 as widget };

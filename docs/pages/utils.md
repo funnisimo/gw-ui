@@ -125,3 +125,61 @@ layer.on('keypress', () => {
     return true;
 });
 ```
+
+## inputBox
+
+InputBox shows a dialog that requests that you enter some information.
+
+```js
+const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
+SHOW(canvas.node);
+
+const ui = new GWI.UI({ canvas, loop: LOOP });
+const layer = ui.startNewLayer();
+
+layer.styles.add('inputbox.special', { bg: 'darker_green', fg: 'yellow' });
+layer.styles.add('text.special', { fg: 'light_blue' });
+layer.styles.add('legend.special', { fg: 'light_blue' });
+layer.styles.add('label.special', { fg: 'purple' });
+layer.styles.add('input.special', { fg: 'red', bg: 'lightest_purple' });
+
+layer
+    .pos(20, 17)
+    .text('Click the canvas to get asked a question.', { fg: 'yellow' });
+
+layer
+    .pos(20, 19)
+    .text('Press a key to see a more custom question.', { fg: 'yellow' });
+
+const widget = layer.pos(20, 21).text('', { width: 50, fg: 'red' });
+
+layer.on('click', () => {
+    layer.inputbox('What is your name?').on('finish', (n, w, e) => {
+        widget.text('Result = ' + e);
+        return true;
+    });
+    return true;
+});
+
+layer.on('keypress', () => {
+    layer
+        .inputbox(
+            {
+                width: 30,
+                legend: 'TACOS!',
+                border: 'ascii',
+                label: 'Age:',
+                class: 'special',
+                numbersOnly: true,
+                min: 12,
+                max: 99,
+            },
+            'How old are you?'
+        )
+        .on('finish', (n, w, result) => {
+            widget.text('You said : ' + result);
+            return true;
+        });
+    return true;
+});
+```

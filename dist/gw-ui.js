@@ -1451,6 +1451,7 @@
         // create the text widget
         const textWidget = layer
             .text(text, {
+            id: 'TEXT',
             class: opts.textClass || opts.class,
             width: opts.width,
             height: opts.height,
@@ -1461,6 +1462,7 @@
             height: textWidget.bounds.height,
             x: textWidget.bounds.x,
             y: textWidget.bounds.y,
+            id: 'DIALOG',
         });
         const dialog = layer.dialog(opts);
         textWidget.setParent(dialog);
@@ -1700,6 +1702,75 @@
                 layer.finish(true);
             }
             return true;
+        });
+        return layer;
+    };
+
+    Layer.prototype.inputbox = function (opts, text, args) {
+        if (typeof opts === 'string') {
+            args = text;
+            text = opts;
+            opts = {};
+        }
+        if (args) {
+            text = GWU__namespace.text.apply(text, args);
+        }
+        opts.class = opts.class || 'confirm';
+        opts.border = opts.border || 'ascii';
+        opts.pad = opts.pad || 1;
+        const layer = this.ui.startNewLayer();
+        // Fade the background
+        const opacity = opts.opacity !== undefined ? opts.opacity : 50;
+        layer.body.style().set('bg', GWU__namespace.color.BLACK.alpha(opacity));
+        // create the text widget
+        const textWidget = layer
+            .text(text, {
+            class: opts.textClass || opts.class,
+            width: opts.width,
+            height: opts.height,
+        })
+            .center();
+        Object.assign(opts, {
+            width: textWidget.bounds.width,
+            height: textWidget.bounds.height + 2,
+            x: textWidget.bounds.x,
+            y: textWidget.bounds.y,
+            tag: 'inputbox',
+        });
+        const dialog = layer.dialog(opts);
+        textWidget.setParent(dialog);
+        let width = dialog._innerWidth;
+        let x = dialog._innerLeft;
+        if (opts.label) {
+            const label = layer.text(opts.label, {
+                class: opts.labelClass || opts.class,
+                tag: 'label',
+                parent: dialog,
+                x,
+                y: dialog._innerTop + dialog._innerHeight - 1,
+            });
+            x += label.bounds.width + 1;
+            width -= label.bounds.width + 1;
+        }
+        layer
+            .input({
+            class: opts.inputClass || opts.class,
+            width,
+            id: 'INPUT',
+            parent: dialog,
+            x,
+            y: dialog._innerTop + dialog._innerHeight - 1,
+        })
+            .on('INPUT', (_n, w, _e) => {
+            w && layer.finish(w.text());
+            return true;
+        });
+        layer.on('keypress', (_n, _w, e) => {
+            if (e.key === 'Escape') {
+                layer.finish(null);
+                return true;
+            }
+            return false;
         });
         return layer;
     };

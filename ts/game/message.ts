@@ -226,7 +226,7 @@ export class MessageArchive extends Widget.Widget {
                 if (y < endY) return;
             } else if (y > endY) return;
             fadePercent = Math.floor((50 * j) / this.shown);
-            const fgColor = fg.clone().mix(this._used.bg, fadePercent);
+            const fgColor = fg.mix(this._used.bg!, fadePercent);
             dbuf.drawText(
                 this.source.bounds.x,
                 y,

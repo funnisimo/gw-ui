@@ -1,7 +1,8 @@
 import * as GWU from 'gw-utils';
 import * as Style from './style';
 import * as Widget from './widget/widget';
-import { UILayer, UIStylesheet, StyleOptions } from './types';
+import { Body } from './widget/body';
+import { UILayer, StyleOptions } from './types';
 import { Grid } from './grid';
 
 export type TimerFn = () => void | Promise<void>;
@@ -39,19 +40,14 @@ export interface UICore {
 }
 
 export interface LayerOptions {
-    id?: string;
-    depth?: number;
-    hidden?: boolean;
+    styles?: Style.Sheet;
 }
 
 export class Layer implements UILayer {
     ui: UICore;
-    id: string = '';
-    depth: number = 0;
-    hidden: boolean = false;
     buffer: GWU.canvas.Buffer;
     body: Widget.Widget;
-    styles: UIStylesheet;
+    styles: Style.Sheet;
     needsDraw = true;
     result: any = undefined;
 
@@ -68,19 +64,10 @@ export class Layer implements UILayer {
 
     constructor(ui: UICore, opts: LayerOptions = {}) {
         this.ui = ui;
-        this.id = opts.id || 'root';
-        this.depth = opts.depth || 0;
-        this.hidden = opts.hidden === undefined ? false : opts.hidden;
 
         this.buffer = ui.canvas.buffer.clone();
-        this.styles = new Style.Sheet(ui.styles);
-        this.body = new Widget.Widget(this, {
-            tag: 'body',
-            id: 'BODY',
-            depth: -1,
-            width: this.buffer.width,
-            height: this.buffer.height,
-        });
+        this.styles = new Style.Sheet(opts.styles || ui.styles);
+        this.body = new Body(this);
         this.promise = new Promise((resolve) => {
             this._done = resolve;
         });

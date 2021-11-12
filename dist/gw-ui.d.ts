@@ -57,13 +57,6 @@ interface UISelectable {
 interface UIStylable extends UISelectable {
     style(): UIStyle;
 }
-interface UIStylesheet {
-    dirty: boolean;
-    add(selector: string, props: StyleOptions): this;
-    get(selector: string): UIStyle | null;
-    remove(selector: string): void;
-    computeFor(widget: UIStylable): UIStyle;
-}
 interface UILayer {
     readonly buffer: GWU.canvas.Buffer;
     readonly width: number;
@@ -118,7 +111,7 @@ declare class ComputedStyle extends Style {
     get dirty(): boolean;
     set dirty(v: boolean);
 }
-declare class Sheet implements UIStylesheet {
+declare class Sheet {
     rules: UIStyle[];
     _dirty: boolean;
     constructor(parentSheet?: Sheet | null);
@@ -175,6 +168,9 @@ declare class Widget implements UIStylable {
     pos(): GWU.xy.XY;
     pos(xy: GWU.xy.XY): this;
     pos(x: number, y: number): this;
+    center(bounds?: GWU.xy.Bounds): this;
+    centerX(bounds?: GWU.xy.Bounds): this;
+    centerY(bounds?: GWU.xy.Bounds): this;
     text(): string;
     text(v: string): this;
     attr(name: string): PropType;
@@ -271,18 +267,13 @@ interface UICore {
     stop(): void;
 }
 interface LayerOptions {
-    id?: string;
-    depth?: number;
-    hidden?: boolean;
+    styles?: Sheet;
 }
 declare class Layer implements UILayer {
     ui: UICore;
-    id: string;
-    depth: number;
-    hidden: boolean;
     buffer: GWU.canvas.Buffer;
     body: Widget;
-    styles: UIStylesheet;
+    styles: Sheet;
     needsDraw: boolean;
     result: any;
     _attachOrder: Widget[];
@@ -369,6 +360,11 @@ declare class UI implements UICore {
     dir(e: GWU.io.Event): boolean;
     tick(e: GWU.io.Event): boolean;
     draw(): void;
+}
+
+declare class Body extends Widget {
+    constructor(layer: Layer);
+    _drawFill(buffer: GWU.buffer.Buffer): void;
 }
 
 interface TextOptions extends WidgetOptions {
@@ -527,22 +523,54 @@ declare module '../layer' {
     }
 }
 
-interface FieldsetOptions extends WidgetOptions {
+declare type PadInfo = boolean | number | [number] | [number, number] | [number, number, number, number];
+interface DialogOptions extends WidgetOptions {
     width: number;
-    dataWidth: number;
+    height: number;
     border?: BorderType;
-    separator?: string;
-    pad?: boolean | number | number[];
+    pad?: PadInfo;
     legend?: string;
     legendTag?: string;
     legendClass?: string;
     legendAlign?: GWU.text.Align;
+}
+declare class Dialog extends Widget {
+    static default: {
+        tag: string;
+        border: BorderType;
+        pad: boolean;
+        legendTag: string;
+        legendClass: string;
+        legendAlign: "left" | "center" | "right";
+    };
+    legend: Widget | null;
+    constructor(layer: Layer, opts: DialogOptions);
+    _adjustBounds(pad: [number, number, number, number]): this;
+    get _innerLeft(): number;
+    get _innerWidth(): number;
+    get _innerTop(): number;
+    get _innerHeight(): number;
+    _addLegend(opts: DialogOptions): this;
+    _draw(buffer: GWU.buffer.Buffer): boolean;
+}
+declare type AddDialogOptions = DialogOptions & SetParentOptions & {
+    parent?: Widget;
+};
+declare module '../layer' {
+    interface Layer {
+        dialog(opts?: AddDialogOptions): Dialog;
+    }
+}
+
+interface FieldsetOptions extends DialogOptions {
+    dataWidth: number;
+    separator?: string;
     labelTag?: string;
     labelClass?: string;
     dataTag?: string;
     dataClass?: string;
 }
-declare class Fieldset extends Widget {
+declare class Fieldset extends Dialog {
     static default: {
         tag: string;
         border: BorderType;
@@ -556,16 +584,14 @@ declare class Fieldset extends Widget {
         dataTag: string;
         dataClass: string;
     };
-    legend: Widget | null;
     fields: Field[];
     constructor(layer: Layer, opts: FieldsetOptions);
+    _adjustBounds(_pad: [number, number, number, number]): this;
     get _labelLeft(): number;
     get _dataLeft(): number;
     get _nextY(): number;
-    _addLegend(opts: FieldsetOptions): this;
     add(label: string, format: string | FieldOptions): this;
     data(d: any): this;
-    _draw(buffer: GWU.buffer.Buffer): boolean;
 }
 declare type AddFieldsetOptions = FieldsetOptions & SetParentOptions & {
     parent?: Widget;
@@ -925,170 +951,192 @@ declare class Inquiry {
     _fireEvent(name: string, source: Widget | null, args?: any): boolean;
 }
 
-type index_d_EventCb = EventCb;
-type index_d_WidgetOptions = WidgetOptions;
-type index_d_SetParentOptions = SetParentOptions;
-type index_d_Widget = Widget;
-declare const index_d_Widget: typeof Widget;
-type index_d_TextOptions = TextOptions;
-type index_d_Text = Text;
-declare const index_d_Text: typeof Text;
-type index_d_AddTextOptions = AddTextOptions;
-type index_d_BorderOptions = BorderOptions;
-type index_d_Border = Border;
-declare const index_d_Border: typeof Border;
-type index_d_AddBorderOptions = AddBorderOptions;
-declare const index_d_drawBorder: typeof drawBorder;
-type index_d_ButtonOptions = ButtonOptions;
-type index_d_Button = Button;
-declare const index_d_Button: typeof Button;
-type index_d_FieldsetOptions = FieldsetOptions;
-type index_d_Fieldset = Fieldset;
-declare const index_d_Fieldset: typeof Fieldset;
-type index_d_AddFieldsetOptions = AddFieldsetOptions;
-type index_d_FieldOptions = FieldOptions;
-type index_d_Field = Field;
-declare const index_d_Field: typeof Field;
-type index_d_OrderedListOptions = OrderedListOptions;
-type index_d_OrderedList = OrderedList;
-declare const index_d_OrderedList: typeof OrderedList;
-type index_d_UnorderedListOptions = UnorderedListOptions;
-type index_d_UnorderedList = UnorderedList;
-declare const index_d_UnorderedList: typeof UnorderedList;
-type index_d_AddOrderedListOptions = AddOrderedListOptions;
-type index_d_AddUnorderedListOptions = AddUnorderedListOptions;
-type index_d_InputOptions = InputOptions;
-type index_d_Input = Input;
-declare const index_d_Input: typeof Input;
-type index_d_AddInputOptions = AddInputOptions;
-type index_d_FormatFn = FormatFn;
-type index_d_Value = Value;
-type index_d_SelectType = SelectType;
-type index_d_HoverType = HoverType;
-type index_d_DataObject = DataObject;
-type index_d_DataItem = DataItem;
-type index_d_DataType = DataType;
-type index_d_BorderType = BorderType;
-type index_d_ColumnOptions = ColumnOptions;
-type index_d_DataTableOptions = DataTableOptions;
-type index_d_Column = Column;
-declare const index_d_Column: typeof Column;
-type index_d_DataTable = DataTable;
-declare const index_d_DataTable: typeof DataTable;
-type index_d_TD = TD;
-declare const index_d_TD: typeof TD;
-type index_d_AddDataTableOptions = AddDataTableOptions;
-type index_d_DataListOptions = DataListOptions;
-type index_d_DataList = DataList;
-declare const index_d_DataList: typeof DataList;
-type index_d_AddDataListOptions = AddDataListOptions;
-type index_d_Rec<_0> = Rec<_0>;
-type index_d_DropdownConfig = DropdownConfig;
-type index_d_ActionConfig = ActionConfig;
-type index_d_ButtonConfig = ButtonConfig;
-type index_d_MenuOptions = MenuOptions;
-type index_d_Menu = Menu;
-declare const index_d_Menu: typeof Menu;
-type index_d_MenuButtonOptions = MenuButtonOptions;
-type index_d_MenuButton = MenuButton;
-declare const index_d_MenuButton: typeof MenuButton;
-type index_d_AddMenuOptions = AddMenuOptions;
-type index_d_MenubarOptions = MenubarOptions;
-type index_d_Menubar = Menubar;
-declare const index_d_Menubar: typeof Menubar;
-type index_d_MenubarButtonOptions = MenubarButtonOptions;
-type index_d_MenubarButton = MenubarButton;
-declare const index_d_MenubarButton: typeof MenubarButton;
-type index_d_AddMenubarOptions = AddMenubarOptions;
-type index_d_MenuViewer = MenuViewer;
-declare const index_d_MenuViewer: typeof MenuViewer;
-type index_d_SelectOptions = SelectOptions;
-type index_d_Select = Select;
-declare const index_d_Select: typeof Select;
-type index_d_AddSelectOptions = AddSelectOptions;
-type index_d_NextType = NextType;
-type index_d_PromptChoice = PromptChoice;
-type index_d_PromptOptions = PromptOptions;
-type index_d_Prompt = Prompt;
-declare const index_d_Prompt: typeof Prompt;
-type index_d_ChoiceOptions = ChoiceOptions;
-type index_d_Choice = Choice;
-declare const index_d_Choice: typeof Choice;
-type index_d_AddChoiceOptions = AddChoiceOptions;
-type index_d_Inquiry = Inquiry;
-declare const index_d_Inquiry: typeof Inquiry;
+type index_d$1_EventCb = EventCb;
+type index_d$1_WidgetOptions = WidgetOptions;
+type index_d$1_SetParentOptions = SetParentOptions;
+type index_d$1_Widget = Widget;
+declare const index_d$1_Widget: typeof Widget;
+type index_d$1_Body = Body;
+declare const index_d$1_Body: typeof Body;
+type index_d$1_TextOptions = TextOptions;
+type index_d$1_Text = Text;
+declare const index_d$1_Text: typeof Text;
+type index_d$1_AddTextOptions = AddTextOptions;
+type index_d$1_BorderOptions = BorderOptions;
+type index_d$1_Border = Border;
+declare const index_d$1_Border: typeof Border;
+type index_d$1_AddBorderOptions = AddBorderOptions;
+declare const index_d$1_drawBorder: typeof drawBorder;
+type index_d$1_ButtonOptions = ButtonOptions;
+type index_d$1_Button = Button;
+declare const index_d$1_Button: typeof Button;
+type index_d$1_FieldsetOptions = FieldsetOptions;
+type index_d$1_Fieldset = Fieldset;
+declare const index_d$1_Fieldset: typeof Fieldset;
+type index_d$1_AddFieldsetOptions = AddFieldsetOptions;
+type index_d$1_FieldOptions = FieldOptions;
+type index_d$1_Field = Field;
+declare const index_d$1_Field: typeof Field;
+type index_d$1_OrderedListOptions = OrderedListOptions;
+type index_d$1_OrderedList = OrderedList;
+declare const index_d$1_OrderedList: typeof OrderedList;
+type index_d$1_UnorderedListOptions = UnorderedListOptions;
+type index_d$1_UnorderedList = UnorderedList;
+declare const index_d$1_UnorderedList: typeof UnorderedList;
+type index_d$1_AddOrderedListOptions = AddOrderedListOptions;
+type index_d$1_AddUnorderedListOptions = AddUnorderedListOptions;
+type index_d$1_InputOptions = InputOptions;
+type index_d$1_Input = Input;
+declare const index_d$1_Input: typeof Input;
+type index_d$1_AddInputOptions = AddInputOptions;
+type index_d$1_FormatFn = FormatFn;
+type index_d$1_Value = Value;
+type index_d$1_SelectType = SelectType;
+type index_d$1_HoverType = HoverType;
+type index_d$1_DataObject = DataObject;
+type index_d$1_DataItem = DataItem;
+type index_d$1_DataType = DataType;
+type index_d$1_BorderType = BorderType;
+type index_d$1_ColumnOptions = ColumnOptions;
+type index_d$1_DataTableOptions = DataTableOptions;
+type index_d$1_Column = Column;
+declare const index_d$1_Column: typeof Column;
+type index_d$1_DataTable = DataTable;
+declare const index_d$1_DataTable: typeof DataTable;
+type index_d$1_TD = TD;
+declare const index_d$1_TD: typeof TD;
+type index_d$1_AddDataTableOptions = AddDataTableOptions;
+type index_d$1_DataListOptions = DataListOptions;
+type index_d$1_DataList = DataList;
+declare const index_d$1_DataList: typeof DataList;
+type index_d$1_AddDataListOptions = AddDataListOptions;
+type index_d$1_Rec<_0> = Rec<_0>;
+type index_d$1_DropdownConfig = DropdownConfig;
+type index_d$1_ActionConfig = ActionConfig;
+type index_d$1_ButtonConfig = ButtonConfig;
+type index_d$1_MenuOptions = MenuOptions;
+type index_d$1_Menu = Menu;
+declare const index_d$1_Menu: typeof Menu;
+type index_d$1_MenuButtonOptions = MenuButtonOptions;
+type index_d$1_MenuButton = MenuButton;
+declare const index_d$1_MenuButton: typeof MenuButton;
+type index_d$1_AddMenuOptions = AddMenuOptions;
+type index_d$1_MenubarOptions = MenubarOptions;
+type index_d$1_Menubar = Menubar;
+declare const index_d$1_Menubar: typeof Menubar;
+type index_d$1_MenubarButtonOptions = MenubarButtonOptions;
+type index_d$1_MenubarButton = MenubarButton;
+declare const index_d$1_MenubarButton: typeof MenubarButton;
+type index_d$1_AddMenubarOptions = AddMenubarOptions;
+type index_d$1_MenuViewer = MenuViewer;
+declare const index_d$1_MenuViewer: typeof MenuViewer;
+type index_d$1_SelectOptions = SelectOptions;
+type index_d$1_Select = Select;
+declare const index_d$1_Select: typeof Select;
+type index_d$1_AddSelectOptions = AddSelectOptions;
+type index_d$1_NextType = NextType;
+type index_d$1_PromptChoice = PromptChoice;
+type index_d$1_PromptOptions = PromptOptions;
+type index_d$1_Prompt = Prompt;
+declare const index_d$1_Prompt: typeof Prompt;
+type index_d$1_ChoiceOptions = ChoiceOptions;
+type index_d$1_Choice = Choice;
+declare const index_d$1_Choice: typeof Choice;
+type index_d$1_AddChoiceOptions = AddChoiceOptions;
+type index_d$1_Inquiry = Inquiry;
+declare const index_d$1_Inquiry: typeof Inquiry;
+declare namespace index_d$1 {
+  export {
+    index_d$1_EventCb as EventCb,
+    index_d$1_WidgetOptions as WidgetOptions,
+    index_d$1_SetParentOptions as SetParentOptions,
+    index_d$1_Widget as Widget,
+    index_d$1_Body as Body,
+    index_d$1_TextOptions as TextOptions,
+    index_d$1_Text as Text,
+    index_d$1_AddTextOptions as AddTextOptions,
+    index_d$1_BorderOptions as BorderOptions,
+    index_d$1_Border as Border,
+    index_d$1_AddBorderOptions as AddBorderOptions,
+    index_d$1_drawBorder as drawBorder,
+    index_d$1_ButtonOptions as ButtonOptions,
+    index_d$1_Button as Button,
+    index_d$1_FieldsetOptions as FieldsetOptions,
+    index_d$1_Fieldset as Fieldset,
+    index_d$1_AddFieldsetOptions as AddFieldsetOptions,
+    index_d$1_FieldOptions as FieldOptions,
+    index_d$1_Field as Field,
+    index_d$1_OrderedListOptions as OrderedListOptions,
+    index_d$1_OrderedList as OrderedList,
+    index_d$1_UnorderedListOptions as UnorderedListOptions,
+    index_d$1_UnorderedList as UnorderedList,
+    index_d$1_AddOrderedListOptions as AddOrderedListOptions,
+    index_d$1_AddUnorderedListOptions as AddUnorderedListOptions,
+    index_d$1_InputOptions as InputOptions,
+    index_d$1_Input as Input,
+    index_d$1_AddInputOptions as AddInputOptions,
+    index_d$1_FormatFn as FormatFn,
+    index_d$1_Value as Value,
+    index_d$1_SelectType as SelectType,
+    index_d$1_HoverType as HoverType,
+    index_d$1_DataObject as DataObject,
+    index_d$1_DataItem as DataItem,
+    index_d$1_DataType as DataType,
+    index_d$1_BorderType as BorderType,
+    index_d$1_ColumnOptions as ColumnOptions,
+    index_d$1_DataTableOptions as DataTableOptions,
+    index_d$1_Column as Column,
+    index_d$1_DataTable as DataTable,
+    index_d$1_TD as TD,
+    index_d$1_AddDataTableOptions as AddDataTableOptions,
+    index_d$1_DataListOptions as DataListOptions,
+    index_d$1_DataList as DataList,
+    index_d$1_AddDataListOptions as AddDataListOptions,
+    index_d$1_Rec as Rec,
+    index_d$1_DropdownConfig as DropdownConfig,
+    index_d$1_ActionConfig as ActionConfig,
+    index_d$1_ButtonConfig as ButtonConfig,
+    index_d$1_MenuOptions as MenuOptions,
+    index_d$1_Menu as Menu,
+    index_d$1_MenuButtonOptions as MenuButtonOptions,
+    index_d$1_MenuButton as MenuButton,
+    index_d$1_AddMenuOptions as AddMenuOptions,
+    index_d$1_MenubarOptions as MenubarOptions,
+    index_d$1_Menubar as Menubar,
+    index_d$1_MenubarButtonOptions as MenubarButtonOptions,
+    index_d$1_MenubarButton as MenubarButton,
+    index_d$1_AddMenubarOptions as AddMenubarOptions,
+    index_d$1_MenuViewer as MenuViewer,
+    index_d$1_SelectOptions as SelectOptions,
+    index_d$1_Select as Select,
+    index_d$1_AddSelectOptions as AddSelectOptions,
+    index_d$1_NextType as NextType,
+    index_d$1_PromptChoice as PromptChoice,
+    index_d$1_PromptOptions as PromptOptions,
+    index_d$1_Prompt as Prompt,
+    index_d$1_ChoiceOptions as ChoiceOptions,
+    index_d$1_Choice as Choice,
+    index_d$1_AddChoiceOptions as AddChoiceOptions,
+    index_d$1_Inquiry as Inquiry,
+  };
+}
+
+interface AlertOptions extends DialogOptions {
+    duration?: number;
+    waitForAck?: boolean;
+    textClass?: string;
+    opacity?: number;
+}
+declare module '../layer' {
+    interface Layer {
+        alert(opts: AlertOptions | number, text: string, args?: any): Promise<boolean>;
+    }
+}
+
+type index_d_AlertOptions = AlertOptions;
 declare namespace index_d {
   export {
-    index_d_EventCb as EventCb,
-    index_d_WidgetOptions as WidgetOptions,
-    index_d_SetParentOptions as SetParentOptions,
-    index_d_Widget as Widget,
-    index_d_TextOptions as TextOptions,
-    index_d_Text as Text,
-    index_d_AddTextOptions as AddTextOptions,
-    index_d_BorderOptions as BorderOptions,
-    index_d_Border as Border,
-    index_d_AddBorderOptions as AddBorderOptions,
-    index_d_drawBorder as drawBorder,
-    index_d_ButtonOptions as ButtonOptions,
-    index_d_Button as Button,
-    index_d_FieldsetOptions as FieldsetOptions,
-    index_d_Fieldset as Fieldset,
-    index_d_AddFieldsetOptions as AddFieldsetOptions,
-    index_d_FieldOptions as FieldOptions,
-    index_d_Field as Field,
-    index_d_OrderedListOptions as OrderedListOptions,
-    index_d_OrderedList as OrderedList,
-    index_d_UnorderedListOptions as UnorderedListOptions,
-    index_d_UnorderedList as UnorderedList,
-    index_d_AddOrderedListOptions as AddOrderedListOptions,
-    index_d_AddUnorderedListOptions as AddUnorderedListOptions,
-    index_d_InputOptions as InputOptions,
-    index_d_Input as Input,
-    index_d_AddInputOptions as AddInputOptions,
-    index_d_FormatFn as FormatFn,
-    index_d_Value as Value,
-    index_d_SelectType as SelectType,
-    index_d_HoverType as HoverType,
-    index_d_DataObject as DataObject,
-    index_d_DataItem as DataItem,
-    index_d_DataType as DataType,
-    index_d_BorderType as BorderType,
-    index_d_ColumnOptions as ColumnOptions,
-    index_d_DataTableOptions as DataTableOptions,
-    index_d_Column as Column,
-    index_d_DataTable as DataTable,
-    index_d_TD as TD,
-    index_d_AddDataTableOptions as AddDataTableOptions,
-    index_d_DataListOptions as DataListOptions,
-    index_d_DataList as DataList,
-    index_d_AddDataListOptions as AddDataListOptions,
-    index_d_Rec as Rec,
-    index_d_DropdownConfig as DropdownConfig,
-    index_d_ActionConfig as ActionConfig,
-    index_d_ButtonConfig as ButtonConfig,
-    index_d_MenuOptions as MenuOptions,
-    index_d_Menu as Menu,
-    index_d_MenuButtonOptions as MenuButtonOptions,
-    index_d_MenuButton as MenuButton,
-    index_d_AddMenuOptions as AddMenuOptions,
-    index_d_MenubarOptions as MenubarOptions,
-    index_d_Menubar as Menubar,
-    index_d_MenubarButtonOptions as MenubarButtonOptions,
-    index_d_MenubarButton as MenubarButton,
-    index_d_AddMenubarOptions as AddMenubarOptions,
-    index_d_MenuViewer as MenuViewer,
-    index_d_SelectOptions as SelectOptions,
-    index_d_Select as Select,
-    index_d_AddSelectOptions as AddSelectOptions,
-    index_d_NextType as NextType,
-    index_d_PromptChoice as PromptChoice,
-    index_d_PromptOptions as PromptOptions,
-    index_d_Prompt as Prompt,
-    index_d_ChoiceOptions as ChoiceOptions,
-    index_d_Choice as Choice,
-    index_d_AddChoiceOptions as AddChoiceOptions,
-    index_d_Inquiry as Inquiry,
+    index_d_AlertOptions as AlertOptions,
   };
 }
 
@@ -1206,13 +1254,9 @@ interface ViewportOptions extends WidgetOptions {
     center?: boolean;
 }
 declare class Viewport extends Widget {
-    center: boolean;
-    snap: boolean;
     filter: ViewFilterFn | null;
     offsetX: number;
     offsetY: number;
-    lockX: boolean;
-    lockY: boolean;
     _subject: UISubject | null;
     constructor(layer: Layer, opts: ViewportOptions);
     get subject(): UISubject | null;
@@ -1230,4 +1274,4 @@ declare class Viewport extends Widget {
     draw(buffer: GWU.buffer.Buffer): boolean;
 }
 
-export { ActorEntry, ArchiveMode, CellEntry, ComputedStyle, EntryBase, Flavor, FlavorOptions, ItemEntry, Layer, LayerOptions, MessageArchive, MessageOptions, Messages, PrefixType, PropType, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UIStylesheet, UISubject, ViewFilterFn, Viewport, ViewportOptions, defaultStyle, makeStyle, index_d as widget };
+export { ActorEntry, ArchiveMode, CellEntry, ComputedStyle, EntryBase, Flavor, FlavorOptions, ItemEntry, Layer, LayerOptions, MessageArchive, MessageOptions, Messages, PrefixType, PropType, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UISubject, ViewFilterFn, Viewport, ViewportOptions, defaultStyle, index_d as dialog, makeStyle, index_d$1 as widget };

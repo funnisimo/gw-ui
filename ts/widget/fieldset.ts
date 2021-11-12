@@ -2,20 +2,12 @@ import * as GWU from 'gw-utils';
 import { Layer } from '../layer';
 import * as Text from './text';
 import * as Widget from './widget';
+import * as Dialog from './dialog';
 import { BorderType } from './datatable';
-import { drawBorder } from './border';
 
-export interface FieldsetOptions extends Widget.WidgetOptions {
-    width: number;
+export interface FieldsetOptions extends Dialog.DialogOptions {
     dataWidth: number;
-    border?: BorderType;
     separator?: string;
-    pad?: boolean | number | number[];
-
-    legend?: string;
-    legendTag?: string;
-    legendClass?: string;
-    legendAlign?: GWU.text.Align;
 
     labelTag?: string;
     labelClass?: string;
@@ -24,7 +16,7 @@ export interface FieldsetOptions extends Widget.WidgetOptions {
     dataClass?: string;
 }
 
-export class Fieldset extends Widget.Widget {
+export class Fieldset extends Dialog.Dialog {
     static default = {
         tag: 'fieldset',
         border: 'none' as BorderType,
@@ -42,7 +34,6 @@ export class Fieldset extends Widget.Widget {
         dataClass: '',
     };
 
-    legend: Widget.Widget | null = null;
     fields: Field[] = [];
 
     constructor(layer: Layer, opts: FieldsetOptions) {
@@ -50,45 +41,16 @@ export class Fieldset extends Widget.Widget {
             layer,
             (() => {
                 opts.tag = opts.tag || Fieldset.default.tag;
-                const border = opts.border || Fieldset.default.border;
-                if (border !== 'none') {
-                    opts.height = opts.height || 2;
-                }
+                opts.border = opts.border || Fieldset.default.border;
+                opts.legendTag = opts.legendTag || Fieldset.default.legendTag;
+                opts.legendClass =
+                    opts.legendClass || Fieldset.default.legendClass;
+                opts.legendAlign =
+                    opts.legendAlign || Fieldset.default.legendAlign;
                 return opts;
             })()
         );
-        let border = opts.border || Fieldset.default.border;
-        this.attr('border', border);
         this.attr('separator', opts.separator || Fieldset.default.separator);
-
-        let pad = opts.pad || Fieldset.default.pad;
-        if (pad) {
-            if (pad === true) {
-                pad = [1, 1, 1, 1];
-            } else if (typeof pad === 'number') {
-                pad = [pad, pad, pad, pad];
-            } else if (pad.length == 1) {
-                const p = pad[0];
-                pad = [p, p, p, p];
-            } else if (pad.length == 2) {
-                const [pv, ph] = pad;
-                pad = [pv, ph, pv, ph];
-            }
-            this.attr('padTop', pad[0]);
-            this.attr('padRight', pad[1]);
-            this.attr('padBottom', pad[2]);
-            this.attr('padLeft', pad[3]);
-        }
-
-        this.attr('legendTag', opts.legendTag || Fieldset.default.legendTag);
-        this.attr(
-            'legendClass',
-            opts.legendClass || Fieldset.default.legendClass
-        );
-        this.attr(
-            'legendAlign',
-            opts.legendAlign || Fieldset.default.legendAlign
-        );
 
         this.attr('dataTag', opts.dataTag || Fieldset.default.dataTag);
         this.attr('dataClass', opts.dataClass || Fieldset.default.dataClass);
@@ -96,14 +58,13 @@ export class Fieldset extends Widget.Widget {
 
         this.attr('labelTag', opts.labelTag || Fieldset.default.labelTag);
         this.attr('labelClass', opts.labelClass || Fieldset.default.labelClass);
-
-        const totalPad =
-            this._attrInt('padLeft') +
-            this._attrInt('padRight') +
-            (border !== 'none' ? 2 : 0);
-        this.attr('labelWidth', opts.width - opts.dataWidth - totalPad);
+        this.attr('labelWidth', this._innerWidth - opts.dataWidth);
 
         this._addLegend(opts);
+    }
+
+    _adjustBounds(_pad: [number, number, number, number]): this {
+        return this;
     }
 
     get _labelLeft(): number {
@@ -120,44 +81,6 @@ export class Fieldset extends Widget.Widget {
         const border = this._attrStr('border');
         const padBottom = this._attrInt('padBottom');
         return this.bounds.bottom - (border === 'none' ? 0 : 1) - padBottom;
-    }
-
-    _addLegend(opts: FieldsetOptions): this {
-        if (!opts.legend) {
-            if (this._attrStr('border') === 'none') {
-                this.bounds.height = 0;
-            }
-            return this;
-        }
-
-        const border = this._attrStr('border') !== 'none';
-        const textWidth = GWU.text.length(opts.legend);
-        const width = this.bounds.width - (border ? 4 : 0);
-        const align = this._attrStr('legendAlign');
-        let x = this.bounds.x + (border ? 2 : 0);
-        if (align === 'center') {
-            x += Math.floor((width - textWidth) / 2);
-        } else if (align === 'right') {
-            x += width - textWidth;
-        }
-
-        this.legend = new Text.Text(this.layer, {
-            text: opts.legend,
-            x,
-            y: this.bounds.y,
-            depth: this.depth + 1,
-            tag: this._attrStr('legendTag'),
-            class: this._attrStr('legendClass'),
-        });
-        if (this.bounds.width < this.legend.bounds.width + 4) {
-            this.bounds.width = this.legend.bounds.width + 4;
-        }
-
-        this.bounds.height +=
-            this._attrInt('padTop') + this._attrInt('padBottom');
-
-        this.legend.setParent(this);
-        return this;
     }
 
     add(label: string, format: string | FieldOptions): this {
@@ -197,22 +120,6 @@ export class Fieldset extends Widget.Widget {
         this.fields.forEach((f) => f.data(d));
         this.layer.needsDraw = true;
         return this;
-    }
-
-    _draw(buffer: GWU.buffer.Buffer): boolean {
-        const border = this._attrStr('border');
-        if (!border || border === 'none') return false;
-
-        drawBorder(
-            buffer,
-            this.bounds.x,
-            this.bounds.y,
-            this.bounds.width,
-            this.bounds.height,
-            this._used,
-            border === 'ascii'
-        );
-        return true;
     }
 }
 

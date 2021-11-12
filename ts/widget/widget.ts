@@ -142,6 +142,8 @@ export class Widget implements UIStylable {
         }
     }
 
+    //////////////////////////////////////////
+
     pos(): GWU.xy.XY;
     pos(xy: GWU.xy.XY): this;
     pos(x: number, y: number): this;
@@ -159,6 +161,28 @@ export class Widget implements UIStylable {
 
         return this;
     }
+
+    center(bounds?: GWU.xy.Bounds): this {
+        return this.centerX(bounds).centerY(bounds);
+    }
+
+    centerX(bounds?: GWU.xy.Bounds): this {
+        bounds = bounds || this.layer.body.bounds;
+        const w = this.bounds.width;
+        const mid = Math.round((bounds.width - w) / 2);
+        this.bounds.x = bounds.x + mid;
+        return this;
+    }
+
+    centerY(bounds?: GWU.xy.Bounds): this {
+        bounds = bounds || this.layer.body.bounds;
+        const h = this.bounds.height;
+        const mid = Math.round((bounds.height - h) / 2);
+        this.bounds.y = bounds.y + mid;
+        return this;
+    }
+
+    //////////////////////////////////////////
 
     text(): string;
     text(v: string): this;

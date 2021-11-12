@@ -62,13 +62,13 @@ export interface UIStylable extends UISelectable {
     style(): UIStyle;
 }
 
-export interface UIStylesheet {
-    dirty: boolean;
-    add(selector: string, props: StyleOptions): this;
-    get(selector: string): UIStyle | null;
-    remove(selector: string): void;
-    computeFor(widget: UIStylable): UIStyle;
-}
+// export interface UIStylesheet {
+//     dirty: boolean;
+//     add(selector: string, props: StyleOptions): this;
+//     get(selector: string): UIStyle | null;
+//     remove(selector: string): void;
+//     computeFor(widget: UIStylable): UIStyle;
+// }
 
 // export interface UIWidget extends UISelectable {
 //     readonly layer: UILayer;

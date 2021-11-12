@@ -83,7 +83,9 @@ export class UI implements UICore {
     }
 
     startNewLayer(): Layer {
-        const layer = new Layer(this);
+        const layer = new Layer(this, {
+            styles: this.layer ? this.layer.styles : this.styles,
+        });
 
         this.layers.push(layer);
 
@@ -105,6 +107,7 @@ export class UI implements UICore {
         GWU.arrayDelete(this.layers, layer);
         if (this.layer === layer) {
             this.layer = this.layers[this.layers.length - 1] || null;
+            this.layer && (this.layer.needsDraw = true);
         }
     }
 

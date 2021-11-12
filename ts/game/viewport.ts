@@ -21,38 +21,25 @@ export interface ViewportOptions extends Widget.WidgetOptions {
 }
 
 export class Viewport extends Widget.Widget {
-    center!: boolean;
-    snap!: boolean;
     filter!: ViewFilterFn | null;
     offsetX = 0;
     offsetY = 0;
-    lockX!: boolean;
-    lockY!: boolean;
     _subject: UISubject | null = null;
 
     constructor(layer: Layer, opts: ViewportOptions) {
         super(layer, opts);
-        this.snap = opts.snap || false;
-        this.center = opts.center || false;
+        this.attr('snap', opts.snap || false);
+        this.attr('center', opts.center || false);
         this.filter = opts.filter || null;
-        if (opts.lock) {
-            this.lockX = true;
-            this.lockY = true;
-        } else {
-            if (opts.lockX) {
-                this.lockX = true;
-            }
-            if (opts.lockY) {
-                this.lockY = true;
-            }
-        }
+        this.attr('lockX', opts.lock || opts.lockX || false);
+        this.attr('lockY', opts.lock || opts.lockY || false);
     }
 
     get subject(): UISubject | null {
         return this._subject;
     }
     set subject(subject: UISubject | null) {
-        this.center = !!subject;
+        this.attr('center', !!subject);
         if (subject) {
             this.offsetX = subject.x - this.halfWidth();
             this.offsetY = subject.y - this.halfHeight();
@@ -61,8 +48,8 @@ export class Viewport extends Widget.Widget {
     }
 
     set lock(v: boolean) {
-        this.lockX = v;
-        this.lockY = v;
+        this.attr('lockX', v);
+        this.attr('lockY', v);
     }
 
     toMapX(x: number): number {
@@ -90,7 +77,7 @@ export class Viewport extends Widget.Widget {
     }
 
     centerOn(map: GWM.map.Map, x: number, y: number) {
-        this.center = true;
+        this.attr('center', true);
         this.subject = { x, y, map };
     }
 
@@ -98,8 +85,8 @@ export class Viewport extends Widget.Widget {
         this.subject = { x, y, map };
         this.offsetX = x;
         this.offsetY = y;
-        this.center = false;
-        this.snap = false;
+        this.attr('center', false);
+        this.attr('snap', false);
     }
 
     updateOffset() {
@@ -114,7 +101,7 @@ export class Viewport extends Widget.Widget {
         const bounds = map;
 
         if (subject && map.hasXY(subject.x, subject.y)) {
-            if (this.snap) {
+            if (this._attrBool('snap')) {
                 let left = this.offsetX;
                 let right = this.offsetX + this.bounds.width;
                 let top = this.offsetY;
@@ -158,7 +145,7 @@ export class Viewport extends Widget.Widget {
                         bounds.height - this.bounds.height
                     );
                 }
-            } else if (this.center) {
+            } else if (this._attrBool('center')) {
                 this.offsetX = subject.x - this.halfWidth();
                 this.offsetY = subject.y - this.halfHeight();
             } else {
@@ -167,14 +154,14 @@ export class Viewport extends Widget.Widget {
             }
         }
 
-        if (this.lockX && map) {
+        if (this._attrBool('lockX') && map) {
             this.offsetX = GWU.clamp(
                 this.offsetX,
                 0,
                 map.width - this.bounds.width
             );
         }
-        if (this.lockY && map) {
+        if (this._attrBool('lockY') && map) {
             this.offsetY = GWU.clamp(
                 this.offsetY,
                 0,

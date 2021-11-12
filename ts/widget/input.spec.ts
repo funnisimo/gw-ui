@@ -48,14 +48,14 @@ describe('Input Widget', () => {
             disabled: true,
         });
         expect(e).toBeInstanceOf(Input.Input);
-        expect(e.default).toEqual('val');
+        expect(e.attr('default')).toEqual('val');
         expect(e.text()).toEqual('val');
         expect(e.min).toEqual(0);
         expect(e.max).toEqual(0);
         expect(e.numbersOnly).toBeFalsy();
         expect(e.minLength).toEqual(3);
         expect(e.maxLength).toEqual(10);
-        expect(e.placeholder).toEqual('Taco');
+        expect(e.attr('placeholder')).toEqual('Taco');
         expect(e.prop('required')).toBeTruthy();
         expect(e.prop('disabled')).toBeTruthy();
     });
@@ -74,14 +74,14 @@ describe('Input Widget', () => {
             disabled: true,
         });
         expect(e).toBeInstanceOf(Input.Input);
-        expect(e.default).toEqual('val');
+        expect(e.attr('default')).toEqual('val');
         expect(e.text()).toEqual('val');
         expect(e.min).toEqual(4);
         expect(e.max).toEqual(100);
         expect(e.numbersOnly).toBeTruthy();
         expect(e.minLength).toEqual(0);
         expect(e.maxLength).toEqual(0);
-        expect(e.placeholder).toEqual('Taco');
+        expect(e.attr('placeholder')).toEqual('Taco');
         expect(e.prop('required')).toBeTruthy();
         expect(e.prop('disabled')).toBeTruthy();
     });

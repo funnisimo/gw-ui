@@ -1,4 +1,5 @@
 export * from './widget';
+export * from './body';
 export * from './text';
 export * from './border';
 export * from './button';

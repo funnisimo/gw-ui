@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { UIStyle, UIStylesheet, StyleOptions, UIStylable } from './types';
+import { UIStyle, StyleOptions, UIStylable } from './types';
 import { Selector } from './selector';
 
 export type StyleType = string | StyleOptions;
@@ -422,7 +422,7 @@ export class ComputedStyle extends Style {
     }
 }
 
-export class Sheet implements UIStylesheet {
+export class Sheet {
     rules: UIStyle[] = [];
     _dirty = true;
 

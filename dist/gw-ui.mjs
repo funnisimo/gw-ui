@@ -656,6 +656,23 @@ class Widget {
         this.layer.needsDraw = true;
         return this;
     }
+    center(bounds) {
+        return this.centerX(bounds).centerY(bounds);
+    }
+    centerX(bounds) {
+        bounds = bounds || this.layer.body.bounds;
+        const w = this.bounds.width;
+        const mid = Math.round((bounds.width - w) / 2);
+        this.bounds.x = bounds.x + mid;
+        return this;
+    }
+    centerY(bounds) {
+        bounds = bounds || this.layer.body.bounds;
+        const h = this.bounds.height;
+        const mid = Math.round((bounds.height - h) / 2);
+        this.bounds.y = bounds.y + mid;
+        return this;
+    }
     text(v) {
         if (v === undefined)
             return this._attrStr('text');
@@ -949,6 +966,21 @@ class Widget {
     }
 }
 
+class Body extends Widget {
+    constructor(layer) {
+        super(layer, {
+            tag: 'body',
+            id: 'BODY',
+            depth: -1,
+            width: layer.width,
+            height: layer.height,
+        });
+    }
+    _drawFill(buffer) {
+        buffer.blend(this._used.bg);
+    }
+}
+
 class Grid {
     constructor(target) {
         this._left = 0;
@@ -1024,9 +1056,6 @@ class Grid {
 
 class Layer {
     constructor(ui, opts = {}) {
-        this.id = '';
-        this.depth = 0;
-        this.hidden = false;
         this.needsDraw = true;
         this.result = undefined;
         this._attachOrder = [];
@@ -1037,18 +1066,9 @@ class Layer {
         this._done = null;
         this._opts = { x: 0, y: 0 };
         this.ui = ui;
-        this.id = opts.id || 'root';
-        this.depth = opts.depth || 0;
-        this.hidden = opts.hidden === undefined ? false : opts.hidden;
         this.buffer = ui.canvas.buffer.clone();
-        this.styles = new Sheet(ui.styles);
-        this.body = new Widget(this, {
-            tag: 'body',
-            id: 'BODY',
-            depth: -1,
-            width: this.buffer.width,
-            height: this.buffer.height,
-        });
+        this.styles = new Sheet(opts.styles || ui.styles);
+        this.body = new Body(this);
         this.promise = new Promise((resolve) => {
             this._done = resolve;
         });
@@ -1448,7 +1468,9 @@ class UI {
         return this.layer ? this.layer.buffer : this.canvas.buffer;
     }
     startNewLayer() {
-        const layer = new Layer(this);
+        const layer = new Layer(this, {
+            styles: this.layer ? this.layer.styles : this.styles,
+        });
         this.layers.push(layer);
         if (!this._promise) {
             this._promise = this.loop.run(this);
@@ -1466,6 +1488,7 @@ class UI {
         GWU.arrayDelete(this.layers, layer);
         if (this.layer === layer) {
             this.layer = this.layers[this.layers.length - 1] || null;
+            this.layer && (this.layer.needsDraw = true);
         }
     }
     stop() {
@@ -1675,68 +1698,77 @@ class Button extends Text {
 }
 installWidget('button', (l, opts) => new Button(l, opts));
 
-class Fieldset extends Widget {
+function toPadArray(pad) {
+    if (!pad)
+        return [0, 0, 0, 0];
+    if (pad === true) {
+        return [1, 1, 1, 1];
+    }
+    else if (typeof pad === 'number') {
+        return [pad, pad, pad, pad];
+    }
+    else if (pad.length == 1) {
+        const p = pad[0];
+        return [p, p, p, p];
+    }
+    else if (pad.length == 2) {
+        const [pv, ph] = pad;
+        return [pv, ph, pv, ph];
+    }
+    throw new Error('Invalid pad: ' + pad);
+}
+class Dialog extends Widget {
     constructor(layer, opts) {
         super(layer, (() => {
-            opts.tag = opts.tag || Fieldset.default.tag;
-            const border = opts.border || Fieldset.default.border;
-            if (border !== 'none') {
-                opts.height = opts.height || 2;
-            }
+            opts.tag = opts.tag || Dialog.default.tag;
             return opts;
         })());
         this.legend = null;
-        this.fields = [];
-        let border = opts.border || Fieldset.default.border;
+        let border = opts.border || Dialog.default.border;
         this.attr('border', border);
-        this.attr('separator', opts.separator || Fieldset.default.separator);
-        let pad = opts.pad || Fieldset.default.pad;
-        if (pad) {
-            if (pad === true) {
-                pad = [1, 1, 1, 1];
+        const pad = toPadArray(opts.pad || Dialog.default.pad);
+        this.attr('padTop', pad[0]);
+        this.attr('padRight', pad[1]);
+        this.attr('padBottom', pad[2]);
+        this.attr('padLeft', pad[3]);
+        if (border !== 'none') {
+            for (let i = 0; i < 4; ++i) {
+                pad[i] += 1;
             }
-            else if (typeof pad === 'number') {
-                pad = [pad, pad, pad, pad];
-            }
-            else if (pad.length == 1) {
-                const p = pad[0];
-                pad = [p, p, p, p];
-            }
-            else if (pad.length == 2) {
-                const [pv, ph] = pad;
-                pad = [pv, ph, pv, ph];
-            }
-            this.attr('padTop', pad[0]);
-            this.attr('padRight', pad[1]);
-            this.attr('padBottom', pad[2]);
-            this.attr('padLeft', pad[3]);
         }
-        this.attr('legendTag', opts.legendTag || Fieldset.default.legendTag);
-        this.attr('legendClass', opts.legendClass || Fieldset.default.legendClass);
-        this.attr('legendAlign', opts.legendAlign || Fieldset.default.legendAlign);
-        this.attr('dataTag', opts.dataTag || Fieldset.default.dataTag);
-        this.attr('dataClass', opts.dataClass || Fieldset.default.dataClass);
-        this.attr('dataWidth', opts.dataWidth);
-        this.attr('labelTag', opts.labelTag || Fieldset.default.labelTag);
-        this.attr('labelClass', opts.labelClass || Fieldset.default.labelClass);
-        const totalPad = this._attrInt('padLeft') +
-            this._attrInt('padRight') +
-            (border !== 'none' ? 2 : 0);
-        this.attr('labelWidth', opts.width - opts.dataWidth - totalPad);
+        this._adjustBounds(pad);
+        this.attr('legendTag', opts.legendTag || Dialog.default.legendTag);
+        this.attr('legendClass', opts.legendClass || Dialog.default.legendClass);
+        this.attr('legendAlign', opts.legendAlign || Dialog.default.legendAlign);
         this._addLegend(opts);
     }
-    get _labelLeft() {
+    _adjustBounds(pad) {
+        // adjust w,h,x,y for border/pad
+        this.bounds.width += pad[1] + pad[3];
+        this.bounds.height += pad[0] + pad[2];
+        this.bounds.x -= pad[3];
+        this.bounds.y -= pad[0];
+        return this;
+    }
+    get _innerLeft() {
         const border = this._attrStr('border');
         const padLeft = this._attrInt('padLeft');
         return this.bounds.x + padLeft + (border === 'none' ? 0 : 1);
     }
-    get _dataLeft() {
-        return this._labelLeft + this._attrInt('labelWidth');
-    }
-    get _nextY() {
+    get _innerWidth() {
         const border = this._attrStr('border');
-        const padBottom = this._attrInt('padBottom');
-        return this.bounds.bottom - (border === 'none' ? 0 : 1) - padBottom;
+        const padSize = this._attrInt('padLeft') + this._attrInt('padRight');
+        return this.bounds.width - padSize + (border === 'none' ? 0 : 2);
+    }
+    get _innerTop() {
+        const border = this._attrStr('border');
+        const padTop = this._attrInt('padTop');
+        return this.bounds.y + padTop + (border === 'none' ? 0 : 1);
+    }
+    get _innerHeight() {
+        const border = this._attrStr('border');
+        const padSize = this._attrInt('padTop') + this._attrInt('padBottom');
+        return this.bounds.height - padSize + (border === 'none' ? 0 : 2);
     }
     _addLegend(opts) {
         if (!opts.legend) {
@@ -1764,13 +1796,77 @@ class Fieldset extends Widget {
             tag: this._attrStr('legendTag'),
             class: this._attrStr('legendClass'),
         });
-        if (this.bounds.width < this.legend.bounds.width + 4) {
-            this.bounds.width = this.legend.bounds.width + 4;
-        }
-        this.bounds.height +=
-            this._attrInt('padTop') + this._attrInt('padBottom');
+        // if (this.bounds.width < this.legend.bounds.width + 4) {
+        //     this.bounds.width = this.legend.bounds.width + 4;
+        // }
+        // this.bounds.height +=
+        //     this._attrInt('padTop') + this._attrInt('padBottom');
         this.legend.setParent(this);
         return this;
+    }
+    _draw(buffer) {
+        this._drawFill(buffer);
+        const border = this._attrStr('border');
+        if (border === 'none')
+            return false;
+        drawBorder(buffer, this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, this._used, border === 'ascii');
+        return true;
+    }
+}
+Dialog.default = {
+    tag: 'dialog',
+    border: 'none',
+    pad: false,
+    legendTag: 'legend',
+    legendClass: 'legend',
+    legendAlign: 'left',
+};
+Layer.prototype.dialog = function (opts) {
+    const options = Object.assign({}, this._opts, opts);
+    const widget = new Dialog(this, options);
+    if (opts.parent) {
+        widget.setParent(opts.parent, opts);
+    }
+    return widget;
+};
+
+class Fieldset extends Dialog {
+    constructor(layer, opts) {
+        super(layer, (() => {
+            opts.tag = opts.tag || Fieldset.default.tag;
+            opts.border = opts.border || Fieldset.default.border;
+            opts.legendTag = opts.legendTag || Fieldset.default.legendTag;
+            opts.legendClass =
+                opts.legendClass || Fieldset.default.legendClass;
+            opts.legendAlign =
+                opts.legendAlign || Fieldset.default.legendAlign;
+            return opts;
+        })());
+        this.fields = [];
+        this.attr('separator', opts.separator || Fieldset.default.separator);
+        this.attr('dataTag', opts.dataTag || Fieldset.default.dataTag);
+        this.attr('dataClass', opts.dataClass || Fieldset.default.dataClass);
+        this.attr('dataWidth', opts.dataWidth);
+        this.attr('labelTag', opts.labelTag || Fieldset.default.labelTag);
+        this.attr('labelClass', opts.labelClass || Fieldset.default.labelClass);
+        this.attr('labelWidth', this._innerWidth - opts.dataWidth);
+        this._addLegend(opts);
+    }
+    _adjustBounds(_pad) {
+        return this;
+    }
+    get _labelLeft() {
+        const border = this._attrStr('border');
+        const padLeft = this._attrInt('padLeft');
+        return this.bounds.x + padLeft + (border === 'none' ? 0 : 1);
+    }
+    get _dataLeft() {
+        return this._labelLeft + this._attrInt('labelWidth');
+    }
+    get _nextY() {
+        const border = this._attrStr('border');
+        const padBottom = this._attrInt('padBottom');
+        return this.bounds.bottom - (border === 'none' ? 0 : 1) - padBottom;
     }
     add(label, format) {
         const sep = this._attrStr('separator');
@@ -1800,13 +1896,6 @@ class Fieldset extends Widget {
         this.fields.forEach((f) => f.data(d));
         this.layer.needsDraw = true;
         return this;
-    }
-    _draw(buffer) {
-        const border = this._attrStr('border');
-        if (!border || border === 'none')
-            return false;
-        drawBorder(buffer, this.bounds.x, this.bounds.y, this.bounds.width, this.bounds.height, this._used, border === 'ascii');
-        return true;
     }
 }
 Fieldset.default = {
@@ -3331,9 +3420,10 @@ class Inquiry {
 
 // export * from './box';
 
-var index = /*#__PURE__*/Object.freeze({
+var index$1 = /*#__PURE__*/Object.freeze({
     __proto__: null,
     Widget: Widget,
+    Body: Body,
     Text: Text,
     Border: Border,
     drawBorder: drawBorder,
@@ -3356,6 +3446,78 @@ var index = /*#__PURE__*/Object.freeze({
     Prompt: Prompt,
     Choice: Choice,
     Inquiry: Inquiry
+});
+
+Layer.prototype.alert = function (opts, text, args) {
+    if (typeof opts === 'number') {
+        opts = { duration: opts };
+    }
+    if (args) {
+        text = GWU.text.apply(text, args);
+    }
+    opts.class = opts.class || 'alert';
+    opts.border = opts.border || 'ascii';
+    opts.pad = opts.pad || 1;
+    // const width = opts.width || GWU.text.length(text);
+    const layer = this.ui.startNewLayer();
+    // Fade the background
+    const opacity = opts.opacity !== undefined ? opts.opacity : 50;
+    layer.body.style().set('bg', GWU.color.BLACK.alpha(opacity));
+    // create the text widget
+    const textWidget = layer
+        .text(text, {
+        class: opts.textClass || opts.class,
+        width: opts.width,
+        height: opts.height,
+    })
+        .center();
+    Object.assign(opts, {
+        width: textWidget.bounds.width,
+        height: textWidget.bounds.height,
+        x: textWidget.bounds.x,
+        y: textWidget.bounds.y,
+    });
+    const dialog = layer.dialog(opts);
+    textWidget.setParent(dialog);
+    layer.on('click', () => {
+        layer.finish(true);
+        return true;
+    });
+    layer.on('keypress', () => {
+        layer.finish(true);
+        return true;
+    });
+    layer.setTimeout(() => {
+        layer.finish(true);
+    }, opts.duration || 3000);
+    // const textOpts: Widget.TextOptions = {
+    //     fg: opts.fg,
+    //     text,
+    //     x: 0,
+    //     y: 0,
+    //     wrap: width,
+    // };
+    // const textWidget = new Widget.Text('TEXT', textOpts);
+    // const height = textWidget.bounds.height;
+    // const dlg: Widget.Dialog = Widget.buildDialog(this, width, height)
+    //     .with(textWidget, { x: 0, y: 0 })
+    //     .addBox(opts.box)
+    //     .center()
+    //     .done();
+    // dlg.setEventHandlers({
+    //     click: () => dlg.close(true),
+    //     keypress: () => dlg.close(true),
+    //     TIMEOUT: () => dlg.close(false),
+    // });
+    // if (!opts.waitForAck) {
+    //     dlg.setTimeout('TIMEOUT', opts.duration || 3000);
+    // }
+    // return await dlg.show();
+    return layer.promise;
+};
+
+var index = /*#__PURE__*/Object.freeze({
+    __proto__: null
 });
 
 class Messages extends Widget {
@@ -3525,7 +3687,7 @@ class MessageArchive extends Widget {
             else if (y > endY)
                 return;
             fadePercent = Math.floor((50 * j) / this.shown);
-            const fgColor = fg.clone().mix(this._used.bg, fadePercent);
+            const fgColor = fg.mix(this._used.bg, fadePercent);
             dbuf.drawText(this.source.bounds.x, y, line, fgColor, this._used.bg);
         });
         if (this.mode === 'ack') {
@@ -3921,27 +4083,17 @@ class Viewport extends Widget {
         this.offsetX = 0;
         this.offsetY = 0;
         this._subject = null;
-        this.snap = opts.snap || false;
-        this.center = opts.center || false;
+        this.attr('snap', opts.snap || false);
+        this.attr('center', opts.center || false);
         this.filter = opts.filter || null;
-        if (opts.lock) {
-            this.lockX = true;
-            this.lockY = true;
-        }
-        else {
-            if (opts.lockX) {
-                this.lockX = true;
-            }
-            if (opts.lockY) {
-                this.lockY = true;
-            }
-        }
+        this.attr('lockX', opts.lock || opts.lockX || false);
+        this.attr('lockY', opts.lock || opts.lockY || false);
     }
     get subject() {
         return this._subject;
     }
     set subject(subject) {
-        this.center = !!subject;
+        this.attr('center', !!subject);
         if (subject) {
             this.offsetX = subject.x - this.halfWidth();
             this.offsetY = subject.y - this.halfHeight();
@@ -3949,8 +4101,8 @@ class Viewport extends Widget {
         this._subject = subject;
     }
     set lock(v) {
-        this.lockX = v;
-        this.lockY = v;
+        this.attr('lockX', v);
+        this.attr('lockY', v);
     }
     toMapX(x) {
         return x + this.offsetX - this.bounds.x;
@@ -3971,15 +4123,15 @@ class Viewport extends Widget {
         return Math.floor(this.bounds.height / 2);
     }
     centerOn(map, x, y) {
-        this.center = true;
+        this.attr('center', true);
         this.subject = { x, y, map };
     }
     showMap(map, x = 0, y = 0) {
         this.subject = { x, y, map };
         this.offsetX = x;
         this.offsetY = y;
-        this.center = false;
-        this.snap = false;
+        this.attr('center', false);
+        this.attr('snap', false);
     }
     updateOffset() {
         if (!this._subject) {
@@ -3991,7 +4143,7 @@ class Viewport extends Widget {
         const map = subject.memory || subject.map;
         const bounds = map;
         if (subject && map.hasXY(subject.x, subject.y)) {
-            if (this.snap) {
+            if (this._attrBool('snap')) {
                 let left = this.offsetX;
                 let right = this.offsetX + this.bounds.width;
                 let top = this.offsetY;
@@ -4022,7 +4174,7 @@ class Viewport extends Widget {
                     this.offsetY = Math.min(subject.y - thirdH, bounds.height - this.bounds.height);
                 }
             }
-            else if (this.center) {
+            else if (this._attrBool('center')) {
                 this.offsetX = subject.x - this.halfWidth();
                 this.offsetY = subject.y - this.halfHeight();
             }
@@ -4031,10 +4183,10 @@ class Viewport extends Widget {
                 this.offsetY = subject.y;
             }
         }
-        if (this.lockX && map) {
+        if (this._attrBool('lockX') && map) {
             this.offsetX = GWU.clamp(this.offsetX, 0, map.width - this.bounds.width);
         }
-        if (this.lockY && map) {
+        if (this._attrBool('lockY') && map) {
             this.offsetY = GWU.clamp(this.offsetY, 0, map.height - this.bounds.height);
         }
     }
@@ -4069,4 +4221,4 @@ class Viewport extends Widget {
     }
 }
 
-export { ActorEntry, CellEntry, ComputedStyle, EntryBase, Flavor, ItemEntry, Layer, MessageArchive, Messages, Sheet, Sidebar, Style, UI, Viewport, defaultStyle, makeStyle, index as widget };
+export { ActorEntry, CellEntry, ComputedStyle, EntryBase, Flavor, ItemEntry, Layer, MessageArchive, Messages, Sheet, Sidebar, Style, UI, Viewport, defaultStyle, index as dialog, makeStyle, index$1 as widget };

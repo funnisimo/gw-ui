@@ -2,7 +2,7 @@
 import * as Widget from './widget';
 import * as Menu from './menu';
 import * as Text from './text';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 import { installWidget } from './make';
 
 export interface SelectOptions extends Widget.WidgetOptions {
@@ -68,7 +68,7 @@ installWidget('select', (l, opts) => new Select(l, opts));
 export type AddSelectOptions = SelectOptions &
     Widget.SetParentOptions & { parent?: Widget.Widget };
 
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         select(opts: AddSelectOptions): Select;
     }

@@ -2,7 +2,7 @@ import * as GWU from 'gw-utils';
 import * as Widget from './widget';
 // import * as Button from './button';
 import * as Text from './text';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 import { installWidget } from './make';
 
 export interface Rec<T> {
@@ -214,7 +214,7 @@ installWidget('menu', (l, opts) => new Menu(l, opts));
 export type AddMenuOptions = MenuOptions &
     Widget.SetParentOptions & { parent?: Widget.Widget };
 
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         menu(opts: AddMenuOptions): Menu;
     }

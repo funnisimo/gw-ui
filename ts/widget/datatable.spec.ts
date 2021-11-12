@@ -1,7 +1,7 @@
 import * as UTILS from '../../test/utils';
 import * as GWU from 'gw-utils';
 import * as DataTable from './datatable';
-import * as Layer from '../layer';
+import * as Layer from '../ui/layer';
 
 describe('Table Widget', () => {
     let layer: Layer.Layer;

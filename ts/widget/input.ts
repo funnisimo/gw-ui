@@ -1,10 +1,10 @@
 import * as GWU from 'gw-utils';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 import * as Text from './text';
 import { installWidget } from './make';
 import * as Widget from './widget';
-import { PropType } from '../types';
-import * as Style from '../style';
+import { PropType } from '../ui/types';
+import * as Style from '../ui/style';
 
 export interface InputOptions extends Omit<Text.TextOptions, 'text'> {
     text?: string; // don't have to have text
@@ -212,7 +212,7 @@ installWidget('input', (l, opts) => new Input(l, opts));
 export type AddInputOptions = InputOptions &
     Widget.SetParentOptions & { parent?: Widget.Widget };
 
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         input(opts: AddInputOptions): Input;
     }

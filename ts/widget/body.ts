@@ -1,6 +1,6 @@
 import * as GWU from 'gw-utils';
 import * as Widget from './widget';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 
 export class Body extends Widget.Widget {
     constructor(layer: Layer) {

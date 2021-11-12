@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 import * as Dialog from '../widget/dialog';
 
 export interface AlertOptions extends Dialog.DialogOptions {
@@ -11,7 +11,7 @@ export interface AlertOptions extends Dialog.DialogOptions {
 
 // extend Layer
 
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         alert(
             opts: AlertOptions | number,

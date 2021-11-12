@@ -1,7 +1,7 @@
 import * as GWU from 'gw-utils';
 import { Widget, WidgetOptions, SetParentOptions } from './widget';
 import { installWidget } from './make';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 
 export interface TextOptions extends WidgetOptions {
     text: string;
@@ -89,7 +89,7 @@ installWidget('text', (l, opts) => new Text(l, opts));
 export type AddTextOptions = Omit<TextOptions, 'text'> &
     SetParentOptions & { parent?: Widget };
 
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         text(text: string, opts?: AddTextOptions): Text;
     }

@@ -1,11 +1,15 @@
 import * as GWU from 'gw-utils';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 import * as Text from './text';
 import * as Widget from './widget';
 import * as Dialog from './dialog';
 import { BorderType } from './datatable';
+import { DialogOptions } from '.';
 
-export interface FieldsetOptions extends Dialog.DialogOptions {
+export interface FieldsetOptions
+    extends Omit<Dialog.DialogOptions, 'width' | 'height'> {
+    width?: number;
+    height?: number;
     dataWidth: number;
     separator?: string;
 
@@ -47,7 +51,9 @@ export class Fieldset extends Dialog.Dialog {
                     opts.legendClass || Fieldset.default.legendClass;
                 opts.legendAlign =
                     opts.legendAlign || Fieldset.default.legendAlign;
-                return opts;
+                opts.width = opts.width || 0;
+                opts.height = opts.height || 0;
+                return opts as Dialog.DialogOptions;
             })()
         );
         this.attr('separator', opts.separator || Fieldset.default.separator);
@@ -60,10 +66,12 @@ export class Fieldset extends Dialog.Dialog {
         this.attr('labelClass', opts.labelClass || Fieldset.default.labelClass);
         this.attr('labelWidth', this._innerWidth - opts.dataWidth);
 
-        this._addLegend(opts);
+        this._addLegend(opts as DialogOptions);
     }
 
-    _adjustBounds(_pad: [number, number, number, number]): this {
+    _adjustBounds(pad: [number, number, number, number]): this {
+        this.bounds.width = Math.max(this.bounds.width, pad[1] + pad[3]);
+        this.bounds.height = Math.max(this.bounds.height, pad[0] + pad[2]);
         return this;
     }
 
@@ -128,7 +136,7 @@ export class Fieldset extends Dialog.Dialog {
 export type AddFieldsetOptions = FieldsetOptions &
     Widget.SetParentOptions & { parent?: Widget.Widget };
 
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         fieldset(opts?: AddFieldsetOptions): Fieldset;
     }

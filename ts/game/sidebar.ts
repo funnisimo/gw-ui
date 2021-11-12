@@ -2,8 +2,8 @@ import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 import * as Widget from '../widget';
 
-import { UISubject } from '../types';
-import { Layer } from '../layer';
+import { UISubject } from '../ui/types';
+import { Layer } from '../ui/layer';
 
 GWU.color.install('blueBar', 15, 10, 50);
 GWU.color.install('redBar', 45, 10, 15);

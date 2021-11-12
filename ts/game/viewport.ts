@@ -1,8 +1,8 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import { UISubject } from '../types';
+import { UISubject } from '../ui/types';
 import * as Widget from '../widget';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 
 export type ViewFilterFn = (
     mixer: GWU.sprite.Mixer,

@@ -27,6 +27,79 @@
     var GWU__namespace = /*#__PURE__*/_interopNamespace(GWU);
     var GWM__namespace = /*#__PURE__*/_interopNamespace(GWM);
 
+    class Grid {
+        constructor(target) {
+            this._left = 0;
+            this._top = 0;
+            this._colWidths = [];
+            this._rowHeights = [];
+            this._col = 0;
+            this._row = -1;
+            this.target = target;
+            const pos = target.pos();
+            this._left = pos.x;
+            this._top = pos.y;
+        }
+        cols(...args) {
+            if (args.length === 0)
+                return this._colWidths;
+            if (args.length == 2) {
+                args[0] = new Array(args[0]).fill(args[1]);
+            }
+            if (Array.isArray(args[0])) {
+                this._colWidths = args[0];
+            }
+            return this;
+        }
+        rows(...args) {
+            if (args.length === 0)
+                return this._rowHeights;
+            if (typeof args[0] === 'number') {
+                args[0] = new Array(args[0]).fill(args[1] || 1);
+            }
+            if (Array.isArray(args[0])) {
+                this._rowHeights = args[0];
+            }
+            return this;
+        }
+        col(n) {
+            if (n === undefined)
+                n = this._col;
+            this._col = GWU__namespace.clamp(n, 0, this._colWidths.length - 1);
+            return this._setPos(); // move back to top of our current row
+        }
+        nextCol() {
+            return this.col(this._col + 1);
+        }
+        row(n) {
+            if (n === undefined)
+                n = this._row;
+            this._row = GWU__namespace.clamp(n, 0, this._rowHeights.length - 1);
+            return this._setPos(); // move back to beginning of current column
+        }
+        nextRow() {
+            return this.row(this._row + 1).col(0);
+        }
+        endRow(h) {
+            if (h <= 0)
+                return this;
+            this._rowHeights[this._row] = h;
+            return this;
+        }
+        _setPos() {
+            let x = this._left;
+            for (let i = 0; i < this._col; ++i) {
+                x += this._colWidths[i];
+            }
+            let y = this._top;
+            for (let i = 0; i < this._row; ++i) {
+                y += this._rowHeights[i];
+            }
+            this.target.pos(x, y);
+            return this;
+        }
+    }
+
     class Selector {
         constructor(text) {
             this.priority = 0;
@@ -166,6 +239,9 @@
         matches(obj) {
             return this.matchFn(obj);
         }
+    }
+    function compile(text) {
+        return new Selector(text);
     }
 
     // static - size/pos automatic (ignore TRBL)
@@ -1007,79 +1083,6 @@
         }
     }
 
-    class Grid {
-        constructor(target) {
-            this._left = 0;
-            this._top = 0;
-            this._colWidths = [];
-            this._rowHeights = [];
-            this._col = 0;
-            this._row = -1;
-            this.target = target;
-            const pos = target.pos();
-            this._left = pos.x;
-            this._top = pos.y;
-        }
-        cols(...args) {
-            if (args.length === 0)
-                return this._colWidths;
-            if (args.length == 2) {
-                args[0] = new Array(args[0]).fill(args[1]);
-            }
-            if (Array.isArray(args[0])) {
-                this._colWidths = args[0];
-            }
-            return this;
-        }
-        rows(...args) {
-            if (args.length === 0)
-                return this._rowHeights;
-            if (typeof args[0] === 'number') {
-                args[0] = new Array(args[0]).fill(args[1] || 1);
-            }
-            if (Array.isArray(args[0])) {
-                this._rowHeights = args[0];
-            }
-            return this;
-        }
-        col(n) {
-            if (n === undefined)
-                n = this._col;
-            this._col = GWU__namespace.clamp(n, 0, this._colWidths.length - 1);
-            return this._setPos(); // move back to top of our current row
-        }
-        nextCol() {
-            return this.col(this._col + 1);
-        }
-        row(n) {
-            if (n === undefined)
-                n = this._row;
-            this._row = GWU__namespace.clamp(n, 0, this._rowHeights.length - 1);
-            return this._setPos(); // move back to beginning of current column
-        }
-        nextRow() {
-            return this.row(this._row + 1).col(0);
-        }
-        endRow(h) {
-            if (h <= 0)
-                return this;
-            this._rowHeights[this._row] = h;
-            return this;
-        }
-        _setPos() {
-            let x = this._left;
-            for (let i = 0; i < this._col; ++i) {
-                x += this._colWidths[i];
-            }
-            let y = this._top;
-            for (let i = 0; i < this._row; ++i) {
-                y += this._rowHeights[i];
-            }
-            this.target.pos(x, y);
-            return this;
-        }
-    }
-
     class Layer {
         constructor(ui, opts = {}) {
             this.needsDraw = true;
@@ -1437,6 +1440,74 @@
         }
     }
 
+    Layer.prototype.alert = function (opts, text, args) {
+        if (typeof opts === 'number') {
+            opts = { duration: opts };
+        }
+        if (args) {
+            text = GWU__namespace.text.apply(text, args);
+        }
+        opts.class = opts.class || 'alert';
+        opts.border = opts.border || 'ascii';
+        opts.pad = opts.pad || 1;
+        // const width = opts.width || GWU.text.length(text);
+        const layer = this.ui.startNewLayer();
+        // Fade the background
+        const opacity = opts.opacity !== undefined ? opts.opacity : 50;
+        layer.body.style().set('bg', GWU__namespace.color.BLACK.alpha(opacity));
+        // create the text widget
+        const textWidget = layer
+            .text(text, {
+            class: opts.textClass || opts.class,
+            width: opts.width,
+            height: opts.height,
+        })
+            .center();
+        Object.assign(opts, {
+            width: textWidget.bounds.width,
+            height: textWidget.bounds.height,
+            x: textWidget.bounds.x,
+            y: textWidget.bounds.y,
+        });
+        const dialog = layer.dialog(opts);
+        textWidget.setParent(dialog);
+        layer.on('click', () => {
+            layer.finish(true);
+            return true;
+        });
+        layer.on('keypress', () => {
+            layer.finish(true);
+            return true;
+        });
+        layer.setTimeout(() => {
+            layer.finish(true);
+        }, opts.duration || 3000);
+        // const textOpts: Widget.TextOptions = {
+        //     fg: opts.fg,
+        //     text,
+        //     x: 0,
+        //     y: 0,
+        //     wrap: width,
+        // };
+        // const textWidget = new Widget.Text('TEXT', textOpts);
+        // const height = textWidget.bounds.height;
+        // const dlg: Widget.Dialog = Widget.buildDialog(this, width, height)
+        //     .with(textWidget, { x: 0, y: 0 })
+        //     .addBox(opts.box)
+        //     .center()
+        //     .done();
+        // dlg.setEventHandlers({
+        //     click: () => dlg.close(true),
+        //     keypress: () => dlg.close(true),
+        //     TIMEOUT: () => dlg.close(false),
+        // });
+        // if (!opts.waitForAck) {
+        //     dlg.setTimeout('TIMEOUT', opts.duration || 3000);
+        // }
+        // return await dlg.show();
+        return layer.promise;
+    };
+
     // export interface AlertOptions extends Widget.WidgetOptions {
     //     duration?: number;
     //     waitForAck?: boolean;
@@ -1784,7 +1855,7 @@
         get _innerWidth() {
             const border = this._attrStr('border');
             const padSize = this._attrInt('padLeft') + this._attrInt('padRight');
-            return this.bounds.width - padSize + (border === 'none' ? 0 : 2);
+            return this.bounds.width - padSize - (border === 'none' ? 0 : 2);
         }
         get _innerTop() {
             const border = this._attrStr('border');
@@ -1794,7 +1865,7 @@
         get _innerHeight() {
             const border = this._attrStr('border');
             const padSize = this._attrInt('padTop') + this._attrInt('padBottom');
-            return this.bounds.height - padSize + (border === 'none' ? 0 : 2);
+            return this.bounds.height - padSize - (border === 'none' ? 0 : 2);
         }
         _addLegend(opts) {
             if (!opts.legend) {
@@ -1866,6 +1937,8 @@
                     opts.legendClass || Fieldset.default.legendClass;
                 opts.legendAlign =
                     opts.legendAlign || Fieldset.default.legendAlign;
+                opts.width = opts.width || 0;
+                opts.height = opts.height || 0;
                 return opts;
             })());
             this.fields = [];
@@ -1878,7 +1951,9 @@
             this.attr('labelWidth', this._innerWidth - opts.dataWidth);
             this._addLegend(opts);
         }
-        _adjustBounds(_pad) {
+        _adjustBounds(pad) {
+            this.bounds.width = Math.max(this.bounds.width, pad[1] + pad[3]);
+            this.bounds.height = Math.max(this.bounds.height, pad[0] + pad[2]);
             return this;
         }
         get _labelLeft() {
@@ -3444,8 +3519,6 @@
         }
     }
 
-    // export * from './box';
-
     var index$1 = /*#__PURE__*/Object.freeze({
         __proto__: null,
         Widget: Widget,
@@ -3454,6 +3527,8 @@
         Border: Border,
         drawBorder: drawBorder,
         Button: Button,
+        toPadArray: toPadArray,
+        Dialog: Dialog,
         Fieldset: Fieldset,
         Field: Field,
         OrderedList: OrderedList,
@@ -3472,78 +3547,6 @@
         Prompt: Prompt,
         Choice: Choice,
         Inquiry: Inquiry
-    });
-
-    Layer.prototype.alert = function (opts, text, args) {
-        if (typeof opts === 'number') {
-            opts = { duration: opts };
-        }
-        if (args) {
-            text = GWU__namespace.text.apply(text, args);
-        }
-        opts.class = opts.class || 'alert';
-        opts.border = opts.border || 'ascii';
-        opts.pad = opts.pad || 1;
-        // const width = opts.width || GWU.text.length(text);
-        const layer = this.ui.startNewLayer();
-        // Fade the background
-        const opacity = opts.opacity !== undefined ? opts.opacity : 50;
-        layer.body.style().set('bg', GWU__namespace.color.BLACK.alpha(opacity));
-        // create the text widget
-        const textWidget = layer
-            .text(text, {
-            class: opts.textClass || opts.class,
-            width: opts.width,
-            height: opts.height,
-        })
-            .center();
-        Object.assign(opts, {
-            width: textWidget.bounds.width,
-            height: textWidget.bounds.height,
-            x: textWidget.bounds.x,
-            y: textWidget.bounds.y,
-        });
-        const dialog = layer.dialog(opts);
-        textWidget.setParent(dialog);
-        layer.on('click', () => {
-            layer.finish(true);
-            return true;
-        });
-        layer.on('keypress', () => {
-            layer.finish(true);
-            return true;
-        });
-        layer.setTimeout(() => {
-            layer.finish(true);
-        }, opts.duration || 3000);
-        // const textOpts: Widget.TextOptions = {
-        //     fg: opts.fg,
-        //     text,
-        //     x: 0,
-        //     y: 0,
-        //     wrap: width,
-        // };
-        // const textWidget = new Widget.Text('TEXT', textOpts);
-        // const height = textWidget.bounds.height;
-        // const dlg: Widget.Dialog = Widget.buildDialog(this, width, height)
-        //     .with(textWidget, { x: 0, y: 0 })
-        //     .addBox(opts.box)
-        //     .center()
-        //     .done();
-        // dlg.setEventHandlers({
-        //     click: () => dlg.close(true),
-        //     keypress: () => dlg.close(true),
-        //     TIMEOUT: () => dlg.close(false),
-        // });
-        // if (!opts.waitForAck) {
-        //     dlg.setTimeout('TIMEOUT', opts.duration || 3000);
-        // }
-        // return await dlg.show();
-        return layer.promise;
-    };
-
-    var index = /*#__PURE__*/Object.freeze({
-        __proto__: null
     });
 
     class Messages extends Widget {
@@ -3628,13 +3631,11 @@
         finish() {
             this.layer.finish();
         }
-        keypress(e) {
+        keypress(_e) {
             if (this.mode === 'ack') {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    this.mode = 'reverse';
-                    this.layer.needsDraw = true;
-                    this.layer.setTimeout('REVERSE', 16);
-                }
+                this.mode = 'reverse';
+                this.layer.needsDraw = true;
+                this.layer.setTimeout('REVERSE', 16);
             }
             else if (this.mode === 'reverse') {
                 this.finish();
@@ -3643,9 +3644,10 @@
             else {
                 this.mode = 'ack';
                 this.shown = this.totalCount;
+                this.layer.clearTimeout('FORWARD');
                 this.layer.needsDraw = true;
             }
-            return false;
+            return true; // eat all events
         }
         click(_e) {
             if (this.mode === 'ack') {
@@ -3661,7 +3663,7 @@
                 this.shown = this.totalCount;
                 this.layer.needsDraw = true;
             }
-            return false;
+            return true;
         }
         _forward() {
             ++this.shown;
@@ -3671,6 +3673,7 @@
             }
             else {
                 this.mode = 'ack';
+                this.shown = this.totalCount;
             }
             return true;
         }
@@ -4247,22 +4250,29 @@
         }
     }
 
-    exports.ActorEntry = ActorEntry;
-    exports.CellEntry = CellEntry;
+    var index = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        Messages: Messages,
+        MessageArchive: MessageArchive,
+        Flavor: Flavor,
+        EntryBase: EntryBase,
+        ActorEntry: ActorEntry,
+        ItemEntry: ItemEntry,
+        CellEntry: CellEntry,
+        Sidebar: Sidebar,
+        Viewport: Viewport
+    });
+
     exports.ComputedStyle = ComputedStyle;
-    exports.EntryBase = EntryBase;
-    exports.Flavor = Flavor;
-    exports.ItemEntry = ItemEntry;
+    exports.Grid = Grid;
     exports.Layer = Layer;
-    exports.MessageArchive = MessageArchive;
-    exports.Messages = Messages;
+    exports.Selector = Selector;
     exports.Sheet = Sheet;
-    exports.Sidebar = Sidebar;
     exports.Style = Style;
     exports.UI = UI;
-    exports.Viewport = Viewport;
+    exports.compile = compile;
     exports.defaultStyle = defaultStyle;
-    exports.dialog = index;
+    exports.game = index;
     exports.makeStyle = makeStyle;
     exports.widget = index$1;
 

@@ -1,7 +1,7 @@
 import * as UTILS from '../../test/utils';
 import * as GWU from 'gw-utils';
 import * as Checkbox from './checkbox';
-import * as Layer from '../layer';
+import * as Layer from '../ui/layer';
 import { createWidget } from './make';
 
 describe('Checkbox Widget', () => {

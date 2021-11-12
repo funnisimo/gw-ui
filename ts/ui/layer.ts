@@ -1,7 +1,7 @@
 import * as GWU from 'gw-utils';
 import * as Style from './style';
-import * as Widget from './widget/widget';
-import { Body } from './widget/body';
+import * as Widget from '../widget/widget';
+import { Body } from '../widget/body';
 import { UILayer, StyleOptions } from './types';
 import { Grid } from './grid';
 

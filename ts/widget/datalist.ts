@@ -1,8 +1,8 @@
 import * as DataTable from './datatable';
-import { PrefixType } from '../types';
+import { PrefixType } from '../ui/types';
 import * as Widget from './widget';
 import { installWidget } from './make';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 
 export interface DataListOptions
     extends DataTable.ColumnOptions,
@@ -47,7 +47,7 @@ installWidget('list', (l, opts) => new DataList(l, opts));
 export type AddDataListOptions = DataListOptions &
     Widget.SetParentOptions & { parent?: Widget.Widget };
 
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         datalist(opts: AddDataListOptions): DataList;
     }

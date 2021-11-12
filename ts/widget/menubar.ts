@@ -1,6 +1,6 @@
 import * as GWU from 'gw-utils';
 import * as Widget from './widget';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 import { installWidget } from './make';
 import { DropdownConfig, Menu, ButtonConfig } from './menu';
 import * as Text from './text';
@@ -276,7 +276,7 @@ export class MenubarButton extends Text.Text {
 export type AddMenubarOptions = MenubarOptions &
     Widget.SetParentOptions & { parent?: Widget.Widget };
 
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         menubar(opts?: AddMenubarOptions): Menubar;
     }

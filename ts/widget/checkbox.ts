@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 import * as Text from './text';
 import { installWidget } from './make';
 

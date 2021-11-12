@@ -4,7 +4,7 @@ import * as UTILS from '../../test/utils';
 import * as GWM from 'gw-map';
 import * as Viewport from './viewport';
 import { UI } from '../ui';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 
 describe('Viewport', () => {
     let ui: UI;
@@ -13,6 +13,10 @@ describe('Viewport', () => {
     beforeEach(() => {
         ui = UTILS.mockUI(100, 40);
         layer = ui.startNewLayer();
+    });
+
+    afterEach(() => {
+        ui.stop();
     });
 
     test('empty', () => {
@@ -41,8 +45,8 @@ describe('Viewport', () => {
             height: 34,
             bg: 'red',
         });
-        expect(widget.lockX).toBeFalsy();
-        expect(widget.lockY).toBeFalsy();
+        expect(widget.attr('lockX')).toBeFalsy();
+        expect(widget.attr('lockY')).toBeFalsy();
 
         const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
 
@@ -84,7 +88,7 @@ describe('Viewport', () => {
 
         // lockX
 
-        widget.lockX = true;
+        widget.attr('lockX', true);
 
         widget.draw(layer.buffer);
 
@@ -104,7 +108,7 @@ describe('Viewport', () => {
 
         // lockY
 
-        widget.lockY = true;
+        widget.attr('lockY', true);
 
         widget.draw(layer.buffer);
 
@@ -130,8 +134,8 @@ describe('Viewport', () => {
             height: 34,
             bg: 'red',
         });
-        expect(widget.lockX).toBeFalsy();
-        expect(widget.lockY).toBeFalsy();
+        expect(widget.attr('lockX')).toBeFalsy();
+        expect(widget.attr('lockY')).toBeFalsy();
 
         const map = GWM.map.make(80, 34, 'FLOOR', 'WALL');
 

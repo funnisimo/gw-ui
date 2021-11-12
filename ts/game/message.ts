@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 import * as Widget from '../widget';
 
 export interface MessageOptions extends Widget.WidgetOptions {
@@ -133,22 +133,21 @@ export class MessageArchive extends Widget.Widget {
         this.layer.finish();
     }
 
-    keypress(e: GWU.io.Event): boolean {
+    keypress(_e: GWU.io.Event): boolean {
         if (this.mode === 'ack') {
-            if (e.key === 'Enter' || e.key === ' ') {
-                this.mode = 'reverse';
-                this.layer.needsDraw = true;
-                this.layer.setTimeout('REVERSE', 16);
-            }
+            this.mode = 'reverse';
+            this.layer.needsDraw = true;
+            this.layer.setTimeout('REVERSE', 16);
         } else if (this.mode === 'reverse') {
             this.finish();
             return true;
         } else {
             this.mode = 'ack';
             this.shown = this.totalCount;
+            this.layer.clearTimeout('FORWARD');
             this.layer.needsDraw = true;
         }
-        return false;
+        return true; // eat all events
     }
 
     click(_e: GWU.io.Event): boolean {
@@ -163,7 +162,7 @@ export class MessageArchive extends Widget.Widget {
             this.shown = this.totalCount;
             this.layer.needsDraw = true;
         }
-        return false;
+        return true;
     }
 
     _forward(): boolean {
@@ -173,6 +172,7 @@ export class MessageArchive extends Widget.Widget {
             this.layer.setTimeout('FORWARD', 16);
         } else {
             this.mode = 'ack';
+            this.shown = this.totalCount;
         }
         return true;
     }

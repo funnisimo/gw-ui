@@ -1,7 +1,7 @@
 import * as UTILS from '../../test/utils';
 // import * as GWU from 'gw-utils';
 import * as Fieldset from './fieldset';
-import * as Layer from '../layer';
+import * as Layer from '../ui/layer';
 // import { Widget } from '.';
 
 describe('Fieldset Widget', () => {
@@ -103,16 +103,16 @@ describe('Fieldset Widget', () => {
 
         // layer.buffer.dump();
 
-        expect(UTILS.getBufferText(layer.buffer, 10, 5, 25)).toEqual(
+        expect(UTILS.getBufferText(layer.buffer, 10, 5, 30)).toEqual(
             '+-LEGEND----------------+'
         );
-        expect(UTILS.getBufferText(layer.buffer, 10, 6, 25)).toEqual(
+        expect(UTILS.getBufferText(layer.buffer, 10, 6, 30)).toEqual(
             '| Age      :          4 |'
         );
-        expect(UTILS.getBufferText(layer.buffer, 10, 7, 25)).toEqual(
+        expect(UTILS.getBufferText(layer.buffer, 10, 7, 30)).toEqual(
             "| Height   :        6'2 |"
         );
-        expect(UTILS.getBufferText(layer.buffer, 10, 8, 25)).toEqual(
+        expect(UTILS.getBufferText(layer.buffer, 10, 8, 30)).toEqual(
             '| Weight   :        190 |'
         );
 

@@ -1,7 +1,7 @@
 import * as GWU from 'gw-utils';
-import { UIStyle } from '../types';
+import { UIStyle } from '../ui/types';
 import * as Widget from './widget';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 import { installWidget } from './make';
 
 export interface BorderOptions extends Widget.WidgetOptions {
@@ -47,7 +47,7 @@ installWidget('border', (l, opts) => new Border(l, opts));
 export type AddBorderOptions = BorderOptions &
     Widget.SetParentOptions & { parent?: Widget.Widget };
 
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         border(opts: AddBorderOptions): Border;
     }

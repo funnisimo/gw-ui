@@ -1,5 +1,5 @@
 import * as Widget from './widget';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 
 export type WidgetFactoryFn = (layer: Layer, opts: any) => Widget.Widget;
 export const widgets: Record<string, WidgetFactoryFn> = {};

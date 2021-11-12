@@ -21,6 +21,7 @@ declare class Selector {
     protected _matchNot(fn: MatchFn): MatchFn;
     matches(obj: UISelectable): boolean;
 }
+declare function compile(text: string): Selector;
 
 interface Size {
     width: number;
@@ -76,6 +77,33 @@ interface UISubject {
     readonly y: number;
     readonly fov?: GWU.fov.FovTracker;
     readonly memory?: GWM.memory.Memory;
+}
+
+interface GridTarget {
+    pos(): GWU.xy.XY;
+    pos(x: number, y: number): any;
+}
+declare class Grid {
+    _left: number;
+    _top: number;
+    _colWidths: number[];
+    _rowHeights: number[];
+    _col: number;
+    _row: number;
+    target: GridTarget;
+    constructor(target: GridTarget);
+    cols(): number[];
+    cols(count: number, width: number): this;
+    cols(widths: number[]): this;
+    rows(): number[];
+    rows(count: number, height?: number): this;
+    rows(heights: number[]): this;
+    col(n?: number): this;
+    nextCol(): this;
+    row(n?: number): this;
+    nextRow(): this;
+    endRow(h: number): this;
+    protected _setPos(): this;
 }
 
 declare type StyleType = string | StyleOptions;
@@ -223,33 +251,6 @@ declare class Widget implements UIStylable {
     _bubbleEvent(name: string, source: Widget | null, args?: any): boolean;
 }
 
-interface GridTarget {
-    pos(): GWU.xy.XY;
-    pos(x: number, y: number): any;
-}
-declare class Grid {
-    _left: number;
-    _top: number;
-    _colWidths: number[];
-    _rowHeights: number[];
-    _col: number;
-    _row: number;
-    target: GridTarget;
-    constructor(target: GridTarget);
-    cols(): number[];
-    cols(count: number, width: number): this;
-    cols(widths: number[]): this;
-    rows(): number[];
-    rows(count: number, height?: number): this;
-    rows(heights: number[]): this;
-    col(n?: number): this;
-    nextCol(): this;
-    row(n?: number): this;
-    nextRow(): this;
-    endRow(h: number): this;
-    protected _setPos(): this;
-}
-
 declare type TimerFn = () => void | Promise<void>;
 interface TimerInfo {
     action: string | TimerFn;
@@ -332,41 +333,6 @@ declare class Layer implements UILayer {
     _finish(): void;
 }
 
-interface UIOptions {
-    canvas: GWU.canvas.BaseCanvas;
-    loop: GWU.io.Loop;
-}
-declare class UI implements UICore {
-    canvas: GWU.canvas.BaseCanvas;
-    loop: GWU.io.Loop;
-    layer: Layer | null;
-    layers: Layer[];
-    _done: boolean;
-    _promise: Promise<void> | null;
-    constructor(opts?: Partial<UIOptions>);
-    get width(): number;
-    get height(): number;
-    get styles(): Sheet;
-    get baseBuffer(): GWU.canvas.Buffer;
-    get canvasBuffer(): GWU.canvas.Buffer;
-    get buffer(): GWU.canvas.Buffer;
-    startNewLayer(): Layer;
-    copyUIBuffer(dest: GWU.buffer.Buffer): void;
-    finishLayer(layer: Layer): void;
-    stop(): void;
-    mousemove(e: GWU.io.Event): boolean;
-    click(e: GWU.io.Event): boolean;
-    keypress(e: GWU.io.Event): boolean;
-    dir(e: GWU.io.Event): boolean;
-    tick(e: GWU.io.Event): boolean;
-    draw(): void;
-}
-
-declare class Body extends Widget {
-    constructor(layer: Layer);
-    _drawFill(buffer: GWU.buffer.Buffer): void;
-}
-
 interface TextOptions extends WidgetOptions {
     text: string;
 }
@@ -384,42 +350,10 @@ declare class Text extends Widget {
 declare type AddTextOptions = Omit<TextOptions, 'text'> & SetParentOptions & {
     parent?: Widget;
 };
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         text(text: string, opts?: AddTextOptions): Text;
     }
-}
-
-interface BorderOptions extends WidgetOptions {
-    width: number;
-    height: number;
-    ascii?: boolean;
-}
-declare class Border extends Widget {
-    ascii: boolean;
-    constructor(layer: Layer, opts: BorderOptions);
-    contains(e: GWU.xy.XY): boolean;
-    contains(x: number, y: number): boolean;
-    _draw(buffer: GWU.buffer.Buffer): boolean;
-}
-declare type AddBorderOptions = BorderOptions & SetParentOptions & {
-    parent?: Widget;
-};
-declare module '../layer' {
-    interface Layer {
-        border(opts: AddBorderOptions): Border;
-    }
-}
-declare function drawBorder(buffer: GWU.buffer.Buffer, x: number, y: number, w: number, h: number, style: UIStyle, ascii: boolean): void;
-
-interface ButtonOptions extends Omit<TextOptions, 'text'> {
-    text?: string;
-    id: string;
-}
-declare class Button extends Text {
-    constructor(layer: Layer, opts: ButtonOptions);
-    keypress(ev: GWU.io.Event): boolean;
-    click(ev: GWU.io.Event): boolean;
 }
 
 declare type FormatFn = GWU.text.Template;
@@ -517,7 +451,7 @@ declare class TD extends Text {
 declare type AddDataTableOptions = DataTableOptions & SetParentOptions & {
     parent?: Widget;
 };
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         datatable(opts: AddDataTableOptions): DataTable;
     }
@@ -534,6 +468,7 @@ interface DialogOptions extends WidgetOptions {
     legendClass?: string;
     legendAlign?: GWU.text.Align;
 }
+declare function toPadArray(pad: PadInfo): [number, number, number, number];
 declare class Dialog extends Widget {
     static default: {
         tag: string;
@@ -556,13 +491,94 @@ declare class Dialog extends Widget {
 declare type AddDialogOptions = DialogOptions & SetParentOptions & {
     parent?: Widget;
 };
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         dialog(opts?: AddDialogOptions): Dialog;
     }
 }
 
-interface FieldsetOptions extends DialogOptions {
+interface AlertOptions extends DialogOptions {
+    duration?: number;
+    waitForAck?: boolean;
+    textClass?: string;
+    opacity?: number;
+}
+declare module '../ui/layer' {
+    interface Layer {
+        alert(opts: AlertOptions | number, text: string, args?: any): Promise<boolean>;
+    }
+}
+
+interface UIOptions {
+    canvas: GWU.canvas.BaseCanvas;
+    loop: GWU.io.Loop;
+}
+declare class UI implements UICore {
+    canvas: GWU.canvas.BaseCanvas;
+    loop: GWU.io.Loop;
+    layer: Layer | null;
+    layers: Layer[];
+    _done: boolean;
+    _promise: Promise<void> | null;
+    constructor(opts?: Partial<UIOptions>);
+    get width(): number;
+    get height(): number;
+    get styles(): Sheet;
+    get baseBuffer(): GWU.canvas.Buffer;
+    get canvasBuffer(): GWU.canvas.Buffer;
+    get buffer(): GWU.canvas.Buffer;
+    startNewLayer(): Layer;
+    copyUIBuffer(dest: GWU.buffer.Buffer): void;
+    finishLayer(layer: Layer): void;
+    stop(): void;
+    mousemove(e: GWU.io.Event): boolean;
+    click(e: GWU.io.Event): boolean;
+    keypress(e: GWU.io.Event): boolean;
+    dir(e: GWU.io.Event): boolean;
+    tick(e: GWU.io.Event): boolean;
+    draw(): void;
+}
+
+declare class Body extends Widget {
+    constructor(layer: Layer);
+    _drawFill(buffer: GWU.buffer.Buffer): void;
+}
+
+interface BorderOptions extends WidgetOptions {
+    width: number;
+    height: number;
+    ascii?: boolean;
+}
+declare class Border extends Widget {
+    ascii: boolean;
+    constructor(layer: Layer, opts: BorderOptions);
+    contains(e: GWU.xy.XY): boolean;
+    contains(x: number, y: number): boolean;
+    _draw(buffer: GWU.buffer.Buffer): boolean;
+}
+declare type AddBorderOptions = BorderOptions & SetParentOptions & {
+    parent?: Widget;
+};
+declare module '../ui/layer' {
+    interface Layer {
+        border(opts: AddBorderOptions): Border;
+    }
+}
+declare function drawBorder(buffer: GWU.buffer.Buffer, x: number, y: number, w: number, h: number, style: UIStyle, ascii: boolean): void;
+
+interface ButtonOptions extends Omit<TextOptions, 'text'> {
+    text?: string;
+    id: string;
+}
+declare class Button extends Text {
+    constructor(layer: Layer, opts: ButtonOptions);
+    keypress(ev: GWU.io.Event): boolean;
+    click(ev: GWU.io.Event): boolean;
+}
+
+interface FieldsetOptions extends Omit<DialogOptions, 'width' | 'height'> {
+    width?: number;
+    height?: number;
     dataWidth: number;
     separator?: string;
     labelTag?: string;
@@ -586,7 +602,7 @@ declare class Fieldset extends Dialog {
     };
     fields: Field[];
     constructor(layer: Layer, opts: FieldsetOptions);
-    _adjustBounds(_pad: [number, number, number, number]): this;
+    _adjustBounds(pad: [number, number, number, number]): this;
     get _labelLeft(): number;
     get _dataLeft(): number;
     get _nextY(): number;
@@ -596,7 +612,7 @@ declare class Fieldset extends Dialog {
 declare type AddFieldsetOptions = FieldsetOptions & SetParentOptions & {
     parent?: Widget;
 };
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         fieldset(opts?: AddFieldsetOptions): Fieldset;
     }
@@ -642,7 +658,7 @@ declare type AddOrderedListOptions = OrderedListOptions & SetParentOptions & {
 declare type AddUnorderedListOptions = UnorderedListOptions & SetParentOptions & {
     parent?: Widget;
 };
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         ol(opts?: AddOrderedListOptions): OrderedList;
         ul(opts?: AddUnorderedListOptions): UnorderedList;
@@ -684,7 +700,7 @@ declare class Input extends Text {
 declare type AddInputOptions = InputOptions & SetParentOptions & {
     parent?: Widget;
 };
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         input(opts: AddInputOptions): Input;
     }
@@ -706,7 +722,7 @@ declare class DataList extends DataTable {
 declare type AddDataListOptions = DataListOptions & SetParentOptions & {
     parent?: Widget;
 };
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         datalist(opts: AddDataListOptions): DataList;
     }
@@ -753,7 +769,7 @@ declare class MenuButton extends Text {
 declare type AddMenuOptions = MenuOptions & SetParentOptions & {
     parent?: Widget;
 };
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         menu(opts: AddMenuOptions): Menu;
     }
@@ -808,7 +824,7 @@ declare class MenubarButton extends Text {
 declare type AddMenubarOptions = MenubarOptions & SetParentOptions & {
     parent?: Widget;
 };
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         menubar(opts?: AddMenubarOptions): Menubar;
     }
@@ -839,7 +855,7 @@ declare class Select extends Widget {
 declare type AddSelectOptions = SelectOptions & SetParentOptions & {
     parent?: Widget;
 };
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         select(opts: AddSelectOptions): Select;
     }
@@ -924,7 +940,7 @@ declare class Choice extends Widget {
 declare type AddChoiceOptions = ChoiceOptions & SetParentOptions & {
     parent?: Widget;
 };
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         choice(opts?: AddChoiceOptions): Choice;
     }
@@ -970,6 +986,12 @@ declare const index_d$1_drawBorder: typeof drawBorder;
 type index_d$1_ButtonOptions = ButtonOptions;
 type index_d$1_Button = Button;
 declare const index_d$1_Button: typeof Button;
+type index_d$1_PadInfo = PadInfo;
+type index_d$1_DialogOptions = DialogOptions;
+declare const index_d$1_toPadArray: typeof toPadArray;
+type index_d$1_Dialog = Dialog;
+declare const index_d$1_Dialog: typeof Dialog;
+type index_d$1_AddDialogOptions = AddDialogOptions;
 type index_d$1_FieldsetOptions = FieldsetOptions;
 type index_d$1_Fieldset = Fieldset;
 declare const index_d$1_Fieldset: typeof Fieldset;
@@ -1061,6 +1083,11 @@ declare namespace index_d$1 {
     index_d$1_drawBorder as drawBorder,
     index_d$1_ButtonOptions as ButtonOptions,
     index_d$1_Button as Button,
+    index_d$1_PadInfo as PadInfo,
+    index_d$1_DialogOptions as DialogOptions,
+    index_d$1_toPadArray as toPadArray,
+    index_d$1_Dialog as Dialog,
+    index_d$1_AddDialogOptions as AddDialogOptions,
     index_d$1_FieldsetOptions as FieldsetOptions,
     index_d$1_Fieldset as Fieldset,
     index_d$1_AddFieldsetOptions as AddFieldsetOptions,
@@ -1121,25 +1148,6 @@ declare namespace index_d$1 {
   };
 }
 
-interface AlertOptions extends DialogOptions {
-    duration?: number;
-    waitForAck?: boolean;
-    textClass?: string;
-    opacity?: number;
-}
-declare module '../layer' {
-    interface Layer {
-        alert(opts: AlertOptions | number, text: string, args?: any): Promise<boolean>;
-    }
-}
-
-type index_d_AlertOptions = AlertOptions;
-declare namespace index_d {
-  export {
-    index_d_AlertOptions as AlertOptions,
-  };
-}
-
 interface MessageOptions extends WidgetOptions {
     length?: number;
 }
@@ -1160,7 +1168,7 @@ declare class MessageArchive extends Widget {
     constructor(layer: Layer, source: Messages);
     contains(): boolean;
     finish(): void;
-    keypress(e: GWU.io.Event): boolean;
+    keypress(_e: GWU.io.Event): boolean;
     click(_e: GWU.io.Event): boolean;
     _forward(): boolean;
     _reverse(): boolean;
@@ -1274,4 +1282,50 @@ declare class Viewport extends Widget {
     draw(buffer: GWU.buffer.Buffer): boolean;
 }
 
-export { ActorEntry, ArchiveMode, CellEntry, ComputedStyle, EntryBase, Flavor, FlavorOptions, ItemEntry, Layer, LayerOptions, MessageArchive, MessageOptions, Messages, PrefixType, PropType, Sheet, Sidebar, SidebarEntry, SidebarOptions, Size, Style, StyleOptions, StyleType, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UISubject, ViewFilterFn, Viewport, ViewportOptions, defaultStyle, index_d as dialog, makeStyle, index_d$1 as widget };
+type index_d_MessageOptions = MessageOptions;
+type index_d_Messages = Messages;
+declare const index_d_Messages: typeof Messages;
+type index_d_ArchiveMode = ArchiveMode;
+type index_d_MessageArchive = MessageArchive;
+declare const index_d_MessageArchive: typeof MessageArchive;
+type index_d_FlavorOptions = FlavorOptions;
+type index_d_Flavor = Flavor;
+declare const index_d_Flavor: typeof Flavor;
+type index_d_SidebarOptions = SidebarOptions;
+type index_d_EntryBase = EntryBase;
+declare const index_d_EntryBase: typeof EntryBase;
+type index_d_ActorEntry = ActorEntry;
+declare const index_d_ActorEntry: typeof ActorEntry;
+type index_d_ItemEntry = ItemEntry;
+declare const index_d_ItemEntry: typeof ItemEntry;
+type index_d_CellEntry = CellEntry;
+declare const index_d_CellEntry: typeof CellEntry;
+type index_d_SidebarEntry = SidebarEntry;
+type index_d_Sidebar = Sidebar;
+declare const index_d_Sidebar: typeof Sidebar;
+type index_d_ViewFilterFn = ViewFilterFn;
+type index_d_ViewportOptions = ViewportOptions;
+type index_d_Viewport = Viewport;
+declare const index_d_Viewport: typeof Viewport;
+declare namespace index_d {
+  export {
+    index_d_MessageOptions as MessageOptions,
+    index_d_Messages as Messages,
+    index_d_ArchiveMode as ArchiveMode,
+    index_d_MessageArchive as MessageArchive,
+    index_d_FlavorOptions as FlavorOptions,
+    index_d_Flavor as Flavor,
+    index_d_SidebarOptions as SidebarOptions,
+    index_d_EntryBase as EntryBase,
+    index_d_ActorEntry as ActorEntry,
+    index_d_ItemEntry as ItemEntry,
+    index_d_CellEntry as CellEntry,
+    index_d_SidebarEntry as SidebarEntry,
+    index_d_Sidebar as Sidebar,
+    index_d_ViewFilterFn as ViewFilterFn,
+    index_d_ViewportOptions as ViewportOptions,
+    index_d_Viewport as Viewport,
+  };
+}
+
+export { AlertOptions, ComputedStyle, Grid, GridTarget, Layer, LayerOptions, MatchFn, PrefixType, PropType, Selector, Sheet, Size, Style, StyleOptions, StyleType, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UISubject, compile, defaultStyle, index_d as game, makeStyle, index_d$1 as widget };

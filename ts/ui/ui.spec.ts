@@ -1,4 +1,4 @@
-import * as UTILS from '../test/utils';
+import * as UTILS from '../../test/utils';
 import * as GWU from 'gw-utils';
 import * as UI from './ui';
 import { Layer } from './layer';

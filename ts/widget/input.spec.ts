@@ -1,7 +1,7 @@
 import * as UTILS from '../../test/utils';
 import * as GWU from 'gw-utils';
 import * as Input from './input';
-import * as Layer from '../layer';
+import * as Layer from '../ui/layer';
 
 describe('Input Widget', () => {
     let layer: Layer.Layer;

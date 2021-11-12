@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 import * as Text from './text';
 import * as Widget from './widget';
 import { BorderType } from './datatable';
@@ -319,7 +319,7 @@ export class Choice extends Widget.Widget {
 export type AddChoiceOptions = ChoiceOptions &
     Widget.SetParentOptions & { parent?: Widget.Widget };
 
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         choice(opts?: AddChoiceOptions): Choice;
     }

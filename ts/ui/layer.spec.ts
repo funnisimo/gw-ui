@@ -1,7 +1,8 @@
-import * as UTILS from '../test/utils';
-import { UI } from './ui';
-import * as Widget from './widget';
+import * as UTILS from '../../test/utils';
+
+import * as Widget from '../widget';
 import * as Layer from './layer';
+import { UI } from './ui';
 
 describe('Layer', () => {
     let ui: UI;

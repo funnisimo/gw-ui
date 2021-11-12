@@ -1,7 +1,7 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import * as UI from '../ts/ui';
-import * as Layer from '../ts/layer';
+import * as UI from '../ts/ui/ui';
+import * as Layer from '../ts/ui/layer';
 
 // export const rnd = jest.fn();
 // export const counts = new Array(100).fill(0);

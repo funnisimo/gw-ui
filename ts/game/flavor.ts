@@ -1,6 +1,6 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 import * as Widget from '../widget';
 
 GWU.color.install('flavorText', 50, 40, 90);

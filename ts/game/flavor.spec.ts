@@ -4,7 +4,7 @@ import * as UTILS from '../../test/utils';
 
 import * as Flavor from './flavor';
 import { UI } from '../ui';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 
 describe('Flavor', () => {
     let ui: UI;
@@ -13,6 +13,11 @@ describe('Flavor', () => {
     beforeEach(() => {
         ui = UTILS.mockUI(100, 40);
         layer = ui.startNewLayer();
+    });
+
+    afterEach(() => {
+        layer.finish();
+        ui.stop();
     });
 
     describe('getFlavorText', () => {
@@ -53,21 +58,21 @@ describe('Flavor', () => {
             );
 
             let text = flavor.getFlavorText(map, 0, 0);
-            expect(text).toEqual('you see a rough stone wall.');
+            expect(text).toEqual('You see a rough stone wall.');
 
             expect(GWM.tile.tiles.FLOOR.getFlavor()).toEqual('the stone floor');
             text = flavor.getFlavorText(map, 1, 1);
-            expect(text).toEqual('you see the stone floor.');
+            expect(text).toEqual('You see the stone floor.');
 
             expect(GWM.tile.tiles.DOOR.getFlavor()).toEqual('a closed door');
             map.setTile(2, 2, 'DOOR');
             text = flavor.getFlavorText(map, 2, 2);
-            expect(text).toEqual('you see a closed door.');
+            expect(text).toEqual('You see a closed door.');
 
             expect(GWM.tile.tiles.LAKE.getFlavor()).toEqual('some deep water');
             map.setTile(3, 3, 'LAKE');
             text = flavor.getFlavorText(map, 3, 3);
-            expect(text).toEqual('you see some deep water.');
+            expect(text).toEqual('You see some deep water.');
         });
     });
 });

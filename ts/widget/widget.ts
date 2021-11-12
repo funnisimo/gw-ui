@@ -1,7 +1,7 @@
 import * as GWU from 'gw-utils';
-import * as Style from '../style';
-import { UIStyle, StyleOptions, PropType, UIStylable } from '../types';
-import { Layer } from '../layer';
+import * as Style from '../ui//style';
+import { UIStyle, StyleOptions, PropType, UIStylable } from '../ui/types';
+import { Layer } from '../ui/layer';
 
 // return true if you want to stop the event from propagating
 export type EventCb = (

@@ -26,7 +26,7 @@ SHOW(canvas.node);
 const ui = new GWI.UI({ canvas, loop: LOOP });
 const layer = ui.startNewLayer();
 
-const messages = new GWI.Messages(layer, {
+const messages = new GWI.game.Messages(layer, {
     id: 'MSG',
     x: 0,
     y: 0,
@@ -46,7 +46,7 @@ SHOW(canvas.node);
 const ui = new GWI.UI({ canvas, loop: LOOP });
 const layer = ui.startNewLayer();
 
-const messages = new GWI.Messages(layer, {
+const messages = new GWI.game.Messages(layer, {
     id: 'MSG',
     x: 20,
     y: canvas.height - 4,

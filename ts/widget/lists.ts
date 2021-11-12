@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 import * as Widget from './widget';
 
 export interface OrderedListOptions extends Widget.WidgetOptions {
@@ -109,7 +109,7 @@ export type AddOrderedListOptions = OrderedListOptions &
 export type AddUnorderedListOptions = UnorderedListOptions &
     Widget.SetParentOptions & { parent?: Widget.Widget };
 
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         ol(opts?: AddOrderedListOptions): OrderedList;
         ul(opts?: AddUnorderedListOptions): UnorderedList;

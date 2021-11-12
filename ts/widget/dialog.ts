@@ -1,5 +1,5 @@
 import * as GWU from 'gw-utils';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 import * as Text from './text';
 import * as Widget from './widget';
 import { BorderType } from './datatable';
@@ -111,7 +111,7 @@ export class Dialog extends Widget.Widget {
     get _innerWidth(): number {
         const border = this._attrStr('border');
         const padSize = this._attrInt('padLeft') + this._attrInt('padRight');
-        return this.bounds.width - padSize + (border === 'none' ? 0 : 2);
+        return this.bounds.width - padSize - (border === 'none' ? 0 : 2);
     }
 
     get _innerTop(): number {
@@ -123,7 +123,7 @@ export class Dialog extends Widget.Widget {
     get _innerHeight(): number {
         const border = this._attrStr('border');
         const padSize = this._attrInt('padTop') + this._attrInt('padBottom');
-        return this.bounds.height - padSize + (border === 'none' ? 0 : 2);
+        return this.bounds.height - padSize - (border === 'none' ? 0 : 2);
     }
 
     _addLegend(opts: DialogOptions): this {
@@ -188,7 +188,7 @@ export class Dialog extends Widget.Widget {
 export type AddDialogOptions = DialogOptions &
     Widget.SetParentOptions & { parent?: Widget.Widget };
 
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         dialog(opts?: AddDialogOptions): Dialog;
     }

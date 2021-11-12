@@ -1,10 +1,10 @@
 import * as GWU from 'gw-utils';
 import { Widget, WidgetOptions, SetParentOptions } from './widget';
-import { PrefixType } from '../types';
+import { PrefixType } from '../ui/types';
 import { Text } from './text';
 import { drawBorder } from './border';
 import { installWidget } from './make';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 
 export type FormatFn = GWU.text.Template; // (data: any, index: number) => string;
 export type Value = string | number;
@@ -486,7 +486,7 @@ export class TD extends Text {
 export type AddDataTableOptions = DataTableOptions &
     SetParentOptions & { parent?: Widget };
 
-declare module '../layer' {
+declare module '../ui/layer' {
     interface Layer {
         datatable(opts: AddDataTableOptions): DataTable;
     }

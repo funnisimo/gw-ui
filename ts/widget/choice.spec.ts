@@ -2,7 +2,7 @@ import * as UTILS from '../../test/utils';
 
 import * as Choice from './choice';
 import { UI } from '../ui';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 
 describe('Prompt', () => {
     test('basic', () => {

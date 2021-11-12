@@ -4,7 +4,7 @@ import * as GWM from 'gw-map';
 import * as GWU from 'gw-utils';
 import * as Sidebar from './sidebar';
 import { UI } from '../ui';
-import { Layer } from '../layer';
+import { Layer } from '../ui/layer';
 
 describe('Sidebar', () => {
     beforeAll(() => {
@@ -32,6 +32,10 @@ describe('Sidebar', () => {
             width: 20,
             height: 38,
         });
+    });
+
+    afterEach(() => {
+        ui.stop();
     });
 
     test('gather cells - everything is visible', () => {

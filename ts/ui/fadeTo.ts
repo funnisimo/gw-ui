@@ -5,7 +5,7 @@ import { Layer } from './layer';
 
 declare module './layer' {
     interface Layer {
-        fadeTo(color?: GWU.color.ColorBase, time?: number): Promise<void>;
+        fadeTo(color?: GWU.color.ColorBase, time?: number): Layer;
     }
 }
 
@@ -14,7 +14,7 @@ declare module './layer' {
 Layer.prototype.fadeTo = function (
     color: GWU.color.ColorBase = 0,
     time = 1000
-): Promise<void> {
+): Layer {
     const layer = this.ui.startNewLayer();
 
     let elapsed = 0;
@@ -34,5 +34,5 @@ Layer.prototype.fadeTo = function (
         return true;
     });
 
-    return layer.promise;
+    return layer;
 };

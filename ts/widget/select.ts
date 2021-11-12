@@ -8,7 +8,7 @@ import { installWidget } from './make';
 export interface SelectOptions extends Widget.WidgetOptions {
     text: string;
     buttons: Menu.DropdownConfig;
-    buttonClass?: string | string[];
+    buttonClass?: string;
     buttonTag?: string;
 }
 

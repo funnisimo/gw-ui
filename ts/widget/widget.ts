@@ -20,7 +20,7 @@ export interface WidgetOptions extends StyleOptions {
     width?: number;
     height?: number;
 
-    class?: string | string[];
+    class?: string;
     tag?: string;
 
     tabStop?: boolean;
@@ -83,10 +83,7 @@ export class Widget implements UIStylable {
         }
         this._style.set(opts);
         if (opts.class) {
-            if (typeof opts.class === 'string') {
-                opts.class = opts.class.split(/ +/g);
-            }
-            this.classes = opts.class.map((c) => c.trim());
+            this.classes = opts.class.split(/ +/g).map((c) => c.trim());
         }
         if (opts.tabStop) {
             this.prop('tabStop', true);

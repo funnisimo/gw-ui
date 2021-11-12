@@ -161,7 +161,7 @@ interface WidgetOptions extends StyleOptions {
     y?: number;
     width?: number;
     height?: number;
-    class?: string | string[];
+    class?: string;
     tag?: string;
     tabStop?: boolean;
     action?: string;
@@ -504,13 +504,49 @@ interface AlertOptions extends DialogOptions {
 }
 declare module './layer' {
     interface Layer {
-        alert(opts: AlertOptions | number, text: string, args?: any): Promise<boolean>;
+        alert(opts: AlertOptions | number, text: string, args?: any): Layer;
     }
 }
 
 declare module './layer' {
     interface Layer {
-        fadeTo(color?: GWU.color.ColorBase, time?: number): Promise<void>;
+        fadeTo(color?: GWU.color.ColorBase, time?: number): Layer;
+    }
+}
+
+interface ButtonOptions extends Omit<TextOptions, 'text'> {
+    text?: string;
+    id: string;
+}
+declare class Button extends Text {
+    constructor(layer: Layer, opts: ButtonOptions);
+    keypress(ev: GWU.io.Event): boolean;
+    click(ev: GWU.io.Event): boolean;
+}
+declare type AddButtonOptions = Omit<ButtonOptions, 'text'> & SetParentOptions & {
+    parent?: Widget;
+};
+declare module '../ui/layer' {
+    interface Layer {
+        button(text: string, opts?: AddButtonOptions): Button;
+    }
+}
+
+interface ConfirmOptions extends Omit<DialogOptions, 'width' | 'height'> {
+    width?: number;
+    height?: number;
+    textClass?: string;
+    opacity?: number;
+    buttonWidth?: number;
+    ok?: string;
+    okClass?: string;
+    cancel?: boolean | string;
+    cancelClass?: string;
+}
+declare module './layer' {
+    interface Layer {
+        confirm(text: string, args?: any): Layer;
+        confirm(opts: ConfirmOptions, text: string, args?: any): Layer;
     }
 }
 
@@ -570,16 +606,6 @@ declare module '../ui/layer' {
     }
 }
 declare function drawBorder(buffer: GWU.buffer.Buffer, x: number, y: number, w: number, h: number, style: UIStyle, ascii: boolean): void;
-
-interface ButtonOptions extends Omit<TextOptions, 'text'> {
-    text?: string;
-    id: string;
-}
-declare class Button extends Text {
-    constructor(layer: Layer, opts: ButtonOptions);
-    keypress(ev: GWU.io.Event): boolean;
-    click(ev: GWU.io.Event): boolean;
-}
 
 interface FieldsetOptions extends Omit<DialogOptions, 'width' | 'height'> {
     width?: number;
@@ -847,7 +873,7 @@ declare class MenuViewer extends Widget {
 interface SelectOptions extends WidgetOptions {
     text: string;
     buttons: DropdownConfig;
-    buttonClass?: string | string[];
+    buttonClass?: string;
     buttonTag?: string;
 }
 declare class Select extends Widget {
@@ -991,6 +1017,7 @@ declare const index_d$1_drawBorder: typeof drawBorder;
 type index_d$1_ButtonOptions = ButtonOptions;
 type index_d$1_Button = Button;
 declare const index_d$1_Button: typeof Button;
+type index_d$1_AddButtonOptions = AddButtonOptions;
 type index_d$1_PadInfo = PadInfo;
 type index_d$1_DialogOptions = DialogOptions;
 declare const index_d$1_toPadArray: typeof toPadArray;
@@ -1088,6 +1115,7 @@ declare namespace index_d$1 {
     index_d$1_drawBorder as drawBorder,
     index_d$1_ButtonOptions as ButtonOptions,
     index_d$1_Button as Button,
+    index_d$1_AddButtonOptions as AddButtonOptions,
     index_d$1_PadInfo as PadInfo,
     index_d$1_DialogOptions as DialogOptions,
     index_d$1_toPadArray as toPadArray,
@@ -1333,4 +1361,4 @@ declare namespace index_d {
   };
 }
 
-export { AlertOptions, ComputedStyle, Grid, GridTarget, Layer, LayerOptions, MatchFn, PrefixType, PropType, Selector, Sheet, Size, Style, StyleOptions, StyleType, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UISubject, compile, defaultStyle, index_d as game, makeStyle, index_d$1 as widget };
+export { AlertOptions, ComputedStyle, ConfirmOptions, Grid, GridTarget, Layer, LayerOptions, MatchFn, PrefixType, PropType, Selector, Sheet, Size, Style, StyleOptions, StyleType, TimerFn, TimerInfo, UI, UICore, UILayer, UIOptions, UISelectable, UIStylable, UIStyle, UISubject, compile, defaultStyle, index_d as game, makeStyle, index_d$1 as widget };

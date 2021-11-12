@@ -691,10 +691,7 @@
             }
             this._style.set(opts);
             if (opts.class) {
-                if (typeof opts.class === 'string') {
-                    opts.class = opts.class.split(/ +/g);
-                }
-                this.classes = opts.class.map((c) => c.trim());
+                this.classes = opts.class.split(/ +/g).map((c) => c.trim());
             }
             if (opts.tabStop) {
                 this.prop('tabStop', true);
@@ -1476,9 +1473,9 @@
             return true;
         });
         layer.setTimeout(() => {
-            layer.finish(true);
+            layer.finish(false);
         }, opts.duration || 3000);
-        return layer.promise;
+        return layer;
     };
 
     // Effects
@@ -1497,7 +1494,214 @@
             }
             return true;
         });
-        return layer.promise;
+        return layer;
+    };
+
+    const widgets = {};
+    function installWidget(tag, fn) {
+        widgets[tag] = fn;
+    }
+
+    class Text extends Widget {
+        constructor(layer, opts) {
+            super(layer, opts);
+            this._text = '';
+            this._lines = [];
+            this._fixedWidth = false;
+            this._fixedHeight = false;
+            this._fixedHeight = !!opts.height;
+            this._fixedWidth = !!opts.width;
+            this.bounds.width = opts.width || 0;
+            this.bounds.height = opts.height || 1;
+            this.text(opts.text);
+        }
+        text(v) {
+            if (v === undefined)
+                return this._text;
+            this._text = v;
+            let w = this._fixedWidth ? this.bounds.width : 100;
+            this._lines = GWU__namespace.text.splitIntoLines(this._text, w);
+            if (!this._fixedWidth) {
+                this.bounds.width = this._lines.reduce((out, line) => Math.max(out, GWU__namespace.text.length(line)), 0);
+            }
+            if (this._fixedHeight) {
+                if (this._lines.length > this.bounds.height) {
+                    this._lines.length = this.bounds.height;
+                }
+            }
+            else {
+                this.bounds.height = Math.max(1, this._lines.length);
+            }
+            this.layer.needsDraw = true;
+            return this;
+        }
+        resize(w, h) {
+            super.resize(w, h);
+            this._fixedWidth = w > 0;
+            this._fixedHeight = h > 0;
+            this.text(this._text);
+            return this;
+        }
+        _draw(buffer) {
+            this._drawFill(buffer);
+            let vOffset = 0;
+            if (this._used.valign === 'bottom') {
+                vOffset = this.bounds.height - this._lines.length;
+            }
+            else if (this._used.valign === 'middle') {
+                vOffset = Math.floor((this.bounds.height - this._lines.length) / 2);
+            }
+            this._lines.forEach((line, i) => {
+                buffer.drawText(this.bounds.x, this.bounds.y + i + vOffset, line, this._used.fg, -1, this.bounds.width, this._used.align);
+            });
+            return true;
+        }
+    }
+    installWidget('text', (l, opts) => new Text(l, opts));
+    Layer.prototype.text = function (text, opts = {}) {
+        const options = Object.assign({}, this._opts, opts, { text });
+        const list = new Text(this, options);
+        if (opts.parent) {
+            list.setParent(opts.parent, opts);
+        }
+        this.pos(list.bounds.x, list.bounds.bottom);
+        return list;
+    };
+
+    class Button extends Text {
+        constructor(layer, opts) {
+            super(layer, (() => {
+                opts.text = opts.text || '';
+                opts.action = opts.action || opts.id;
+                opts.tag = opts.tag || 'button';
+                if (!opts.text && !opts.width)
+                    throw new Error('Buttons must have text or width.');
+                return opts;
+            })());
+        }
+        keypress(ev) {
+            if (!ev.key)
+                return false;
+            if (this._fireEvent('keypress', this, ev))
+                return true;
+            if (ev.key === 'Enter') {
+                const action = this._attrStr('action');
+                if (action && action.length)
+                    this._bubbleEvent(action, this);
+                return true;
+            }
+            return false;
+        }
+        click(ev) {
+            if (!this.contains(ev))
+                return false;
+            if (this._fireEvent('click', this, ev))
+                return true;
+            const action = this._attrStr('action');
+            if (action && action.length)
+                return this._bubbleEvent(action, this);
+            return false;
+        }
+    }
+    installWidget('button', (l, opts) => new Button(l, opts));
+    Layer.prototype.button = function (text, opts) {
+        const options = Object.assign({}, this._opts, opts, {
+            text,
+        });
+        const widget = new Button(this, options);
+        if (opts.parent) {
+            widget.setParent(opts.parent, opts);
+        }
+        this.pos(widget.bounds.x, widget.bounds.bottom);
+        return widget;
+    };
+
+    Layer.prototype.confirm = function (opts, text, args) {
+        if (typeof opts === 'string') {
+            args = text;
+            text = opts;
+            opts = {};
+        }
+        if (args) {
+            text = GWU__namespace.text.apply(text, args);
+        }
+        opts.class = opts.class || 'confirm';
+        opts.border = opts.border || 'ascii';
+        opts.pad = opts.pad || 1;
+        const layer = this.ui.startNewLayer();
+        // Fade the background
+        const opacity = opts.opacity !== undefined ? opts.opacity : 50;
+        layer.body.style().set('bg', GWU__namespace.color.BLACK.alpha(opacity));
+        if (opts.cancel === undefined) {
+            opts.cancel = 'Cancel';
+        }
+        else if (opts.cancel === true) {
+            opts.cancel = 'Cancel';
+        }
+        else if (!opts.cancel) {
+            opts.cancel = '';
+        }
+        opts.ok = opts.ok || 'Ok';
+        let buttonWidth = opts.buttonWidth || 0;
+        if (!buttonWidth) {
+            buttonWidth = Math.max(opts.ok.length, opts.cancel.length);
+        }
+        const width = Math.max(opts.width || 0, buttonWidth * 2 + 2);
+        // create the text widget
+        const textWidget = layer
+            .text(text, {
+            class: opts.textClass || opts.class,
+            width: width,
+            height: opts.height,
+        })
+            .center();
+        Object.assign(opts, {
+            width: textWidget.bounds.width,
+            height: textWidget.bounds.height + 2,
+            x: textWidget.bounds.x,
+            y: textWidget.bounds.y,
+            tag: 'confirm',
+        });
+        const dialog = layer.dialog(opts);
+        textWidget.setParent(dialog);
+        layer
+            .button(opts.ok, {
+            class: opts.okClass || opts.class,
+            width: buttonWidth,
+            id: 'OK',
+            parent: dialog,
+            x: dialog._innerLeft + dialog._innerWidth - buttonWidth,
+            y: dialog._innerTop + dialog._innerHeight - 1,
+        })
+            .on('click', () => {
+            layer.finish(true);
+            return true;
+        });
+        if (opts.cancel.length) {
+            layer
+                .button(opts.cancel, {
+                class: opts.cancelClass || opts.class,
+                width: buttonWidth,
+                id: 'CANCEL',
+                parent: dialog,
+                x: dialog._innerLeft,
+                y: dialog._innerTop + dialog._innerHeight - 1,
+            })
+                .on('click', () => {
+                layer.finish(false);
+                return true;
+            });
+        }
+        layer.on('keypress', (_n, _w, e) => {
+            if (e.key === 'Escape') {
+                layer.finish(false);
+            }
+            else if (e.key === 'Enter') {
+                layer.finish(true);
+            }
+            return true;
+        });
+        return layer;
     };
 
     // export interface AlertOptions extends Widget.WidgetOptions {
@@ -1628,77 +1832,6 @@
         }
     }
 
-    const widgets = {};
-    function installWidget(tag, fn) {
-        widgets[tag] = fn;
-    }
-
-    class Text extends Widget {
-        constructor(layer, opts) {
-            super(layer, opts);
-            this._text = '';
-            this._lines = [];
-            this._fixedWidth = false;
-            this._fixedHeight = false;
-            this._fixedHeight = !!opts.height;
-            this._fixedWidth = !!opts.width;
-            this.bounds.width = opts.width || 0;
-            this.bounds.height = opts.height || 1;
-            this.text(opts.text);
-        }
-        text(v) {
-            if (v === undefined)
-                return this._text;
-            this._text = v;
-            let w = this._fixedWidth ? this.bounds.width : 100;
-            this._lines = GWU__namespace.text.splitIntoLines(this._text, w);
-            if (!this._fixedWidth) {
-                this.bounds.width = this._lines.reduce((out, line) => Math.max(out, GWU__namespace.text.length(line)), 0);
-            }
-            if (this._fixedHeight) {
-                if (this._lines.length > this.bounds.height) {
-                    this._lines.length = this.bounds.height;
-                }
-            }
-            else {
-                this.bounds.height = Math.max(1, this._lines.length);
-            }
-            this.layer.needsDraw = true;
-            return this;
-        }
-        resize(w, h) {
-            super.resize(w, h);
-            this._fixedWidth = w > 0;
-            this._fixedHeight = h > 0;
-            this.text(this._text);
-            return this;
-        }
-        _draw(buffer) {
-            this._drawFill(buffer);
-            let vOffset = 0;
-            if (this._used.valign === 'bottom') {
-                vOffset = this.bounds.height - this._lines.length;
-            }
-            else if (this._used.valign === 'middle') {
-                vOffset = Math.floor((this.bounds.height - this._lines.length) / 2);
-            }
-            this._lines.forEach((line, i) => {
-                buffer.drawText(this.bounds.x, this.bounds.y + i + vOffset, line, this._used.fg, -1, this.bounds.width, this._used.align);
-            });
-            return true;
-        }
-    }
-    installWidget('text', (l, opts) => new Text(l, opts));
-    Layer.prototype.text = function (text, opts = {}) {
-        const options = Object.assign({}, this._opts, opts, { text });
-        const list = new Text(this, options);
-        if (opts.parent) {
-            list.setParent(opts.parent, opts);
-        }
-        this.pos(list.bounds.x, list.bounds.bottom);
-        return list;
-    };
-
     class Border extends Widget {
         constructor(layer, opts) {
             super(layer, opts);
@@ -1756,37 +1889,6 @@
         }
     }
 
-    class Button extends Text {
-        constructor(layer, opts) {
-            super(layer, (() => {
-                opts.text = opts.text || '';
-                opts.action = opts.action || opts.id;
-                opts.tag = opts.tag || 'button';
-                return opts;
-            })());
-        }
-        keypress(ev) {
-            if (!ev.key)
-                return false;
-            if (ev.key === 'Enter') {
-                const action = this._attrStr('action');
-                if (action && action.length)
-                    this._bubbleEvent(action, this);
-                return true;
-            }
-            return false;
-        }
-        click(ev) {
-            if (!this.contains(ev))
-                return false;
-            const action = this._attrStr('action');
-            if (action && action.length)
-                this._bubbleEvent(action, this);
-            return true;
-        }
-    }
-    installWidget('button', (l, opts) => new Button(l, opts));
-
     function toPadArray(pad) {
         if (!pad)
             return [0, 0, 0, 0];
@@ -1827,7 +1929,7 @@
             }
             this._adjustBounds(pad);
             this.attr('legendTag', opts.legendTag || Dialog.default.legendTag);
-            this.attr('legendClass', opts.legendClass || Dialog.default.legendClass);
+            this.attr('legendClass', opts.legendClass || opts.class || Dialog.default.legendClass);
             this.attr('legendAlign', opts.legendAlign || Dialog.default.legendAlign);
             this._addLegend(opts);
         }
@@ -1907,7 +2009,7 @@
         border: 'none',
         pad: false,
         legendTag: 'legend',
-        legendClass: 'legend',
+        legendClass: '',
         legendAlign: 'left',
     };
     Layer.prototype.dialog = function (opts) {
@@ -2291,7 +2393,7 @@
             const t = new Text(table.layer, {
                 x,
                 y,
-                class: table.classes,
+                class: table.classes.join(' '),
                 tag: table._attrStr('headerTag'),
                 width: this.width,
                 height: table.rowHeight,
@@ -2319,7 +2421,7 @@
                 text,
                 x,
                 y,
-                class: table.classes,
+                class: table.classes.join(' '),
                 tag: table._attrStr('dataTag'),
                 width: this.width,
                 height: table.rowHeight,
@@ -3593,7 +3695,7 @@
             super(layer, {
                 id: 'ARCHIVE',
                 tag: 'messages',
-                class: source.classes.concat('archive'),
+                class: source.classes.concat('archive').join(' '),
                 height: source.bounds.height,
                 width: source.bounds.width,
                 x: 0,

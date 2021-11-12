@@ -13,11 +13,7 @@ export interface AlertOptions extends Dialog.DialogOptions {
 
 declare module './layer' {
     interface Layer {
-        alert(
-            opts: AlertOptions | number,
-            text: string,
-            args?: any
-        ): Promise<boolean>;
+        alert(opts: AlertOptions | number, text: string, args?: any): Layer;
     }
 }
 
@@ -25,7 +21,7 @@ Layer.prototype.alert = function (
     opts: AlertOptions | number,
     text: string,
     args?: any
-): Promise<boolean> {
+): Layer {
     if (typeof opts === 'number') {
         opts = { duration: opts } as AlertOptions;
     }
@@ -47,6 +43,7 @@ Layer.prototype.alert = function (
     // create the text widget
     const textWidget = layer
         .text(text, {
+            id: 'TEXT',
             class: opts.textClass || opts.class,
             width: opts.width,
             height: opts.height,
@@ -58,6 +55,7 @@ Layer.prototype.alert = function (
         height: textWidget.bounds.height,
         x: textWidget.bounds.x,
         y: textWidget.bounds.y,
+        id: 'DIALOG',
     });
     const dialog = layer.dialog(opts);
     textWidget.setParent(dialog);
@@ -73,8 +71,8 @@ Layer.prototype.alert = function (
     });
 
     layer.setTimeout(() => {
-        layer.finish(true);
+        layer.finish(false);
     }, opts.duration || 3000);
 
-    return layer.promise;
+    return layer;
 };

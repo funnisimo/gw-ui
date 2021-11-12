@@ -86,7 +86,7 @@ export class Column {
         const t = new Text(table.layer, {
             x,
             y,
-            class: table.classes,
+            class: table.classes.join(' '),
             tag: table._attrStr('headerTag'),
             width: this.width,
             height: table.rowHeight,
@@ -123,7 +123,7 @@ export class Column {
             text,
             x,
             y,
-            class: table.classes,
+            class: table.classes.join(' '),
             tag: table._attrStr('dataTag'),
             width: this.width,
             height: table.rowHeight,

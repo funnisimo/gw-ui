@@ -95,7 +95,7 @@ export class MessageArchive extends Widget.Widget {
         super(layer, {
             id: 'ARCHIVE',
             tag: 'messages',
-            class: source.classes.concat('archive'),
+            class: source.classes.concat('archive').join(' '),
             height: source.bounds.height,
             width: source.bounds.width,
             x: 0,

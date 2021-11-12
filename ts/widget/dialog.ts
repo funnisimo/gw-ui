@@ -48,7 +48,7 @@ export class Dialog extends Widget.Widget {
         pad: false,
 
         legendTag: 'legend',
-        legendClass: 'legend',
+        legendClass: '',
         legendAlign: 'left' as GWU.text.Align,
     };
 
@@ -82,7 +82,7 @@ export class Dialog extends Widget.Widget {
         this.attr('legendTag', opts.legendTag || Dialog.default.legendTag);
         this.attr(
             'legendClass',
-            opts.legendClass || Dialog.default.legendClass
+            opts.legendClass || opts.class || Dialog.default.legendClass
         );
         this.attr(
             'legendAlign',

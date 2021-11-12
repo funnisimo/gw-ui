@@ -53,16 +53,22 @@ layer.on('click', () => {
 });
 
 layer.on('keypress', () => {
-    layer.alert(
-        {
-            duration: 3000,
-            fg: 'green',
-            width: 50,
-            legend: ' ALERT! ',
-            legendAlign: 'center',
-        },
-        'This is a custom alert that ΩredΩspans∆ many Ωlightest_blueΩlines of text∆ and has ΩtealΩcolors∆.\n\nIt is capable of showing lots of information.\n\nEven newlines are allowed.'
-    );
+    layer
+        .alert(
+            {
+                duration: 3000,
+                fg: 'green',
+                width: 50,
+                legend: ' ALERT! ',
+                legendAlign: 'center',
+            },
+            'This is a custom alert that ΩredΩspans∆ many Ωlightest_blueΩlines of text∆ and has ΩtealΩcolors∆.\n\nIt is capable of showing lots of information.\n\nEven newlines are allowed.'
+        )
+        .on('finish', (n, w, result) => {
+            SHOW(
+                result ? 'You acknowledged the alert.' : 'The alert timed out.'
+            );
+        });
     return true;
 });
 ```
@@ -72,38 +78,50 @@ layer.on('keypress', () => {
 confirm shows a message to the player until they confirm it. You can allow the player to confirm or cancel the alert. You can even change the text of the buttons to do something like a Yes or No dialog.
 
 ```js
-// const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
-// SHOW(canvas.node);
+const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
+SHOW(canvas.node);
 
-// const ui = new GWI.UI({ canvas, loop: LOOP });
+const ui = new GWI.UI({ canvas, loop: LOOP });
+const layer = ui.startNewLayer();
 
-// canvas.buffer.drawText(20, 17, 'Click the canvas to see a confirm.', 'yellow');
-// canvas.buffer.drawText(
-//     20,
-//     19,
-//     'Press a key to see a more custom confirm.',
-//     'yellow'
-// );
-// canvas.render();
+layer.styles.add('confirm.special', { bg: 'darker_green', fg: 'yellow' });
+layer.styles.add('text.special', { fg: 'white' });
+layer.styles.add('legend.special', { fg: 'blue' });
 
-// LOOP.run({
-//     async click() {
-//         await ui.confirm('This is fairly simple.');
-//     },
-//     async keypress() {
-//         await ui.confirm(
-//             {
-//                 width: 20,
-//                 box: {
-//                     bg: 'white',
-//                     borderBg: 'light_gray',
-//                     pad: 2,
-//                     title: 'TACOS!',
-//                 },
-//                 fg: 'blue',
-//             },
-//             'This is a much more complex confirmation dialog.  It can include text that spans more than one line.  It can also include ΩredΩcolors∆!'
-//         );
-//     },
-// });
+layer.styles.add('button', { bg: 'gray', align: 'center' });
+layer.styles.add('button:hover', { fg: 'teal', bg: 'light_gray' });
+
+layer.pos(20, 17).text('Click the canvas to see a confirm.', { fg: 'yellow' });
+
+layer
+    .pos(20, 19)
+    .text('Press a key to see a more custom confirm.', { fg: 'yellow' });
+
+const widget = layer.pos(20, 21).text('', { width: 50, fg: 'red' });
+
+layer.on('click', () => {
+    layer.confirm('This is fairly simple.');
+    return true;
+});
+
+layer.on('keypress', () => {
+    layer
+        .confirm(
+            {
+                width: 30,
+                legend: 'TACOS!',
+                border: 'ascii',
+                ok: 'YES',
+                cancel: 'NO',
+                class: 'special',
+                buttonWidth: 10,
+            },
+            'This is a much more complex confirmation dialog.  It can include text that spans more than one line.  It can also include ΩredΩcolors∆!\n\nDo you like it?'
+        )
+        .on('finish', (n, w, result) => {
+            widget.text('You clicked : ' + (result ? 'OK' : 'Cancel'));
+            return true;
+        });
+    return true;
+});
 ```

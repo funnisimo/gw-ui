@@ -1405,6 +1405,7 @@ class Layer {
     _finish() {
         if (!this._done)
             return;
+        this.body._fireEvent('finish', this.body, this.result);
         this._done(this.result);
         this._done = null;
     }

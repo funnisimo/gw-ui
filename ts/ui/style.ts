@@ -71,40 +71,13 @@ export type StyleType = string | StyleOptions;
 // }
 
 export class Style implements UIStyle {
-    protected _fg?: GWU.color.ColorBase;
-    protected _bg?: GWU.color.ColorBase;
-    protected _border?: GWU.color.ColorBase;
-    // protected _depth?: number;
+    _fg?: GWU.color.ColorBase;
+    _bg?: GWU.color.ColorBase;
+    _border?: GWU.color.ColorBase;
+    //  _depth?: number;
 
-    protected _align?: GWU.text.Align;
-    protected _valign?: GWU.text.VAlign;
-    // protected _position?: Position;
-
-    // protected _minWidth?: number;
-    // protected _maxWidth?: number;
-    // protected _width?: number;
-
-    // protected _minHeight?: number;
-    // protected _maxHeight?: number;
-    // protected _height?: number;
-
-    // protected _x?: number;
-    // protected _left?: number;
-    // protected _right?: number;
-
-    // protected _y?: number;
-    // protected _top?: number;
-    // protected _bottom?: number;
-
-    // protected _padLeft?: number;
-    // protected _padRight?: number;
-    // protected _padTop?: number;
-    // protected _padBottom?: number;
-
-    // protected _marginLeft?: number;
-    // protected _marginRight?: number;
-    // protected _marginTop?: number;
-    // protected _marginBottom?: number;
+    _align?: GWU.text.Align;
+    _valign?: GWU.text.VAlign;
 
     selector: Selector;
     protected _dirty = false;
@@ -130,9 +103,6 @@ export class Style implements UIStyle {
     get bg(): GWU.color.ColorBase | undefined {
         return this._bg;
     }
-    // get border(): GWU.color.ColorBase | undefined {
-    //     return this._border;
-    // }
 
     dim(pct = 25, fg = true, bg = false): this {
         if (fg) {
@@ -165,75 +135,6 @@ export class Style implements UIStyle {
     get valign(): GWU.text.VAlign | undefined {
         return this._valign;
     }
-    // get position(): Position | undefined {
-    //     return this._position;
-    // }
-
-    // get minWidth(): number | undefined {
-    //     return this._minWidth;
-    // }
-    // get maxWidth(): number | undefined {
-    //     return this._maxWidth;
-    // }
-    // get width(): number | undefined {
-    //     return this._width;
-    // }
-
-    // get minHeight(): number | undefined {
-    //     return this._minHeight;
-    // }
-    // get maxHeight(): number | undefined {
-    //     return this._maxHeight;
-    // }
-    // get height(): number | undefined {
-    //     return this._height;
-    // }
-
-    // get x(): number | undefined {
-    //     return this._x;
-    // }
-    // get left(): number | undefined {
-    //     return this._left;
-    // }
-    // get right(): number | undefined {
-    //     return this._right;
-    // }
-
-    // get y(): number | undefined {
-    //     return this._y;
-    // }
-    // get top(): number | undefined {
-    //     return this._top;
-    // }
-    // get bottom(): number | undefined {
-    //     return this._bottom;
-    // }
-
-    // get padLeft(): number | undefined {
-    //     return this._padLeft;
-    // }
-    // get padRight(): number | undefined {
-    //     return this._padRight;
-    // }
-    // get padTop(): number | undefined {
-    //     return this._padTop;
-    // }
-    // get padBottom(): number | undefined {
-    //     return this._padBottom;
-    // }
-
-    // get marginLeft(): number | undefined {
-    //     return this._marginLeft;
-    // }
-    // get marginRight(): number | undefined {
-    //     return this._marginRight;
-    // }
-    // get marginTop(): number | undefined {
-    //     return this._marginTop;
-    // }
-    // get marginBottom(): number | undefined {
-    //     return this._marginBottom;
-    // }
 
     get(key: keyof Style): any {
         const id = ('_' + key) as keyof this;
@@ -248,69 +149,6 @@ export class Style implements UIStyle {
         setDirty = true
     ): this {
         if (typeof key === 'string') {
-            // if (key === 'padding') {
-            //     if (typeof value === 'number') {
-            //         value = [value];
-            //     } else if (typeof value === 'string') {
-            //         value = value.split(' ');
-            //     }
-            //     value = value.map((v: string | number) => {
-            //         if (typeof v === 'string') return Number.parseInt(v);
-            //         return v;
-            //     });
-
-            //     if (value.length == 1) {
-            //         this._padLeft =
-            //             this._padRight =
-            //             this._padTop =
-            //             this._padBottom =
-            //                 value[0];
-            //     } else if (value.length == 2) {
-            //         this._padLeft = this._padRight = value[1];
-            //         this._padTop = this._padBottom = value[0];
-            //     } else if (value.length == 3) {
-            //         this._padTop = value[0];
-            //         this._padRight = value[1];
-            //         this._padBottom = value[2];
-            //         this._padLeft = value[1];
-            //     } else if (value.length == 4) {
-            //         this._padTop = value[0];
-            //         this._padRight = value[1];
-            //         this._padBottom = value[2];
-            //         this._padLeft = value[3];
-            //     }
-            // } else if (key === 'margin') {
-            //     if (typeof value === 'number') {
-            //         value = [value];
-            //     } else if (typeof value === 'string') {
-            //         value = value.split(' ');
-            //     }
-            //     value = value.map((v: string | number) => {
-            //         if (typeof v === 'string') return Number.parseInt(v);
-            //         return v;
-            //     });
-
-            //     if (value.length == 1) {
-            //         this._marginLeft =
-            //             this._marginRight =
-            //             this._marginTop =
-            //             this._marginBottom =
-            //                 value[0];
-            //     } else if (value.length == 2) {
-            //         this._marginLeft = this._marginRight = value[1];
-            //         this._marginTop = this._marginBottom = value[0];
-            //     } else if (value.length == 3) {
-            //         this._marginTop = value[0];
-            //         this._marginRight = value[1];
-            //         this._marginBottom = value[2];
-            //         this._marginLeft = value[1];
-            //     } else if (value.length == 4) {
-            //         this._marginTop = value[0];
-            //         this._marginRight = value[1];
-            //         this._marginBottom = value[2];
-            //         this._marginLeft = value[3];
-            //     }
-            // } else {
             const field = '_' + key;
             if (typeof value === 'string') {
                 if (value.match(/^[+-]?\d+$/)) {
@@ -399,9 +237,12 @@ export function makeStyle(style: string, selector = '$'): Style {
 export class ComputedStyle extends Style {
     // obj: Stylable;
     sources: UIStyle[] = [];
+    _opacity = 100;
+    _baseFg: GWU.color.Color | null = null;
+    _baseBg: GWU.color.Color | null = null;
 
     // constructor(source: Stylable, sources?: Style[]) {
-    constructor(sources?: UIStyle[]) {
+    constructor(sources?: UIStyle[], opacity = 100) {
         super();
         // this.obj = source;
         if (sources) {
@@ -411,7 +252,29 @@ export class ComputedStyle extends Style {
         }
 
         this.sources.forEach((s) => super.set(s));
+        this.opacity = opacity;
         this._dirty = false; // As far as I know I reflect all of the current source values.
+    }
+
+    get opacity() {
+        return this._opacity;
+    }
+    set opacity(v: number) {
+        v = GWU.clamp(v, 0, 100);
+        if (v === 100) {
+            this._fg = this._baseFg || this._fg;
+            this._bg = this._baseBg || this._bg;
+            return;
+        }
+
+        if (this._fg !== undefined) {
+            this._baseFg = this._baseFg || GWU.color.from(this._fg);
+            this._fg = this._baseFg.alpha(v);
+        }
+        if (this._bg !== undefined) {
+            this._baseBg = this._baseBg || GWU.color.from(this._bg);
+            this._bg = this._baseBg.alpha(v);
+        }
     }
 
     get dirty(): boolean {
@@ -491,14 +354,14 @@ export class Sheet {
         }
     }
 
-    computeFor(widget: UIStylable): UIStyle {
+    computeFor(widget: UIStylable): ComputedStyle {
         const sources = this.rules.filter((r) => r.selector.matches(widget));
         const widgetStyle = widget.style();
         if (widgetStyle) {
             sources.push(widgetStyle);
         }
         widgetStyle.dirty = false;
-        return new ComputedStyle(sources);
+        return new ComputedStyle(sources, widget.opacity);
     }
 }
 

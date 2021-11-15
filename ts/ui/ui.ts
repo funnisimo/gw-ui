@@ -8,36 +8,6 @@ export interface UIOptions {
     loop: GWU.io.Loop;
 }
 
-// export interface AlertOptions extends Widget.WidgetOptions {
-//     duration?: number;
-//     waitForAck?: boolean;
-
-//     pad?: number;
-//     padX?: number;
-//     padY?: number;
-
-//     box?: Widget.BoxOptions;
-// }
-
-// export interface ConfirmOptions extends Widget.WidgetOptions {
-//     allowCancel?: boolean;
-
-//     pad?: number;
-//     padX?: number;
-//     padY?: number;
-
-//     buttons?: Widget.ButtonOptions;
-//     ok?: string | Widget.ButtonOptions;
-//     cancel?: string | Widget.ButtonOptions;
-
-//     box?: Widget.BoxOptions;
-// }
-
-// export interface InputBoxOptions extends ConfirmOptions {
-//     prompt?: string | Widget.TextOptions;
-//     input?: Widget.InputOptions;
-// }
-
 export class UI implements UICore {
     canvas: GWU.canvas.BaseCanvas;
     loop: GWU.io.Loop;

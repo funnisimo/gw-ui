@@ -119,7 +119,7 @@ describe('Button Widget', () => {
         // @ts-ignore
         widget._fireEvent.mockClear();
         // @ts-ignore
-        widget._fireEvent.mockResolvedValue(void 0);
+        widget._fireEvent.mockReturnValue(false);
 
         expect(widget.keypress(UTILS.keypress('Enter'))).toBeTruthy();
         expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget, undefined);
@@ -127,7 +127,7 @@ describe('Button Widget', () => {
         // @ts-ignore
         widget._fireEvent.mockClear();
         // @ts-ignore
-        widget._fireEvent.mockReturnValue(void 0);
+        widget._fireEvent.mockReturnValue(false);
 
         widget = new Button.Button(layer, {
             id: 'ID',
@@ -164,16 +164,16 @@ describe('Button Widget', () => {
         // @ts-ignore
         widget._fireEvent.mockClear();
         // @ts-ignore
-        widget._fireEvent.mockResolvedValue(void 0);
+        widget._fireEvent.mockReturnValue(false);
 
-        expect(widget.click(UTILS.click(0, 0))).toBeTruthy();
+        expect(widget.click(UTILS.click(0, 0))).toBeFalsy();
         // @ts-ignore
         expect(widget._fireEvent).toHaveBeenCalledWith('ID', widget, undefined);
 
         // @ts-ignore
         widget._fireEvent.mockClear();
         // @ts-ignore
-        widget._fireEvent.mockReturnValue(void 0);
+        widget._fireEvent.mockReturnValue(false);
 
         widget = new Button.Button(layer, {
             id: 'ID',
@@ -185,7 +185,7 @@ describe('Button Widget', () => {
         });
         jest.spyOn(widget, '_fireEvent');
 
-        expect(widget.click(UTILS.click(0, 0))).toBeTruthy();
+        expect(widget.click(UTILS.click(0, 0))).toBeFalsy();
         expect(widget._fireEvent).toHaveBeenCalledWith(
             'DONE',
             widget,

@@ -2812,7 +2812,7 @@
             this.applyLight(dest, cell, fov);
             if (cell.hasEntityFlag(Entity$1.L_VISUALLY_DISTINCT |
                 Entity$1.L_LIST_IN_SIDEBAR, true)) {
-                GWU__namespace.color.separate(dest.fg, dest.bg);
+                [dest.fg, dest.bg] = GWU__namespace.color.separate(dest.fg, dest.bg);
             }
             return true;
         }
@@ -2844,7 +2844,7 @@
         //         dest.blackOut();
         //     }
         //     if (cell.hasEntityFlag(Flags.Entity.L_VISUALLY_DISTINCT)) {
-        //         GWU.color.separate(dest.fg, dest.bg);
+        //         [dest.fg, dest.bg] = GWU.color.separate(dest.fg, dest.bg);
         //     }
         // }
         getAppearance(dest, cell) {

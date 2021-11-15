@@ -1,6 +1,6 @@
 import * as GWU from 'gw-utils';
 import * as Style from '../ui//style';
-import { UIStyle, StyleOptions, PropType, UIStylable } from '../ui/types';
+import { StyleOptions, PropType, UIStylable } from '../ui/types';
 import { Layer } from '../ui/layer';
 
 // return true if you want to stop the event from propagating
@@ -14,6 +14,7 @@ export interface WidgetOptions extends StyleOptions {
     id?: string;
     disabled?: boolean;
     hidden?: boolean;
+    opacity?: number;
 
     x?: number;
     y?: number;
@@ -54,7 +55,7 @@ export class Widget implements UIStylable {
     children: Widget[] = [];
 
     _style = new Style.Style();
-    _used!: UIStyle;
+    _used!: Style.ComputedStyle;
 
     _parent: Widget | null = null;
     classes: string[] = [];
@@ -112,6 +113,9 @@ export class Widget implements UIStylable {
 
         this.layer.attach(this);
         this.updateStyle();
+        if (opts.opacity !== undefined) {
+            this._used.opacity = opts.opacity;
+        }
     }
 
     get depth(): number {
@@ -354,6 +358,26 @@ export class Widget implements UIStylable {
     }
     set hidden(v: boolean) {
         this.prop('hidden', v);
+        if (!v && this._used.opacity == 0) {
+            this._used.opacity = 100;
+        }
+    }
+
+    get opacity(): number {
+        let opacity = 100;
+        let current: Widget | null = this;
+        while (current) {
+            if (current._used) {
+                opacity = Math.min(opacity, current._used.opacity); // TODO - opacity = Math.floor(opacity * current._used.opacity / 100);
+            }
+            current = current.parent;
+        }
+        return opacity;
+    }
+
+    set opacity(v: number) {
+        this._used.opacity = v;
+        this.hidden = this._used.opacity == 0;
     }
 
     updateStyle() {

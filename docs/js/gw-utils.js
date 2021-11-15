@@ -2,7 +2,7 @@
     typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
     typeof define === 'function' && define.amd ? define(['exports'], factory) :
     (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.GWU = {}));
-}(this, (function (exports) { 'use strict';
+})(this, (function (exports) { 'use strict';
 
     /**
      * GW.utils
@@ -1047,6 +1047,22 @@
             const diff = hi - lo + 1;
             return lo + this.number(diff);
         }
+        /**
+         * @param mean Mean value
+         * @param stddev Standard deviation. ~95% of the absolute values will be lower than 2*stddev.
+         * @returns A normally distributed pseudorandom value
+         * @see: https://github.com/ondras/rot.js/blob/v2.2.0/src/rng.ts
+         */
+        normal(mean = 0, stddev = 1) {
+            let u, v, r;
+            do {
+                u = 2 * this.value() - 1;
+                v = 2 * this.value() - 1;
+                r = u * u + v * v;
+            } while (r > 1 || r == 0);
+            let gauss = u * Math.sqrt(-2 * Math.log(r) / r);
+            return mean + gauss * stddev;
+        }
         dice(count, sides, addend = 0) {
             let total = 0;
             let mult = 1;
@@ -1198,7 +1214,7 @@
     }
     const random = new Random();
     const cosmetic = new Random();
-    function make$b(seed) {
+    function make$c(seed) {
         return new Random(seed);
     }
 
@@ -1209,7 +1225,7 @@
         Random: Random,
         random: random,
         cosmetic: cosmetic,
-        make: make$b
+        make: make$c
     });
 
     class Range {
@@ -1246,7 +1262,7 @@
             return `${this.lo}-${this.hi}`;
         }
     }
-    function make$a(config) {
+    function make$b(config) {
         if (!config)
             return new Range(0, 0, 0);
         if (config instanceof Range)
@@ -1302,16 +1318,16 @@
         }
         throw new Error('Not a valid range - ' + config);
     }
-    const from$4 = make$a;
+    const from$4 = make$b;
     function asFn(config) {
-        const range = make$a(config);
+        const range = make$b(config);
         return () => range.value();
     }
 
     var range = /*#__PURE__*/Object.freeze({
         __proto__: null,
         Range: Range,
-        make: make$a,
+        make: make$b,
         from: from$4,
         asFn: asFn
     });
@@ -1402,7 +1418,7 @@
         }
         return result;
     }
-    function make$9(obj) {
+    function make$a(obj) {
         const out = {};
         Object.entries(obj).forEach(([key, value]) => {
             out[key] = from$3(out, value);
@@ -1415,7 +1431,7 @@
         fl: fl,
         toString: toString,
         from: from$3,
-        make: make$9
+        make: make$a
     });
 
     const DIRS$1 = DIRS$2;
@@ -1974,7 +1990,7 @@
     // Grid.fillBlob = fillBlob;
     const alloc = NumGrid.alloc.bind(NumGrid);
     const free = NumGrid.free.bind(NumGrid);
-    function make$8(w, h, v) {
+    function make$9(w, h, v) {
         if (v === undefined)
             return new NumGrid(w, h, 0);
         if (typeof v === 'number')
@@ -2016,7 +2032,7 @@
         NumGrid: NumGrid,
         alloc: alloc,
         free: free,
-        make: make$8,
+        make: make$9,
         offsetZip: offsetZip,
         intersection: intersection,
         unite: unite
@@ -2184,7 +2200,7 @@
         clamp() {
             if (this.isNull())
                 return this;
-            return make$7(this._data.map((v) => clamp(v, 0, 100)));
+            return make$8(this._data.map((v) => clamp(v, 0, 100)));
         }
         blend(other) {
             const O = from$2(other);
@@ -2194,7 +2210,7 @@
                 return O;
             const pct = O.a / 100;
             const keepPct = 1 - pct;
-            const newColor = make$7(Math.round(this._data[0] * keepPct + O._data[0] * pct), Math.round(this._data[1] * keepPct + O._data[1] * pct), Math.round(this._data[2] * keepPct + O._data[2] * pct), Math.round(O.a + this._data[3] * keepPct));
+            const newColor = make$8(Math.round(this._data[0] * keepPct + O._data[0] * pct), Math.round(this._data[1] * keepPct + O._data[1] * pct), Math.round(this._data[2] * keepPct + O._data[2] * pct), Math.round(O.a + this._data[3] * keepPct));
             if (this._rand) {
                 newColor._rand = this._rand.map((v) => Math.round(v * keepPct));
                 newColor.dances = this.dances;
@@ -2216,7 +2232,7 @@
                 return this;
             const pct = clamp(percent, 0, 100) / 100;
             const keepPct = 1 - pct;
-            const newColor = make$7(Math.round(this._data[0] * keepPct + O._data[0] * pct), Math.round(this._data[1] * keepPct + O._data[1] * pct), Math.round(this._data[2] * keepPct + O._data[2] * pct), (this.isNull() ? 100 : this._data[3]) * keepPct + O._data[3] * pct);
+            const newColor = make$8(Math.round(this._data[0] * keepPct + O._data[0] * pct), Math.round(this._data[1] * keepPct + O._data[1] * pct), Math.round(this._data[2] * keepPct + O._data[2] * pct), (this.isNull() ? 100 : this._data[3]) * keepPct + O._data[3] * pct);
             if (this._rand) {
                 newColor._rand = this._rand.slice();
                 newColor.dances = this.dances;
@@ -2242,7 +2258,7 @@
                 return this;
             const pct = clamp(percent, 0, 100) / 100;
             const keepPct = 1 - pct;
-            return make$7(Math.round(this._data[0] * keepPct + 100 * pct), Math.round(this._data[1] * keepPct + 100 * pct), Math.round(this._data[2] * keepPct + 100 * pct), this._a);
+            return make$8(Math.round(this._data[0] * keepPct + 100 * pct), Math.round(this._data[1] * keepPct + 100 * pct), Math.round(this._data[2] * keepPct + 100 * pct), this._a);
         }
         // Only adjusts r,g,b
         darken(percent) {
@@ -2250,7 +2266,7 @@
                 return this;
             const pct = clamp(percent, 0, 100) / 100;
             const keepPct = 1 - pct;
-            return make$7(Math.round(this._data[0] * keepPct + 0 * pct), Math.round(this._data[1] * keepPct + 0 * pct), Math.round(this._data[2] * keepPct + 0 * pct), this._a);
+            return make$8(Math.round(this._data[0] * keepPct + 0 * pct), Math.round(this._data[1] * keepPct + 0 * pct), Math.round(this._data[2] * keepPct + 0 * pct), this._a);
         }
         bake(clearDancing = false) {
             if (this.isNull())
@@ -2264,7 +2280,7 @@
             const redRand = cosmetic.number(d[1]);
             const greenRand = cosmetic.number(d[2]);
             const blueRand = cosmetic.number(d[3]);
-            return make$7(this._r + rand + redRand, this._g + rand + greenRand, this._b + rand + blueRand, this._a);
+            return make$8(this._r + rand + redRand, this._g + rand + greenRand, this._b + rand + blueRand, this._a);
         }
         // Adds a color to this one
         add(other, percent = 100) {
@@ -2272,13 +2288,13 @@
             if (O.isNull())
                 return this;
             const alpha = (O.a / 100) * (percent / 100);
-            return make$7(Math.round(this._data[0] + O._data[0] * alpha), Math.round(this._data[1] + O._data[1] * alpha), Math.round(this._data[2] + O._data[2] * alpha), clamp(Math.round(this._a + alpha * 100), 0, 100));
+            return make$8(Math.round(this._data[0] + O._data[0] * alpha), Math.round(this._data[1] + O._data[1] * alpha), Math.round(this._data[2] + O._data[2] * alpha), clamp(Math.round(this._a + alpha * 100), 0, 100));
         }
         scale(percent) {
             if (this.isNull() || percent == 100)
                 return this;
             const pct = Math.max(0, percent) / 100;
-            return make$7(Math.round(this._data[0] * pct), Math.round(this._data[1] * pct), Math.round(this._data[2] * pct), this._a);
+            return make$8(Math.round(this._data[0] * pct), Math.round(this._data[1] * pct), Math.round(this._data[2] * pct), this._a);
         }
         multiply(other) {
             if (this.isNull())
@@ -2295,7 +2311,7 @@
                 data = other._data;
             }
             const pct = (data[3] || 100) / 100;
-            return make$7(Math.round(this._ra * (data[0] / 100) * pct), Math.round(this._ga * (data[1] / 100) * pct), Math.round(this._ba * (data[2] / 100) * pct), 100);
+            return make$8(Math.round(this._ra * (data[0] / 100) * pct), Math.round(this._ga * (data[1] / 100) * pct), Math.round(this._ba * (data[2] / 100) * pct), 100);
         }
         // scales rgb down to a max of 100
         normalize() {
@@ -2304,7 +2320,7 @@
             const max = Math.max(this._ra, this._ga, this._ba);
             if (max <= 100)
                 return this;
-            return make$7(Math.round((100 * this._ra) / max), Math.round((100 * this._ga) / max), Math.round((100 * this._ba) / max), 100);
+            return make$8(Math.round((100 * this._ra) / max), Math.round((100 * this._ga) / max), Math.round((100 * this._ba) / max), 100);
         }
         /**
          * Returns the css code for the current RGB values of the color.
@@ -2372,7 +2388,7 @@
             return new Color(Math.round((((val & 0xf00) >> 8) * 100) / 15), Math.round((((val & 0xf0) >> 4) * 100) / 15), Math.round(((val & 0xf) * 100) / 15), 100);
         }
     }
-    function make$7(...args) {
+    function make$8(...args) {
         let arg = args[0];
         let base256 = args[1];
         if (args.length == 0)
@@ -2411,7 +2427,7 @@
                 return fromName(arg);
             }
         }
-        return make$7(arg, args[1]);
+        return make$8(arg, args[1]);
     }
     // adjusts the luminosity of 2 colors to ensure there is enough separation between them
     function separate(a, b) {
@@ -2467,7 +2483,7 @@
         if (args.length == 1) {
             info = args[0];
         }
-        const c = info instanceof Color ? info : make$7(info);
+        const c = info instanceof Color ? info : make$8(info);
         // @ts-ignore
         c._const = true;
         colors[name] = c;
@@ -2530,7 +2546,7 @@
         fromCss: fromCss,
         fromName: fromName,
         fromNumber: fromNumber,
-        make: make$7,
+        make: make$8,
         from: from$2,
         separate: separate,
         relativeLuminance: relativeLuminance,
@@ -2546,8 +2562,8 @@
     class Mixer {
         constructor(base) {
             this.ch = first(base === null || base === void 0 ? void 0 : base.ch, -1);
-            this.fg = make$7(base === null || base === void 0 ? void 0 : base.fg);
-            this.bg = make$7(base === null || base === void 0 ? void 0 : base.bg);
+            this.fg = make$8(base === null || base === void 0 ? void 0 : base.fg);
+            this.bg = make$8(base === null || base === void 0 ? void 0 : base.bg);
         }
         _changed() {
             return this;
@@ -3459,8 +3475,7 @@
             return this;
         }
         drawText(x, y, text, fg = 0xfff, bg = -1, maxWidth = 0, align = 'left') {
-            if (!this.hasXY(x, y))
-                return 0;
+            // if (!this.hasXY(x, y)) return 0;
             if (typeof fg !== 'number')
                 fg = from$2(fg);
             if (typeof bg !== 'number')
@@ -3482,8 +3497,7 @@
             return 1; // used 1 line
         }
         wrapText(x, y, width, text, fg = 0xfff, bg = -1, indent = 0) {
-            if (!this.hasXY(x, y))
-                return 0;
+            // if (!this.hasXY(x, y)) return 0;
             if (typeof fg !== 'number')
                 fg = from$2(fg);
             if (typeof bg !== 'number')
@@ -3613,14 +3627,14 @@
             console.log(data.join('\n'));
         }
     }
-    function make$6(width, height) {
+    function make$7(width, height) {
         return new Buffer$1(width, height);
     }
 
     var buffer = /*#__PURE__*/Object.freeze({
         __proto__: null,
         Buffer: Buffer$1,
-        make: make$6
+        make: make$7
     });
 
     class Event {
@@ -4080,11 +4094,11 @@
             e.preventDefault();
         }
     }
-    function make$5() {
+    function make$6() {
         return new Loop();
     }
     // Makes a default global loop that you access through these funcitons...
-    const loop = make$5();
+    const loop = make$6();
 
     var io = /*#__PURE__*/Object.freeze({
         __proto__: null,
@@ -4106,7 +4120,7 @@
         ignoreKeyEvent: ignoreKeyEvent,
         makeMouseEvent: makeMouseEvent,
         Loop: Loop,
-        make: make$5,
+        make: make$6,
         loop: loop
     });
 
@@ -4261,7 +4275,7 @@
                 flag |= FovFlags.REVEALED;
             if (visible)
                 flag |= FovFlags.VISIBLE;
-            this.flags = make$8(site.width, site.height, flag);
+            this.flags = make$9(site.width, site.height, flag);
             // this.needsUpdate = true;
             if (opts.callback) {
                 this.callback = opts.callback;
@@ -5073,7 +5087,7 @@
         emit: emit
     });
 
-    function make$4(v) {
+    function make$5(v) {
         if (v === undefined)
             return () => 100;
         if (v === null)
@@ -5126,7 +5140,7 @@
 
     var frequency = /*#__PURE__*/Object.freeze({
         __proto__: null,
-        make: make$4
+        make: make$5
     });
 
     class Scheduler {
@@ -6086,7 +6100,7 @@ void main() {
         return { position, uv };
     }
 
-    function make$3(...args) {
+    function make$4(...args) {
         let width = args[0];
         let height = args[1];
         let opts = args[2];
@@ -6147,7 +6161,7 @@ void main() {
         BaseCanvas: BaseCanvas,
         Canvas2D: Canvas2D,
         CanvasGL: CanvasGL,
-        make: make$3
+        make: make$4
     });
 
     class Sprite {
@@ -6176,7 +6190,7 @@ void main() {
         }
     }
     const sprites = {};
-    function make$2(...args) {
+    function make$3(...args) {
         let ch = null, fg = -1, bg = -1, opacity;
         if (args.length == 0) {
             return new Sprite(null, -1, -1);
@@ -6221,13 +6235,13 @@ void main() {
         if (typeof fg === 'string')
             fg = from$2(fg);
         else if (Array.isArray(fg))
-            fg = make$7(fg);
+            fg = make$8(fg);
         else if (fg === undefined || fg === null)
             fg = -1;
         if (typeof bg === 'string')
             bg = from$2(bg);
         else if (Array.isArray(bg))
-            bg = make$7(bg);
+            bg = make$8(bg);
         else if (bg === undefined || bg === null)
             bg = -1;
         return new Sprite(ch, fg, bg, opacity);
@@ -6239,12 +6253,12 @@ void main() {
                 throw new Error('Failed to find sprite: ' + args[0]);
             return sprite;
         }
-        return make$2(args);
+        return make$3(args);
     }
     function install$2(name, ...args) {
         let sprite;
         // @ts-ignore
-        sprite = make$2(...args);
+        sprite = make$3(...args);
         sprite.name = name;
         sprites[name] = sprite;
         return sprite;
@@ -6254,7 +6268,7 @@ void main() {
         __proto__: null,
         Sprite: Sprite,
         sprites: sprites,
-        make: make$2,
+        make: make$3,
         from: from$1,
         install: install$2,
         Mixer: Mixer,
@@ -6559,7 +6573,7 @@ void main() {
         const blob = new Blob(opts);
         return blob.carve(grid.width, grid.height, (x, y) => (grid[x][y] = 1));
     }
-    function make$1(opts = {}) {
+    function make$2(opts = {}) {
         return new Blob(opts);
     }
 
@@ -6567,7 +6581,7 @@ void main() {
         __proto__: null,
         Blob: Blob,
         fillBlob: fillBlob,
-        make: make$1
+        make: make$2
     });
 
     // const LIGHT_SMOOTHING_THRESHOLD = 150;       // light components higher than this magnitude will be toned down a little
@@ -6575,14 +6589,14 @@ void main() {
         INTENSITY_DARK: 20,
         INTENSITY_SHADOW: 50,
     }); // less than 20% for highest color in rgb
-    let LIGHT_COMPONENTS = make$7();
+    let LIGHT_COMPONENTS = make$8();
     class Light {
         constructor(color, radius = 1, fadeTo = 0, pass = false) {
             this.fadeTo = 0;
             this.passThroughActors = false;
             this.id = null;
             this.color = from$2(color); /* color */
-            this.radius = make$a(radius);
+            this.radius = make$b(radius);
             this.fadeTo = fadeTo;
             this.passThroughActors = pass; // generally no, but miner light does (TODO - string parameter?  'false' or 'true')
         }
@@ -6661,7 +6675,7 @@ void main() {
     function isShadowLight(light, threshold = 40) {
         return intensity(light) <= threshold;
     }
-    function make(...args) {
+    function make$1(...args) {
         if (args.length == 1) {
             const config = args[0];
             if (typeof config === 'string') {
@@ -6701,15 +6715,15 @@ void main() {
         }
         if (arg && arg.paint)
             return arg;
-        return make(arg);
+        return make$1(arg);
     }
     function install(id, ...args) {
         let source;
         if (args.length == 1) {
-            source = make(args[0]);
+            source = make$1(args[0]);
         }
         else {
-            source = make(args[0], args[1], args[2], args[3]);
+            source = make$1(args[0], args[1], args[2], args[3]);
         }
         lights[id] = source;
         source.id = id;
@@ -6752,10 +6766,10 @@ void main() {
             this.changed = false;
             this.glowLightChanged = false;
             this.dynamicLightChanged = false;
-            this.light = make$8(map.width, map.height, () => this.ambient.slice());
-            this.glowLight = make$8(map.width, map.height, () => this.ambient.slice());
-            this.oldLight = make$8(map.width, map.height, () => this.ambient.slice());
-            this.flags = make$8(map.width, map.height);
+            this.light = make$9(map.width, map.height, () => this.ambient.slice());
+            this.glowLight = make$9(map.width, map.height, () => this.ambient.slice());
+            this.oldLight = make$9(map.width, map.height, () => this.ambient.slice());
+            this.flags = make$9(map.width, map.height);
             this.finishLightUpdate();
         }
         copy(other) {
@@ -7008,12 +7022,187 @@ void main() {
         intensity: intensity,
         isDarkLight: isDarkLight,
         isShadowLight: isShadowLight,
-        make: make,
+        make: make$1,
         lights: lights,
         from: from,
         install: install,
         installAll: installAll,
         LightSystem: LightSystem
+    });
+
+    // Tweeing API based on - http://tweenjs.github.io/tween.js/
+    class Tween {
+        constructor(src) {
+            this._repeat = 0;
+            this._count = 0;
+            this._from = false;
+            this._duration = 0;
+            this._delay = 0;
+            this._repeatDelay = -1;
+            this._yoyo = false;
+            this._time = Number.MAX_SAFE_INTEGER;
+            this._startTime = 0;
+            this._goal = {};
+            this._start = {};
+            this._startCb = null;
+            this._updateCb = null;
+            this._repeatCb = null;
+            this._finishCb = null;
+            this._easing = linear;
+            this._interpolate = interpolate;
+            this._obj = src;
+        }
+        isRunning() {
+            return this._time < this._duration;
+        }
+        onStart(cb) {
+            this._startCb = cb;
+            return this;
+        }
+        onUpdate(cb) {
+            this._updateCb = cb;
+            return this;
+        }
+        onRepeat(cb) {
+            this._repeatCb = cb;
+            return this;
+        }
+        onFinish(cb) {
+            this._finishCb = cb;
+            return this;
+        }
+        to(goal, duration) {
+            this._goal = goal;
+            this._from = false;
+            if (duration !== undefined)
+                this._duration = duration;
+            return this;
+        }
+        from(start, duration) {
+            this._start = start;
+            this._from = true;
+            if (duration !== undefined)
+                this._duration = duration;
+            return this;
+        }
+        duration(v) {
+            if (v === undefined)
+                return this._duration;
+            this._duration = v;
+            return this;
+        }
+        repeat(v) {
+            if (v === undefined)
+                return this._repeat;
+            this._repeat = v;
+            return this;
+        }
+        delay(v) {
+            if (v === undefined)
+                return this._delay;
+            this._delay = v;
+            return this;
+        }
+        repeatDelay(v) {
+            if (v === undefined)
+                return this._repeatDelay;
+            this._repeatDelay = v;
+            return this;
+        }
+        yoyo(v) {
+            if (v === undefined)
+                return this._yoyo;
+            this._yoyo = v;
+            return this;
+        }
+        start() {
+            this._time = 0;
+            this._startTime = this._delay;
+            this._count = 0;
+            if (this._from) {
+                this._goal = {};
+                Object.keys(this._start).forEach((key) => (this._goal[key] = this._obj[key]));
+                this._updateProperties(this._obj, this._start, this._goal, 0);
+            }
+            else {
+                this._start = {};
+                Object.keys(this._goal).forEach((key) => (this._start[key] = this._obj[key]));
+            }
+            return this;
+        }
+        tick(dt) {
+            if (!this.isRunning())
+                return this;
+            this._time += dt;
+            if (this._startTime) {
+                if (this._startTime > this._time)
+                    return this;
+                this._time -= this._startTime;
+                this._startTime = 0;
+            }
+            if (this._count === 0) {
+                this._count = 1;
+                if (this._startCb) {
+                    this._startCb.call(this, this._obj, 0);
+                }
+            }
+            const pct = this._easing(this._time / this._duration);
+            let madeChange = this._updateProperties(this._obj, this._start, this._goal, pct);
+            if (madeChange && this._updateCb) {
+                this._updateCb.call(this, this._obj, pct);
+            }
+            if (this._time >= this._duration) {
+                if (this._repeat > this._count) {
+                    // reset starting values
+                    Object.entries(this._start).forEach(([key, value]) => {
+                        this._obj[key] = value;
+                    });
+                    this._time -= this._duration;
+                    this._startTime =
+                        this._repeatDelay > -1 ? this._repeatDelay : this._delay;
+                    ++this._count;
+                    if (this._yoyo) {
+                        [this._start, this._goal] = [this._goal, this._start];
+                    }
+                    if (this._repeatCb)
+                        this._repeatCb.call(this, this._obj, this._count);
+                }
+                else if (this._finishCb)
+                    this._finishCb.call(this, this._obj, 1);
+            }
+            return this;
+        }
+        _updateProperties(obj, start, goal, pct) {
+            let madeChange = false;
+            Object.entries(goal).forEach(([field, goalV]) => {
+                const currentV = obj[field];
+                const startV = start[field];
+                const updatedV = this._interpolate(startV, goalV, pct);
+                if (updatedV !== currentV) {
+                    obj[field] = updatedV;
+                    madeChange = true;
+                }
+            });
+            return madeChange;
+        }
+    }
+    function make(src) {
+        return new Tween(src);
+    }
+    function linear(pct) {
+        return clamp(pct, 0, 1);
+    }
+    // TODO - string, bool, Color
+    function interpolate(start, goal, pct) {
+        return Math.floor((goal - start) * pct) + start;
+    }
+
+    var tween = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        Tween: Tween,
+        make: make,
+        linear: linear,
+        interpolate: interpolate
     });
 
     exports.ERROR = ERROR;
@@ -7063,10 +7252,11 @@ void main() {
     exports.sprites = sprites;
     exports.sum = sum;
     exports.text = index$4;
+    exports.tween = tween;
     exports.types = types;
     exports.xy = xy;
 
     Object.defineProperty(exports, '__esModule', { value: true });
 
-})));
+}));
 //# sourceMappingURL=gw-utils.js.map

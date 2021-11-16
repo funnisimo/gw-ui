@@ -819,8 +819,11 @@ class Widget {
         return opacity;
     }
     set opacity(v) {
-        this._used.opacity = v;
-        this.hidden = this._used.opacity == 0;
+        if (v !== this._used.opacity) {
+            this._used.opacity = v;
+            this.hidden = this._used.opacity == 0;
+            this.layer.needsDraw = true;
+        }
     }
     updateStyle() {
         this._used = this.layer.styles.computeFor(this);
@@ -845,7 +848,6 @@ class Widget {
             .duration(ms)
             .onUpdate((info) => {
             this.opacity = info.pct;
-            this.layer.needsDraw = true;
         });
         this.layer.animate(tween);
         return this;

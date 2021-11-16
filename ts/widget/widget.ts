@@ -376,8 +376,11 @@ export class Widget implements UIStylable {
     }
 
     set opacity(v: number) {
-        this._used.opacity = v;
-        this.hidden = this._used.opacity == 0;
+        if (v !== this._used.opacity) {
+            this._used.opacity = v;
+            this.hidden = this._used.opacity == 0;
+            this.layer.needsDraw = true;
+        }
     }
 
     updateStyle() {
@@ -407,7 +410,6 @@ export class Widget implements UIStylable {
             .duration(ms)
             .onUpdate((info) => {
                 this.opacity = info.pct;
-                this.layer.needsDraw = true;
             });
         this.layer.animate(tween);
 

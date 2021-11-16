@@ -1,5 +1,5 @@
 import * as UTILS from '../../test/utils';
-
+import * as GWU from 'gw-utils';
 import * as Widget from '../widget';
 import * as Layer from './layer';
 import { UI } from './ui';
@@ -10,7 +10,12 @@ describe('Layer', () => {
 
     beforeEach(() => {
         ui = UTILS.mockUI(50, 30);
-        layer = new Layer.Layer(ui);
+        layer = ui.startNewLayer();
+    });
+
+    afterEach(() => {
+        layer.finish();
+        ui.stop();
     });
 
     test('constructor', () => {
@@ -375,6 +380,43 @@ describe('Layer', () => {
             expect(layer._focusWidget).toBe(divC); // Now it is there
             layer.keypress(UTILS.keypress('TAB'));
             expect(layer._focusWidget).toBe(divB);
+        });
+    });
+
+    describe('animate', () => {
+        test('basic', async () => {
+            const obj = { x: 0 };
+            const tween = GWU.tween.make(obj).to({ x: 10 }).duration(1000);
+            layer.animate(tween);
+            expect(layer._tweens).toHaveLength(1);
+            expect(tween.isRunning()).toBeTruthy();
+
+            await UTILS.pushEvent(ui.loop, UTILS.tick(50));
+            expect(tween._time).toBeGreaterThan(0);
+
+            while (tween.isRunning()) {
+                await UTILS.pushEvent(ui.loop, UTILS.tick(50));
+            }
+
+            expect(obj.x).toEqual(10);
+
+            expect(layer._tweens).toHaveLength(0);
+        });
+
+        test.skip('advanced', async () => {
+            /*
+                // tween, but do not directly update object
+                widget.animate().from({ opacity: 0 })
+                .duration(1000)
+                .onUpdate( () => {
+                    console.log('Updating!!');  // should still be able to do this even though we are going to catch it internally
+                })
+                .onFinish( () => {
+                    this.widget.toggleClass('test');
+                    this.widget.prop('empty', true);
+                })
+                .start();   // adds to layer
+            */
         });
     });
 });

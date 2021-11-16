@@ -60,6 +60,7 @@ export interface UISelectable {
 
 export interface UIStylable extends UISelectable {
     style(): UIStyle;
+    readonly opacity: number;
 }
 
 // export interface UIStylesheet {

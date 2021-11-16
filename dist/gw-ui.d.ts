@@ -57,6 +57,7 @@ interface UISelectable {
 }
 interface UIStylable extends UISelectable {
     style(): UIStyle;
+    readonly opacity: number;
 }
 interface UILayer {
     readonly buffer: GWU.canvas.Buffer;
@@ -108,11 +109,11 @@ declare class Grid {
 
 declare type StyleType = string | StyleOptions;
 declare class Style implements UIStyle {
-    protected _fg?: GWU.color.ColorBase;
-    protected _bg?: GWU.color.ColorBase;
-    protected _border?: GWU.color.ColorBase;
-    protected _align?: GWU.text.Align;
-    protected _valign?: GWU.text.VAlign;
+    _fg?: GWU.color.ColorBase;
+    _bg?: GWU.color.ColorBase;
+    _border?: GWU.color.ColorBase;
+    _align?: GWU.text.Align;
+    _valign?: GWU.text.VAlign;
     selector: Selector;
     protected _dirty: boolean;
     constructor(selector?: string, init?: StyleOptions);
@@ -135,7 +136,12 @@ declare class Style implements UIStyle {
 declare function makeStyle(style: string, selector?: string): Style;
 declare class ComputedStyle extends Style {
     sources: UIStyle[];
-    constructor(sources?: UIStyle[]);
+    _opacity: number;
+    _baseFg: GWU.color.Color | null;
+    _baseBg: GWU.color.Color | null;
+    constructor(sources?: UIStyle[], opacity?: number);
+    get opacity(): number;
+    set opacity(v: number);
     get dirty(): boolean;
     set dirty(v: boolean);
 }
@@ -148,7 +154,7 @@ declare class Sheet {
     add(selector: string, props: StyleOptions): this;
     get(selector: string): UIStyle | null;
     remove(selector: string): void;
-    computeFor(widget: UIStylable): UIStyle;
+    computeFor(widget: UIStylable): ComputedStyle;
 }
 declare const defaultStyle: Sheet;
 
@@ -157,6 +163,7 @@ interface WidgetOptions extends StyleOptions {
     id?: string;
     disabled?: boolean;
     hidden?: boolean;
+    opacity?: number;
     x?: number;
     y?: number;
     width?: number;
@@ -182,7 +189,7 @@ declare class Widget implements UIStylable {
     events: Record<string, EventCb[]>;
     children: Widget[];
     _style: Style;
-    _used: UIStyle;
+    _used: ComputedStyle;
     _parent: Widget | null;
     classes: string[];
     _props: Record<string, PropType>;
@@ -229,6 +236,8 @@ declare class Widget implements UIStylable {
     set hovered(v: boolean);
     get hidden(): boolean;
     set hidden(v: boolean);
+    get opacity(): number;
+    set opacity(v: number);
     updateStyle(): void;
     draw(buffer: GWU.buffer.Buffer): boolean;
     protected _draw(buffer: GWU.buffer.Buffer): boolean;
@@ -282,6 +291,7 @@ declare class Layer implements UILayer {
     _focusWidget: Widget | null;
     _hasTabStop: boolean;
     timers: TimerInfo[];
+    _tweens: GWU.tween.Tween[];
     promise: Promise<any>;
     _done: Function | null;
     _opts: WidgetOptions;
@@ -328,6 +338,7 @@ declare class Layer implements UILayer {
     draw(): void;
     setTimeout(action: string | TimerFn, time: number): void;
     clearTimeout(action: string | TimerFn): void;
+    animate(tween: GWU.tween.Tween): this;
     finish(result?: any): void;
     _finish(): void;
 }
@@ -475,7 +486,7 @@ declare class Dialog extends Widget {
         pad: boolean;
         legendTag: string;
         legendClass: string;
-        legendAlign: "center" | "left" | "right";
+        legendAlign: "left" | "center" | "right";
     };
     legend: Widget | null;
     constructor(layer: Layer, opts: DialogOptions);
@@ -649,7 +660,7 @@ declare class Fieldset extends Dialog {
         pad: boolean;
         legendTag: string;
         legendClass: string;
-        legendAlign: "center" | "left" | "right";
+        legendAlign: "left" | "center" | "right";
         labelTag: string;
         labelClass: string;
         dataTag: string;

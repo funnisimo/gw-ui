@@ -56,6 +56,7 @@ export class Layer implements UILayer {
     _focusWidget: Widget.Widget | null = null;
     _hasTabStop = false;
     timers: TimerInfo[] = [];
+    _tweens: GWU.tween.Tween[] = [];
 
     promise: Promise<any>;
     _done: Function | null = null;
@@ -415,18 +416,19 @@ export class Layer implements UILayer {
 
     tick(e: GWU.io.Event): boolean {
         const dt = e.dt;
-        let promises = [];
+
+        // fire animations
+        this._tweens.forEach((tw) => tw.tick(dt));
+        this._tweens = this._tweens.filter((tw) => tw.isRunning());
 
         this.timers.forEach((timer) => {
             if (timer.time <= 0) return; // ignore fired timers
             timer.time -= dt;
             if (timer.time <= 0) {
                 if (typeof timer.action === 'string') {
-                    promises.push(
-                        this.body._fireEvent(timer.action, this.body)
-                    );
+                    this.body._fireEvent(timer.action, this.body);
                 } else {
-                    promises.push(timer.action());
+                    timer.action();
                 }
             }
         });
@@ -477,6 +479,12 @@ export class Layer implements UILayer {
         if (timer) {
             timer.time = -1;
         }
+    }
+
+    animate(tween: GWU.tween.Tween): this {
+        if (!tween.isRunning()) tween.start();
+        this._tweens.push(tween);
+        return this;
     }
 
     finish(result?: any) {

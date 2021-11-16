@@ -318,9 +318,6 @@
         get bg() {
             return this._bg;
         }
-        // get border(): GWU.color.ColorBase | undefined {
-        //     return this._border;
-        // }
         dim(pct = 25, fg = true, bg = false) {
             if (fg) {
                 this._fg = GWU__namespace.color.from(this._fg).darken(pct);
@@ -349,136 +346,12 @@
         get valign() {
             return this._valign;
         }
-        // get position(): Position | undefined {
-        //     return this._position;
-        // }
-        // get minWidth(): number | undefined {
-        //     return this._minWidth;
-        // }
-        // get maxWidth(): number | undefined {
-        //     return this._maxWidth;
-        // }
-        // get width(): number | undefined {
-        //     return this._width;
-        // }
-        // get minHeight(): number | undefined {
-        //     return this._minHeight;
-        // }
-        // get maxHeight(): number | undefined {
-        //     return this._maxHeight;
-        // }
-        // get height(): number | undefined {
-        //     return this._height;
-        // }
-        // get x(): number | undefined {
-        //     return this._x;
-        // }
-        // get left(): number | undefined {
-        //     return this._left;
-        // }
-        // get right(): number | undefined {
-        //     return this._right;
-        // }
-        // get y(): number | undefined {
-        //     return this._y;
-        // }
-        // get top(): number | undefined {
-        //     return this._top;
-        // }
-        // get bottom(): number | undefined {
-        //     return this._bottom;
-        // }
-        // get padLeft(): number | undefined {
-        //     return this._padLeft;
-        // }
-        // get padRight(): number | undefined {
-        //     return this._padRight;
-        // }
-        // get padTop(): number | undefined {
-        //     return this._padTop;
-        // }
-        // get padBottom(): number | undefined {
-        //     return this._padBottom;
-        // }
-        // get marginLeft(): number | undefined {
-        //     return this._marginLeft;
-        // }
-        // get marginRight(): number | undefined {
-        //     return this._marginRight;
-        // }
-        // get marginTop(): number | undefined {
-        //     return this._marginTop;
-        // }
-        // get marginBottom(): number | undefined {
-        //     return this._marginBottom;
-        // }
         get(key) {
             const id = ('_' + key);
             return this[id];
         }
         set(key, value, setDirty = true) {
             if (typeof key === 'string') {
-                // if (key === 'padding') {
-                //     if (typeof value === 'number') {
-                //         value = [value];
-                //     } else if (typeof value === 'string') {
-                //         value = value.split(' ');
-                //     }
-                //     value = value.map((v: string | number) => {
-                //         if (typeof v === 'string') return Number.parseInt(v);
-                //         return v;
-                //     });
-                //     if (value.length == 1) {
-                //         this._padLeft =
-                //             this._padRight =
-                //             this._padTop =
-                //             this._padBottom =
-                //                 value[0];
-                //     } else if (value.length == 2) {
-                //         this._padLeft = this._padRight = value[1];
-                //         this._padTop = this._padBottom = value[0];
-                //     } else if (value.length == 3) {
-                //         this._padTop = value[0];
-                //         this._padRight = value[1];
-                //         this._padBottom = value[2];
-                //         this._padLeft = value[1];
-                //     } else if (value.length == 4) {
-                //         this._padTop = value[0];
-                //         this._padRight = value[1];
-                //         this._padBottom = value[2];
-                //         this._padLeft = value[3];
-                //     }
-                // } else if (key === 'margin') {
-                //     if (typeof value === 'number') {
-                //         value = [value];
-                //     } else if (typeof value === 'string') {
-                //         value = value.split(' ');
-                //     }
-                //     value = value.map((v: string | number) => {
-                //         if (typeof v === 'string') return Number.parseInt(v);
-                //         return v;
-                //     });
-                //     if (value.length == 1) {
-                //         this._marginLeft =
-                //             this._marginRight =
-                //             this._marginTop =
-                //             this._marginBottom =
-                //                 value[0];
-                //     } else if (value.length == 2) {
-                //         this._marginLeft = this._marginRight = value[1];
-                //         this._marginTop = this._marginBottom = value[0];
-                //     } else if (value.length == 3) {
-                //         this._marginTop = value[0];
-                //         this._marginRight = value[1];
-                //         this._marginBottom = value[2];
-                //         this._marginLeft = value[1];
-                //     } else if (value.length == 4) {
-                //         this._marginTop = value[0];
-                //         this._marginRight = value[1];
-                //         this._marginBottom = value[2];
-                //         this._marginLeft = value[3];
-                //     }
-                // } else {
                 const field = '_' + key;
                 if (typeof value === 'string') {
                     if (value.match(/^[+-]?\d+$/)) {
@@ -565,10 +438,13 @@
     // }
     class ComputedStyle extends Style {
         // constructor(source: Stylable, sources?: Style[]) {
-        constructor(sources) {
+        constructor(sources, opacity = 100) {
             super();
             // obj: Stylable;
             this.sources = [];
+            this._opacity = 100;
+            this._baseFg = null;
+            this._baseBg = null;
             // this.obj = source;
             if (sources) {
                 // sort low to high priority (highest should be this.obj._style, lowest = global default:'*')
@@ -576,7 +452,27 @@
                 this.sources = sources;
             }
             this.sources.forEach((s) => super.set(s));
+            this.opacity = opacity;
             this._dirty = false; // As far as I know I reflect all of the current source values.
+        }
+        get opacity() {
+            return this._opacity;
+        }
+        set opacity(v) {
+            v = GWU__namespace.clamp(v, 0, 100);
+            if (v === 100) {
+                this._fg = this._baseFg || this._fg;
+                this._bg = this._baseBg || this._bg;
+                return;
+            }
+            if (this._fg !== undefined) {
+                this._baseFg = this._baseFg || GWU__namespace.color.from(this._fg);
+                this._fg = this._baseFg.alpha(v);
+            }
+            if (this._bg !== undefined) {
+                this._baseBg = this._baseBg || GWU__namespace.color.from(this._bg);
+                this._bg = this._baseBg.alpha(v);
+            }
         }
         get dirty() {
             return this._dirty || this.sources.some((s) => s.dirty);
@@ -648,7 +544,7 @@
                 sources.push(widgetStyle);
             }
             widgetStyle.dirty = false;
-            return new ComputedStyle(sources);
+            return new ComputedStyle(sources, widget.opacity);
         }
     }
     const defaultStyle = new Sheet(null);
@@ -717,6 +613,9 @@
             }
             this.layer.attach(this);
             this.updateStyle();
+            if (opts.opacity !== undefined) {
+                this._used.opacity = opts.opacity;
+            }
         }
         get depth() {
             return this._depth;
@@ -929,6 +828,24 @@
         }
         set hidden(v) {
             this.prop('hidden', v);
+            if (!v && this._used.opacity == 0) {
+                this._used.opacity = 100;
+            }
+        }
+        get opacity() {
+            let opacity = 100;
+            let current = this;
+            while (current) {
+                if (current._used) {
+                    opacity = Math.min(opacity, current._used.opacity); // TODO - opacity = Math.floor(opacity * current._used.opacity / 100);
+                }
+                current = current.parent;
+            }
+            return opacity;
+        }
+        set opacity(v) {
+            this._used.opacity = v;
+            this.hidden = this._used.opacity == 0;
         }
         updateStyle() {
             this._used = this.layer.styles.computeFor(this);
@@ -1089,6 +1006,7 @@
             this._focusWidget = null;
             this._hasTabStop = false;
             this.timers = [];
+            this._tweens = [];
             this._done = null;
             this._opts = { x: 0, y: 0 };
             this.ui = ui;
@@ -1364,17 +1282,19 @@
         }
         tick(e) {
             const dt = e.dt;
-            let promises = [];
+            // fire animations
+            this._tweens.forEach((tw) => tw.tick(dt));
+            this._tweens = this._tweens.filter((tw) => tw.isRunning());
             this.timers.forEach((timer) => {
                 if (timer.time <= 0)
                     return; // ignore fired timers
                 timer.time -= dt;
                 if (timer.time <= 0) {
                     if (typeof timer.action === 'string') {
-                        promises.push(this.body._fireEvent(timer.action, this.body));
+                        this.body._fireEvent(timer.action, this.body);
                     }
                     else {
-                        promises.push(timer.action());
+                        timer.action();
                     }
                 }
             });
@@ -1420,6 +1340,12 @@
             if (timer) {
                 timer.time = -1;
             }
+        }
+        animate(tween) {
+            if (!tween.isRunning())
+                tween.start();
+            this._tweens.push(tween);
+            return this;
         }
         finish(result) {
             this.result = result;
@@ -1775,28 +1701,6 @@
         return layer;
     };
 
-    // export interface AlertOptions extends Widget.WidgetOptions {
-    //     duration?: number;
-    //     waitForAck?: boolean;
-    //     pad?: number;
-    //     padX?: number;
-    //     padY?: number;
-    //     box?: Widget.BoxOptions;
-    // }
-    // export interface ConfirmOptions extends Widget.WidgetOptions {
-    //     allowCancel?: boolean;
-    //     pad?: number;
-    //     padX?: number;
-    //     padY?: number;
-    //     buttons?: Widget.ButtonOptions;
-    //     ok?: string | Widget.ButtonOptions;
-    //     cancel?: string | Widget.ButtonOptions;
-    //     box?: Widget.BoxOptions;
-    // }
-    // export interface InputBoxOptions extends ConfirmOptions {
-    //     prompt?: string | Widget.TextOptions;
-    //     input?: Widget.InputOptions;
-    // }
     class UI {
         constructor(opts = {}) {
             this.layer = null;

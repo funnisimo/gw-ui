@@ -881,6 +881,49 @@
         fadeToggle(ms) {
             return this.fadeTo(this._used.opacity ? 0 : 100, ms);
         }
+        slideIn(x, y, from, ms) {
+            let start = { x, y };
+            if (from === 'left') {
+                start.x = -this.bounds.width;
+            }
+            else if (from === 'right') {
+                start.x = this.layer.width + this.bounds.width;
+            }
+            else if (from === 'top') {
+                start.y = -this.bounds.height;
+            }
+            else if (from === 'bottom') {
+                start.y = this.layer.height + this.bounds.height;
+            }
+            return this.slide(start, { x, y }, ms);
+        }
+        slideOut(dir, ms) {
+            let dest = { x: this.bounds.x, y: this.bounds.y };
+            if (dir === 'left') {
+                dest.x = -this.bounds.width;
+            }
+            else if (dir === 'right') {
+                dest.x = this.layer.width + this.bounds.width;
+            }
+            else if (dir === 'top') {
+                dest.y = -this.bounds.height;
+            }
+            else if (dir === 'bottom') {
+                dest.y = this.layer.height + this.bounds.height;
+            }
+            return this.slide(this.bounds, dest, ms);
+        }
+        slide(from, to, ms) {
+            const tween = GWU__namespace.tween
+                .make({ x: GWU__namespace.xy.x(from), y: GWU__namespace.xy.y(from) })
+                .to({ x: GWU__namespace.xy.x(to), y: GWU__namespace.xy.y(to) })
+                .duration(ms)
+                .onUpdate((info) => {
+                this.pos(info.x, info.y);
+            });
+            this.layer.animate(tween);
+            return this;
+        }
         // Draw
         _draw(buffer) {
             this._drawFill(buffer);
@@ -1429,25 +1472,6 @@
         layer.setTimeout(() => {
             layer.finish(false);
         }, opts.duration || 3000);
-        return layer;
-    };
-
-    // Effects
-    Layer.prototype.fadeTo = function (color = 0, time = 1000) {
-        const layer = this.ui.startNewLayer();
-        let elapsed = 0;
-        layer.on('tick', (_n, _w, e) => {
-            elapsed += e.dt;
-            const pct = GWU__namespace.clamp(Math.round((100 * elapsed) / time), 0, 100);
-            this.ui.copyUIBuffer(layer.buffer);
-            layer.buffer.mix(color, pct);
-            layer.buffer.render();
-            // layer.needsDraw = true;
-            if (pct >= 100) {
-                layer.finish();
-            }
-            return true;
-        });
         return layer;
     };
 

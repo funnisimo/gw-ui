@@ -420,6 +420,58 @@ export class Widget implements UIStylable {
         return this.fadeTo(this._used.opacity ? 0 : 100, ms);
     }
 
+    slideIn(
+        x: number,
+        y: number,
+        from: 'left' | 'top' | 'right' | 'bottom',
+        ms: number
+    ): this {
+        let start = { x, y };
+        if (from === 'left') {
+            start.x = -this.bounds.width;
+        } else if (from === 'right') {
+            start.x = this.layer.width + this.bounds.width;
+        } else if (from === 'top') {
+            start.y = -this.bounds.height;
+        } else if (from === 'bottom') {
+            start.y = this.layer.height + this.bounds.height;
+        }
+
+        return this.slide(start, { x, y }, ms);
+    }
+
+    slideOut(dir: 'left' | 'top' | 'right' | 'bottom', ms: number): this {
+        let dest = { x: this.bounds.x, y: this.bounds.y };
+        if (dir === 'left') {
+            dest.x = -this.bounds.width;
+        } else if (dir === 'right') {
+            dest.x = this.layer.width + this.bounds.width;
+        } else if (dir === 'top') {
+            dest.y = -this.bounds.height;
+        } else if (dir === 'bottom') {
+            dest.y = this.layer.height + this.bounds.height;
+        }
+
+        return this.slide(this.bounds, dest, ms);
+    }
+
+    slide(
+        from: GWU.xy.XY | GWU.xy.Loc,
+        to: GWU.xy.XY | GWU.xy.Loc,
+        ms: number
+    ): this {
+        const tween = GWU.tween
+            .make({ x: GWU.xy.x(from), y: GWU.xy.y(from) })
+            .to({ x: GWU.xy.x(to), y: GWU.xy.y(to) })
+            .duration(ms)
+            .onUpdate((info) => {
+                this.pos(info.x, info.y);
+            });
+        this.layer.animate(tween);
+
+        return this;
+    }
+
     // Draw
 
     protected _draw(buffer: GWU.buffer.Buffer): boolean {

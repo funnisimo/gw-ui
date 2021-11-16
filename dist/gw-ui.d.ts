@@ -244,6 +244,9 @@ declare class Widget implements UIStylable {
     fadeOut(ms: number): this;
     fadeTo(opacity: number, ms: number): this;
     fadeToggle(ms: number): this;
+    slideIn(x: number, y: number, from: 'left' | 'top' | 'right' | 'bottom', ms: number): this;
+    slideOut(dir: 'left' | 'top' | 'right' | 'bottom', ms: number): this;
+    slide(from: GWU.xy.XY | GWU.xy.Loc, to: GWU.xy.XY | GWU.xy.Loc, ms: number): this;
     protected _draw(buffer: GWU.buffer.Buffer): boolean;
     protected _drawFill(buffer: GWU.buffer.Buffer): void;
     childAt(xy: GWU.xy.XY): Widget | null;
@@ -490,7 +493,7 @@ declare class Dialog extends Widget {
         pad: boolean;
         legendTag: string;
         legendClass: string;
-        legendAlign: "left" | "center" | "right";
+        legendAlign: "center" | "left" | "right";
     };
     legend: Widget | null;
     constructor(layer: Layer, opts: DialogOptions);
@@ -520,12 +523,6 @@ interface AlertOptions extends DialogOptions {
 declare module './layer' {
     interface Layer {
         alert(opts: AlertOptions | number, text: string, args?: any): Layer;
-    }
-}
-
-declare module './layer' {
-    interface Layer {
-        fadeTo(color?: GWU.color.ColorBase, time?: number): Layer;
     }
 }
 
@@ -664,7 +661,7 @@ declare class Fieldset extends Dialog {
         pad: boolean;
         legendTag: string;
         legendClass: string;
-        legendAlign: "left" | "center" | "right";
+        legendAlign: "center" | "left" | "right";
         labelTag: string;
         labelClass: string;
         dataTag: string;

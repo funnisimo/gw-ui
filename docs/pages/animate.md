@@ -76,3 +76,26 @@ layer.on('click', () => {
     return true;
 });
 ```
+
+## Slide In/Out
+
+```js
+const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
+SHOW(canvas.node);
+
+const ui = new GWI.UI({ canvas, loop: LOOP });
+const layer = ui.startNewLayer();
+
+const widget = layer
+    .pos(20, 17)
+    .text('Click the canvas to fade it in/out.', { fg: 'yellow' });
+
+layer.on('click', () => {
+    if (widget.bounds.x > 0) {
+        widget.slideOut('left', 250);
+    } else {
+        widget.slideIn(20, 17, 'left', 250);
+    }
+    return true;
+});
+```

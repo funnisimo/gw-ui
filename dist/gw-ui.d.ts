@@ -475,7 +475,7 @@ declare class Dialog extends Widget {
         pad: boolean;
         legendTag: string;
         legendClass: string;
-        legendAlign: "left" | "center" | "right";
+        legendAlign: "center" | "left" | "right";
     };
     legend: Widget | null;
     constructor(layer: Layer, opts: DialogOptions);
@@ -649,7 +649,7 @@ declare class Fieldset extends Dialog {
         pad: boolean;
         legendTag: string;
         legendClass: string;
-        legendAlign: "left" | "center" | "right";
+        legendAlign: "center" | "left" | "right";
         labelTag: string;
         labelClass: string;
         dataTag: string;

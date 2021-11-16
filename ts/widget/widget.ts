@@ -393,19 +393,29 @@ export class Widget implements UIStylable {
     // Animation
 
     fadeIn(ms: number): this {
-        return this;
+        return this.fadeTo(100, ms);
     }
 
     fadeOut(ms: number): this {
-        return this;
+        return this.fadeTo(0, ms);
     }
 
     fadeTo(opacity: number, ms: number): this {
+        const tween = GWU.tween
+            .make({ pct: this._used.opacity })
+            .to({ pct: opacity })
+            .duration(ms)
+            .onUpdate((info) => {
+                this.opacity = info.pct;
+                this.layer.needsDraw = true;
+            });
+        this.layer.animate(tween);
+
         return this;
     }
 
     fadeToggle(ms: number): this {
-        return this;
+        return this.fadeTo(this._used.opacity ? 0 : 100, ms);
     }
 
     // Draw

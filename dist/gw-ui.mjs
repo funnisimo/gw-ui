@@ -434,6 +434,7 @@ class ComputedStyle extends Style {
     }
     set opacity(v) {
         v = GWU.clamp(v, 0, 100);
+        this._opacity = v;
         if (v === 100) {
             this._fg = this._baseFg || this._fg;
             this._bg = this._baseBg || this._bg;
@@ -830,6 +831,29 @@ class Widget {
             return false;
         return this._draw(buffer);
     }
+    // Animation
+    fadeIn(ms) {
+        return this.fadeTo(100, ms);
+    }
+    fadeOut(ms) {
+        return this.fadeTo(0, ms);
+    }
+    fadeTo(opacity, ms) {
+        const tween = GWU.tween
+            .make({ pct: this._used.opacity })
+            .to({ pct: opacity })
+            .duration(ms)
+            .onUpdate((info) => {
+            this.opacity = info.pct;
+            this.layer.needsDraw = true;
+        });
+        this.layer.animate(tween);
+        return this;
+    }
+    fadeToggle(ms) {
+        return this.fadeTo(this._used.opacity ? 0 : 100, ms);
+    }
+    // Draw
     _draw(buffer) {
         this._drawFill(buffer);
         return true;

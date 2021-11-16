@@ -261,6 +261,7 @@ export class ComputedStyle extends Style {
     }
     set opacity(v: number) {
         v = GWU.clamp(v, 0, 100);
+        this._opacity = v;
         if (v === 100) {
             this._fg = this._baseFg || this._fg;
             this._bg = this._baseBg || this._bg;

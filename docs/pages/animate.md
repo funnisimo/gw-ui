@@ -57,3 +57,22 @@ layer.on('click', () => {
     return true;
 });
 ```
+
+## Fade In/Out
+
+```js
+const canvas = GWU.canvas.make(100, 38, { loop: LOOP });
+SHOW(canvas.node);
+
+const ui = new GWI.UI({ canvas, loop: LOOP });
+const layer = ui.startNewLayer();
+
+const widget = layer
+    .pos(20, 17)
+    .text('Click the canvas to fade it in/out.', { fg: 'yellow' });
+
+layer.on('click', () => {
+    widget.fadeToggle(100);
+    return true;
+});
+```

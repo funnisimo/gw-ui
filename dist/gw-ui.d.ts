@@ -240,6 +240,10 @@ declare class Widget implements UIStylable {
     set opacity(v: number);
     updateStyle(): void;
     draw(buffer: GWU.buffer.Buffer): boolean;
+    fadeIn(ms: number): this;
+    fadeOut(ms: number): this;
+    fadeTo(opacity: number, ms: number): this;
+    fadeToggle(ms: number): this;
     protected _draw(buffer: GWU.buffer.Buffer): boolean;
     protected _drawFill(buffer: GWU.buffer.Buffer): void;
     childAt(xy: GWU.xy.XY): Widget | null;

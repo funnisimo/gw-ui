@@ -366,6 +366,26 @@ export class Widget implements UIStylable {
         return this._draw(buffer);
     }
 
+    // Animation
+
+    fadeIn(ms: number): this {
+        return this;
+    }
+
+    fadeOut(ms: number): this {
+        return this;
+    }
+
+    fadeTo(opacity: number, ms: number): this {
+        return this;
+    }
+
+    fadeToggle(ms: number): this {
+        return this;
+    }
+
+    // Draw
+
     protected _draw(buffer: GWU.buffer.Buffer): boolean {
         this._drawFill(buffer);
         return true;

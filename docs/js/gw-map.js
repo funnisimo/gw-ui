@@ -214,9 +214,10 @@
         Cell[Cell["STABLE_SNAPSHOT"] = Fl$3(15)] = "STABLE_SNAPSHOT";
         // These are to speed checks
         Cell[Cell["HAS_PLAYER"] = Fl$3(16)] = "HAS_PLAYER";
-        Cell[Cell["HAS_ACTOR"] = Fl$3(27)] = "HAS_ACTOR";
+        Cell[Cell["HAS_ACTOR"] = Fl$3(17)] = "HAS_ACTOR";
         Cell[Cell["HAS_DORMANT_MONSTER"] = Fl$3(18)] = "HAS_DORMANT_MONSTER";
         Cell[Cell["HAS_ITEM"] = Fl$3(19)] = "HAS_ITEM";
+        Cell[Cell["HAS_FX"] = Fl$3(20)] = "HAS_FX";
         Cell[Cell["HAS_TICK_EFFECT"] = Fl$3(22)] = "HAS_TICK_EFFECT";
         Cell[Cell["IS_WIRED"] = Fl$3(26)] = "IS_WIRED";
         Cell[Cell["IS_CIRCUIT_BREAKER"] = Fl$3(27)] = "IS_CIRCUIT_BREAKER";
@@ -246,6 +247,7 @@
     var Map$1;
     (function (Map) {
         Map[Map["MAP_CHANGED"] = Fl$2(0)] = "MAP_CHANGED";
+        Map[Map["MAP_NEEDS_REDRAW"] = Fl$2(1)] = "MAP_NEEDS_REDRAW";
         Map[Map["MAP_ALWAYS_LIT"] = Fl$2(3)] = "MAP_ALWAYS_LIT";
         Map[Map["MAP_SAW_WELCOME"] = Fl$2(4)] = "MAP_SAW_WELCOME";
         Map[Map["MAP_NO_LIQUID"] = Fl$2(5)] = "MAP_NO_LIQUID";
@@ -501,7 +503,7 @@
             this.name = config.name;
             this.flavor = config.flavor || this.name;
             this.description = config.description || this.flavor;
-            this.sprite = GWU__namespace.sprite.make(config);
+            this.sprite = GWU__namespace.sprite.make(config.sprite ? config.sprite : config);
             if (config.tags) {
                 if (typeof config.tags === 'string') {
                     this.tags = config.tags.split(/[,|]/).map((t) => t.trim());
@@ -574,12 +576,17 @@
             return 1;
         }
     }
+    function make$5(opts, makeOpts = {}) {
+        const kind = new EntityKind(opts);
+        return kind.make(makeOpts);
+    }
 
     var index$9 = /*#__PURE__*/Object.freeze({
         __proto__: null,
         KeyInfo: KeyInfo,
         makeKeyInfo: makeKeyInfo,
         EntityKind: EntityKind,
+        make: make$5,
         Entity: Entity
     });
 
@@ -625,9 +632,14 @@
                 return this.fov.isDirectlyVisible(x, y);
             }
             else if (this.map) {
-                return GWU__namespace.xy.forLineBetween(this.x, this.y, x, y, (i, j) => GWU__namespace.xy.distanceBetween(this.x, this.y, i, j) <=
-                    this.visionDistance &&
-                    !this.map.cell(i, j).blocksVision());
+                if (GWU__namespace.xy.distanceBetween(this.x, this.y, x, y) >
+                    this.visionDistance) {
+                    return false;
+                }
+                return GWU__namespace.xy.forLineBetween(this.x, this.y, x, y, (i, j) => {
+                    if (this.map.cell(i, j).blocksVision())
+                        return false;
+                });
             }
             else {
                 return false; // need a map or an fov
@@ -1983,6 +1995,8 @@
         set needsRedraw(v) {
             if (v) {
                 this.flags.cell |= Cell$1.NEEDS_REDRAW;
+                this.flags.cell &= ~Cell$1.STABLE_SNAPSHOT;
+                this.map.needsRedraw = true;
             }
             else {
                 this.flags.cell &= ~Cell$1.NEEDS_REDRAW;
@@ -2436,6 +2450,22 @@
             }
             return true;
         }
+        hasFx() {
+            return !!(this.flags.cell & Cell$1.HAS_FX);
+        }
+        get fx() {
+            return this.map.fxAt(this.x, this.y);
+        }
+        _addFx(_fx) {
+            this.setCellFlag(Cell$1.HAS_FX);
+            this.needsRedraw = true;
+        }
+        _removeFx(_fx) {
+            if (!this.fx) {
+                this.clearCellFlag(Cell$1.HAS_FX);
+            }
+            this.needsRedraw = true;
+        }
         getDescription() {
             return this.highestPriorityTile().description;
         }
@@ -2852,8 +2882,6 @@
             const surface = cell.tiles[Depth$1.SURFACE];
             const liquid = cell.tiles[Depth$1.LIQUID];
             const gas = cell.tiles[Depth$1.GAS]; // How to get volume!?!?!?!
-            const actor = cell.hasActor() ? cell.map.actorAt(cell.x, cell.y) : null;
-            const item = cell.hasItem() ? cell.map.itemAt(cell.x, cell.y) : null;
             dest.drawSprite(ground.sprite);
             if (surface) {
                 dest.drawSprite(surface.sprite);
@@ -2861,15 +2889,24 @@
             if (liquid) {
                 dest.drawSprite(liquid.sprite);
             }
-            if (item) {
-                item.drawInto(dest);
+            if (cell.hasItem()) {
+                const item = cell.map.itemAt(cell.x, cell.y);
+                if (item)
+                    item.drawInto(dest);
             }
-            if (actor) {
-                actor.drawInto(dest);
+            if (cell.hasActor()) {
+                const actor = cell.map.actorAt(cell.x, cell.y);
+                if (actor)
+                    actor.drawInto(dest);
             }
             if (gas) {
                 const opacity = GWU__namespace.rng.cosmetic.number(50) + 25;
                 dest.drawSprite(gas.sprite, opacity);
+            }
+            if (cell.hasFx()) {
+                const fx = cell.map.fxAt(cell.x, cell.y);
+                if (fx)
+                    dest.drawSprite(fx.sprite);
             }
             if (dest.dances) {
                 cell.setCellFlag(Cell$1.COLORS_DANCE);
@@ -2909,6 +2946,8 @@
             this.id = 'MAP';
             this.actors = [];
             this.items = [];
+            this.fx = [];
+            this._animations = [];
             this.width = width;
             this.height = height;
             this.flags = { map: 0 };
@@ -3116,6 +3155,41 @@
         //     // }
         //     return true;
         // }
+        fxAt(x, y) {
+            return this.fx.find((i) => i.isAt(x, y)) || null;
+        }
+        eachFx(cb) {
+            this.fx.forEach(cb);
+        }
+        addFx(x, y, fx) {
+            const cell = this.get(x, y);
+            if (!cell)
+                return false;
+            fx.x = x;
+            fx.y = y;
+            cell._addFx(fx);
+            this.fx.push(fx);
+            return true;
+        }
+        moveFx(fx, x, y) {
+            const current = this.get(fx.x, fx.y);
+            const updated = this.get(x, y);
+            if (!updated)
+                return false;
+            current._removeFx(fx);
+            fx.x = x;
+            fx.y = y;
+            updated._addFx(fx);
+            return true;
+        }
+        removeFx(fx) {
+            const cell = this.get(fx.x, fx.y);
+            GWU__namespace.arrayDelete(this.fx, fx);
+            if (cell) {
+                cell._removeFx(fx);
+            }
+            return true;
+        }
         // Information
         // isVisible(x: number, y: number): boolean {
         //     return this.fov.isAnyKindOfVisible(x, y);
@@ -3148,11 +3222,26 @@
         clearMapFlag(flag) {
             this.flags.map &= ~flag;
         }
+        get needsRedraw() {
+            return this.hasMapFlag(Map$1.MAP_NEEDS_REDRAW);
+        }
+        set needsRedraw(v) {
+            if (v)
+                this.setMapFlag(Map$1.MAP_NEEDS_REDRAW);
+            else
+                this.clearMapFlag(Map$1.MAP_NEEDS_REDRAW);
+        }
+        hasCellFlag(x, y, flag) {
+            return this.cell(x, y).hasCellFlag(flag);
+        }
         setCellFlag(x, y, flag) {
             this.cell(x, y).setCellFlag(flag);
         }
         clearCellFlag(x, y, flag) {
             this.cell(x, y).clearCellFlag(flag);
+        }
+        hasEntityFlag(x, y, flag) {
+            return this.cell(x, y).hasEntityFlag(flag);
         }
         clear() {
             this.light.glowLightChanged = true;
@@ -3205,7 +3294,12 @@
             cell.clearTiles(tile);
         }
         async tick(dt) {
-            let didSomething = await this.fireAll('tick');
+            let didSomething = false;
+            this._animations.forEach((a) => {
+                didSomething = a.tick(dt) || didSomething;
+            });
+            this._animations = this._animations.filter((a) => a.isRunning());
+            didSomething = (await this.fireAll('tick')) || didSomething;
             for (let layer of this.layers) {
                 if (layer && (await layer.tick(dt))) {
                     didSomething = true;
@@ -3350,6 +3444,19 @@
         }
         blocksVision(x, y) {
             return this.cell(x, y).blocksVision();
+        }
+        // redrawCell(x: number, y: number): void {
+        //     // if (clearMemory) {
+        //     //     this.clearMemory(x, y);
+        //     // }
+        //     this.cell(x, y).needsRedraw = true;
+        // }
+        // Animator
+        addAnimation(a) {
+            this._animations.push(a);
+        }
+        removeAnimation(a) {
+            GWU__namespace.arrayDelete(this._animations, a);
         }
     }
     function make$2(w, h, opts = {}, boundary) {
@@ -4680,11 +4787,374 @@
         BasicDrawer: BasicDrawer
     });
 
+    // export class SpriteFX extends FX {
+    //     sprite: GWU.sprite.SpriteConfig;
+    //     stepCount: number;
+    //     x: number;
+    //     y: number;
+    //     constructor(
+    //         map: Map,
+    //         sprite: string | GWU.sprite.SpriteConfig,
+    //         x: number,
+    //         y: number,
+    //         opts: SpriteFxOptions = {}
+    //     ) {
+    //         const count = opts.blink || 1;
+    //         const duration = opts.duration || 1000;
+    //         opts.speed = opts.speed || duration / (2 * count - 1);
+    //         super(map, opts);
+    //         if (typeof sprite === 'string') {
+    //             const name = sprite;
+    //             sprite = GWU.sprite.sprites[sprite];
+    //             if (!sprite) throw new Error('Cannot find sprite! ' + name);
+    //         }
+    //         this.sprite = sprite;
+    //         this.x = x || 0;
+    //         this.y = y || 0;
+    //         this.stepCount = 2 * count - 1;
+    //     }
+    //     start() {
+    //         this.map.addFx(this.x, this.y, this.sprite);
+    //         return super.start();
+    //     }
+    //     step() {
+    //         --this.stepCount;
+    //         if (this.stepCount <= 0) return this.stop();
+    //         if (this.stepCount % 2 == 0) {
+    //             this.map.removeFx(this);
+    //         } else {
+    //             this.map.addFx(this.x, this.y, this);
+    //         }
+    //     }
+    //     stop(result?: any) {
+    //         this.map.removeFx(this);
+    //         return super.stop(result);
+    //     }
+    //     moveDir(dx: number, dy: number) {
+    //         return this.moveTo(this.x + dx, this.y + dy);
+    //     }
+    //     moveTo(x: number, y: number) {
+    //         this.map.moveFx(x, y, this);
+    //         return true;
+    //     }
+    // }
+    async function flashSprite(map, x, y, sprite, duration = 100, count = 1, animator) {
+        if (typeof sprite === 'string') {
+            sprite = GWU__namespace.sprite.from(sprite);
+        }
+        const entity = make$5({ name: 'FX', sprite });
+        map.addFx(x, y, entity);
+        const tween = GWU__namespace.tween
+            .make({ visible: true })
+            .to({ visible: false })
+            .repeat(count)
+            .repeatDelay(duration)
+            .duration(duration)
+            .onUpdate((obj) => {
+            if (obj.visible) {
+                map.addFx(x, y, entity);
+            }
+            else {
+                map.removeFx(entity);
+            }
+        });
+        // realTime
+        animator = animator || GWU__namespace.loop;
+        animator.addAnimation(tween);
+        return tween.start();
+    }
+    GWU__namespace.sprite.install('bump', 'white', 50);
+    async function hit(map, target, sprite, duration, animator) {
+        sprite = sprite || 'hit';
+        duration = duration || 200;
+        await flashSprite(map, target.x, target.y, sprite, duration, 1, animator);
+    }
+    GWU__namespace.sprite.install('hit', 'red', 50);
+    async function miss(map, target, sprite, duration, animator) {
+        sprite = sprite || 'miss';
+        duration = duration || 200;
+        await flashSprite(map, target.x, target.y, sprite, duration, 1, animator);
+    }
+    GWU__namespace.sprite.install('miss', 'green', 50);
+    async function fadeInOut(map, x, y, sprite, duration = 100, animator) {
+        if (typeof sprite === 'string') {
+            sprite = GWU__namespace.sprite.from(sprite).clone();
+        }
+        else {
+            sprite = GWU__namespace.sprite.make(sprite);
+        }
+        const entity = make$5({ name: 'FX', sprite });
+        map.addFx(x, y, entity);
+        const tween = GWU__namespace.tween
+            .make({ opacity: 0 })
+            .to({ opacity: 100 })
+            .repeat(2)
+            .yoyo(true)
+            .duration(Math.floor(duration / 2))
+            .onUpdate((obj) => {
+            entity.sprite.opacity = obj.opacity;
+            map.cell(x, y).needsRedraw = true; // we changed the sprite so redraw
+        })
+            .onFinish(() => {
+            map.removeFx(entity);
+        });
+        // realTime
+        animator = animator || GWU__namespace.loop;
+        animator.addAnimation(tween);
+        return tween.start();
+    }
+    async function moveSprite(map, source, target, sprite, opts = {}) {
+        if (typeof sprite === 'string') {
+            sprite = GWU__namespace.sprite.from(sprite);
+        }
+        const entity = make$5({ name: 'FX', sprite });
+        const from = { x: GWU__namespace.xy.x(source), y: GWU__namespace.xy.y(source) };
+        map.addFx(from.x, from.y, entity);
+        let duration = opts.duration ||
+            Math.ceil(16 * (GWU__namespace.xy.maxAxisFromTo(source, target) / (opts.speed || 8)));
+        if (GWU__namespace.xy.isLoc(target)) {
+            target = { x: target[0], y: target[1] };
+        }
+        const tween = GWU__namespace.tween
+            .make(from)
+            .to(target)
+            .duration(duration)
+            .onUpdate((vals) => {
+            // tweens dont update every step, so...
+            // draw line from current pos to vals pos
+            // check each step for blocking...
+            // end at either vals or last blocking spot
+            const dest = { x: entity.x, y: entity.y };
+            const ok = GWU__namespace.xy.forLineBetween(dest.x, dest.y, vals.x, vals.y, (x, y) => {
+                if (opts.stepFn) {
+                    if (opts.stepFn(x, y)) {
+                        if (!opts.stopBeforeWalls) {
+                            dest.x = x;
+                            dest.y = y;
+                        }
+                        return false;
+                    }
+                }
+                else if (map.hasEntityFlag(x, y, Entity$1.L_BLOCKS_MOVE)) {
+                    if (!opts.stopBeforeWalls) {
+                        dest.x = x;
+                        dest.y = y;
+                    }
+                    return false;
+                }
+                dest.x = x;
+                dest.y = y;
+            });
+            map.moveFx(entity, dest.x, dest.y);
+            if (!ok) {
+                tween.stop();
+            }
+        })
+            .onFinish(() => {
+            map.removeFx(entity);
+        });
+        const animator = opts.animator || map;
+        animator.addAnimation(tween);
+        return tween.start().then(() => entity);
+    }
+    function bolt(map, source, target, sprite, opts = {}) {
+        return moveSprite(map, source, target, sprite, opts);
+    }
+    async function projectile(map, source, target, sprite, opts = {}) {
+        if (typeof sprite === 'string') {
+            sprite = GWU__namespace.sprite.from(sprite);
+        }
+        if (sprite.ch && sprite.ch.length == 4) {
+            const dir = GWU__namespace.xy.dirFromTo(source, target);
+            let index = 0;
+            if (dir[0] && dir[1]) {
+                index = 2;
+                if (dir[0] != dir[1]) {
+                    // remember up is -y
+                    index = 3;
+                }
+            }
+            else if (dir[0]) {
+                index = 1;
+            }
+            const ch = sprite.ch[index];
+            sprite = GWU__namespace.sprite.make(ch, sprite.fg, sprite.bg);
+        }
+        else if (sprite.ch && sprite.ch.length !== 1) {
+            throw new Error('projectile requires 4 chars - vert,horiz,diag-left,diag-right (e.g: "|-\\/")');
+        }
+        return moveSprite(map, source, target, sprite, opts);
+    }
+    function beam(map, from, to, sprite, opts = {}) {
+        opts.fade = opts.fade || 100;
+        if (opts.stopAtWalls === undefined)
+            opts.stopAtWalls = true;
+        const line = [];
+        GWU__namespace.xy.forLineFromTo(from, to, (x, y) => {
+            if (!map.hasXY(x, y))
+                return false;
+            if (opts.stepFn && opts.stepFn(x, y))
+                return false;
+            if (opts.stopAtWalls || opts.stopBeforeWalls) {
+                if (map.hasEntityFlag(x, y, Entity$1.L_BLOCKS_MOVE)) {
+                    if (opts.stopBeforeWalls)
+                        return false;
+                    line.push([x, y]);
+                    return false;
+                }
+            }
+            line.push([x, y]);
+            return true;
+        });
+        const duration = opts.duration || Math.ceil(16 * (line.length / (opts.speed || 8)));
+        const animator = opts.animator || map;
+        const promises = [];
+        let lastIndex = -1;
+        const tween = GWU__namespace.tween
+            .make({ index: 0 })
+            .to({ index: line.length - 1 })
+            .duration(duration)
+            .onUpdate((vals) => {
+            while (lastIndex < vals.index) {
+                ++lastIndex;
+                const loc = line[lastIndex] || [-1, -1];
+                promises.push(fadeInOut(map, loc[0], loc[1], sprite, opts.fade, animator));
+            }
+        });
+        animator.addAnimation(tween);
+        return tween
+            .start()
+            .then(() => {
+            return Promise.all(promises);
+        })
+            .then(() => {
+            const loc = line[line.length - 1];
+            return { x: loc[0], y: loc[1] };
+        });
+    }
+    function isInShape(shape, cx, cy, allowCenter, x, y) {
+        const sx = Math.abs(x - cx);
+        const sy = Math.abs(y - cy);
+        if (sx == 0 && sy == 0 && !allowCenter)
+            return false;
+        switch (shape) {
+            case '+':
+                return sx == 0 || sy == 0;
+            case 'x':
+            case 'X':
+                return sx == sy;
+            case '*':
+                return sx == 0 || sy == 0 || sx == sy;
+            default:
+                return true;
+        }
+    }
+    function checkExplosionOpts(opts) {
+        opts.speed = opts.speed || 2;
+        opts.fade = opts.fade || 100;
+        opts.shape = opts.shape || 'o';
+        if (opts.center === undefined) {
+            opts.center = true;
+        }
+    }
+    function explosion(map, x, y, radius, sprite, opts = {}) {
+        checkExplosionOpts(opts);
+        opts.animator = opts.animator || map;
+        // opts.stepFn = opts.stepFn || ((x, y) => !map.isObstruction(x, y));
+        if (typeof sprite === 'string') {
+            sprite = GWU__namespace.sprite.from(sprite);
+        }
+        const grid = GWU__namespace.grid.alloc(map.width, map.height);
+        const fov = new GWU__namespace.fov.FOV({
+            isBlocked(x, y) {
+                return map.hasEntityFlag(x, y, Entity$1.L_BLOCKS_MOVE);
+            },
+            hasXY(x, y) {
+                return map.hasXY(x, y);
+            },
+        });
+        fov.calculate(x, y, radius, (x1, y1) => {
+            grid[x1][y1] = 1;
+        });
+        const duration = opts.duration || 32 * (radius / opts.speed);
+        const promises = [];
+        const tween = GWU__namespace.tween
+            .make({ r: 0 })
+            .to({ r: radius })
+            .duration(duration)
+            .onUpdate((vals) => {
+            const minX = Math.max(0, x - vals.r);
+            const minY = Math.max(0, y - vals.r);
+            const maxX = Math.min(map.width - 1, x + vals.r);
+            const maxY = Math.min(map.height - 1, y + vals.r);
+            for (let x1 = minX; x1 <= maxX; ++x1) {
+                for (let y1 = minY; y1 <= maxY; ++y1) {
+                    if (grid[x1][y1] &&
+                        GWU__namespace.xy.distanceBetween(x, y, x1, y1) <= vals.r) {
+                        grid[x1][y1] = 0;
+                        if (isInShape(opts.shape, x, y, opts.center, x1, y1)) {
+                            promises.push(fadeInOut(map, x1, y1, sprite, opts.fade, opts.animator));
+                        }
+                    }
+                }
+            }
+        })
+            .onFinish(() => {
+            GWU__namespace.grid.free(grid);
+        });
+        opts.animator.addAnimation(tween);
+        return tween.start().then(() => {
+            return Promise.all(promises);
+        });
+    }
+    /*
+    export function explosionFor(
+        map: Map,
+        grid: GWU.grid.NumGrid,
+        x: number,
+        y: number,
+        radius: number,
+        sprite: string | GWU.sprite.SpriteConfig,
+        opts: ExplosionOptions = {}
+    ) {
+        checkExplosionOpts(opts);
+        // opts.stepFn = opts.stepFn || ((x, y) => !map.isObstruction(x, y));
+        const animation = new ExplosionFX(
+            map,
+            grid,
+            x,
+            y,
+            radius,
+            sprite,
+            opts.speed,
+            opts.fade,
+            opts.shape,
+            opts.center,
+            opts.stepFn
+        );
+        return opts.playFn!(animation);
+    }
+    */
+
+    var fx = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        flashSprite: flashSprite,
+        hit: hit,
+        miss: miss,
+        fadeInOut: fadeInOut,
+        moveSprite: moveSprite,
+        bolt: bolt,
+        projectile: projectile,
+        beam: beam,
+        explosion: explosion
+    });
+
     exports.actor = index$4;
     exports.draw = index;
     exports.effect = index$7;
     exports.entity = index$9;
     exports.flags = index$a;
+    exports.fx = fx;
     exports.horde = index$1;
     exports.item = index$3;
     exports.layer = index$6;

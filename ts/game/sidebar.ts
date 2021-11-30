@@ -1,16 +1,14 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import * as Widget from '../widget';
 
-import { UISubject } from '../ui/types';
-import { Layer } from '../ui/layer';
+import { UISubject } from './types';
 
 GWU.color.install('blueBar', 15, 10, 50);
 GWU.color.install('redBar', 45, 10, 15);
 GWU.color.install('purpleBar', 50, 0, 50);
 GWU.color.install('greenBar', 10, 50, 10);
 
-export interface SidebarOptions extends Widget.WidgetOptions {}
+export interface SidebarOptions extends GWU.widget.WidgetOptions {}
 
 export abstract class EntryBase {
     dist = 0;
@@ -88,7 +86,7 @@ export class CellEntry extends EntryBase {
 
 export type SidebarEntry = ActorEntry | ItemEntry | CellEntry;
 
-export class Sidebar extends Widget.Widget {
+export class Sidebar extends GWU.widget.Widget {
     cellCache: GWM.map.CellInfoType[] = [];
     lastX = -1;
     lastY = -1;
@@ -97,7 +95,7 @@ export class Sidebar extends Widget.Widget {
     subject: UISubject | null = null;
     highlight: EntryBase | null = null;
 
-    constructor(layer: Layer, opts: SidebarOptions) {
+    constructor(layer: GWU.widget.WidgetLayer, opts: SidebarOptions) {
         super(layer, opts);
     }
 

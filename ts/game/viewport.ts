@@ -1,8 +1,6 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import { UISubject } from '../ui/types';
-import * as Widget from '../widget';
-import { Layer } from '../ui/layer';
+import { UISubject } from './types';
 
 export type ViewFilterFn = (
     mixer: GWU.sprite.Mixer,
@@ -11,7 +9,7 @@ export type ViewFilterFn = (
     map: GWM.map.Map
 ) => void;
 
-export interface ViewportOptions extends Widget.WidgetOptions {
+export interface ViewportOptions extends GWU.widget.WidgetOptions {
     snap?: boolean;
     filter?: ViewFilterFn;
     lockX?: boolean;
@@ -20,13 +18,13 @@ export interface ViewportOptions extends Widget.WidgetOptions {
     center?: boolean;
 }
 
-export class Viewport extends Widget.Widget {
+export class Viewport extends GWU.widget.Widget {
     filter!: ViewFilterFn | null;
     offsetX = 0;
     offsetY = 0;
     _subject: UISubject | null = null;
 
-    constructor(layer: Layer, opts: ViewportOptions) {
+    constructor(layer: GWU.widget.WidgetLayer, opts: ViewportOptions) {
         super(layer, opts);
         this.attr('snap', opts.snap || false);
         this.attr('center', opts.center || false);

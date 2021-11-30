@@ -1,15 +1,13 @@
 import * as GWU from 'gw-utils';
-import { Layer } from '../ui/layer';
-import * as Widget from '../widget';
 
-export interface MessageOptions extends Widget.WidgetOptions {
+export interface MessageOptions extends GWU.widget.WidgetOptions {
     length?: number;
 }
 
-export class Messages extends Widget.Widget {
+export class Messages extends GWU.widget.Widget {
     cache!: GWU.message.MessageCache;
 
-    constructor(layer: Layer, opts: MessageOptions) {
+    constructor(layer: GWU.widget.WidgetLayer, opts: MessageOptions) {
         super(
             layer,
             (() => {
@@ -84,14 +82,14 @@ export class Messages extends Widget.Widget {
 
 export type ArchiveMode = 'forward' | 'ack' | 'reverse';
 
-export class MessageArchive extends Widget.Widget {
+export class MessageArchive extends GWU.widget.Widget {
     source: Messages;
     totalCount: number;
     isOnTop: boolean;
     mode: ArchiveMode = 'forward';
     shown: number;
 
-    constructor(layer: Layer, source: Messages) {
+    constructor(layer: GWU.widget.WidgetLayer, source: Messages) {
         super(layer, {
             id: 'ARCHIVE',
             tag: 'messages',
@@ -117,9 +115,7 @@ export class MessageArchive extends Widget.Widget {
         );
 
         this.shown = source.bounds.height;
-        this.layer.on('FORWARD', this._forward.bind(this));
-        this.layer.on('REVERSE', this._reverse.bind(this));
-        this.layer.setTimeout('FORWARD', 16);
+        this.layer.setTimeout(() => this._forward(), 16);
 
         // confirm them as they are right now...
         this.source.cache.confirmAll();
@@ -137,7 +133,7 @@ export class MessageArchive extends Widget.Widget {
         if (this.mode === 'ack') {
             this.mode = 'reverse';
             this.layer.needsDraw = true;
-            this.layer.setTimeout('REVERSE', 16);
+            this.layer.setTimeout(() => this._reverse(), 16);
         } else if (this.mode === 'reverse') {
             this.finish();
             return true;
@@ -154,7 +150,7 @@ export class MessageArchive extends Widget.Widget {
         if (this.mode === 'ack') {
             this.mode = 'reverse';
             this.layer.needsDraw = true;
-            this.layer.setTimeout('REVERSE', 16);
+            this.layer.setTimeout(() => this._reverse(), 16);
         } else if (this.mode === 'reverse') {
             this.finish();
         } else {
@@ -169,7 +165,7 @@ export class MessageArchive extends Widget.Widget {
         ++this.shown;
         this.layer.needsDraw = true;
         if (this.shown < this.totalCount) {
-            this.layer.setTimeout('FORWARD', 16);
+            this.layer.setTimeout(() => this._forward(), 16);
         } else {
             this.mode = 'ack';
             this.shown = this.totalCount;
@@ -183,7 +179,7 @@ export class MessageArchive extends Widget.Widget {
             this.finish();
         } else {
             this.layer.needsDraw = true;
-            this.layer.setTimeout('REVERSE', 16);
+            this.layer.setTimeout(() => this._reverse(), 16);
         }
         return true;
     }

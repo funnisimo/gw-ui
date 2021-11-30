@@ -1,27 +1,25 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import { Layer } from '../ui/layer';
-import * as Widget from '../widget';
 
 GWU.color.install('flavorText', 50, 40, 90);
 GWU.color.install('flavorPrompt', 100, 90, 20);
 
-export interface FlavorOptions extends Widget.WidgetOptions {
+export interface FlavorOptions extends GWU.widget.WidgetOptions {
     overflow?: boolean;
 }
 
-export class Flavor extends Widget.Text {
+export class Flavor extends GWU.widget.Text {
     isPrompt!: boolean;
     overflow!: boolean;
     promptFg!: GWU.color.Color;
 
-    constructor(layer: Layer, opts: FlavorOptions) {
+    constructor(layer: GWU.widget.WidgetLayer, opts: FlavorOptions) {
         super(
             layer,
             (() => {
                 opts.tag = opts.tag || 'flavor';
-                (<Widget.TextOptions>opts).text = '';
-                return opts as Widget.TextOptions;
+                (<GWU.widget.TextOptions>opts).text = '';
+                return opts as GWU.widget.TextOptions;
             })()
         );
 

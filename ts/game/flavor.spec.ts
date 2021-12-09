@@ -3,16 +3,14 @@ import * as GWM from 'gw-map';
 import * as UTILS from '../../test/utils';
 
 import * as Flavor from './flavor';
-import { UI } from '../ui';
-import { Layer } from '../ui/layer';
 
 describe('Flavor', () => {
-    let ui: UI;
-    let layer: Layer;
+    let ui: GWU.ui.UI;
+    let layer: GWU.widget.WidgetLayer;
 
     beforeEach(() => {
         ui = UTILS.mockUI(100, 40);
-        layer = ui.startNewLayer();
+        layer = ui.startWidgetLayer();
     });
 
     afterEach(() => {

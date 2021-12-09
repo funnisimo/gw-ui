@@ -255,13 +255,19 @@
             return `[${this.x},${this.y} -> ${this.right},${this.bottom}]`;
         }
     }
-    function copyXY(dest, src) {
+    function copy(dest, src) {
         dest.x = x(src);
         dest.y = y(src);
     }
-    function addXY(dest, src) {
+    function addTo(dest, src) {
         dest.x += x(src);
         dest.y += y(src);
+    }
+    function add$1(a, b) {
+        if (Array.isArray(a)) {
+            return [a[0] + x(b), a[1] + y(b)];
+        }
+        return { x: a.x + x(b), y: a.y + y(b) };
     }
     function equalsXY(dest, src) {
         if (!dest && !src)
@@ -590,8 +596,9 @@
         y: y,
         contains: contains,
         Bounds: Bounds,
-        copyXY: copyXY,
-        addXY: addXY,
+        copy: copy,
+        addTo: addTo,
+        add: add$1,
         equalsXY: equalsXY,
         lerpXY: lerpXY,
         eachNeighbor: eachNeighbor,
@@ -1260,7 +1267,7 @@
     }
     const random = new Random();
     const cosmetic = new Random();
-    function make$c(seed) {
+    function make$d(seed) {
         return new Random(seed);
     }
 
@@ -1271,7 +1278,7 @@
         Random: Random,
         random: random,
         cosmetic: cosmetic,
-        make: make$c
+        make: make$d
     });
 
     class Range {
@@ -1292,6 +1299,9 @@
             rng = rng || random;
             return rng.clumped(this.lo, this.hi, this.clumps);
         }
+        max() {
+            return this.hi;
+        }
         contains(value) {
             return this.lo <= value && this.hi >= value;
         }
@@ -1308,7 +1318,7 @@
             return `${this.lo}-${this.hi}`;
         }
     }
-    function make$b(config) {
+    function make$c(config) {
         if (!config)
             return new Range(0, 0, 0);
         if (config instanceof Range)
@@ -1364,18 +1374,23 @@
         }
         throw new Error('Not a valid range - ' + config);
     }
-    const from$4 = make$b;
+    const from$4 = make$c;
     function asFn(config) {
-        const range = make$b(config);
+        const range = make$c(config);
         return () => range.value();
+    }
+    function value(base) {
+        const r = make$c(base);
+        return r.value();
     }
 
     var range = /*#__PURE__*/Object.freeze({
         __proto__: null,
         Range: Range,
-        make: make$b,
+        make: make$c,
         from: from$4,
-        asFn: asFn
+        asFn: asFn,
+        value: value
     });
 
     ///////////////////////////////////
@@ -1464,7 +1479,7 @@
         }
         return result;
     }
-    function make$a(obj) {
+    function make$b(obj) {
         const out = {};
         Object.entries(obj).forEach(([key, value]) => {
             out[key] = from$3(out, value);
@@ -1477,7 +1492,7 @@
         fl: fl,
         toString: toString,
         from: from$3,
-        make: make$a
+        make: make$b
     });
 
     const DIRS$1 = DIRS$2;
@@ -2036,7 +2051,7 @@
     // Grid.fillBlob = fillBlob;
     const alloc = NumGrid.alloc.bind(NumGrid);
     const free = NumGrid.free.bind(NumGrid);
-    function make$9(w, h, v) {
+    function make$a(w, h, v) {
         if (v === undefined)
             return new NumGrid(w, h, 0);
         if (typeof v === 'number')
@@ -2078,7 +2093,7 @@
         NumGrid: NumGrid,
         alloc: alloc,
         free: free,
-        make: make$9,
+        make: make$a,
         offsetZip: offsetZip,
         intersection: intersection,
         unite: unite
@@ -2246,7 +2261,7 @@
         clamp() {
             if (this.isNull())
                 return this;
-            return make$8(this._data.map((v) => clamp(v, 0, 100)));
+            return make$9(this._data.map((v) => clamp(v, 0, 100)));
         }
         blend(other) {
             const O = from$2(other);
@@ -2256,7 +2271,7 @@
                 return O;
             const pct = O.a / 100;
             const keepPct = 1 - pct;
-            const newColor = make$8(Math.round(this._data[0] * keepPct + O._data[0] * pct), Math.round(this._data[1] * keepPct + O._data[1] * pct), Math.round(this._data[2] * keepPct + O._data[2] * pct), Math.round(O.a + this._data[3] * keepPct));
+            const newColor = make$9(Math.round(this._data[0] * keepPct + O._data[0] * pct), Math.round(this._data[1] * keepPct + O._data[1] * pct), Math.round(this._data[2] * keepPct + O._data[2] * pct), Math.round(O.a + this._data[3] * keepPct));
             if (this._rand) {
                 newColor._rand = this._rand.map((v) => Math.round(v * keepPct));
                 newColor.dances = this.dances;
@@ -2280,7 +2295,7 @@
                 return O;
             const pct = clamp(percent, 0, 100) / 100;
             const keepPct = 1 - pct;
-            const newColor = make$8(Math.round(this._data[0] * keepPct + O._data[0] * pct), Math.round(this._data[1] * keepPct + O._data[1] * pct), Math.round(this._data[2] * keepPct + O._data[2] * pct), (this.isNull() ? 100 : this._data[3]) * keepPct + O._data[3] * pct);
+            const newColor = make$9(Math.round(this._data[0] * keepPct + O._data[0] * pct), Math.round(this._data[1] * keepPct + O._data[1] * pct), Math.round(this._data[2] * keepPct + O._data[2] * pct), (this.isNull() ? 100 : this._data[3]) * keepPct + O._data[3] * pct);
             if (this._rand) {
                 newColor._rand = this._rand.slice();
                 newColor.dances = this.dances;
@@ -2306,7 +2321,7 @@
                 return this;
             const pct = clamp(percent, 0, 100) / 100;
             const keepPct = 1 - pct;
-            return make$8(Math.round(this._data[0] * keepPct + 100 * pct), Math.round(this._data[1] * keepPct + 100 * pct), Math.round(this._data[2] * keepPct + 100 * pct), this._a);
+            return make$9(Math.round(this._data[0] * keepPct + 100 * pct), Math.round(this._data[1] * keepPct + 100 * pct), Math.round(this._data[2] * keepPct + 100 * pct), this._a);
         }
         // Only adjusts r,g,b
         darken(percent) {
@@ -2314,7 +2329,7 @@
                 return this;
             const pct = clamp(percent, 0, 100) / 100;
             const keepPct = 1 - pct;
-            return make$8(Math.round(this._data[0] * keepPct + 0 * pct), Math.round(this._data[1] * keepPct + 0 * pct), Math.round(this._data[2] * keepPct + 0 * pct), this._a);
+            return make$9(Math.round(this._data[0] * keepPct + 0 * pct), Math.round(this._data[1] * keepPct + 0 * pct), Math.round(this._data[2] * keepPct + 0 * pct), this._a);
         }
         bake(clearDancing = false) {
             if (this.isNull())
@@ -2328,7 +2343,7 @@
             const redRand = cosmetic.number(d[1]);
             const greenRand = cosmetic.number(d[2]);
             const blueRand = cosmetic.number(d[3]);
-            return make$8(this._r + rand + redRand, this._g + rand + greenRand, this._b + rand + blueRand, this._a);
+            return make$9(this._r + rand + redRand, this._g + rand + greenRand, this._b + rand + blueRand, this._a);
         }
         // Adds a color to this one
         add(other, percent = 100) {
@@ -2336,13 +2351,13 @@
             if (O.isNull())
                 return this;
             const alpha = (O.a / 100) * (percent / 100);
-            return make$8(Math.round(this._data[0] + O._data[0] * alpha), Math.round(this._data[1] + O._data[1] * alpha), Math.round(this._data[2] + O._data[2] * alpha), clamp(Math.round(this._a + alpha * 100), 0, 100));
+            return make$9(Math.round(this._data[0] + O._data[0] * alpha), Math.round(this._data[1] + O._data[1] * alpha), Math.round(this._data[2] + O._data[2] * alpha), clamp(Math.round(this._a + alpha * 100), 0, 100));
         }
         scale(percent) {
             if (this.isNull() || percent == 100)
                 return this;
             const pct = Math.max(0, percent) / 100;
-            return make$8(Math.round(this._data[0] * pct), Math.round(this._data[1] * pct), Math.round(this._data[2] * pct), this._a);
+            return make$9(Math.round(this._data[0] * pct), Math.round(this._data[1] * pct), Math.round(this._data[2] * pct), this._a);
         }
         multiply(other) {
             if (this.isNull())
@@ -2359,7 +2374,7 @@
                 data = other._data;
             }
             const pct = (data[3] || 100) / 100;
-            return make$8(Math.round(this._ra * (data[0] / 100) * pct), Math.round(this._ga * (data[1] / 100) * pct), Math.round(this._ba * (data[2] / 100) * pct), 100);
+            return make$9(Math.round(this._ra * (data[0] / 100) * pct), Math.round(this._ga * (data[1] / 100) * pct), Math.round(this._ba * (data[2] / 100) * pct), 100);
         }
         // scales rgb down to a max of 100
         normalize() {
@@ -2368,7 +2383,7 @@
             const max = Math.max(this._ra, this._ga, this._ba);
             if (max <= 100)
                 return this;
-            return make$8(Math.round((100 * this._ra) / max), Math.round((100 * this._ga) / max), Math.round((100 * this._ba) / max), 100);
+            return make$9(Math.round((100 * this._ra) / max), Math.round((100 * this._ga) / max), Math.round((100 * this._ba) / max), 100);
         }
         /**
          * Returns the css code for the current RGB values of the color.
@@ -2436,7 +2451,7 @@
             return new Color(Math.round((((val & 0xf00) >> 8) * 100) / 15), Math.round((((val & 0xf0) >> 4) * 100) / 15), Math.round(((val & 0xf) * 100) / 15), 100);
         }
     }
-    function make$8(...args) {
+    function make$9(...args) {
         let arg = args[0];
         let base256 = args[1];
         if (args.length == 0)
@@ -2475,7 +2490,7 @@
                 return fromName(arg);
             }
         }
-        return make$8(arg, args[1]);
+        return make$9(arg, args[1]);
     }
     // adjusts the luminosity of 2 colors to ensure there is enough separation between them
     function separate(a, b) {
@@ -2531,7 +2546,7 @@
         if (args.length == 1) {
             info = args[0];
         }
-        const c = info instanceof Color ? info : make$8(info);
+        const c = info instanceof Color ? info : make$9(info);
         // @ts-ignore
         c._const = true;
         colors[name] = c;
@@ -2594,7 +2609,7 @@
         fromCss: fromCss,
         fromName: fromName,
         fromNumber: fromNumber,
-        make: make$8,
+        make: make$9,
         from: from$2,
         separate: separate,
         relativeLuminance: relativeLuminance,
@@ -2610,8 +2625,8 @@
     class Mixer {
         constructor(base) {
             this.ch = first(base === null || base === void 0 ? void 0 : base.ch, -1);
-            this.fg = make$8(base === null || base === void 0 ? void 0 : base.fg);
-            this.bg = make$8(base === null || base === void 0 ? void 0 : base.bg);
+            this.fg = make$9(base === null || base === void 0 ? void 0 : base.fg);
+            this.bg = make$9(base === null || base === void 0 ? void 0 : base.bg);
         }
         _changed() {
             return this;
@@ -3675,19 +3690,20 @@
             console.log(data.join('\n'));
         }
     }
-    function make$7(width, height) {
+    function make$8(width, height) {
         return new Buffer$1(width, height);
     }
 
     var buffer = /*#__PURE__*/Object.freeze({
         __proto__: null,
         Buffer: Buffer$1,
-        make: make$7
+        make: make$8
     });
 
     class Event {
         constructor(type, opts) {
-            this.target = null;
+            this.source = null; // original sourcing information
+            this.target = null; // current handler information
             // Used in UI
             this.defaultPrevented = false;
             this.propagationStopped = false;
@@ -3722,6 +3738,7 @@
         reset(type, opts) {
             this.type = type;
             this.target = null;
+            this.source = null;
             this.defaultPrevented = false;
             this.shiftKey = false;
             this.ctrlKey = false;
@@ -3776,7 +3793,7 @@
         }
         return c || null;
     }
-    async function dispatchEvent(ev, km) {
+    async function dispatchEvent(ev, km, thisArg) {
         let result;
         km = km || IOMAP;
         if (ev.type === STOP) {
@@ -3786,7 +3803,7 @@
         const handler = handlerFor(ev, km);
         if (handler) {
             // if (typeof c === 'function') {
-            result = await handler.call(km, ev);
+            result = await handler.call(thisArg || km, ev);
             // } else if (commands[c]) {
             //     result = await commands[c](ev);
             // } else {
@@ -4159,11 +4176,11 @@
             arrayNullify(this._animations, a);
         }
     }
-    function make$6() {
+    function make$7() {
         return new Loop();
     }
     // Makes a default global loop that you access through these funcitons...
-    const loop = make$6();
+    const loop = make$7();
 
     var io = /*#__PURE__*/Object.freeze({
         __proto__: null,
@@ -4185,7 +4202,7 @@
         ignoreKeyEvent: ignoreKeyEvent,
         makeMouseEvent: makeMouseEvent,
         Loop: Loop,
-        make: make$6,
+        make: make$7,
         loop: loop
     });
 
@@ -4340,7 +4357,7 @@
                 flag |= FovFlags.REVEALED;
             if (visible)
                 flag |= FovFlags.VISIBLE;
-            this.flags = make$9(site.width, site.height, flag);
+            this.flags = make$a(site.width, site.height, flag);
             // this.needsUpdate = true;
             if (opts.callback) {
                 this.callback = opts.callback;
@@ -5124,7 +5141,7 @@
      * @returns {boolean} `true` if the event had listeners, else `false`.
      * @public
      */
-    async function emit(...args) {
+    function emit(...args) {
         const event = args[0];
         if (!EVENTS[event])
             return false; // no events to send
@@ -5133,7 +5150,7 @@
             let next = listener.next;
             if (listener.once)
                 remove(EVENTS, event, listener);
-            await listener.fn.apply(listener.context, args);
+            listener.fn.apply(listener.context, args);
             listener = next;
         }
         return true;
@@ -5152,7 +5169,7 @@
         emit: emit
     });
 
-    function make$5(v) {
+    function make$6(v) {
         if (v === undefined)
             return () => 100;
         if (v === null)
@@ -5205,7 +5222,7 @@
 
     var frequency = /*#__PURE__*/Object.freeze({
         __proto__: null,
-        make: make$5
+        make: make$6
     });
 
     class Scheduler {
@@ -5277,7 +5294,41 @@
             }
         }
     }
-    // export const scheduler = new Scheduler();
+    // type AsyncQueueHandlerFn<T> = (obj: T) => void;
+    // export class AsyncQueue<T> {
+    //     _data: T[];
+    //     _handler: AsyncQueueHandlerFn<T> | null = null;
+    //     constructor() {
+    //         this._data = [];
+    //     }
+    //     get length(): number {
+    //         return this._data.length;
+    //     }
+    //     get last(): T | undefined {
+    //         return this._data[this._data.length - 1];
+    //     }
+    //     get first(): T | undefined {
+    //         return this._data[0];
+    //     }
+    //     enqueue(obj: T): void {
+    //         if (this._handler) {
+    //             this._handler(obj);
+    //             this._handler = null;
+    //         } else {
+    //             this._data.push(obj);
+    //         }
+    //     }
+    //     dequeue(): Promise<T> {
+    //         const t = this._data.shift();
+    //         if (t) {
+    //             return Promise.resolve(t);
+    //         }
+    //         const p = new Promise((resolve) => {
+    //             this._handler = resolve;
+    //         });
+    //         return p as Promise<T>;
+    //     }
+    // }
 
     var scheduler = /*#__PURE__*/Object.freeze({
         __proto__: null,
@@ -6165,7 +6216,7 @@ void main() {
         return { position, uv };
     }
 
-    function make$4(...args) {
+    function make$5(...args) {
         let width = args[0];
         let height = args[1];
         let opts = args[2];
@@ -6226,7 +6277,7 @@ void main() {
         BaseCanvas: BaseCanvas,
         Canvas2D: Canvas2D,
         CanvasGL: CanvasGL,
-        make: make$4
+        make: make$5
     });
 
     class Sprite {
@@ -6255,7 +6306,7 @@ void main() {
         }
     }
     const sprites = {};
-    function make$3(...args) {
+    function make$4(...args) {
         let ch = null, fg = -1, bg = -1, opacity;
         if (args.length == 0) {
             return new Sprite(null, -1, -1);
@@ -6300,13 +6351,13 @@ void main() {
         if (typeof fg === 'string')
             fg = from$2(fg);
         else if (Array.isArray(fg))
-            fg = make$8(fg);
+            fg = make$9(fg);
         else if (fg === undefined || fg === null)
             fg = -1;
         if (typeof bg === 'string')
             bg = from$2(bg);
         else if (Array.isArray(bg))
-            bg = make$8(bg);
+            bg = make$9(bg);
         else if (bg === undefined || bg === null)
             bg = -1;
         return new Sprite(ch, fg, bg, opacity);
@@ -6318,12 +6369,12 @@ void main() {
                 throw new Error('Failed to find sprite: ' + config);
             return sprite;
         }
-        return make$3(config);
+        return make$4(config);
     }
     function install$2(name, ...args) {
         let sprite;
         // @ts-ignore
-        sprite = make$3(...args);
+        sprite = make$4(...args);
         sprite.name = name;
         sprites[name] = sprite;
         return sprite;
@@ -6333,7 +6384,7 @@ void main() {
         __proto__: null,
         Sprite: Sprite,
         sprites: sprites,
-        make: make$3,
+        make: make$4,
         from: from$1,
         install: install$2,
         Mixer: Mixer,
@@ -6638,7 +6689,7 @@ void main() {
         const blob = new Blob(opts);
         return blob.carve(grid.width, grid.height, (x, y) => (grid[x][y] = 1));
     }
-    function make$2(opts = {}) {
+    function make$3(opts = {}) {
         return new Blob(opts);
     }
 
@@ -6646,7 +6697,7 @@ void main() {
         __proto__: null,
         Blob: Blob,
         fillBlob: fillBlob,
-        make: make$2
+        make: make$3
     });
 
     // const LIGHT_SMOOTHING_THRESHOLD = 150;       // light components higher than this magnitude will be toned down a little
@@ -6654,14 +6705,14 @@ void main() {
         INTENSITY_DARK: 20,
         INTENSITY_SHADOW: 50,
     }); // less than 20% for highest color in rgb
-    let LIGHT_COMPONENTS = make$8();
+    let LIGHT_COMPONENTS = make$9();
     class Light {
         constructor(color, radius = 1, fadeTo = 0, pass = false) {
             this.fadeTo = 0;
             this.passThroughActors = false;
             this.id = null;
             this.color = from$2(color); /* color */
-            this.radius = make$b(radius);
+            this.radius = make$c(radius);
             this.fadeTo = fadeTo;
             this.passThroughActors = pass; // generally no, but miner light does (TODO - string parameter?  'false' or 'true')
         }
@@ -6740,7 +6791,7 @@ void main() {
     function isShadowLight(light, threshold = 40) {
         return intensity(light) <= threshold;
     }
-    function make$1(...args) {
+    function make$2(...args) {
         if (args.length == 1) {
             const config = args[0];
             if (typeof config === 'string') {
@@ -6780,15 +6831,15 @@ void main() {
         }
         if (arg && arg.paint)
             return arg;
-        return make$1(arg);
+        return make$2(arg);
     }
     function install(id, ...args) {
         let source;
         if (args.length == 1) {
-            source = make$1(args[0]);
+            source = make$2(args[0]);
         }
         else {
-            source = make$1(args[0], args[1], args[2], args[3]);
+            source = make$2(args[0], args[1], args[2], args[3]);
         }
         lights[id] = source;
         source.id = id;
@@ -6831,10 +6882,10 @@ void main() {
             this.changed = false;
             this.glowLightChanged = false;
             this.dynamicLightChanged = false;
-            this.light = make$9(map.width, map.height, () => this.ambient.slice());
-            this.glowLight = make$9(map.width, map.height, () => this.ambient.slice());
-            this.oldLight = make$9(map.width, map.height, () => this.ambient.slice());
-            this.flags = make$9(map.width, map.height);
+            this.light = make$a(map.width, map.height, () => this.ambient.slice());
+            this.glowLight = make$a(map.width, map.height, () => this.ambient.slice());
+            this.oldLight = make$a(map.width, map.height, () => this.ambient.slice());
+            this.flags = make$a(map.width, map.height);
             this.finishLightUpdate();
         }
         copy(other) {
@@ -7087,7 +7138,7 @@ void main() {
         intensity: intensity,
         isDarkLight: isDarkLight,
         isShadowLight: isShadowLight,
-        make: make$1,
+        make: make$2,
         lights: lights,
         from: from,
         install: install,
@@ -7194,9 +7245,14 @@ void main() {
                 this._start = {};
                 Object.keys(this._goal).forEach((key) => (this._start[key] = this._obj[key]));
             }
-            return new Promise((resolve) => {
+            let p = new Promise((resolve) => {
                 this._resolveCb = resolve;
             });
+            if (this._finishCb) {
+                const cb = this._finishCb;
+                p = p.then((success) => cb.call(this, this._obj, !!success));
+            }
+            return p;
         }
         tick(dt) {
             if (!this.isRunning())
@@ -7254,13 +7310,12 @@ void main() {
                 this._updateCb.call(this, this._obj, 0);
             }
         }
-        gameTick(_dt) {
-            return false;
-        }
+        // gameTick(_dt: number): boolean {
+        //     return false;
+        // }
         stop(success = false) {
             this._time = Number.MAX_SAFE_INTEGER;
-            if (this._finishCb)
-                this._finishCb.call(this, this._obj, 1);
+            // if (this._finishCb) this._finishCb.call(this, this._obj, 1);
             if (this._resolveCb)
                 this._resolveCb(success);
         }
@@ -7278,7 +7333,7 @@ void main() {
             return madeChange;
         }
     }
-    function make(src) {
+    function make$1(src) {
         return new Tween(src);
     }
     function linear(pct) {
@@ -7295,7 +7350,7 @@ void main() {
     var tween = /*#__PURE__*/Object.freeze({
         __proto__: null,
         Tween: Tween,
-        make: make,
+        make: make$1,
         linear: linear,
         interpolate: interpolate
     });
@@ -7829,19 +7884,15 @@ void main() {
             this.result = undefined;
             this.timers = [];
             this._tweens = [];
-            this._done = null;
-            this._drawCb = null;
-            this._tickCb = null;
-            this._dirCb = null;
-            this._mousemoveCb = null;
-            this._clickCb = null;
-            this._keypressCb = null;
-            this._finishCb = null;
-            this._startCb = null;
+            this._running = false;
+            this._keymap = {};
             this.ui = ui;
             this.buffer = ui.canvas.buffer.clone();
             this.styles = new Sheet(opts.styles || ui.styles);
-            this.run(opts);
+            // this.run(opts);
+        }
+        get running() {
+            return this._running;
         }
         get width() {
             return this.ui.width;
@@ -7858,30 +7909,16 @@ void main() {
         //     this.body.off(event, cb);
         //     return this;
         // }
-        mousemove(e) {
-            if (!this._mousemoveCb)
-                return false;
-            this._mousemoveCb.call(this, e);
+        mousemove(_e) {
             return false;
         }
-        click(e) {
-            if (!this._clickCb)
-                return false;
-            this._clickCb.call(this, e);
+        click(_e) {
             return false;
         }
-        keypress(e) {
-            if (!e.key)
-                return false;
-            if (!this._keypressCb)
-                return false;
-            this._keypressCb.call(this, e);
+        keypress(_e) {
             return false;
         }
-        dir(e) {
-            if (!this._dirCb)
-                return false;
-            this._dirCb.call(this, e);
+        dir(_e) {
             return false;
         }
         tick(e) {
@@ -7897,16 +7934,9 @@ void main() {
                     timer.action();
                 }
             }
-            if (this._tickCb) {
-                this._tickCb.call(this, e);
-            }
             return false;
         }
         draw() {
-            if (!this._drawCb)
-                return;
-            if (!this._drawCb.call(this, this.buffer))
-                return;
             console.log('draw');
             this.buffer.render();
         }
@@ -7926,56 +7956,85 @@ void main() {
                 timer.time = -1;
             }
         }
-        animate(tween) {
-            if (!tween.isRunning())
-                tween.start();
-            this._tweens.push(tween);
-            return this;
+        // Animator
+        addAnimation(a) {
+            if (!a.isRunning())
+                a.start();
+            this._tweens.push(a);
         }
-        run(opts) {
-            this._drawCb = opts.draw || this._drawCb;
-            this._tickCb = opts.tick || this._tickCb;
-            this._dirCb = opts.dir || this._dirCb;
-            this._mousemoveCb = opts.mousemove || this._mousemoveCb;
-            this._clickCb = opts.click || this._clickCb;
-            this._keypressCb = opts.keypress || this._keypressCb;
-            this._finishCb = opts.finish || this._finishCb;
-            this._startCb = opts.start || this._startCb;
-            this.promise = new Promise((resolve) => {
-                this._done = resolve;
+        removeAnimation(a) {
+            arrayNullify(this._tweens, a);
+        }
+        // RUN
+        async run(keymap = {}, ms = -1) {
+            if (this._running)
+                throw new Error('Already running!');
+            this.result = undefined;
+            const loop = this.ui.loop;
+            this._running = true;
+            loop.clearEvents(); // ??? Should we do this?
+            ['keypress', 'dir', 'click', 'mousemove', 'tick', 'draw'].forEach((e) => {
+                if (e in keymap)
+                    return;
+                keymap[e] = this[e];
             });
-            if (this._startCb) {
-                this._startCb.call(this);
+            if (keymap.start && typeof keymap.start === 'function') {
+                await keymap.start.call(this);
             }
-            return this.promise;
+            let busy = false;
+            const tickLoop = setInterval(() => {
+                if (busy)
+                    return;
+                const e = makeTickEvent(16);
+                loop.pushEvent(e);
+            }, 16);
+            while (this._running) {
+                if (keymap.draw && typeof keymap.draw === 'function') {
+                    keymap.draw.call(this);
+                }
+                if (this._tweens.length) {
+                    const ev = await loop.nextTick();
+                    if (ev && ev.dt) {
+                        this._tweens.forEach((a) => a && a.tick(ev.dt));
+                        this._tweens = this._tweens.filter((a) => a && a.isRunning());
+                    }
+                }
+                else {
+                    const ev = await loop.nextEvent(ms);
+                    busy = true;
+                    if (ev) {
+                        await dispatchEvent(ev, keymap, this); // return code does not matter (call layer.finish() to exit loop)
+                        // this._running = false;
+                    }
+                    busy = false;
+                }
+            }
+            if (keymap.stop && typeof keymap.stop === 'function') {
+                await keymap.stop.call(this);
+            }
+            clearInterval(tickLoop);
+            return this.result;
         }
         finish(result) {
             this.result = result;
-            this.ui.finishLayer(this);
-        }
-        _finish() {
-            if (!this._done)
-                return;
-            if (this._finishCb)
-                this._finishCb.call(this, this.result);
-            this._done(this.result);
-            this._done = null;
+            this._running = false;
+            this.ui._finishLayer(this);
         }
     }
 
     // import * as GWU from 'gw-utils';
     class UI {
+        // _promise: Promise<void> | null = null;
         constructor(opts = {}) {
             this.layer = null;
             this.layers = [];
             // inDialog = false;
             this._done = false;
-            this._promise = null;
             opts.loop = opts.loop || loop;
             this.loop = opts.loop;
-            this.canvas = opts.canvas || make$4(opts);
+            this.canvas = opts.canvas || make$5(opts);
             // get keyboard input hooked up
-            if (this.canvas.node.parentElement) {
+            if (this.canvas.node && this.canvas.node.parentElement) {
                 this.canvas.node.parentElement.onkeydown = this.loop.onkeydown.bind(this.loop);
                 this.canvas.node.parentElement.tabIndex = 1;
             }
@@ -8010,9 +8069,9 @@ void main() {
         }
         startLayer(layer) {
             this.layers.push(layer);
-            if (!this._promise) {
-                this._promise = this.loop.run(this);
-            }
+            // if (!this._promise) {
+            //     this._promise = this.loop.run((this as unknown) as IO.IOMap);
+            // }
             this.layer = layer;
         }
         copyUIBuffer(dest) {
@@ -8020,8 +8079,10 @@ void main() {
             dest.copy(base);
             dest.changed = false; // So you have to draw something to make the canvas render...
         }
-        finishLayer(layer) {
-            layer._finish();
+        finishLayer(layer, result) {
+            layer.finish(result);
+        }
+        _finishLayer(layer) {
             arrayDelete(this.layers, layer);
             if (this.layer === layer) {
                 this.layer = this.layers[this.layers.length - 1] || null;
@@ -8045,41 +8106,40 @@ void main() {
         //     this.layer = null;
         //     this.layers.length = 0;
         // }
-        mousemove(e) {
-            if (this.layer)
-                this.layer.mousemove(e);
-            return this._done;
-        }
-        click(e) {
-            if (this.layer)
-                this.layer.click(e);
-            return this._done;
-        }
-        keypress(e) {
-            if (this.layer)
-                this.layer.keypress(e);
-            return this._done;
-        }
-        dir(e) {
-            if (this.layer)
-                this.layer.dir(e);
-            return this._done;
-        }
-        tick(e) {
-            if (this.layer)
-                this.layer.tick(e);
-            return this._done;
-        }
-        draw() {
-            if (this.layer)
-                this.layer.draw();
-        }
+        // mousemove(e: IO.Event): boolean {
+        //     if (this.layer) this.layer.mousemove(e);
+        //     return this._done;
+        // }
+        // click(e: IO.Event): boolean {
+        //     if (this.layer) this.layer.click(e);
+        //     return this._done;
+        // }
+        // keypress(e: IO.Event): boolean {
+        //     if (this.layer) this.layer.keypress(e);
+        //     return this._done;
+        // }
+        // dir(e: IO.Event): boolean {
+        //     if (this.layer) this.layer.dir(e);
+        //     return this._done;
+        // }
+        // tick(e: IO.Event): boolean {
+        //     if (this.layer) this.layer.tick(e);
+        //     return this._done;
+        // }
+        // draw() {
+        //     if (this.layer) this.layer.draw();
+        // }
         addAnimation(a) {
-            this.loop.addAnimation(a);
+            var _a;
+            (_a = this.layer) === null || _a === void 0 ? void 0 : _a.addAnimation(a);
         }
         removeAnimation(a) {
-            this.loop.removeAnimation(a);
+            var _a;
+            (_a = this.layer) === null || _a === void 0 ? void 0 : _a.removeAnimation(a);
         }
+    }
+    function make(opts) {
+        return new UI(opts);
     }
 
     // import * as GWU from 'gw-utils';
@@ -8447,13 +8507,13 @@ void main() {
             return this.fadeTo(0, ms);
         }
         fadeTo(opacity, ms) {
-            const tween$1 = make({ pct: this._used.opacity })
+            const tween$1 = make$1({ pct: this._used.opacity })
                 .to({ pct: opacity })
                 .duration(ms)
                 .onUpdate((info) => {
                 this.opacity = info.pct;
             });
-            this.layer.animate(tween$1);
+            this.layer.addAnimation(tween$1);
             return this;
         }
         fadeToggle(ms) {
@@ -8492,13 +8552,13 @@ void main() {
             return this.slide(this.bounds, dest, ms);
         }
         slide(from, to, ms) {
-            const tween$1 = make({ x: x(from), y: y(from) })
+            const tween$1 = make$1({ x: x(from), y: y(from) })
                 .to({ x: x(to), y: y(to) })
                 .duration(ms)
                 .onUpdate((info) => {
                 this.pos(info.x, info.y);
             });
-            this.layer.animate(tween$1);
+            this.layer.addAnimation(tween$1);
             return this;
         }
         // Draw
@@ -8845,16 +8905,12 @@ void main() {
             return this;
         }
         mousemove(e) {
-            if (this._mousemoveCb && this._mousemoveCb.call(this, e))
-                return false;
             const over = this.widgetAt(e);
             over.mouseenter(e, over);
             this._depthOrder.forEach((w) => w.mousemove(e));
             return false; // TODO - this._done
         }
         click(e) {
-            if (this._clickCb && this._clickCb.call(this, e))
-                return false;
             let w = this.widgetAt(e);
             let setFocus = false;
             while (w) {
@@ -8870,8 +8926,6 @@ void main() {
         }
         keypress(e) {
             if (!e.key)
-                return false;
-            if (this._keypressCb && this._keypressCb.call(this, e))
                 return false;
             let w = this.focusWidget || this.body;
             while (w) {
@@ -8893,8 +8947,6 @@ void main() {
             return false;
         }
         dir(e) {
-            if (this._dirCb && this._dirCb.call(this, e))
-                return false;
             let target = this.focusWidget || this.body;
             while (target) {
                 if (target.dir(e))
@@ -8932,11 +8984,9 @@ void main() {
             console.log('draw');
             this.buffer.render();
         }
-        _finish() {
-            if (!this._done)
-                return;
+        finish(result) {
+            super.finish(result);
             this.body._fireEvent('finish', this.body, this.result);
-            super._finish();
         }
     }
     UI.prototype.startWidgetLayer = function (opts = {}) {
@@ -9229,7 +9279,8 @@ void main() {
         Sheet: Sheet,
         defaultStyle: defaultStyle,
         Layer: Layer,
-        UI: UI
+        UI: UI,
+        make: make
     });
 
     class Border extends Widget {
@@ -11021,6 +11072,7 @@ void main() {
     var index = /*#__PURE__*/Object.freeze({
         __proto__: null,
         Widget: Widget,
+        WidgetLayer: WidgetLayer,
         Body: Body,
         Text: Text,
         Border: Border,
@@ -11045,8 +11097,7 @@ void main() {
         Select: Select,
         Prompt: Prompt,
         Choice: Choice,
-        Inquiry: Inquiry,
-        WidgetLayer: WidgetLayer
+        Inquiry: Inquiry
     });
 
     exports.ERROR = ERROR;
@@ -11074,6 +11125,7 @@ void main() {
     exports.color = index$7;
     exports.colors = colors;
     exports.config = config$1;
+    exports.cosmetic = cosmetic;
     exports.data = data;
     exports.events = events;
     exports.first = first;
@@ -11091,6 +11143,7 @@ void main() {
     exports.object = object;
     exports.path = path;
     exports.prevIndex = prevIndex;
+    exports.random = random;
     exports.range = range;
     exports.rng = rng;
     exports.scheduler = scheduler;

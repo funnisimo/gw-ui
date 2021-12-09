@@ -2,16 +2,14 @@ import 'jest-extended';
 import * as UTILS from '../../test/utils';
 import * as GWU from 'gw-utils';
 import * as Message from './message';
-import { UI } from '../ui';
-import { Layer } from '../ui/layer';
 
 describe('Message', () => {
-    let ui: UI;
-    let layer: Layer;
+    let ui: GWU.ui.UI;
+    let layer: GWU.widget.WidgetLayer;
 
     beforeEach(() => {
         ui = UTILS.mockUI(100, 40);
-        layer = ui.startNewLayer();
+        layer = ui.startWidgetLayer();
     });
 
     afterEach(() => {
@@ -103,7 +101,7 @@ describe('Message', () => {
             await UTILS.pushEvent(ui.loop, UTILS.tick(50)); // expand 1 row
         }
 
-        ui.draw();
+        ui.layer!.draw();
         // ui.layer!.buffer.dump();
 
         expect(UTILS.getBufferText(ui.layer!.buffer, 0, 0, 20)).toEqual(
@@ -115,7 +113,7 @@ describe('Message', () => {
 
         await UTILS.pushEvent(ui.loop, UTILS.keypress('a')); // expand all of the messags
 
-        ui.draw();
+        ui.layer!.draw();
 
         expect(UTILS.getBufferText(ui.layer!.buffer, 0, 0, 20)).toEqual(
             'Testing 10'
@@ -132,7 +130,7 @@ describe('Message', () => {
             await UTILS.pushEvent(ui.loop, UTILS.tick(50)); // collapse 1 row
         }
 
-        ui.draw();
+        ui.layer!.draw();
 
         expect(UTILS.getBufferText(ui.layer!.buffer, 0, 31, 20)).toEqual(
             'Testing 46'
@@ -217,7 +215,7 @@ describe('Message', () => {
         for (let i = 0; i < 5; ++i) {
             await UTILS.pushEvent(ui.loop, UTILS.tick(50)); // expand 1 row
         }
-        ui.draw();
+        ui.layer!.draw();
 
         // ui.layer!.buffer.dump();
         expect(UTILS.getBufferText(ui.layer!.buffer, 0, 31, 20)).toEqual(
@@ -228,7 +226,7 @@ describe('Message', () => {
         );
 
         await UTILS.pushEvent(ui.loop, UTILS.keypress('a')); // expand all of the messags
-        ui.draw();
+        ui.layer!.draw();
 
         // ui.layer!.buffer.dump();
         expect(UTILS.getBufferText(ui.layer!.buffer, 0, 0, 20)).toEqual(
@@ -245,7 +243,7 @@ describe('Message', () => {
             await UTILS.pushEvent(ui.loop, UTILS.tick(50)); // collapse 1 row
         }
 
-        ui.draw();
+        ui.layer!.draw();
         // ui.layer!.buffer.dump();
         expect(UTILS.getBufferText(ui.layer!.buffer, 0, 5, 20)).toEqual(
             'Testing 49'

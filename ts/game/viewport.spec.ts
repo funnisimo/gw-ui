@@ -1,18 +1,16 @@
 import 'jest-extended';
 import * as UTILS from '../../test/utils';
-// import * as GWU from 'gw-utils';
+import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
 import * as Viewport from './viewport';
-import { UI } from '../ui';
-import { Layer } from '../ui/layer';
 
 describe('Viewport', () => {
-    let ui: UI;
-    let layer: Layer;
+    let ui: GWU.ui.UI;
+    let layer: GWU.widget.WidgetLayer;
 
     beforeEach(() => {
         ui = UTILS.mockUI(100, 40);
-        layer = ui.startNewLayer();
+        layer = ui.startWidgetLayer();
     });
 
     afterEach(() => {

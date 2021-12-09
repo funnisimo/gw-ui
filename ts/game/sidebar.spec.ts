@@ -3,8 +3,6 @@ import * as UTILS from '../../test/utils';
 import * as GWM from 'gw-map';
 import * as GWU from 'gw-utils';
 import * as Sidebar from './sidebar';
-import { UI } from '../ui';
-import { Layer } from '../ui/layer';
 
 describe('Sidebar', () => {
     beforeAll(() => {
@@ -17,13 +15,13 @@ describe('Sidebar', () => {
         });
     });
 
-    let ui: UI;
-    let layer: Layer;
+    let ui: GWU.ui.UI;
+    let layer: GWU.widget.WidgetLayer;
     let sidebar: Sidebar.Sidebar;
 
     beforeEach(() => {
         ui = UTILS.mockUI(100, 40);
-        layer = ui.startNewLayer();
+        layer = ui.startWidgetLayer();
 
         sidebar = new Sidebar.Sidebar(layer, {
             id: 'ID',

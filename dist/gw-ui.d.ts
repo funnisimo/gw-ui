@@ -9,7 +9,7 @@ declare class Messages extends GWU.widget.Widget {
     constructor(layer: GWU.widget.WidgetLayer, opts: MessageOptions);
     click(e: GWU.io.Event): boolean;
     draw(buffer: GWU.buffer.Buffer): boolean;
-    showArchive(): void;
+    _showArchive(): void;
 }
 declare type ArchiveMode = 'forward' | 'ack' | 'reverse';
 declare class MessageArchive extends GWU.widget.Widget {
@@ -18,15 +18,17 @@ declare class MessageArchive extends GWU.widget.Widget {
     isOnTop: boolean;
     mode: ArchiveMode;
     shown: number;
+    _timeout: GWU.io.TimerFn | null;
     constructor(layer: GWU.widget.WidgetLayer, source: Messages);
     contains(): boolean;
     finish(): void;
-    keypress(_e: GWU.io.Event): boolean;
+    keypress(e: GWU.io.Event): boolean;
     click(_e: GWU.io.Event): boolean;
     _forward(): boolean;
     _reverse(): boolean;
     _draw(buffer: GWU.buffer.Buffer): boolean;
 }
+declare function showArchive(widget: Messages): Promise<void>;
 
 interface FlavorOptions extends GWU.widget.WidgetOptions {
     overflow?: boolean;
@@ -149,6 +151,7 @@ declare const index_d_Messages: typeof Messages;
 type index_d_ArchiveMode = ArchiveMode;
 type index_d_MessageArchive = MessageArchive;
 declare const index_d_MessageArchive: typeof MessageArchive;
+declare const index_d_showArchive: typeof showArchive;
 type index_d_FlavorOptions = FlavorOptions;
 type index_d_Flavor = Flavor;
 declare const index_d_Flavor: typeof Flavor;
@@ -174,6 +177,7 @@ declare namespace index_d {
     index_d_Messages as Messages,
     index_d_ArchiveMode as ArchiveMode,
     index_d_MessageArchive as MessageArchive,
+    index_d_showArchive as showArchive,
     index_d_FlavorOptions as FlavorOptions,
     index_d_Flavor as Flavor,
     index_d_SidebarOptions as SidebarOptions,

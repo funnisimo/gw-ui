@@ -21,7 +21,7 @@ describe('Sidebar', () => {
 
     beforeEach(() => {
         ui = UTILS.mockUI(100, 40);
-        layer = ui.startWidgetLayer();
+        layer = new GWU.widget.WidgetLayer(ui);
 
         sidebar = new Sidebar.Sidebar(layer, {
             id: 'ID',
@@ -33,7 +33,7 @@ describe('Sidebar', () => {
     });
 
     afterEach(() => {
-        ui.stop();
+        layer.finish();
     });
 
     test('gather cells - everything is visible', () => {

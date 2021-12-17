@@ -10,12 +10,11 @@ describe('Flavor', () => {
 
     beforeEach(() => {
         ui = UTILS.mockUI(100, 40);
-        layer = ui.startWidgetLayer();
+        layer = new GWU.widget.WidgetLayer(ui);
     });
 
     afterEach(() => {
         layer.finish();
-        ui.stop();
     });
 
     describe('getFlavorText', () => {

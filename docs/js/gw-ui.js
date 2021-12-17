@@ -47,7 +47,7 @@
         click(e) {
             if (!this.contains(e))
                 return false;
-            this.showArchive();
+            this._showArchive();
             return true;
         }
         draw(buffer) {
@@ -66,12 +66,10 @@
             });
             return true;
         }
-        showArchive() {
+        _showArchive() {
             if (this.cache.length <= this.bounds.height)
                 return;
-            const layer = this.layer.ui.startNewLayer();
-            // @ts-ignore
-            new MessageArchive(layer, this);
+            showArchive(this);
         }
     }
     class MessageArchive extends GWU__namespace.widget.Widget {
@@ -88,6 +86,7 @@
                 depth: 100, // I'm on top
             });
             this.mode = 'forward';
+            this._timeout = null;
             this.source = source;
             this.isOnTop = this.source.bounds.y < 10;
             this.bounds.height = this.isOnTop
@@ -97,7 +96,7 @@
                 ? layer.height - this.source.bounds.top
                 : this.source.bounds.bottom);
             this.shown = source.bounds.height;
-            this.layer.setTimeout(() => this._forward(), 16);
+            this._timeout = this.layer.setTimeout(() => this._forward(), 16);
             // confirm them as they are right now...
             this.source.cache.confirmAll();
         }
@@ -107,29 +106,17 @@
         finish() {
             this.layer.finish();
         }
-        keypress(_e) {
-            if (this.mode === 'ack') {
-                this.mode = 'reverse';
-                this.layer.needsDraw = true;
-                this.layer.setTimeout(() => this._reverse(), 16);
-            }
-            else if (this.mode === 'reverse') {
-                this.finish();
-                return true;
-            }
-            else {
-                this.mode = 'ack';
-                this.shown = this.totalCount;
-                this.layer.clearTimeout('FORWARD');
-                this.layer.needsDraw = true;
-            }
-            return true; // eat all events
+        keypress(e) {
+            return this.click(e);
         }
         click(_e) {
             if (this.mode === 'ack') {
                 this.mode = 'reverse';
                 this.layer.needsDraw = true;
-                this.layer.setTimeout(() => this._reverse(), 16);
+                if (this._timeout) {
+                    this.layer.clearTimeout(this._timeout);
+                }
+                this._timeout = this.layer.setTimeout(() => this._reverse(), 16);
             }
             else if (this.mode === 'reverse') {
                 this.finish();
@@ -137,15 +124,21 @@
             else {
                 this.mode = 'ack';
                 this.shown = this.totalCount;
+                if (this._timeout) {
+                    this.layer.clearTimeout(this._timeout);
+                    this._timeout = null;
+                }
                 this.layer.needsDraw = true;
             }
             return true;
         }
         _forward() {
+            // console.log('forward');
             ++this.shown;
+            this._timeout = null;
             this.layer.needsDraw = true;
             if (this.shown < this.totalCount) {
-                this.layer.setTimeout(() => this._forward(), 16);
+                this._timeout = this.layer.setTimeout(() => this._forward(), 16);
             }
             else {
                 this.mode = 'ack';
@@ -154,13 +147,15 @@
             return true;
         }
         _reverse() {
+            // console.log('reverse');
             --this.shown;
+            this._timeout = null;
             if (this.shown <= this.source.bounds.height) {
                 this.finish();
             }
             else {
                 this.layer.needsDraw = true;
-                this.layer.setTimeout(() => this._reverse(), 16);
+                this._timeout = this.layer.setTimeout(() => this._reverse(), 16);
             }
             return true;
         }
@@ -206,6 +201,12 @@
             }
             return true;
         }
+    }
+    async function showArchive(widget) {
+        const layer = new GWU__namespace.widget.WidgetLayer(widget.layer.ui);
+        // @ts-ignore
+        new MessageArchive(layer, widget);
+        await layer.run();
     }
 
     GWU__namespace.color.install('flavorText', 50, 40, 90);
@@ -730,6 +731,7 @@
         __proto__: null,
         Messages: Messages,
         MessageArchive: MessageArchive,
+        showArchive: showArchive,
         Flavor: Flavor,
         EntryBase: EntryBase,
         ActorEntry: ActorEntry,

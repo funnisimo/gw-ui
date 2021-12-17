@@ -10,11 +10,11 @@ describe('Viewport', () => {
 
     beforeEach(() => {
         ui = UTILS.mockUI(100, 40);
-        layer = ui.startWidgetLayer();
+        layer = new GWU.widget.WidgetLayer(ui);
     });
 
     afterEach(() => {
-        ui.stop();
+        layer.finish();
     });
 
     test('empty', () => {

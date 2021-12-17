@@ -1,7 +1,7 @@
 import * as GWU from 'gw-utils';
 import * as GWM from 'gw-map';
-import * as UI from '../ts/ui/ui';
-import * as Layer from '../ts/ui/layer';
+// import * as UI from '../ts/ui/ui';
+// import * as Layer from '../ts/ui/layer';
 
 // export const rnd = jest.fn();
 // export const counts = new Array(100).fill(0);
@@ -84,65 +84,53 @@ export function mockItem(): GWM.item.Item {
     jest.spyOn(item, 'drawStatus');
     return item;
 }
-
-// @ts-ignore
-export interface MockLoop extends GWU.io.Loop {
-    run: jest.Mock<Promise<void>, [GWU.io.IOMap, number]>;
-    stop: jest.Mock<void>;
-}
-
-export function mockLoop() {
-    // @ts-ignore
-    const loop: MockLoop = new GWU.io.Loop();
-    jest.spyOn(loop, 'run');
-    jest.spyOn(loop, 'stop');
-    return loop;
-}
-
-export interface MockCanvas {
-    readonly width: number;
-    readonly height: number;
-    render: jest.Mock<void>;
-    copyTo: jest.Mock<void, [GWU.buffer.Buffer]>;
-    draw: jest.Mock<boolean>;
-    toGlyph: jest.Mock<number, [number | string]>;
-    buffer: GWU.canvas.Buffer;
-}
-
-export function mockCanvas(w: number, h: number): MockCanvas {
-    const canvas = {
+export function bufferStack(w: number, h: number): GWU.ui.BufferStack {
+    const target: GWU.canvas.BufferTarget = {
         width: w,
         height: h,
-        render: jest.fn(),
         copyTo: jest.fn(),
+        toGlyph(ch: string | number): number {
+            if (typeof ch === 'string') return ch.charCodeAt(0);
+            return ch;
+        },
         draw: jest.fn(),
-        toGlyph: jest.fn().mockImplementation((ch: string | number) => {
-            if (typeof ch === 'number') return ch;
-            return ch.charCodeAt(0);
-        }),
     };
 
-    const buffer = new GWU.canvas.Buffer(canvas);
-    buffer.render = jest.fn();
-    (<MockCanvas>canvas).buffer = buffer;
+    const loop = new GWU.io.Loop();
 
-    return canvas as MockCanvas;
+    const buffer = new GWU.canvas.Buffer(target);
+
+    return {
+        buffer,
+        parentBuffer: buffer,
+        pushBuffer() {
+            return buffer;
+        },
+        popBuffer() {},
+        loop,
+    };
 }
 
 export function mockUI(width = 100, height = 38) {
     // @ts-ignore
-    const loop = mockLoop();
-    const canvas = mockCanvas(width, height);
+    const canvas = bufferStack(width, height);
 
-    return new UI.UI({
-        loop: loop as unknown as GWU.io.Loop,
-        canvas: canvas as unknown as GWU.canvas.BaseCanvas,
+    return new GWU.ui.UI({
+        loop: canvas.loop,
+        canvas: canvas as GWU.canvas.BaseCanvas,
+        layer: false,
     });
 }
 
-export function mockLayer(w: number, h: number): Layer.Layer {
-    const ui = mockUI(w, h);
-    const layer = new Layer.Layer(ui);
+export function mockLayer(w: number, h: number): GWU.ui.Layer {
+    const canvas = mockUI(w, h);
+    const layer = new GWU.ui.Layer(canvas);
+    return layer;
+}
+
+export function mockWidgetLayer(w: number, h: number): GWU.widget.WidgetLayer {
+    const canvas = mockUI(w, h);
+    const layer = new GWU.widget.WidgetLayer(canvas);
     return layer;
 }
 
@@ -183,10 +171,11 @@ export async function pushEvent(
     loop: GWU.io.Loop,
     event: GWU.io.Event
 ): Promise<void> {
-    loop.pushEvent(event);
+    loop.enqueue(event);
     do {
         await wait(10);
-    } while (loop.events.length);
+        // @ts-ignore
+    } while (loop.currentHandler && loop.currentHandler._events.length);
 }
 
 export function keypress(key: string): GWU.io.Event {

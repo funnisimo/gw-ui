@@ -5,7 +5,7 @@ export interface MessageOptions extends GWU.widget.WidgetOptions {
 }
 
 export class Messages extends GWU.widget.Widget {
-    cache!: GWU.message.MessageCache;
+    cache: GWU.message.MessageCache;
 
     constructor(layer: GWU.widget.WidgetLayer, opts: MessageOptions) {
         super(
@@ -31,7 +31,7 @@ export class Messages extends GWU.widget.Widget {
 
     click(e: GWU.io.Event): boolean {
         if (!this.contains(e)) return false;
-        this.showArchive();
+        this._showArchive();
         return true;
     }
 
@@ -71,12 +71,9 @@ export class Messages extends GWU.widget.Widget {
         return true;
     }
 
-    showArchive(): void {
+    _showArchive(): void {
         if (this.cache.length <= this.bounds.height) return;
-
-        const layer = this.layer.ui.startNewLayer();
-        // @ts-ignore
-        const w = new MessageArchive(layer, this);
+        showArchive(this);
     }
 }
 
@@ -88,6 +85,8 @@ export class MessageArchive extends GWU.widget.Widget {
     isOnTop: boolean;
     mode: ArchiveMode = 'forward';
     shown: number;
+
+    _timeout: GWU.io.TimerFn | null = null;
 
     constructor(layer: GWU.widget.WidgetLayer, source: Messages) {
         super(layer, {
@@ -115,7 +114,7 @@ export class MessageArchive extends GWU.widget.Widget {
         );
 
         this.shown = source.bounds.height;
-        this.layer.setTimeout(() => this._forward(), 16);
+        this._timeout = this.layer.setTimeout(() => this._forward(), 16);
 
         // confirm them as they are right now...
         this.source.cache.confirmAll();
@@ -129,43 +128,40 @@ export class MessageArchive extends GWU.widget.Widget {
         this.layer.finish();
     }
 
-    keypress(_e: GWU.io.Event): boolean {
-        if (this.mode === 'ack') {
-            this.mode = 'reverse';
-            this.layer.needsDraw = true;
-            this.layer.setTimeout(() => this._reverse(), 16);
-        } else if (this.mode === 'reverse') {
-            this.finish();
-            return true;
-        } else {
-            this.mode = 'ack';
-            this.shown = this.totalCount;
-            this.layer.clearTimeout('FORWARD');
-            this.layer.needsDraw = true;
-        }
-        return true; // eat all events
+    keypress(e: GWU.io.Event): boolean {
+        return this.click(e);
     }
 
     click(_e: GWU.io.Event): boolean {
         if (this.mode === 'ack') {
             this.mode = 'reverse';
             this.layer.needsDraw = true;
-            this.layer.setTimeout(() => this._reverse(), 16);
+            if (this._timeout) {
+                this.layer.clearTimeout(this._timeout);
+            }
+            this._timeout = this.layer.setTimeout(() => this._reverse(), 16);
         } else if (this.mode === 'reverse') {
             this.finish();
         } else {
             this.mode = 'ack';
             this.shown = this.totalCount;
+            if (this._timeout) {
+                this.layer.clearTimeout(this._timeout);
+                this._timeout = null;
+            }
             this.layer.needsDraw = true;
         }
         return true;
     }
 
     _forward(): boolean {
+        // console.log('forward');
+
         ++this.shown;
+        this._timeout = null;
         this.layer.needsDraw = true;
         if (this.shown < this.totalCount) {
-            this.layer.setTimeout(() => this._forward(), 16);
+            this._timeout = this.layer.setTimeout(() => this._forward(), 16);
         } else {
             this.mode = 'ack';
             this.shown = this.totalCount;
@@ -174,12 +170,14 @@ export class MessageArchive extends GWU.widget.Widget {
     }
 
     _reverse(): boolean {
+        // console.log('reverse');
         --this.shown;
+        this._timeout = null;
         if (this.shown <= this.source.bounds.height) {
             this.finish();
         } else {
             this.layer.needsDraw = true;
-            this.layer.setTimeout(() => this._reverse(), 16);
+            this._timeout = this.layer.setTimeout(() => this._reverse(), 16);
         }
         return true;
     }
@@ -246,4 +244,11 @@ export class MessageArchive extends GWU.widget.Widget {
 
         return true;
     }
+}
+
+export async function showArchive(widget: Messages): Promise<void> {
+    const layer = new GWU.widget.WidgetLayer(widget.layer.ui);
+    // @ts-ignore
+    const w = new MessageArchive(layer, widget);
+    await layer.run();
 }

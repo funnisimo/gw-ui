@@ -9,12 +9,11 @@ describe('Message', () => {
 
     beforeEach(() => {
         ui = UTILS.mockUI(100, 40);
-        layer = ui.startWidgetLayer();
+        layer = new GWU.widget.WidgetLayer(ui);
     });
 
     afterEach(() => {
         layer.finish();
-        ui.stop();
     });
 
     test('basic - on top', () => {
@@ -60,7 +59,6 @@ describe('Message', () => {
     });
 
     test('show archive - top', async () => {
-        // @ts-ignore
         ui.loop._stopTicks();
 
         const widget = new Message.Messages(layer, {
@@ -91,65 +89,73 @@ describe('Message', () => {
             'Testing 49'
         );
 
-        jest.spyOn(widget, 'showArchive');
+        jest.spyOn(widget, '_showArchive').mockImplementation(() => {});
 
-        const p = widget.click(UTILS.click(1, 1));
+        widget.click(UTILS.click(1, 1));
+        expect(widget._showArchive).toHaveBeenCalled();
 
-        expect(widget.showArchive).toHaveBeenCalled();
+        const p = Message.showArchive(widget);
+
+        expect(ui.layer).not.toBe(widget.layer);
+        ui.loop._stopTicks();
 
         for (let i = 0; i < 5; ++i) {
             await UTILS.pushEvent(ui.loop, UTILS.tick(50)); // expand 1 row
         }
 
-        ui.layer!.draw();
-        // ui.layer!.buffer.dump();
+        // ui.layer.buffer.dump();
 
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 0, 20)).toEqual(
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 0, 20)).toEqual(
             'Testing 41'
         );
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 8, 20)).toEqual(
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 8, 20)).toEqual(
             'Testing 49'
         );
 
+        console.log('expand all');
         await UTILS.pushEvent(ui.loop, UTILS.keypress('a')); // expand all of the messags
 
-        ui.layer!.draw();
+        ui.layer.draw();
 
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 0, 20)).toEqual(
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 0, 20)).toEqual(
             'Testing 10'
         );
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 39, 20)).toEqual(
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 39, 20)).toEqual(
             'Testing 49'
         );
 
-        // ui.layer!.buffer.dump();
+        // layer.buffer.dump();
 
+        console.log('start collapse');
         await UTILS.pushEvent(ui.loop, UTILS.keypress('a')); // start collapse
 
         for (let i = 0; i < 5; ++i) {
             await UTILS.pushEvent(ui.loop, UTILS.tick(50)); // collapse 1 row
         }
 
-        ui.layer!.draw();
+        ui.layer.draw();
 
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 31, 20)).toEqual(
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 31, 20)).toEqual(
             'Testing 46'
         );
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 32, 20)).toEqual(
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 32, 20)).toEqual(
             'Testing 47'
         );
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 33, 20)).toEqual(
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 33, 20)).toEqual(
             'Testing 48'
         );
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 34, 20)).toEqual(
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 34, 20)).toEqual(
             'Testing 49'
         );
 
-        // layer.buffer.dump();
-
+        console.log('fast forward');
         await UTILS.pushEvent(ui.loop, UTILS.keypress('a')); // fast forward
 
+        // layer.buffer.dump();
+
         await p;
+
+        expect(ui.layer).toBe(widget.layer);
 
         layer.buffer.blackOut();
         widget.draw(layer.buffer);
@@ -170,16 +176,14 @@ describe('Message', () => {
     });
 
     test('show archive - bottom', async () => {
+        ui.loop._stopTicks();
+
         const widget = new Message.Messages(layer, {
             id: 'MSG',
             width: 80,
             height: 4,
             y: 36,
         });
-
-        // @ts-ignore
-        ui.loop._stopTicks();
-        // layer.buffer.dump();
 
         expect(widget.bounds.x).toEqual(0);
         expect(widget.bounds.y).toEqual(36);
@@ -205,62 +209,66 @@ describe('Message', () => {
 
         // layer.buffer.dump();
 
-        jest.spyOn(widget, 'showArchive');
+        jest.spyOn(widget, '_showArchive').mockImplementation(() => {});
 
-        const p = widget.click(UTILS.click(1, 38));
-        expect(widget.showArchive).toHaveBeenCalled();
+        widget.click(UTILS.click(1, 38));
+        expect(widget._showArchive).toHaveBeenCalled();
 
-        // ui.layer!.buffer.dump();
+        const p = Message.showArchive(widget);
+
+        expect(ui.layer).not.toBe(widget.layer);
+        ui.loop._stopTicks();
 
         for (let i = 0; i < 5; ++i) {
             await UTILS.pushEvent(ui.loop, UTILS.tick(50)); // expand 1 row
         }
-        ui.layer!.draw();
+        ui.layer.draw();
 
-        // ui.layer!.buffer.dump();
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 31, 20)).toEqual(
+        // layer.buffer.dump();
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 31, 20)).toEqual(
             'Testing 49'
         );
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 39, 20)).toEqual(
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 39, 20)).toEqual(
             'Testing 41'
         );
 
         await UTILS.pushEvent(ui.loop, UTILS.keypress('a')); // expand all of the messags
-        ui.layer!.draw();
+        ui.layer.draw();
 
-        // ui.layer!.buffer.dump();
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 0, 20)).toEqual(
+        // layer.buffer.dump();
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 0, 20)).toEqual(
             'Testing 49'
         );
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 39, 20)).toEqual(
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 39, 20)).toEqual(
             'Testing 10'
         );
 
-        // ui.layer!.buffer.dump();
+        // layer.buffer.dump();
         await UTILS.pushEvent(ui.loop, UTILS.keypress('a')); // start collapse
 
         for (let i = 0; i < 5; ++i) {
             await UTILS.pushEvent(ui.loop, UTILS.tick(50)); // collapse 1 row
         }
 
-        ui.layer!.draw();
-        // ui.layer!.buffer.dump();
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 5, 20)).toEqual(
+        ui.layer.draw();
+        // layer.buffer.dump();
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 5, 20)).toEqual(
             'Testing 49'
         );
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 6, 20)).toEqual(
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 6, 20)).toEqual(
             'Testing 48'
         );
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 7, 20)).toEqual(
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 7, 20)).toEqual(
             'Testing 47'
         );
-        expect(UTILS.getBufferText(ui.layer!.buffer, 0, 8, 20)).toEqual(
+        expect(UTILS.getBufferText(ui.layer.buffer, 0, 8, 20)).toEqual(
             'Testing 46'
         );
 
         await UTILS.pushEvent(ui.loop, UTILS.keypress('a')); // fast forward
 
         await p;
+
         expect(ui.layer).toBe(widget.layer);
 
         layer.buffer.blackOut();
